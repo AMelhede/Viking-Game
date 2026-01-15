@@ -3,160 +3,179 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Viking Run - Enhanced Edition</title>
+  <title>Viking Run - Modern Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root{
-      /* Viking Theme Palette */
-      --bg0:#0b141a;
-      --bg1:#1a2b3c;
-      --glass: rgba(15, 25, 35, 0.85);
-      --glass2: rgba(255,255,255,0.08);
-      --ink: rgba(255,255,255,0.95);
-      --muted: rgba(200,210,220,0.7);
-      --muted2: rgba(200,210,220,0.5);
-      --good:#FFD700; /* Gold/Mead */
-      --warn:#FF8C00;
-      --bad:#FF4500; /* Blood/Fire */
-      --accent:#A5F2FF; /* Ice */
-      --accent2:#E0E0E0; /* Steel */
-      --shadow: rgba(0,0,0,0.55);
+      --bg-gradient-start: #0a0e27;
+      --bg-gradient-end: #1a1f3a;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-shadow: rgba(0, 0, 0, 0.3);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.5);
+      --accent-primary: #6366f1;
+      --accent-secondary: #8b5cf6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gold: #fbbf24;
+      --platform: #475569;
+      --enemy: #dc2626;
     }
 
     * {
+      margin: 0;
+      padding: 0;
       box-sizing: border-box;
     }
 
     html, body {
       height: 100%;
       margin: 0;
-      background:
-        radial-gradient(1200px 800px at 70% 30%, rgba(165,242,255,0.15), transparent 60%),
-        radial-gradient(1000px 700px at 25% 65%, rgba(255,215,0,0.1), transparent 60%),
-        linear-gradient(180deg, var(--bg1), var(--bg0));
-      color: var(--ink);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       overflow: hidden;
       user-select: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     .wrap{ 
       height: 100%; 
-      display: grid; 
-      place-items: center; 
-      padding: 18px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 20px; 
     }
     
     .shell{
-      width: min(1100px, calc(100vw - 24px));
-      height: min(720px, calc(100vh - 24px));
-      border-radius: 24px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-      box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.1) inset;
+      width: min(1200px, calc(100vw - 40px));
+      height: min(800px, calc(100vh - 40px));
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       position: relative;
       overflow: hidden;
     }
 
     .topbar{ 
       position: absolute; 
-      left: 15px; 
-      right: 15px; 
-      top: 12px; 
-      height: 50px; 
+      left: 24px; 
+      right: 24px; 
+      top: 20px; 
+      height: 64px; 
       display: flex; 
       align-items: center; 
       justify-content: space-between; 
-      z-index: 5; 
+      z-index: 100; 
       pointer-events: none; 
     }
     
     .leftpack, .rightpack{ 
       display: flex; 
       align-items: center; 
-      gap: 12px; 
+      gap: 16px; 
       pointer-events: auto; 
     }
     
     .title{ 
       display: flex; 
       align-items: center; 
-      gap: 10px; 
-      padding: 10px 16px; 
+      gap: 12px; 
+      padding: 12px 20px; 
       border-radius: 16px; 
-      background: var(--glass); 
-      backdrop-filter: blur(16px); 
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); 
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 24px var(--glass-shadow);
     }
     
     .title strong{ 
-      font-weight: 900; 
-      text-transform: uppercase; 
-      letter-spacing: 1.5px; 
-      color: var(--accent); 
-      font-size: 16px;
+      font-weight: 800; 
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     
     .pill{ 
       font-size: 11px; 
-      padding: 5px 12px; 
-      border-radius: 999px; 
-      background: rgba(255,255,255,0.15); 
-      color: var(--muted); 
-      border: 1px solid rgba(255,255,255,0.2); 
-      font-weight: 700;
+      padding: 6px 14px; 
+      border-radius: 20px; 
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--accent-primary);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
     .scorecard{ 
       display: flex; 
       align-items: center; 
-      gap: 18px; 
-      padding: 10px 16px; 
+      gap: 24px; 
+      padding: 12px 20px; 
       border-radius: 16px; 
-      background: var(--glass); 
-      backdrop-filter: blur(16px); 
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); 
-      min-width: 200px; 
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 24px var(--glass-shadow);
     }
     
     .stat{ 
-      display: grid; 
-      gap: 3px; 
-      min-width: 65px; 
+      display: flex;
+      flex-direction: column;
+      gap: 4px; 
+      min-width: 80px; 
     }
     
     .stat .k{ 
-      font-size: 10px; 
-      color: var(--muted2); 
+      font-size: 11px; 
+      color: var(--text-muted); 
       text-transform: uppercase; 
-      font-weight: 700; 
+      font-weight: 600; 
       letter-spacing: 0.5px;
     }
     
     .stat .v{ 
-      font-size: 22px; 
-      font-weight: 900; 
-      line-height: 1.0; 
-      color: var(--good);
+      font-size: 24px; 
+      font-weight: 800; 
+      line-height: 1; 
+      color: var(--gold);
+      letter-spacing: -1px;
     }
 
     .btn{ 
-      border: 1px solid rgba(255,255,255,0.2); 
-      background: rgba(255,255,255,0.1); 
-      color: var(--ink); 
-      padding: 10px 16px; 
+      border: 1px solid var(--glass-border); 
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      color: var(--text-primary); 
+      padding: 10px 18px; 
       border-radius: 12px; 
       cursor: pointer; 
-      transition: all 0.2s; 
-      font-weight: 700; 
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+      font-weight: 600; 
       font-size: 13px; 
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 4px 12px var(--glass-shadow);
     }
     
     .btn:hover{ 
-      background: rgba(255,255,255,0.2); 
-      border-color: var(--accent); 
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     }
     
     .btn:active {
@@ -164,50 +183,53 @@
     }
     
     .btn.primary{ 
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 200, 0, 0.2)); 
-      border-color: rgba(255, 215, 0, 0.5); 
-      color: var(--good);
-      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      border: none;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
     }
     
     .btn.primary:hover {
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 200, 0, 0.3));
+      box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
+      transform: translateY(-2px);
     }
 
     .hudline{ 
       position: absolute; 
-      left: 12px; 
-      right: 12px; 
-      bottom: 15px; 
+      left: 24px; 
+      right: 24px; 
+      bottom: 24px; 
       display: flex; 
       justify-content: center; 
-      z-index: 5; 
+      z-index: 100; 
       pointer-events: none; 
     }
     
     .hint{ 
-      max-width: 800px; 
-      padding: 14px 24px; 
-      border-radius: 18px; 
-      background: var(--glass); 
-      border: 1px solid rgba(255,255,255,0.15); 
-      color: var(--muted); 
+      max-width: 900px; 
+      padding: 16px 28px; 
+      border-radius: 16px; 
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary); 
       font-size: 13px; 
       text-align: center; 
-      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px var(--glass-shadow);
       pointer-events: auto;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
     
     kbd{ 
-      background: rgba(255,255,255,0.2); 
+      background: rgba(255, 255, 255, 0.1); 
       border-radius: 6px; 
-      padding: 3px 8px; 
-      color: #fff; 
-      border: 1px solid rgba(255,255,255,0.3); 
-      margin: 0 3px; 
-      font-weight: 700;
+      padding: 4px 10px; 
+      color: var(--text-primary); 
+      border: 1px solid rgba(255, 255, 255, 0.2); 
+      margin: 0 4px; 
+      font-weight: 600;
       font-size: 12px;
+      font-family: 'Inter', monospace;
     }
 
     .canvas{ 
@@ -225,68 +247,105 @@
       display: grid; 
       place-items: center; 
       pointer-events: none; 
-      z-index: 10; 
-      background: rgba(0,0,0,0.5); 
-      backdrop-filter: blur(8px); 
+      z-index: 200; 
+      background: rgba(0, 0, 0, 0.6); 
+      backdrop-filter: blur(12px); 
     }
     
     .card{ 
       pointer-events: auto; 
-      width: min(550px, 90%); 
-      border-radius: 28px; 
-      padding: 40px; 
-      background: linear-gradient(180deg, rgba(25, 35, 50, 0.95), rgba(20, 30, 45, 0.95)); 
-      border: 2px solid var(--accent); 
-      box-shadow: 0 50px 120px rgba(0,0,0,0.9), 0 0 40px rgba(165,242,255,0.3); 
-      text-align: center; 
+      width: min(600px, 90%); 
+      border-radius: 24px; 
+      padding: 48px; 
+      background: var(--glass-bg);
+      backdrop-filter: blur(30px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      text-align: center;
     }
     
     .card h1{ 
-      font-size: 32px; 
-      margin: 0 0 15px; 
-      color: var(--accent); 
-      text-transform: uppercase; 
-      letter-spacing: 3px; 
-      font-weight: 900;
-      text-shadow: 0 0 20px rgba(165,242,255,0.5);
+      font-size: 36px; 
+      margin: 0 0 20px; 
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     
     .card p{ 
-      margin: 0 0 25px; 
-      color: var(--muted); 
-      line-height: 1.8; 
+      margin: 0 0 32px; 
+      color: var(--text-secondary); 
+      line-height: 1.7; 
       font-size: 15px;
     }
     
     .powerup-list {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin: 20px 0;
+      margin: 24px 0;
     }
     
     .powerup-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
-      padding: 10px;
-      background: rgba(255,255,255,0.05);
+      gap: 8px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.1);
-      min-width: 80px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s;
+    }
+    
+    .powerup-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateY(-2px);
     }
     
     .powerup-item .icon {
-      font-size: 28px;
+      font-size: 32px;
     }
     
     .powerup-item .name {
       font-size: 11px;
-      color: var(--muted2);
+      color: var(--text-muted);
       text-transform: uppercase;
-      font-weight: 700;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .weapon-indicator {
+      position: absolute;
+      top: 100px;
+      left: 24px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 24px var(--glass-shadow);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 50;
+    }
+
+    .weapon-indicator.active {
+      display: flex;
+    }
+
+    .weapon-icon {
+      font-size: 24px;
+    }
+
+    .weapon-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
     }
   </style>
 </head>
@@ -298,7 +357,7 @@
 
       <div class="topbar">
         <div class="leftpack">
-          <div class="title"><strong>⚔️ Viking Run</strong> <span class="pill" id="statePill">Ready</span></div>
+          <div class="title"><strong>Viking Run</strong> <span class="pill" id="statePill">Ready</span></div>
           <div class="scorecard">
             <div class="stat"><div class="k">Score</div><div class="v" id="scoreV">0</div></div>
             <div class="stat"><div class="k">Mead</div><div class="v" id="meadV">0</div></div>
@@ -306,30 +365,34 @@
           </div>
         </div>
         <div class="rightpack">
-          <button class="btn" id="pauseBtn">⏸ Pause</button>
-          <button class="btn" id="soundBtn">🔇 Sound: Off</button>
-          <button class="btn primary" id="restartBtn">🔄 Restart</button>
+          <button class="btn" id="pauseBtn">Pause</button>
+          <button class="btn" id="soundBtn">Sound: Off</button>
+          <button class="btn primary" id="restartBtn">Restart</button>
         </div>
+      </div>
+
+      <div class="weapon-indicator" id="weaponIndicator">
+        <span class="weapon-icon">⚔️</span>
+        <span class="weapon-text">Press SPACE to attack!</span>
       </div>
 
       <div class="hudline">
         <div class="hint" id="hint">
-          Press <kbd>Space</kbd> or Tap to jump. Press <kbd>↓</kbd> to duck. 
-          Grab <b style="color: var(--good);">Mead</b> 🍺 and <b style="color: var(--accent);">Powerups</b> ⚡🛡🦘⭐; avoid <b style="color: var(--bad);">Shields</b> 🛡.
+          <kbd>Space</kbd> Jump/Attack | <kbd>↓</kbd> Duck | Collect <b style="color: var(--gold);">Mead</b> 🍺 and <b style="color: var(--accent-primary);">Powerups</b> | Jump on <b style="color: var(--platform);">Platforms</b> | Defeat <b style="color: var(--danger);">Enemies</b> ⚔️
         </div>
       </div>
 
       <div class="overlay" id="overlay">
         <div class="card">
-          <h1 id="overlayTitle">⚔️ Viking Saga ⚔️</h1>
-          <p id="overlayText" style="white-space: pre-line;">Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities!</p>
+          <h1 id="overlayTitle">Viking Run</h1>
+          <p id="overlayText" style="white-space: pre-line;">Embark on an epic adventure! Jump on platforms, defeat enemies with weapons, collect powerups, and survive as long as you can!</p>
           <div class="powerup-list">
             <div class="powerup-item"><div class="icon">⚡</div><div class="name">Speed</div></div>
             <div class="powerup-item"><div class="icon">🛡</div><div class="name">Shield</div></div>
             <div class="powerup-item"><div class="icon">🦘</div><div class="name">Double Jump</div></div>
             <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
           </div>
-          <button class="btn primary" id="startBtn" style="padding: 14px 35px; font-size: 17px; margin-top: 10px;">⚔️ Set Sail (Start) ⚔️</button>
+          <button class="btn primary" id="startBtn" style="padding: 16px 40px; font-size: 16px; margin-top: 8px;">Start Game</button>
         </div>
       </div>
     </div>
@@ -355,6 +418,7 @@
   const pauseBtn = $("pauseBtn");
   const restartBtn = $("restartBtn");
   const soundBtn = $("soundBtn");
+  const weaponIndicator = $("weaponIndicator");
 
   let W, H, DPR, ctx;
   const resize = () => {
@@ -385,7 +449,7 @@
   const world = { 
     started: false, paused: false, over: false, 
     score: 0, mead: 0, speed: 450, t: 0, groundY: 0, camX: 0,
-    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0,
+    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextWeaponAt: 0,
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
@@ -397,13 +461,18 @@
   const viking = {
     x: 100, y: 0, vy: 0, w: 50, h: 70, 
     onGround: false, ducking: false, anim: 0, faceplant: 0,
-    jumpsUsed: 0, maxJumps: 1, jumpPressed: false
+    jumpsUsed: 0, maxJumps: 1, jumpPressed: false,
+    hasWeapon: false, weaponType: null, attacking: false, attackCooldown: 0
   };
 
   const Obstacles = [];
   const Meads = [];
   const Powerups = [];
   const Particles = [];
+  const Platforms = [];
+  const Enemies = [];
+  const Weapons = [];
+  const Projectiles = [];
 
   const spawnObstacle = (x) => {
     const type = Math.random() > 0.4 ? "shield" : "rock";
@@ -424,6 +493,37 @@
       taken: false,
       rotation: 0,
       pulse: 0
+    });
+  };
+
+  const spawnPlatform = (x) => {
+    const width = rand(80, 150);
+    const height = 20;
+    const y = world.groundY - rand(100, 250);
+    Platforms.push({ x, y, width, height });
+  };
+
+  const spawnEnemy = (x) => {
+    Enemies.push({
+      x,
+      y: world.groundY,
+      w: 40,
+      h: 50,
+      health: 1,
+      speed: -world.speed * 0.3,
+      defeated: false
+    });
+  };
+
+  const spawnWeapon = (x) => {
+    const types = ["axe", "sword"];
+    const type = pick(types);
+    Weapons.push({
+      x,
+      y: world.groundY - rand(50, 150),
+      type,
+      taken: false,
+      rotation: 0
     });
   };
 
@@ -457,14 +557,24 @@
     viking.ducking = false;
     viking.onGround = true;
     viking.jumpPressed = false;
+    viking.hasWeapon = false;
+    viking.weaponType = null;
+    viking.attacking = false;
+    viking.attackCooldown = 0;
     Obstacles.length = 0; 
     Meads.length = 0; 
     Powerups.length = 0;
     Particles.length = 0;
+    Platforms.length = 0;
+    Enemies.length = 0;
+    Weapons.length = 0;
+    Projectiles.length = 0;
     world.nextObstacleAt = viking.x + 600;
     world.nextMeadAt = viking.x + 300;
     world.nextPowerupAt = viking.x + 800;
-    // Reset powerup states
+    world.nextPlatformAt = viking.x + 500;
+    world.nextEnemyAt = viking.x + 1000;
+    world.nextWeaponAt = viking.x + 700;
     world.powerups = {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
@@ -474,11 +584,12 @@
     viking.jumpsUsed = 0;
     viking.maxJumps = 1;
     overlay.style.display = "grid";
-    $("overlayTitle").textContent = "⚔️ Viking Saga ⚔️";
-    $("overlayText").textContent = "Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities!";
-    startBtn.textContent = "⚔️ Set Sail (Start) ⚔️";
+    weaponIndicator.classList.remove("active");
+    $("overlayTitle").textContent = "Viking Run";
+    $("overlayText").textContent = "Embark on an epic adventure! Jump on platforms, defeat enemies with weapons, collect powerups, and survive as long as you can!";
+    startBtn.textContent = "Start Game";
     statePill.textContent = "Ready";
-    pauseBtn.textContent = "⏸ Pause";
+    pauseBtn.textContent = "Pause";
     updateHUD();
   };
 
@@ -488,23 +599,32 @@
     const multStat = $("multiplierStat");
     const multV = $("multiplierV");
     if (world.powerups.scoreMultiplier.active) {
-      multStat.style.display = "grid";
+      multStat.style.display = "flex";
       multV.textContent = world.powerups.scoreMultiplier.multiplier + "x";
-      multV.style.color = "#FFD93D";
+      multV.style.color = "#fbbf24";
     } else {
       multStat.style.display = "none";
     }
+    
+    if (viking.hasWeapon) {
+      weaponIndicator.classList.add("active");
+    } else {
+      weaponIndicator.classList.remove("active");
+    }
   };
 
-  // Input - FIXED: Proper jump handling
-  const Input = { jump: false, duck: false, jumpJustPressed: false };
+  // Input
+  const Input = { jump: false, duck: false, jumpJustPressed: false, attack: false };
   
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space") { 
       if (!Input.jump) {
         Input.jumpJustPressed = true;
       }
-      Input.jump = true; 
+      Input.jump = true;
+      if (viking.hasWeapon && viking.onGround) {
+        Input.attack = true;
+      }
       if(!world.started && !world.over) start(); 
     }
     if (e.code === "ArrowDown") Input.duck = true;
@@ -515,6 +635,7 @@
     if (e.code === "Space") {
       Input.jump = false;
       Input.jumpJustPressed = false;
+      Input.attack = false;
     }
     if (e.code === "ArrowDown") Input.duck = false;
     e.preventDefault();
@@ -524,7 +645,10 @@
     if (!Input.jump) {
       Input.jumpJustPressed = true;
     }
-    Input.jump = true; 
+    Input.jump = true;
+    if (viking.hasWeapon && viking.onGround) {
+      Input.attack = true;
+    }
     if(!world.started && !world.over) start(); 
     e.preventDefault();
   });
@@ -532,6 +656,7 @@
   window.addEventListener("pointerup", () => {
     Input.jump = false;
     Input.jumpJustPressed = false;
+    Input.attack = false;
   });
 
   const start = () => {
@@ -539,7 +664,7 @@
     world.started = true;
     world.over = false;
     overlay.style.display = "none";
-    statePill.textContent = "Raiding";
+    statePill.textContent = "Playing";
     beep("square", 300, 0.2);
   };
 
@@ -552,6 +677,29 @@
     const bob = viking.onGround ? Math.sin(world.t * 12) * 4 : 0;
     const duckH = viking.ducking ? 0.6 : 1;
 
+    // Weapon in hand
+    if (viking.hasWeapon && !viking.ducking) {
+      ctx.save();
+      ctx.translate(15, -40);
+      ctx.rotate(viking.attacking ? -Math.PI / 3 : 0);
+      if (viking.weaponType === "axe") {
+        ctx.fillStyle = "#8b5cf6";
+        ctx.fillRect(-3, -20, 6, 25);
+        ctx.fillStyle = "#6366f1";
+        ctx.beginPath();
+        ctx.moveTo(-8, -20);
+        ctx.lineTo(8, -20);
+        ctx.lineTo(0, -35);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#6366f1";
+        ctx.fillRect(-2, -25, 4, 30);
+        ctx.fillStyle = "#8b5cf6";
+        ctx.fillRect(-4, -30, 8, 8);
+      }
+      ctx.restore();
+    }
+
     // Tunic (Body)
     ctx.fillStyle = "#556677";
     ctx.fillRect(-20, -50 * duckH + bob, 40, 50 * duckH);
@@ -560,7 +708,7 @@
     ctx.fillStyle = "#ffdbac";
     ctx.beginPath(); ctx.arc(0, -65 * duckH + bob, 15, 0, Math.PI * 2); ctx.fill();
 
-    // Beard (Danish Viking Orange)
+    // Beard
     ctx.fillStyle = "#e67e22";
     ctx.beginPath(); ctx.moveTo(-12, -60 * duckH + bob); ctx.lineTo(12, -60 * duckH + bob); ctx.lineTo(0, -35 * duckH + bob); ctx.fill();
 
@@ -575,15 +723,90 @@
     ctx.restore();
   };
 
+  const drawPlatform = (p) => {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    
+    // Platform shadow
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillRect(0, p.height, p.width, 5);
+    
+    // Platform top
+    const gradient = ctx.createLinearGradient(0, 0, 0, p.height);
+    gradient.addColorStop(0, "#64748b");
+    gradient.addColorStop(1, "#475569");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, p.width, p.height);
+    
+    // Platform border
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, p.width, p.height);
+    
+    ctx.restore();
+  };
+
+  const drawEnemy = (e) => {
+    if (e.defeated) return;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    
+    // Body
+    ctx.fillStyle = "#dc2626";
+    ctx.fillRect(-e.w/2, -e.h, e.w, e.h);
+    
+    // Head
+    ctx.fillStyle = "#991b1b";
+    ctx.beginPath();
+    ctx.arc(0, -e.h - 10, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Eyes
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(-5, -e.h - 8, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(5, -e.h - 8, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+  };
+
+  const drawWeapon = (w) => {
+    ctx.save();
+    ctx.translate(w.x, w.y);
+    ctx.rotate(w.rotation);
+    
+    if (w.type === "axe") {
+      ctx.fillStyle = "#8b5cf6";
+      ctx.fillRect(-3, -15, 6, 20);
+      ctx.fillStyle = "#6366f1";
+      ctx.beginPath();
+      ctx.moveTo(-8, -15);
+      ctx.lineTo(8, -15);
+      ctx.lineTo(0, -30);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#6366f1";
+      ctx.fillRect(-2, -20, 4, 25);
+      ctx.fillStyle = "#8b5cf6";
+      ctx.fillRect(-4, -25, 8, 8);
+    }
+    
+    // Glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = w.type === "axe" ? "#8b5cf6" : "#6366f1";
+    
+    ctx.restore();
+  };
+
   const drawShield = (x, y) => {
     ctx.save();
     ctx.translate(x, world.groundY);
-    // Outer wood
     ctx.fillStyle = "#5d4037";
     ctx.beginPath(); ctx.arc(0, -22, 22, 0, Math.PI * 2); ctx.fill();
-    // Metal rim
     ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 3; ctx.stroke();
-    // Center boss
     ctx.fillStyle = "#7f8c8d";
     ctx.beginPath(); ctx.arc(0, -22, 6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -597,13 +820,10 @@
   const drawMead = (x, y) => {
     ctx.save();
     ctx.translate(x, y);
-    // Mug
     ctx.fillStyle = "#f1c40f";
     ctx.fillRect(-10, -15, 20, 25);
-    // Foam
     ctx.fillStyle = "#fff";
     ctx.beginPath(); ctx.arc(-5, -15, 6, 0, Math.PI*2); ctx.arc(5, -15, 6, 0, Math.PI*2); ctx.fill();
-    // Handle
     ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(10, -2, 8, -Math.PI/2, Math.PI/2); ctx.stroke();
     ctx.restore();
@@ -632,7 +852,7 @@
   const activatePowerup = (type) => {
     const p = world.powerups[type];
     p.active = true;
-    p.timeLeft = 10; // 10 seconds
+    p.timeLeft = 10;
     
     if (type === "doubleJump") {
       viking.maxJumps = 2;
@@ -650,7 +870,6 @@
     const size = 22 * pulse;
     const color = getPowerupColor(type);
     
-    // Glow effect
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     gradient.addColorStop(0, color + "AA");
     gradient.addColorStop(0.5, color + "60");
@@ -660,18 +879,15 @@
     ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
     ctx.fill();
     
-    // Main circle
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(0, 0, size, 0, Math.PI * 2);
     ctx.fill();
     
-    // Border
     ctx.strokeStyle = "#FFF";
     ctx.lineWidth = 3;
     ctx.stroke();
     
-    // Symbol
     ctx.fillStyle = "#FFF";
     ctx.font = `bold ${size * 0.9}px Arial`;
     ctx.textAlign = "center";
@@ -691,6 +907,21 @@
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  };
+
+  const checkPlatformCollision = () => {
+    for (const p of Platforms) {
+      if (viking.x + 15 > p.x && viking.x - 15 < p.x + p.width &&
+          viking.y <= p.y && viking.y + viking.vy * 0.016 > p.y &&
+          viking.vy >= 0) {
+        viking.y = p.y;
+        viking.vy = 0;
+        viking.onGround = true;
+        viking.jumpsUsed = 0;
+        return true;
+      }
+    }
+    return false;
   };
 
   const update = (dt) => {
@@ -727,7 +958,30 @@
       }
     }
 
-    // Jump logic - FIXED: Only jump on key press, not while held
+    // Attack logic
+    if (viking.attackCooldown > 0) {
+      viking.attackCooldown -= dt;
+    }
+    
+    if (Input.attack && viking.hasWeapon && viking.onGround && viking.attackCooldown <= 0) {
+      viking.attacking = true;
+      viking.attackCooldown = 0.5;
+      
+      // Check for enemy hits
+      for (const e of Enemies) {
+        if (!e.defeated && Math.hypot(viking.x - e.x, viking.y - e.y) < 60) {
+          e.defeated = true;
+          e.health = 0;
+          world.score += 100 * scoreMultiplier;
+          addParticle(e.x, e.y, "#dc2626", 15);
+          beep("square", 400, 0.2);
+        }
+      }
+      
+      setTimeout(() => { viking.attacking = false; }, 200);
+    }
+
+    // Jump logic
     if (Input.jumpJustPressed && !viking.ducking && viking.jumpsUsed < viking.maxJumps) {
       viking.vy = -680;
       viking.onGround = false;
@@ -739,11 +993,19 @@
     viking.vy += 1600 * dt;
     viking.y += viking.vy * dt;
 
+    // Ground collision
     if (viking.y >= world.groundY) {
       viking.y = world.groundY;
       viking.vy = 0;
       viking.onGround = true;
       viking.jumpsUsed = 0;
+    } else {
+      // Platform collision
+      if (checkPlatformCollision()) {
+        // Already handled in function
+      } else {
+        viking.onGround = false;
+      }
     }
 
     viking.ducking = Input.duck && viking.onGround;
@@ -761,12 +1023,49 @@
       spawnPowerup(world.nextPowerupAt);
       world.nextPowerupAt += rand(900, 1600);
     }
+    if (viking.x > world.nextPlatformAt - W) {
+      spawnPlatform(world.nextPlatformAt);
+      world.nextPlatformAt += rand(400, 700);
+    }
+    if (viking.x > world.nextEnemyAt - W) {
+      spawnEnemy(world.nextEnemyAt);
+      world.nextEnemyAt += rand(800, 1200);
+    }
+    if (viking.x > world.nextWeaponAt - W && !viking.hasWeapon) {
+      spawnWeapon(world.nextWeaponAt);
+      world.nextWeaponAt += rand(600, 1000);
+    }
+    
+    // Update platforms
+    for (const p of Platforms) {
+      p.x -= world.speed * dt;
+    }
+    
+    // Update enemies
+    for (const e of Enemies) {
+      if (!e.defeated) {
+        e.x += e.speed * dt;
+        // Remove if off screen
+        if (e.x < viking.x - W) {
+          e.defeated = true;
+        }
+      }
+    }
+    
+    // Update weapons
+    for (const w of Weapons) {
+      if (!w.taken) {
+        w.rotation += dt * 3;
+        w.x -= world.speed * dt;
+      }
+    }
     
     // Update powerups
     for (const p of Powerups) {
       if (!p.taken) {
         p.rotation += dt * 4;
         p.pulse = Math.sin(world.t * 10) * 0.25 + 1;
+        p.x -= world.speed * dt;
       }
     }
     
@@ -774,6 +1073,7 @@
     for (const m of Meads) {
       if (!m.taken) {
         m.rotation += dt * 2;
+        m.x -= world.speed * dt;
       }
     }
     
@@ -787,19 +1087,19 @@
       if (p.life <= 0) Particles.splice(i, 1);
     }
 
-    // Collisions
+    // Collisions - Obstacles
     for (const o of Obstacles) {
       if (viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
         if (!world.powerups.invincibility.active) {
           world.over = true;
           viking.faceplant = 1.5;
-          statePill.textContent = "Washed Up";
+          statePill.textContent = "Game Over";
           beep("sawtooth", 100, 0.4);
           setTimeout(() => { 
             overlay.style.display = "grid";
-            $("overlayTitle").textContent = "⚔️ Game Over! ⚔️";
+            $("overlayTitle").textContent = "Game Over";
             $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
-            startBtn.textContent = "⚔️ Play Again ⚔️";
+            startBtn.textContent = "Play Again";
           }, 1200);
         } else {
           addParticle(o.x, world.groundY - 20, "#4ECDC4", 12);
@@ -808,6 +1108,25 @@
       }
     }
 
+    // Collisions - Enemies (without weapon = death)
+    for (const e of Enemies) {
+      if (!e.defeated && Math.hypot(viking.x - e.x, viking.y - e.y) < 35) {
+        if (!viking.hasWeapon && !world.powerups.invincibility.active) {
+          world.over = true;
+          viking.faceplant = 1.5;
+          statePill.textContent = "Game Over";
+          beep("sawtooth", 100, 0.4);
+          setTimeout(() => { 
+            overlay.style.display = "grid";
+            $("overlayTitle").textContent = "Game Over";
+            $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
+            startBtn.textContent = "Play Again";
+          }, 1200);
+        }
+      }
+    }
+
+    // Collisions - Meads
     for (const m of Meads) {
       if (!m.taken && Math.hypot(viking.x - m.x, (viking.y-30) - m.y) < 45) {
         m.taken = true;
@@ -819,7 +1138,19 @@
       }
     }
     
-    // Powerup collisions
+    // Collisions - Weapons
+    for (const w of Weapons) {
+      if (!w.taken && Math.hypot(viking.x - w.x, (viking.y-30) - w.y) < 40) {
+        w.taken = true;
+        viking.hasWeapon = true;
+        viking.weaponType = w.type;
+        addParticle(w.x, w.y, "#6366f1", 12);
+        beep("square", 500, 0.2);
+        updateHUD();
+      }
+    }
+    
+    // Collisions - Powerups
     for (const p of Powerups) {
       if (!p.taken && Math.hypot(viking.x - p.x, (viking.y-30) - p.y) < 40) {
         p.taken = true;
@@ -836,16 +1167,15 @@
   const draw = () => {
     ctx.clearRect(0, 0, W, H);
     
-    // Fjord Background (Water) with animation
-    const grad = ctx.createLinearGradient(0, world.groundY, 0, H);
-    grad.addColorStop(0, "#2980b9"); 
-    grad.addColorStop(0.5, "#34495e");
-    grad.addColorStop(1, "#2c3e50");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, world.groundY, W, H - world.groundY);
+    // Modern gradient background
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
+    bgGradient.addColorStop(0, "#0a0e27");
+    bgGradient.addColorStop(1, "#1a1f3a");
+    ctx.fillStyle = bgGradient;
+    ctx.fillRect(0, 0, W, H);
     
     // Animated water effect
-    ctx.strokeStyle = "rgba(165,242,255,0.3)";
+    ctx.strokeStyle = "rgba(99, 102, 241, 0.2)";
     ctx.lineWidth = 2;
     for (let i = 0; i < 5; i++) {
       const y = world.groundY + (H - world.groundY) * (i / 5) + Math.sin(world.t * 2 + i) * 3;
@@ -855,11 +1185,11 @@
       ctx.stroke();
     }
 
-    // Snowy Ground Line
-    ctx.strokeStyle = "#ecf0f1"; 
-    ctx.lineWidth = 5; 
+    // Ground line
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"; 
+    ctx.lineWidth = 3; 
     ctx.shadowBlur = 10;
-    ctx.shadowColor = "rgba(255,255,255,0.5)";
+    ctx.shadowColor = "rgba(255, 255, 255, 0.3)";
     ctx.beginPath(); 
     ctx.moveTo(0, world.groundY); 
     ctx.lineTo(W, world.groundY); 
@@ -869,14 +1199,37 @@
     ctx.save();
     ctx.translate(-world.camX, 0);
 
-    for (const m of Meads) if (!m.taken) drawMead(m.x, m.y);
-    for (const p of Powerups) if (!p.taken) drawPowerup(p.x, p.y, p.type, p.rotation, p.pulse);
-    for (const o of Obstacles) {
-      if (o.type === "shield") drawShield(o.x, o.y);
-      else drawRock(o.x, o.y);
+    // Draw platforms
+    for (const p of Platforms) {
+      if (p.x > viking.x - W - 100 && p.x < viking.x + W + 100) {
+        drawPlatform(p);
+      }
     }
 
-    // Draw invincibility effect
+    // Draw weapons
+    for (const w of Weapons) {
+      if (!w.taken && w.x > viking.x - W - 100 && w.x < viking.x + W + 100) {
+        drawWeapon(w);
+      }
+    }
+
+    // Draw enemies
+    for (const e of Enemies) {
+      if (!e.defeated && e.x > viking.x - W - 100 && e.x < viking.x + W + 100) {
+        drawEnemy(e);
+      }
+    }
+
+    for (const m of Meads) if (!m.taken && m.x > viking.x - W - 100 && m.x < viking.x + W + 100) drawMead(m.x, m.y);
+    for (const p of Powerups) if (!p.taken && p.x > viking.x - W - 100 && p.x < viking.x + W + 100) drawPowerup(p.x, p.y, p.type, p.rotation, p.pulse);
+    for (const o of Obstacles) {
+      if (o.x > viking.x - W - 100 && o.x < viking.x + W + 100) {
+        if (o.type === "shield") drawShield(o.x, o.y);
+        else drawRock(o.x, o.y);
+      }
+    }
+
+    // Invincibility effect
     if (world.powerups.invincibility.active) {
       ctx.save();
       ctx.globalAlpha = 0.4 + Math.sin(world.t * 25) * 0.2;
@@ -893,27 +1246,27 @@
     drawViking(viking.x, viking.y);
     ctx.restore();
     
-    // Draw particles
+    // Particles
     ctx.save();
     ctx.translate(-world.camX, 0);
     for (const p of Particles) drawParticle(p);
     ctx.restore();
     
-    // Draw powerup indicators
+    // Powerup indicators
     if (world.started && !world.paused && !world.over) {
-      let yPos = 85;
+      let yPos = 100;
       for (const key in world.powerups) {
         const p = world.powerups[key];
         if (p.active) {
           ctx.save();
           ctx.fillStyle = getPowerupColor(key);
-          ctx.font = "bold 18px Arial";
+          ctx.font = "bold 18px Inter";
           ctx.textAlign = "left";
           ctx.shadowBlur = 8;
           ctx.shadowColor = getPowerupColor(key);
-          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 18, yPos);
+          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 28, yPos);
           ctx.restore();
-          yPos += 28;
+          yPos += 30;
         }
       }
     }
@@ -943,13 +1296,13 @@
   pauseBtn.onclick = () => { 
     if (!world.started || world.over) return;
     world.paused = !world.paused; 
-    pauseBtn.textContent = world.paused ? "▶ Resume" : "⏸ Pause";
-    statePill.textContent = world.paused ? "Paused" : "Raiding";
+    pauseBtn.textContent = world.paused ? "Resume" : "Pause";
+    statePill.textContent = world.paused ? "Paused" : "Playing";
   };
   
   soundBtn.onclick = () => { 
     OPT.sound = !OPT.sound; 
-    soundBtn.textContent = OPT.sound ? "🔊 Sound: On" : "🔇 Sound: Off"; 
+    soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off"; 
   };
 
   resetWorld();
