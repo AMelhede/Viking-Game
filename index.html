@@ -618,59 +618,75 @@
   };
 
   const resetWorld = () => {
-    if (!H) resize(); // Ensure H is set
-    world.started = false;
-    world.paused = false;
-    world.over = false;
-    world.score = 0; 
-    world.mead = 0; 
-    world.speed = 200; 
-    world.t = 0;
-    world.groundY = H * 0.8;
-    world.camX = 0;
-    viking.x = 100;
-    viking.y = world.groundY; 
-    viking.vy = 0; 
-    viking.faceplant = 0;
-    viking.ducking = false;
-    viking.onGround = true;
-    viking.hasWeapon = false;
-    viking.weaponType = null;
-    viking.attacking = false;
-    viking.attackCooldown = 0;
-    Obstacles.length = 0; 
-    Meads.length = 0; 
-    Powerups.length = 0;
-    Particles.length = 0;
-    Platforms.length = 0;
-    Enemies.length = 0;
-    Weapons.length = 0;
-    Hearts.length = 0;
-    world.nextObstacleAt = viking.x + 600;
-    world.nextMeadAt = viking.x + 400;
-    world.nextPowerupAt = viking.x + 6000; // MUCH RARER
-    world.nextPlatformAt = viking.x + 500;
-    world.nextEnemyAt = viking.x + 800;
-    world.nextWeaponAt = viking.x + 600;
-    world.nextHeartAt = viking.x + 1200;
-    world.lives = 3;
-    world.maxLives = 3;
-    world.powerups = {
-      speedBoost: { active: false, timeLeft: 0 },
-      invincibility: { active: false, timeLeft: 0 },
-      doubleJump: { active: false, timeLeft: 0 },
-      scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
-    };
-    viking.jumpsUsed = 0;
-    viking.maxJumps = 1;
-    overlay.style.display = "grid";
-    weaponIndicator.classList.remove("active");
-    $("overlayTitle").textContent = "Viking Run";
-    $("overlayText").textContent = "Jump on platforms, defeat enemies with weapons, collect powerups, and survive.";
-    startBtn.textContent = "Start Game";
-    statePill.textContent = "Ready";
-    pauseBtn.textContent = "Pause";
-    updateHUD();
+    try {
+      resize(); // Always resize to ensure H is set
+      if (!H || H === 0) {
+        setTimeout(resetWorld, 10);
+        return;
+      }
+      
+      world.started = false;
+      world.paused = false;
+      world.over = false;
+      world.score = 0; 
+      world.mead = 0; 
+      world.speed = 200; 
+      world.t = 0;
+      world.groundY = H * 0.8;
+      world.camX = 0;
+      viking.x = 100;
+      viking.y = world.groundY; 
+      viking.vy = 0; 
+      viking.faceplant = 0;
+      viking.ducking = false;
+      viking.onGround = true;
+      viking.hasWeapon = false;
+      viking.weaponType = null;
+      viking.attacking = false;
+      viking.attackCooldown = 0;
+      Obstacles.length = 0; 
+      Meads.length = 0; 
+      Powerups.length = 0;
+      Particles.length = 0;
+      Platforms.length = 0;
+      Enemies.length = 0;
+      Weapons.length = 0;
+      Hearts.length = 0;
+      world.nextObstacleAt = viking.x + 600;
+      world.nextMeadAt = viking.x + 400;
+      world.nextPowerupAt = viking.x + 6000;
+      world.nextPlatformAt = viking.x + 500;
+      world.nextEnemyAt = viking.x + 800;
+      world.nextWeaponAt = viking.x + 600;
+      world.nextHeartAt = viking.x + 1200;
+      world.lives = 3;
+      world.maxLives = 3;
+      world.powerups = {
+        speedBoost: { active: false, timeLeft: 0 },
+        invincibility: { active: false, timeLeft: 0 },
+        doubleJump: { active: false, timeLeft: 0 },
+        scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
+      };
+      viking.jumpsUsed = 0;
+      viking.maxJumps = 1;
+      Input.jump = false;
+      Input.duck = false;
+      Input.jumpJustPressed = false;
+      Input.attackPressed = false;
+      
+      if (overlay) overlay.style.display = "grid";
+      if (weaponIndicator) weaponIndicator.classList.remove("active");
+      const overlayTitle = $("overlayTitle");
+      const overlayText = $("overlayText");
+      if (overlayTitle) overlayTitle.textContent = "Viking Run";
+      if (overlayText) overlayText.textContent = "Jump on platforms, defeat enemies with weapons, collect powerups, and survive.";
+      if (startBtn) startBtn.textContent = "Start Game";
+      if (statePill) statePill.textContent = "Ready";
+      if (pauseBtn) pauseBtn.textContent = "Pause";
+      updateHUD();
+    } catch (e) {
+      console.error("Error in resetWorld:", e);
+    }
   };
 
   const updateHUD = () => {
@@ -814,11 +830,17 @@
 
   const start = () => {
     if (world.started) return;
-    world.started = true;
-    world.over = false;
-    overlay.style.display = "none";
-    statePill.textContent = "Playing";
-    beep("square", 300, 0.2);
+    try {
+      world.started = true;
+      world.over = false;
+      world.paused = false;
+      if (overlay) overlay.style.display = "none";
+      if (statePill) statePill.textContent = "Playing";
+      if (pauseBtn) pauseBtn.textContent = "Pause";
+      beep("square", 300, 0.2);
+    } catch (e) {
+      console.error("Error in start:", e);
+    }
   };
 
   const drawViking = (x, y) => {
@@ -1098,10 +1120,12 @@
   };
 
   const update = (dt) => {
+    if (!dt || dt <= 0 || dt > 1) return; // Safety check
     if (!world.started || world.paused || world.over) {
       Input.jumpJustPressed = false;
       return;
     }
+    if (!H || H === 0) return; // Safety check
 
     world.t += dt;
     
@@ -1494,15 +1518,24 @@
   };
 
   startBtn.onclick = () => {
-    if (world.over) {
+    try {
+      if (world.over) {
+        resetWorld();
+      } else {
+        start();
+      }
+    } catch (e) {
+      console.error("Error in startBtn click:", e);
       resetWorld();
-    } else {
-      start();
     }
   };
   
   restartBtn.onclick = () => { 
-    resetWorld(); 
+    try {
+      resetWorld(); 
+    } catch (e) {
+      console.error("Error in restartBtn click:", e);
+    }
   };
   
   pauseBtn.onclick = () => { 
@@ -1548,9 +1581,18 @@
     }
   };
 
-  resize(); // Ensure resize before reset
-  resetWorld();
-  requestAnimationFrame(tick);
+  // Initialize after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      resize();
+      resetWorld();
+      requestAnimationFrame(tick);
+    });
+  } else {
+    resize();
+    resetWorld();
+    requestAnimationFrame(tick);
+  }
 })();
 </script>
 </body>
