@@ -1211,38 +1211,52 @@
       if (vikingRight > platformLeft && vikingLeft < platformRight) {
         // Low platform collision - must duck or jump over
         if (p.isLow) {
-          // If viking hits low platform while standing, lose life
-          if (!viking.ducking && vikingBottom > platformTop - 5 && vikingTop < platformBottom + 5) {
-            if (!world.powerups.invincibility.active) {
-              world.lives--;
-              addParticle(viking.x, viking.y, "#ef4444", 15);
-              beep("sawtooth", 150, 0.3);
-              updateHUD();
-              
-              if (world.lives <= 0) {
-                world.over = true;
-                viking.faceplant = 1.5;
-                if (statePill) statePill.textContent = "Game Over";
-                HighScoreManager.saveScore(world.score);
-                beep("sawtooth", 100, 0.4);
-                setTimeout(() => { 
-                  if (overlay) {
-                    overlay.style.display = "grid";
-                    overlay.style.visibility = "visible";
-                    overlay.style.opacity = "1";
-                  }
-                  const overlayTitle = $("overlayTitle");
-                  const overlayText = $("overlayText");
-                  if (overlayTitle) overlayTitle.textContent = "Game Over";
-                  if (overlayText) overlayText.textContent = `Hit a low platform!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                  if (startBtn) startBtn.textContent = "Play Again";
-                }, 1200);
-              } else {
-                world.powerups.invincibility.active = true;
-                world.powerups.invincibility.timeLeft = 2;
+          // Check if landing ON TOP of low platform (safe - like regular platform)
+          if (vikingBottom <= platformTop + 10 && vikingBottom + viking.vy * dt >= platformTop && viking.vy >= 0) {
+            // Landing on top is safe - treat like regular platform
+            viking.y = platformTop;
+            viking.vy = 0;
+            viking.onGround = true;
+            viking.jumpsUsed = 0;
+            return true;
+          }
+          
+          // If viking hits low platform from SIDE or BELOW while standing, lose life
+          // Only damage if NOT landing from above and NOT ducking
+          if (!viking.ducking && vikingBottom > platformTop && vikingTop < platformBottom) {
+            // Check if hitting from side (not landing from above)
+            if (vikingBottom > platformTop + 10 || viking.vy < 0) {
+              if (!world.powerups.invincibility.active) {
+                world.lives--;
+                addParticle(viking.x, viking.y, "#ef4444", 15);
+                beep("sawtooth", 150, 0.3);
+                updateHUD();
+                
+                if (world.lives <= 0) {
+                  world.over = true;
+                  viking.faceplant = 1.5;
+                  if (statePill) statePill.textContent = "Game Over";
+                  HighScoreManager.saveScore(world.score);
+                  beep("sawtooth", 100, 0.4);
+                  setTimeout(() => { 
+                    if (overlay) {
+                      overlay.style.display = "grid";
+                      overlay.style.visibility = "visible";
+                      overlay.style.opacity = "1";
+                    }
+                    const overlayTitle = $("overlayTitle");
+                    const overlayText = $("overlayText");
+                    if (overlayTitle) overlayTitle.textContent = "Game Over";
+                    if (overlayText) overlayText.textContent = `Hit a low platform!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                    if (startBtn) startBtn.textContent = "Play Again";
+                  }, 1200);
+                } else {
+                  world.powerups.invincibility.active = true;
+                  world.powerups.invincibility.timeLeft = 2;
+                }
               }
+              return false; // Don't land on low platform from side
             }
-            return false; // Don't land on low platform
           }
           // Can pass under if ducking
           return false;
