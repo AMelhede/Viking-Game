@@ -1708,6 +1708,12 @@
 
   startBtn.onclick = () => {
     try {
+      // Save player name
+      const nameInput = $("playerNameInput");
+      if (nameInput && nameInput.value.trim()) {
+        localStorage.setItem('playerName', nameInput.value.trim());
+      }
+      
       if (world.over) {
         resetWorld();
       } else {
@@ -1718,6 +1724,15 @@
       resetWorld();
     }
   };
+  
+  // Load player name on startup
+  const nameInput = $("playerNameInput");
+  if (nameInput) {
+    const savedName = localStorage.getItem('playerName');
+    if (savedName) {
+      nameInput.value = savedName;
+    }
+  }
   
   restartBtn.onclick = () => { 
     try {
