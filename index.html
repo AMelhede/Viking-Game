@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Viking Run</title>
+  <title>Viking Run - Enhanced Edition</title>
   <style>
     :root{
       /* Viking Theme Palette */
       --bg0:#0b141a;
       --bg1:#1a2b3c;
-      --glass: rgba(15, 25, 35, 0.75);
+      --glass: rgba(15, 25, 35, 0.85);
       --glass2: rgba(255,255,255,0.08);
       --ink: rgba(255,255,255,0.95);
       --muted: rgba(200,210,220,0.7);
@@ -22,52 +22,272 @@
       --shadow: rgba(0,0,0,0.55);
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     html, body {
       height: 100%;
       margin: 0;
       background:
-        radial-gradient(1200px 800px at 70% 30%, rgba(165,242,255,0.12), transparent 60%),
-        radial-gradient(1000px 700px at 25% 65%, rgba(255,215,0,0.08), transparent 60%),
+        radial-gradient(1200px 800px at 70% 30%, rgba(165,242,255,0.15), transparent 60%),
+        radial-gradient(1000px 700px at 25% 65%, rgba(255,215,0,0.1), transparent 60%),
         linear-gradient(180deg, var(--bg1), var(--bg0));
       color: var(--ink);
-      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       overflow: hidden;
+      user-select: none;
     }
 
-    .wrap{ height: 100%; display: grid; place-items: center; padding: 18px; box-sizing: border-box; }
+    .wrap{ 
+      height: 100%; 
+      display: grid; 
+      place-items: center; 
+      padding: 18px; 
+    }
+    
     .shell{
       width: min(1100px, calc(100vw - 24px));
       height: min(720px, calc(100vh - 24px));
-      border-radius: 20px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-      box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08) inset;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.1) inset;
       position: relative;
       overflow: hidden;
     }
 
-    .topbar{ position: absolute; left: 15px; right: 15px; top: 12px; height: 46px; display: flex; align-items: center; justify-content: space-between; z-index: 5; pointer-events: none; }
-    .leftpack, .rightpack{ display: flex; align-items: center; gap: 12px; pointer-events: auto; }
-    .title{ display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--glass); backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-    .title strong{ font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
-    .pill{ font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.1); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
-    .scorecard{ display: flex; align-items: center; gap: 15px; padding: 8px 14px; border-radius: 14px; background: var(--glass); backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); min-width: 180px; }
-    .stat{ display: grid; gap: 2px; min-width: 60px; }
-    .stat .k{ font-size: 10px; color: var(--muted2); text-transform: uppercase; font-weight: 700; }
-    .stat .v{ font-size: 20px; font-weight: 900; line-height: 1.0; }
+    .topbar{ 
+      position: absolute; 
+      left: 15px; 
+      right: 15px; 
+      top: 12px; 
+      height: 50px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      z-index: 5; 
+      pointer-events: none; 
+    }
+    
+    .leftpack, .rightpack{ 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      pointer-events: auto; 
+    }
+    
+    .title{ 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      padding: 10px 16px; 
+      border-radius: 16px; 
+      background: var(--glass); 
+      backdrop-filter: blur(16px); 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); 
+    }
+    
+    .title strong{ 
+      font-weight: 900; 
+      text-transform: uppercase; 
+      letter-spacing: 1.5px; 
+      color: var(--accent); 
+      font-size: 16px;
+    }
+    
+    .pill{ 
+      font-size: 11px; 
+      padding: 5px 12px; 
+      border-radius: 999px; 
+      background: rgba(255,255,255,0.15); 
+      color: var(--muted); 
+      border: 1px solid rgba(255,255,255,0.2); 
+      font-weight: 700;
+    }
+    
+    .scorecard{ 
+      display: flex; 
+      align-items: center; 
+      gap: 18px; 
+      padding: 10px 16px; 
+      border-radius: 16px; 
+      background: var(--glass); 
+      backdrop-filter: blur(16px); 
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); 
+      min-width: 200px; 
+    }
+    
+    .stat{ 
+      display: grid; 
+      gap: 3px; 
+      min-width: 65px; 
+    }
+    
+    .stat .k{ 
+      font-size: 10px; 
+      color: var(--muted2); 
+      text-transform: uppercase; 
+      font-weight: 700; 
+      letter-spacing: 0.5px;
+    }
+    
+    .stat .v{ 
+      font-size: 22px; 
+      font-weight: 900; 
+      line-height: 1.0; 
+      color: var(--good);
+    }
 
-    .btn{ border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: var(--ink); padding: 9px 14px; border-radius: 12px; cursor: pointer; transition: 0.1s; font-weight: 700; font-size: 13px; backdrop-filter: blur(8px); }
-    .btn:hover{ background: rgba(255,255,255,0.15); border-color: var(--accent); }
-    .btn.primary{ background: rgba(255, 215, 0, 0.2); border-color: rgba(255, 215, 0, 0.4); }
+    .btn{ 
+      border: 1px solid rgba(255,255,255,0.2); 
+      background: rgba(255,255,255,0.1); 
+      color: var(--ink); 
+      padding: 10px 16px; 
+      border-radius: 12px; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+      font-weight: 700; 
+      font-size: 13px; 
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    .btn:hover{ 
+      background: rgba(255,255,255,0.2); 
+      border-color: var(--accent); 
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn.primary{ 
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 200, 0, 0.2)); 
+      border-color: rgba(255, 215, 0, 0.5); 
+      color: var(--good);
+      font-weight: 800;
+    }
+    
+    .btn.primary:hover {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 200, 0, 0.3));
+    }
 
-    .hudline{ position: absolute; left: 12px; right: 12px; bottom: 15px; display: flex; justify-content: center; z-index: 5; pointer-events: none; }
-    .hint{ max-width: 800px; padding: 12px 20px; border-radius: 16px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); color: var(--muted); font-size: 13px; text-align: center; backdrop-filter: blur(10px); pointer-events: auto; }
-    kbd{ background: rgba(255,255,255,0.15); border-radius: 6px; padding: 2px 6px; color: #fff; border: 1px solid rgba(255,255,255,0.2); margin: 0 2px; }
+    .hudline{ 
+      position: absolute; 
+      left: 12px; 
+      right: 12px; 
+      bottom: 15px; 
+      display: flex; 
+      justify-content: center; 
+      z-index: 5; 
+      pointer-events: none; 
+    }
+    
+    .hint{ 
+      max-width: 800px; 
+      padding: 14px 24px; 
+      border-radius: 18px; 
+      background: var(--glass); 
+      border: 1px solid rgba(255,255,255,0.15); 
+      color: var(--muted); 
+      font-size: 13px; 
+      text-align: center; 
+      backdrop-filter: blur(12px);
+      pointer-events: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    
+    kbd{ 
+      background: rgba(255,255,255,0.2); 
+      border-radius: 6px; 
+      padding: 3px 8px; 
+      color: #fff; 
+      border: 1px solid rgba(255,255,255,0.3); 
+      margin: 0 3px; 
+      font-weight: 700;
+      font-size: 12px;
+    }
 
-    .canvas{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
-    .overlay{ position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 10; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); }
-    .card{ pointer-events: auto; width: min(500px, 90%); border-radius: 24px; padding: 30px; background: rgba(20, 30, 45, 0.9); border: 1px solid var(--accent); box-shadow: 0 40px 100px rgba(0,0,0,0.8); text-align: center; }
-    .card h1{ font-size: 28px; margin: 0 0 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
-    .card p{ margin: 0 0 20px; color: var(--muted); line-height: 1.6; }
+    .canvas{ 
+      position: absolute; 
+      inset: 0; 
+      width: 100%; 
+      height: 100%; 
+      display: block; 
+      cursor: crosshair; 
+    }
+    
+    .overlay{ 
+      position: absolute; 
+      inset: 0; 
+      display: grid; 
+      place-items: center; 
+      pointer-events: none; 
+      z-index: 10; 
+      background: rgba(0,0,0,0.5); 
+      backdrop-filter: blur(8px); 
+    }
+    
+    .card{ 
+      pointer-events: auto; 
+      width: min(550px, 90%); 
+      border-radius: 28px; 
+      padding: 40px; 
+      background: linear-gradient(180deg, rgba(25, 35, 50, 0.95), rgba(20, 30, 45, 0.95)); 
+      border: 2px solid var(--accent); 
+      box-shadow: 0 50px 120px rgba(0,0,0,0.9), 0 0 40px rgba(165,242,255,0.3); 
+      text-align: center; 
+    }
+    
+    .card h1{ 
+      font-size: 32px; 
+      margin: 0 0 15px; 
+      color: var(--accent); 
+      text-transform: uppercase; 
+      letter-spacing: 3px; 
+      font-weight: 900;
+      text-shadow: 0 0 20px rgba(165,242,255,0.5);
+    }
+    
+    .card p{ 
+      margin: 0 0 25px; 
+      color: var(--muted); 
+      line-height: 1.8; 
+      font-size: 15px;
+    }
+    
+    .powerup-list {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    
+    .powerup-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      min-width: 80px;
+    }
+    
+    .powerup-item .icon {
+      font-size: 28px;
+    }
+    
+    .powerup-item .name {
+      font-size: 11px;
+      color: var(--muted2);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
   </style>
 </head>
 
@@ -78,7 +298,7 @@
 
       <div class="topbar">
         <div class="leftpack">
-          <div class="title"><strong>Viking Run</strong> <span class="pill" id="statePill">Ready</span></div>
+          <div class="title"><strong>⚔️ Viking Run</strong> <span class="pill" id="statePill">Ready</span></div>
           <div class="scorecard">
             <div class="stat"><div class="k">Score</div><div class="v" id="scoreV">0</div></div>
             <div class="stat"><div class="k">Mead</div><div class="v" id="meadV">0</div></div>
@@ -86,24 +306,30 @@
           </div>
         </div>
         <div class="rightpack">
-          <button class="btn" id="pauseBtn">Pause</button>
-          <button class="btn" id="soundBtn">Sound: Off</button>
-          <button class="btn primary" id="restartBtn">Restart</button>
+          <button class="btn" id="pauseBtn">⏸ Pause</button>
+          <button class="btn" id="soundBtn">🔇 Sound: Off</button>
+          <button class="btn primary" id="restartBtn">🔄 Restart</button>
         </div>
       </div>
 
       <div class="hudline">
         <div class="hint" id="hint">
           Press <kbd>Space</kbd> or Tap to jump. Press <kbd>↓</kbd> to duck. 
-          Grab <b>Mead</b> 🍺 and <b>Powerups</b> ⚡🛡🦘⭐; avoid <b>Shields</b> 🛡.
+          Grab <b style="color: var(--good);">Mead</b> 🍺 and <b style="color: var(--accent);">Powerups</b> ⚡🛡🦘⭐; avoid <b style="color: var(--bad);">Shields</b> 🛡.
         </div>
       </div>
 
       <div class="overlay" id="overlay">
         <div class="card">
-          <h1 id="overlayTitle">Viking Saga</h1>
-          <p id="overlayText" style="white-space: pre-line;">Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities! Become the legend of the North.</p>
-          <button class="btn primary" id="startBtn" style="padding: 12px 30px; font-size: 16px;">Set Sail (Start)</button>
+          <h1 id="overlayTitle">⚔️ Viking Saga ⚔️</h1>
+          <p id="overlayText" style="white-space: pre-line;">Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities!</p>
+          <div class="powerup-list">
+            <div class="powerup-item"><div class="icon">⚡</div><div class="name">Speed</div></div>
+            <div class="powerup-item"><div class="icon">🛡</div><div class="name">Shield</div></div>
+            <div class="powerup-item"><div class="icon">🦘</div><div class="name">Double Jump</div></div>
+            <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
+          </div>
+          <button class="btn primary" id="startBtn" style="padding: 14px 35px; font-size: 17px; margin-top: 10px;">⚔️ Set Sail (Start) ⚔️</button>
         </div>
       </div>
     </div>
@@ -171,7 +397,7 @@
   const viking = {
     x: 100, y: 0, vy: 0, w: 50, h: 70, 
     onGround: false, ducking: false, anim: 0, faceplant: 0,
-    jumpsUsed: 0, maxJumps: 1
+    jumpsUsed: 0, maxJumps: 1, jumpPressed: false
   };
 
   const Obstacles = [];
@@ -185,7 +411,7 @@
   };
 
   const spawnMead = (x) => {
-    Meads.push({ x, y: world.groundY - rand(40, 160), taken: false });
+    Meads.push({ x, y: world.groundY - rand(40, 160), taken: false, rotation: 0 });
   };
 
   const spawnPowerup = (x) => {
@@ -205,11 +431,11 @@
     for (let i = 0; i < count; i++) {
       Particles.push({
         x, y,
-        vx: rand(-100, 100),
-        vy: rand(-150, -50),
+        vx: rand(-120, 120),
+        vy: rand(-180, -60),
         life: 1,
         color,
-        size: rand(3, 8)
+        size: rand(4, 10)
       });
     }
   };
@@ -230,6 +456,7 @@
     viking.faceplant = 0;
     viking.ducking = false;
     viking.onGround = true;
+    viking.jumpPressed = false;
     Obstacles.length = 0; 
     Meads.length = 0; 
     Powerups.length = 0;
@@ -247,43 +474,70 @@
     viking.jumpsUsed = 0;
     viking.maxJumps = 1;
     overlay.style.display = "grid";
-    $("overlayTitle").textContent = "Viking Saga";
-    $("overlayText").textContent = "Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities! Become the legend of the North.";
-    startBtn.textContent = "Set Sail (Start)";
+    $("overlayTitle").textContent = "⚔️ Viking Saga ⚔️";
+    $("overlayText").textContent = "Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities!";
+    startBtn.textContent = "⚔️ Set Sail (Start) ⚔️";
     statePill.textContent = "Ready";
-    pauseBtn.textContent = "Pause";
+    pauseBtn.textContent = "⏸ Pause";
     updateHUD();
   };
 
   const updateHUD = () => {
-    scoreV.textContent = Math.floor(world.score);
+    scoreV.textContent = Math.floor(world.score).toLocaleString();
     meadV.textContent = world.mead;
     const multStat = $("multiplierStat");
     const multV = $("multiplierV");
     if (world.powerups.scoreMultiplier.active) {
       multStat.style.display = "grid";
       multV.textContent = world.powerups.scoreMultiplier.multiplier + "x";
+      multV.style.color = "#FFD93D";
     } else {
       multStat.style.display = "none";
     }
   };
 
-  // Input
-  const Input = { jump: false, duck: false };
+  // Input - FIXED: Proper jump handling
+  const Input = { jump: false, duck: false, jumpJustPressed: false };
+  
   window.addEventListener("keydown", (e) => {
-    if (e.code === "Space") { Input.jump = true; if(!world.started) start(); }
+    if (e.code === "Space") { 
+      if (!Input.jump) {
+        Input.jumpJustPressed = true;
+      }
+      Input.jump = true; 
+      if(!world.started && !world.over) start(); 
+    }
     if (e.code === "ArrowDown") Input.duck = true;
+    e.preventDefault();
   });
+  
   window.addEventListener("keyup", (e) => {
-    if (e.code === "Space") Input.jump = false;
+    if (e.code === "Space") {
+      Input.jump = false;
+      Input.jumpJustPressed = false;
+    }
     if (e.code === "ArrowDown") Input.duck = false;
+    e.preventDefault();
   });
-  canvas.addEventListener("pointerdown", () => { Input.jump = true; if(!world.started) start(); });
-  window.addEventListener("pointerup", () => Input.jump = false);
+  
+  canvas.addEventListener("pointerdown", (e) => { 
+    if (!Input.jump) {
+      Input.jumpJustPressed = true;
+    }
+    Input.jump = true; 
+    if(!world.started && !world.over) start(); 
+    e.preventDefault();
+  });
+  
+  window.addEventListener("pointerup", () => {
+    Input.jump = false;
+    Input.jumpJustPressed = false;
+  });
 
   const start = () => {
     if (world.started) return;
     world.started = true;
+    world.over = false;
     overlay.style.display = "none";
     statePill.textContent = "Raiding";
     beep("square", 300, 0.2);
@@ -375,10 +629,10 @@
     return symbols[type] || "?";
   };
 
-    const activatePowerup = (type) => {
+  const activatePowerup = (type) => {
     const p = world.powerups[type];
     p.active = true;
-    p.timeLeft = 8; // 8 seconds
+    p.timeLeft = 10; // 10 seconds
     
     if (type === "doubleJump") {
       viking.maxJumps = 2;
@@ -393,17 +647,17 @@
     ctx.translate(x, y);
     ctx.rotate(rotation);
     
-    const size = 20 * pulse;
+    const size = 22 * pulse;
     const color = getPowerupColor(type);
     
     // Glow effect
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
-    gradient.addColorStop(0, color + "80");
-    gradient.addColorStop(0.5, color + "40");
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
+    gradient.addColorStop(0, color + "AA");
+    gradient.addColorStop(0.5, color + "60");
     gradient.addColorStop(1, color + "00");
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
     ctx.fill();
     
     // Main circle
@@ -414,12 +668,12 @@
     
     // Border
     ctx.strokeStyle = "#FFF";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.stroke();
     
     // Symbol
     ctx.fillStyle = "#FFF";
-    ctx.font = `${size * 0.8}px Arial`;
+    ctx.font = `bold ${size * 0.9}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(getPowerupSymbol(type), 0, 0);
@@ -431,6 +685,8 @@
     ctx.save();
     ctx.globalAlpha = p.life;
     ctx.fillStyle = p.color;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = p.color;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx.fill();
@@ -438,21 +694,24 @@
   };
 
   const update = (dt) => {
-    if (!world.started || world.paused || world.over) return;
+    if (!world.started || world.paused || world.over) {
+      Input.jumpJustPressed = false;
+      return;
+    }
 
     world.t += dt;
     
     // Update powerups
     const baseSpeed = 450;
-    const speedMultiplier = world.powerups.speedBoost.active ? 1.5 : 1;
-    world.speed = Math.min(900, world.speed + 5 * dt * speedMultiplier);
+    const speedMultiplier = world.powerups.speedBoost.active ? 1.6 : 1;
+    world.speed = Math.min(950, world.speed + 6 * dt * speedMultiplier);
     if (!world.powerups.speedBoost.active && world.speed > baseSpeed) {
-      world.speed = Math.max(baseSpeed, world.speed - 10 * dt);
+      world.speed = Math.max(baseSpeed, world.speed - 12 * dt);
     }
     
     viking.x += world.speed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
-    world.score += world.speed * 0.01 * dt * scoreMultiplier;
+    world.score += world.speed * 0.015 * dt * scoreMultiplier;
     
     // Update powerup timers
     for (const key in world.powerups) {
@@ -468,15 +727,15 @@
       }
     }
 
-    // Jump logic
-    if (Input.jump && !viking.ducking && viking.jumpsUsed < viking.maxJumps) {
-      if (viking.onGround || viking.jumpsUsed === 0) {
-        viking.vy = -650;
-        viking.onGround = false;
-        viking.jumpsUsed++;
-        beep("sine", 200, 0.1);
-      }
+    // Jump logic - FIXED: Only jump on key press, not while held
+    if (Input.jumpJustPressed && !viking.ducking && viking.jumpsUsed < viking.maxJumps) {
+      viking.vy = -680;
+      viking.onGround = false;
+      viking.jumpsUsed++;
+      beep("sine", 200, 0.1);
+      Input.jumpJustPressed = false;
     }
+    
     viking.vy += 1600 * dt;
     viking.y += viking.vy * dt;
 
@@ -492,22 +751,29 @@
     // Spawn logic
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      world.nextObstacleAt += rand(300, 600);
+      world.nextObstacleAt += rand(350, 650);
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
-      world.nextMeadAt += rand(200, 400);
+      world.nextMeadAt += rand(250, 450);
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      world.nextPowerupAt += rand(800, 1500);
+      world.nextPowerupAt += rand(900, 1600);
     }
     
     // Update powerups
     for (const p of Powerups) {
       if (!p.taken) {
-        p.rotation += dt * 3;
-        p.pulse = Math.sin(world.t * 8) * 0.2 + 1;
+        p.rotation += dt * 4;
+        p.pulse = Math.sin(world.t * 10) * 0.25 + 1;
+      }
+    }
+    
+    // Update meads
+    for (const m of Meads) {
+      if (!m.taken) {
+        m.rotation += dt * 2;
       }
     }
     
@@ -516,17 +782,14 @@
       const p = Particles[i];
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vy += 300 * dt;
-      p.life -= dt * 2;
+      p.vy += 350 * dt;
+      p.life -= dt * 2.5;
       if (p.life <= 0) Particles.splice(i, 1);
     }
 
     // Collisions
-    const vH = viking.ducking ? 30 : 60;
-    const vRect = { x: viking.x - 15, y: viking.y - vH, w: 30, h: vH };
-
     for (const o of Obstacles) {
-      if (viking.x > o.x - 20 && viking.x < o.x + 20 && viking.y > world.groundY - 40 && !viking.ducking) {
+      if (viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
         if (!world.powerups.invincibility.active) {
           world.over = true;
           viking.faceplant = 1.5;
@@ -534,53 +797,74 @@
           beep("sawtooth", 100, 0.4);
           setTimeout(() => { 
             overlay.style.display = "grid";
-            $("overlayTitle").textContent = "Game Over!";
-            $("overlayText").textContent = `Final Score: ${Math.floor(world.score)}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
-            startBtn.textContent = "Play Again";
-          }, 1000);
+            $("overlayTitle").textContent = "⚔️ Game Over! ⚔️";
+            $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
+            startBtn.textContent = "⚔️ Play Again ⚔️";
+          }, 1200);
         } else {
-          addParticle(o.x, world.groundY - 20, "#4ECDC4", 8);
-          beep("sine", 400, 0.1);
+          addParticle(o.x, world.groundY - 20, "#4ECDC4", 12);
+          beep("sine", 400, 0.15);
         }
       }
     }
 
     for (const m of Meads) {
-      if (!m.taken && Math.hypot(viking.x - m.x, (viking.y-30) - m.y) < 40) {
+      if (!m.taken && Math.hypot(viking.x - m.x, (viking.y-30) - m.y) < 45) {
         m.taken = true;
         world.mead++;
-        world.score += 50 * scoreMultiplier;
-        addParticle(m.x, m.y, "#FFD700", 5);
-        beep("sine", 800, 0.1);
+        world.score += 75 * scoreMultiplier;
+        addParticle(m.x, m.y, "#FFD700", 8);
+        beep("sine", 800, 0.12);
         updateHUD();
       }
     }
     
     // Powerup collisions
     for (const p of Powerups) {
-      if (!p.taken && Math.hypot(viking.x - p.x, (viking.y-30) - p.y) < 35) {
+      if (!p.taken && Math.hypot(viking.x - p.x, (viking.y-30) - p.y) < 40) {
         p.taken = true;
         activatePowerup(p.type);
-        addParticle(p.x, p.y, getPowerupColor(p.type), 10);
-        beep("square", 600, 0.2);
+        addParticle(p.x, p.y, getPowerupColor(p.type), 15);
+        beep("square", 600, 0.25);
       }
     }
 
     world.camX = viking.x - 150;
+    updateHUD();
   };
 
   const draw = () => {
     ctx.clearRect(0, 0, W, H);
     
-    // Fjord Background (Water)
+    // Fjord Background (Water) with animation
     const grad = ctx.createLinearGradient(0, world.groundY, 0, H);
-    grad.addColorStop(0, "#2980b9"); grad.addColorStop(1, "#2c3e50");
+    grad.addColorStop(0, "#2980b9"); 
+    grad.addColorStop(0.5, "#34495e");
+    grad.addColorStop(1, "#2c3e50");
     ctx.fillStyle = grad;
     ctx.fillRect(0, world.groundY, W, H - world.groundY);
+    
+    // Animated water effect
+    ctx.strokeStyle = "rgba(165,242,255,0.3)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      const y = world.groundY + (H - world.groundY) * (i / 5) + Math.sin(world.t * 2 + i) * 3;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
 
     // Snowy Ground Line
-    ctx.strokeStyle = "#ecf0f1"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(0, world.groundY); ctx.lineTo(W, world.groundY); ctx.stroke();
+    ctx.strokeStyle = "#ecf0f1"; 
+    ctx.lineWidth = 5; 
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "rgba(255,255,255,0.5)";
+    ctx.beginPath(); 
+    ctx.moveTo(0, world.groundY); 
+    ctx.lineTo(W, world.groundY); 
+    ctx.stroke();
+    ctx.shadowBlur = 0;
 
     ctx.save();
     ctx.translate(-world.camX, 0);
@@ -595,11 +879,13 @@
     // Draw invincibility effect
     if (world.powerups.invincibility.active) {
       ctx.save();
-      ctx.globalAlpha = 0.3 + Math.sin(world.t * 20) * 0.2;
+      ctx.globalAlpha = 0.4 + Math.sin(world.t * 25) * 0.2;
       ctx.strokeStyle = "#4ECDC4";
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "#4ECDC4";
       ctx.beginPath();
-      ctx.arc(viking.x, viking.y - 30, 40, 0, Math.PI * 2);
+      ctx.arc(viking.x, viking.y - 30, 45, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -615,17 +901,19 @@
     
     // Draw powerup indicators
     if (world.started && !world.paused && !world.over) {
-      let yPos = 80;
+      let yPos = 85;
       for (const key in world.powerups) {
         const p = world.powerups[key];
         if (p.active) {
           ctx.save();
           ctx.fillStyle = getPowerupColor(key);
-          ctx.font = "16px Arial";
+          ctx.font = "bold 18px Arial";
           ctx.textAlign = "left";
-          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 15, yPos);
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = getPowerupColor(key);
+          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 18, yPos);
           ctx.restore();
-          yPos += 25;
+          yPos += 28;
         }
       }
     }
@@ -640,18 +928,29 @@
     requestAnimationFrame(tick);
   };
 
-  startBtn.onclick = start;
+  startBtn.onclick = () => {
+    if (world.over) {
+      resetWorld();
+    } else {
+      start();
+    }
+  };
+  
   restartBtn.onclick = () => { 
     resetWorld(); 
-    // Don't auto-start, show start screen
   };
+  
   pauseBtn.onclick = () => { 
     if (!world.started || world.over) return;
     world.paused = !world.paused; 
-    pauseBtn.textContent = world.paused ? "Resume" : "Pause";
+    pauseBtn.textContent = world.paused ? "▶ Resume" : "⏸ Pause";
     statePill.textContent = world.paused ? "Paused" : "Raiding";
   };
-  soundBtn.onclick = () => { OPT.sound = !OPT.sound; soundBtn.textContent = `Sound: ${OPT.sound ? "On" : "Off"}`; };
+  
+  soundBtn.onclick = () => { 
+    OPT.sound = !OPT.sound; 
+    soundBtn.textContent = OPT.sound ? "🔊 Sound: On" : "🔇 Sound: Off"; 
+  };
 
   resetWorld();
   requestAnimationFrame(tick);
