@@ -618,7 +618,7 @@
 
   const spawnObstacle = (x) => {
     const type = Math.random() > 0.4 ? "shield" : "rock";
-    Obstacles.push({ x, type, w: 45, h: 45 });
+    Obstacles.push({ x, type, w: 45, h: 45, hit: false });
   };
 
   const spawnMead = (x) => {
@@ -787,12 +787,13 @@
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
-      const week = Math.floor(now.getDate() / 7);
+      const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+      const week = Math.floor(weekStart.getDate() / 7);
       const day = now.toDateString();
       
       switch(period) {
         case 'daily': return `highscore_daily_${day}`;
-        case 'weekly': return `highscore_weekly_${year}_${Math.floor(month / 4)}_${week}`;
+        case 'weekly': return `highscore_weekly_${year}_W${Math.floor((now.getDate() + weekStart.getDay()) / 7)}`;
         case 'monthly': return `highscore_monthly_${year}_${month}`;
         case 'yearly': return `highscore_yearly_${year}`;
         case 'alltime': return 'highscore_alltime';
@@ -801,23 +802,17 @@
     },
 
     saveScore: (score, period = 'alltime') => {
-      const key = HighScoreManager.getPeriodKey(period);
-      let scores = JSON.parse(localStorage.getItem(key) || '[]');
-      scores.push({ score, date: new Date().toISOString() });
-      scores.sort((a, b) => b.score - a.score);
-      scores = scores.slice(0, 10); // Keep top 10
-      localStorage.setItem(key, JSON.stringify(scores));
+      const now = new Date();
+      const scoreEntry = { score, date: now.toISOString() };
       
-      // Also save to all periods
+      // Save to all periods
       ['daily', 'weekly', 'monthly', 'yearly', 'alltime'].forEach(p => {
-        if (p !== period) {
-          const k = HighScoreManager.getPeriodKey(p);
-          let s = JSON.parse(localStorage.getItem(k) || '[]');
-          s.push({ score, date: new Date().toISOString() });
-          s.sort((a, b) => b.score - a.score);
-          s = s.slice(0, 10);
-          localStorage.setItem(k, JSON.stringify(s));
-        }
+        const k = HighScoreManager.getPeriodKey(p);
+        let s = JSON.parse(localStorage.getItem(k) || '[]');
+        s.push(scoreEntry);
+        s.sort((a, b) => b.score - a.score);
+        s = s.slice(0, 10); // Keep top 10
+        localStorage.setItem(k, JSON.stringify(s));
       });
     },
 
@@ -1304,9 +1299,11 @@
       spawnWeapon(world.nextWeaponAt);
       world.nextWeaponAt += rand(600, 1000);
     }
-    if (viking.x > world.nextHeartAt - W && world.lives < world.maxLives) {
-      spawnHeart(world.nextHeartAt);
-      world.nextHeartAt += rand(1000, 1800);
+    if (viking.x > world.nextHeartAt - W) {
+      if (world.lives < world.maxLives) {
+        spawnHeart(world.nextHeartAt);
+      }
+      world.nextHeartAt += rand(800, 1400);
     }
     
     // Update platforms
@@ -1371,8 +1368,9 @@
 
     // Collisions - Obstacles
     for (const o of Obstacles) {
-      if (viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
+      if (!o.hit && viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
         if (!world.powerups.invincibility.active) {
+          o.hit = true;
           world.lives--;
           addParticle(o.x, world.groundY - 20, "#ef4444", 15);
           beep("sawtooth", 150, 0.3);
