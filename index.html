@@ -533,7 +533,7 @@
             <button class="highscore-tab" data-period="daily">Daily</button>
           </div>
           <div class="highscore-list" id="highscoreList"></div>
-          <button class="btn" style="margin-top: 24px; width: 100%;" onclick="$('highscoreModal').classList.remove('active')">Close</button>
+          <button class="btn" id="closeHighscoreBtn" style="margin-top: 24px; width: 100%;">Close</button>
         </div>
       </div>
     </div>
@@ -650,8 +650,8 @@
     Enemies.push({
       x,
       y: world.groundY,
-      w: 40,
-      h: 50,
+      w: 50,
+      h: 60,
       health: 1,
       defeated: false,
       hit: false
@@ -663,10 +663,11 @@
     const type = pick(types);
     Weapons.push({
       x,
-      y: world.groundY - rand(50, 150),
+      y: world.groundY - rand(80, 180),
       type,
       taken: false,
-      rotation: 0
+      rotation: 0,
+      size: 30
     });
   };
 
@@ -699,7 +700,7 @@
     world.over = false;
     world.score = 0; 
     world.mead = 0; 
-    world.speed = 450; 
+    world.speed = 200; 
     world.t = 0;
     world.groundY = H * 0.8;
     world.camX = 0;
@@ -723,13 +724,13 @@
     Weapons.length = 0;
     Projectiles.length = 0;
     Hearts.length = 0;
-    world.nextObstacleAt = viking.x + 600;
-    world.nextMeadAt = viking.x + 300;
-    world.nextPowerupAt = viking.x + 800;
-    world.nextPlatformAt = viking.x + 500;
-    world.nextEnemyAt = viking.x + 1000;
-    world.nextWeaponAt = viking.x + 700;
-    world.nextHeartAt = viking.x + 1200;
+    world.nextObstacleAt = viking.x + 400;
+    world.nextMeadAt = viking.x + 200;
+    world.nextPowerupAt = viking.x + 600;
+    world.nextPlatformAt = viking.x + 350;
+    world.nextEnemyAt = viking.x + 500;
+    world.nextWeaponAt = viking.x + 400;
+    world.nextHeartAt = viking.x + 800;
     world.lives = 3;
     world.maxLives = 3;
     world.powerups = {
@@ -988,6 +989,10 @@
     ctx.save();
     ctx.translate(e.x, e.y);
     
+    // Glow effect
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#dc2626";
+    
     // Body
     ctx.fillStyle = "#dc2626";
     ctx.fillRect(-e.w/2, -e.h, e.w, e.h);
@@ -995,17 +1000,23 @@
     // Head
     ctx.fillStyle = "#991b1b";
     ctx.beginPath();
-    ctx.arc(0, -e.h - 10, 12, 0, Math.PI * 2);
+    ctx.arc(0, -e.h - 12, 15, 0, Math.PI * 2);
     ctx.fill();
     
-    // Eyes
-    ctx.fillStyle = "#000";
+    // Eyes (glowing)
+    ctx.fillStyle = "#ff0000";
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "#ff0000";
     ctx.beginPath();
-    ctx.arc(-5, -e.h - 8, 2, 0, Math.PI * 2);
+    ctx.arc(-6, -e.h - 10, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(5, -e.h - 8, 2, 0, Math.PI * 2);
+    ctx.arc(6, -e.h - 10, 3, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Weapon (sword)
+    ctx.fillStyle = "#888";
+    ctx.fillRect(e.w/2 - 2, -e.h + 10, 4, 20);
     
     ctx.restore();
   };
@@ -1015,24 +1026,38 @@
     ctx.translate(w.x, w.y);
     ctx.rotate(w.rotation);
     
+    const size = w.size || 25;
+    
+    // Glow effect
+    const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
+    glowGradient.addColorStop(0, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "80");
+    glowGradient.addColorStop(0.5, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "40");
+    glowGradient.addColorStop(1, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "00");
+    ctx.fillStyle = glowGradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+    ctx.fill();
+    
     if (w.type === "axe") {
       ctx.fillStyle = "#8b5cf6";
-      ctx.fillRect(-3, -15, 6, 20);
+      ctx.fillRect(-4, -size * 0.6, 8, size * 0.8);
       ctx.fillStyle = "#6366f1";
       ctx.beginPath();
-      ctx.moveTo(-8, -15);
-      ctx.lineTo(8, -15);
-      ctx.lineTo(0, -30);
+      ctx.moveTo(-size * 0.4, -size * 0.6);
+      ctx.lineTo(size * 0.4, -size * 0.6);
+      ctx.lineTo(0, -size);
       ctx.fill();
     } else {
       ctx.fillStyle = "#6366f1";
-      ctx.fillRect(-2, -20, 4, 25);
+      ctx.fillRect(-3, -size * 0.8, 6, size);
       ctx.fillStyle = "#8b5cf6";
-      ctx.fillRect(-4, -25, 8, 8);
+      ctx.fillRect(-5, -size, 10, size * 0.3);
     }
     
-    // Glow
-    ctx.shadowBlur = 15;
+    // Border glow
+    ctx.strokeStyle = "#FFF";
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 20;
     ctx.shadowColor = w.type === "axe" ? "#8b5cf6" : "#6366f1";
     
     ctx.restore();
@@ -1216,11 +1241,11 @@
     world.t += dt;
     
     // Update powerups
-    const baseSpeed = 450;
-    const speedMultiplier = world.powerups.speedBoost.active ? 1.6 : 1;
-    world.speed = Math.min(950, world.speed + 6 * dt * speedMultiplier);
+    const baseSpeed = 200;
+    const speedMultiplier = world.powerups.speedBoost.active ? 1.5 : 1;
+    world.speed = Math.min(400, world.speed + 2 * dt * speedMultiplier);
     if (!world.powerups.speedBoost.active && world.speed > baseSpeed) {
-      world.speed = Math.max(baseSpeed, world.speed - 12 * dt);
+      world.speed = Math.max(baseSpeed, world.speed - 5 * dt);
     }
     
     viking.x += world.speed * dt;
@@ -1299,33 +1324,33 @@
     // Spawn logic
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      world.nextObstacleAt += rand(350, 650);
+      world.nextObstacleAt += rand(250, 400);
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
-      world.nextMeadAt += rand(250, 450);
+      world.nextMeadAt += rand(150, 300);
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      world.nextPowerupAt += rand(900, 1600);
+      world.nextPowerupAt += rand(600, 1000);
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
-      world.nextPlatformAt += rand(400, 700);
+      world.nextPlatformAt += rand(300, 500);
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
-      world.nextEnemyAt += rand(800, 1200);
+      world.nextEnemyAt += rand(400, 700);
     }
     if (viking.x > world.nextWeaponAt - W && !viking.hasWeapon) {
       spawnWeapon(world.nextWeaponAt);
-      world.nextWeaponAt += rand(600, 1000);
+      world.nextWeaponAt += rand(400, 700);
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < world.maxLives) {
         spawnHeart(world.nextHeartAt);
       }
-      world.nextHeartAt += rand(800, 1400);
+      world.nextHeartAt += rand(600, 1000);
     }
     
     // Update obstacles
@@ -1680,6 +1705,21 @@
       HighScoreManager.displayScores(period);
     };
   });
+  
+  // Close highscore modal
+  const closeHighscoreBtn = $("closeHighscoreBtn");
+  if (closeHighscoreBtn) {
+    closeHighscoreBtn.onclick = () => {
+      highscoreModal.classList.remove("active");
+    };
+  }
+  
+  // Close modal when clicking outside
+  highscoreModal.onclick = (e) => {
+    if (e.target === highscoreModal) {
+      highscoreModal.classList.remove("active");
+    }
+  };
 
   resetWorld();
   requestAnimationFrame(tick);
