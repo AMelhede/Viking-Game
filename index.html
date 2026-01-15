@@ -208,7 +208,9 @@
       pointer-events: none; 
       z-index: 200; 
       background: rgba(0, 0, 0, 0.7); 
-      backdrop-filter: blur(20px); 
+      backdrop-filter: blur(20px);
+      visibility: visible;
+      opacity: 1;
     }
     
     .card{ 
@@ -674,16 +676,30 @@
       Input.jumpJustPressed = false;
       Input.attackPressed = false;
       
-      if (overlay) overlay.style.display = "grid";
-      if (weaponIndicator) weaponIndicator.classList.remove("active");
+      // Force overlay to show
+      if (overlay) {
+        overlay.style.display = "grid";
+        overlay.style.visibility = "visible";
+        overlay.style.opacity = "1";
+      }
+      if (weaponIndicator) {
+        weaponIndicator.classList.remove("active");
+        weaponIndicator.style.display = "none";
+      }
       const overlayTitle = $("overlayTitle");
       const overlayText = $("overlayText");
       if (overlayTitle) overlayTitle.textContent = "Viking Run";
       if (overlayText) overlayText.textContent = "Jump on platforms, defeat enemies with weapons, collect powerups, and survive.";
-      if (startBtn) startBtn.textContent = "Start Game";
+      if (startBtn) {
+        startBtn.textContent = "Start Game";
+        startBtn.style.display = "block";
+      }
       if (statePill) statePill.textContent = "Ready";
       if (pauseBtn) pauseBtn.textContent = "Pause";
       updateHUD();
+      
+      // Force a redraw
+      draw();
     } catch (e) {
       console.error("Error in resetWorld:", e);
     }
@@ -842,7 +858,10 @@
       world.started = true;
       world.over = false;
       world.paused = false;
-      if (overlay) overlay.style.display = "none";
+      if (overlay) {
+        overlay.style.display = "none";
+        overlay.style.visibility = "hidden";
+      }
       if (statePill) statePill.textContent = "Playing";
       if (pauseBtn) pauseBtn.textContent = "Pause";
       beep("square", 300, 0.2);
@@ -1102,24 +1121,33 @@
   };
 
   const checkPlatformCollision = (dt) => {
+    const vikingHeight = 70;
+    const vikingWidth = 40;
+    const vikingLeft = viking.x - vikingWidth/2;
+    const vikingRight = viking.x + vikingWidth/2;
+    const vikingTop = viking.y - vikingHeight;
+    const vikingBottom = viking.y;
+    
     for (const p of Platforms) {
-      const vikingLeft = viking.x - 20;
-      const vikingRight = viking.x + 20;
       const platformLeft = p.x;
       const platformRight = p.x + p.width;
-      const vikingBottom = viking.y;
       const platformTop = p.y;
+      const platformBottom = p.y + p.height;
       
+      // Check horizontal overlap
       if (vikingRight > platformLeft && vikingLeft < platformRight) {
-        if (vikingBottom <= platformTop + 5 && vikingBottom + viking.vy * dt >= platformTop && viking.vy >= 0) {
+        // Landing on platform from above
+        if (vikingBottom <= platformTop + 10 && vikingBottom + viking.vy * dt >= platformTop && viking.vy >= 0) {
           viking.y = platformTop;
           viking.vy = 0;
           viking.onGround = true;
           viking.jumpsUsed = 0;
           return true;
         }
-        if (viking.y - 70 >= platformBottom - 5 && (viking.y - 70) + viking.vy * dt <= platformBottom && viking.vy < 0) {
+        // Hitting platform from below
+        if (vikingTop + viking.vy * dt <= platformBottom && vikingTop >= platformBottom - 10 && viking.vy < 0) {
           viking.vy = 0;
+          viking.y = platformBottom + vikingHeight;
           return true;
         }
       }
@@ -1204,13 +1232,16 @@
 
     const onPlatform = checkPlatformCollision(dt);
     
-    if (!onPlatform && viking.y >= world.groundY) {
-      viking.y = world.groundY;
-      viking.vy = 0;
-      viking.onGround = true;
-      viking.jumpsUsed = 0;
-    } else if (!onPlatform) {
-      viking.onGround = false;
+    // Ground collision only if not on platform
+    if (!onPlatform) {
+      if (viking.y >= world.groundY) {
+        viking.y = world.groundY;
+        viking.vy = 0;
+        viking.onGround = true;
+        viking.jumpsUsed = 0;
+      } else {
+        viking.onGround = false;
+      }
     }
 
     viking.ducking = Input.duck && viking.onGround;
