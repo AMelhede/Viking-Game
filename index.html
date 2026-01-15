@@ -1328,6 +1328,11 @@
       world.nextHeartAt += rand(800, 1400);
     }
     
+    // Update obstacles
+    for (const o of Obstacles) {
+      o.x -= world.speed * dt;
+    }
+    
     // Update platforms
     for (const p of Platforms) {
       p.x -= world.speed * dt;
