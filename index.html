@@ -362,7 +362,8 @@
       backdrop-filter: blur(20px);
       border: 1px solid var(--glass-border);
       box-shadow: 0 8px 24px var(--glass-shadow);
-      z-index: 50;
+      z-index: 150;
+      pointer-events: none;
     }
 
     .life-heart {
@@ -652,8 +653,8 @@
       w: 40,
       h: 50,
       health: 1,
-      speed: -world.speed * 0.3,
-      defeated: false
+      defeated: false,
+      hit: false
     });
   };
 
@@ -1173,12 +1174,19 @@
     ctx.restore();
   };
 
-  const checkPlatformCollision = () => {
+  const checkPlatformCollision = (dt) => {
     for (const p of Platforms) {
-      if (viking.x + 15 > p.x && viking.x - 15 < p.x + p.width &&
-          viking.y <= p.y && viking.y + viking.vy * 0.016 > p.y &&
+      const vikingLeft = viking.x - 15;
+      const vikingRight = viking.x + 15;
+      const platformLeft = p.x;
+      const platformRight = p.x + p.width;
+      const vikingBottom = viking.y;
+      const platformTop = p.y;
+      
+      if (vikingRight > platformLeft && vikingLeft < platformRight &&
+          vikingBottom <= platformTop && vikingBottom + viking.vy * dt >= platformTop &&
           viking.vy >= 0) {
-        viking.y = p.y;
+        viking.y = platformTop;
         viking.vy = 0;
         viking.onGround = true;
         viking.jumpsUsed = 0;
@@ -1257,19 +1265,17 @@
     viking.vy += 1600 * dt;
     viking.y += viking.vy * dt;
 
+    // Platform collision (check before ground)
+    const onPlatform = checkPlatformCollision(dt);
+    
     // Ground collision
-    if (viking.y >= world.groundY) {
+    if (!onPlatform && viking.y >= world.groundY) {
       viking.y = world.groundY;
       viking.vy = 0;
       viking.onGround = true;
       viking.jumpsUsed = 0;
-    } else {
-      // Platform collision
-      if (checkPlatformCollision()) {
-        // Already handled in function
-      } else {
-        viking.onGround = false;
-      }
+    } else if (!onPlatform) {
+      viking.onGround = false;
     }
 
     viking.ducking = Input.duck && viking.onGround;
@@ -1311,12 +1317,12 @@
       p.x -= world.speed * dt;
     }
     
-    // Update enemies
+    // Update enemies - move backwards relative to world speed
     for (const e of Enemies) {
       if (!e.defeated) {
-        e.x += e.speed * dt;
+        e.x -= world.speed * 0.3 * dt; // Move backwards at 30% of world speed
         // Remove if off screen
-        if (e.x < viking.x - W) {
+        if (e.x < viking.x - W - 100) {
           e.defeated = true;
         }
       }
@@ -1402,30 +1408,35 @@
 
     // Collisions - Enemies (without weapon = lose life)
     for (const e of Enemies) {
-      if (!e.defeated && Math.hypot(viking.x - e.x, viking.y - e.y) < 35) {
-        if (!viking.hasWeapon && !world.powerups.invincibility.active) {
-          world.lives--;
-          addParticle(e.x, e.y, "#ef4444", 15);
-          beep("sawtooth", 150, 0.3);
-          e.defeated = true;
-          updateHUD();
-          
-          if (world.lives <= 0) {
-            world.over = true;
-            viking.faceplant = 1.5;
-            statePill.textContent = "Game Over";
-            HighScoreManager.saveScore(world.score, 'alltime');
-            beep("sawtooth", 100, 0.4);
-            setTimeout(() => { 
-              overlay.style.display = "grid";
-              $("overlayTitle").textContent = "Game Over";
-              $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
-              startBtn.textContent = "Play Again";
-            }, 1200);
-          } else {
-            // Brief invincibility after losing a life
-            world.powerups.invincibility.active = true;
-            world.powerups.invincibility.timeLeft = 2;
+      if (!e.defeated && !e.hit) {
+        const distX = Math.abs(viking.x - e.x);
+        const distY = Math.abs(viking.y - e.y);
+        if (distX < 30 && distY < 40) {
+          if (!viking.hasWeapon && !world.powerups.invincibility.active) {
+            e.hit = true;
+            e.defeated = true;
+            world.lives--;
+            addParticle(e.x, e.y, "#ef4444", 15);
+            beep("sawtooth", 150, 0.3);
+            updateHUD();
+            
+            if (world.lives <= 0) {
+              world.over = true;
+              viking.faceplant = 1.5;
+              statePill.textContent = "Game Over";
+              HighScoreManager.saveScore(world.score, 'alltime');
+              beep("sawtooth", 100, 0.4);
+              setTimeout(() => { 
+                overlay.style.display = "grid";
+                $("overlayTitle").textContent = "Game Over";
+                $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
+                startBtn.textContent = "Play Again";
+              }, 1200);
+            } else {
+              // Brief invincibility after losing a life
+              world.powerups.invincibility.active = true;
+              world.powerups.invincibility.timeLeft = 2;
+            }
           }
         }
       }
