@@ -894,11 +894,7 @@
         Input.jumpJustPressed = true;
       }
       Input.jump = true;
-      // Attack when you have weapon - ALWAYS SET
-      if (viking.hasWeapon) {
-        Input.attackPressed = true;
-        console.log("✓ SPACE PRESSED - Attack set! hasWeapon:", viking.hasWeapon, "cooldown:", viking.attackCooldown.toFixed(2));
-      }
+      // Attack system removed
       if(!world.started && !world.over) start(); 
     }
     if (e.code === "ArrowDown") Input.duck = true;
@@ -919,11 +915,7 @@
       Input.jumpJustPressed = true;
     }
     Input.jump = true;
-    // Attack when you have weapon - ALWAYS SET
-    if (viking.hasWeapon) {
-      Input.attackPressed = true;
-      console.log("✓ TOUCH PRESSED - Attack set! hasWeapon:", viking.hasWeapon);
-    }
+    // Attack system removed
     if(!world.started && !world.over) start(); 
     e.preventDefault();
   });
@@ -1314,56 +1306,7 @@
       viking.attackCooldown -= dt;
     }
     
-    // Attack system - COMPLETELY REWRITTEN TO WORK
-    // Check attack EVERY FRAME when you have weapon
-    if (viking.hasWeapon) {
-      // If attack is pressed and cooldown is ready
-      if (Input.attackPressed && viking.attackCooldown <= 0 && !viking.ducking) {
-        console.log("ATTACK TRIGGERED! Enemies:", Enemies.length);
-        viking.attacking = true;
-        viking.attackCooldown = 0.6;
-        
-        // Attack ALL enemies in range - MASSIVE RANGE
-        let killedAny = false;
-        for (let i = Enemies.length - 1; i >= 0; i--) {
-          const e = Enemies[i];
-          if (!e.defeated) {
-            const distX = Math.abs(viking.x - e.x);
-            const distY = Math.abs(viking.y - e.y);
-            // MASSIVE attack range: 250px horizontal, 200px vertical
-            if (distX < 250 && distY < 200) {
-              console.log("KILLING ENEMY at distance:", distX, distY);
-              e.defeated = true;
-              e.hit = true;
-              killedAny = true;
-              world.score += 100 * scoreMultiplier;
-              addParticle(e.x, e.y, "#dc2626", 40);
-              beep("square", 900, 0.6);
-              updateHUD();
-              // Remove enemy immediately
-              Enemies.splice(i, 1);
-              console.log("✓ ENEMY KILLED! Remaining:", Enemies.length);
-            }
-          }
-        }
-        
-        if (killedAny) {
-          console.log("✓✓✓ ATTACK SUCCESSFUL! ✓✓✓");
-        } else {
-          console.log("✗ Attack attempted but no enemy in range. Enemies:", Enemies.length);
-          if (Enemies.length > 0) {
-            const e = Enemies[0];
-            const distX = Math.abs(viking.x - e.x);
-            const distY = Math.abs(viking.y - e.y);
-            console.log("Closest enemy distance:", distX, distY);
-          }
-        }
-        
-        // Reset attack input AFTER processing
-        Input.attackPressed = false;
-        setTimeout(() => { viking.attacking = false; }, 500);
-      }
-    }
+    // Attack system removed - enemies cannot be killed
 
     // Jump logic
     if (Input.jumpJustPressed && !viking.ducking && viking.jumpsUsed < viking.maxJumps) {
@@ -1522,12 +1465,7 @@
         const distY = Math.abs(viking.y - e.y);
         // Enemy collision: 50px horizontal, 70px vertical
         if (distX < 50 && distY < 70) {
-          // If you're attacking RIGHT NOW, you kill the enemy (handled above)
-          if (viking.attacking) {
-            continue; // Attack system handles killing
-          }
-          
-          // Otherwise, enemy hits you - YOU TAKE DAMAGE
+          // Enemy hits you - YOU TAKE DAMAGE (attack system removed)
           if (!world.powerups.invincibility.active) {
             // Mark enemy as hit so it doesn't hit multiple times
             if (!e.hit) {
@@ -1736,14 +1674,22 @@
         localStorage.setItem('playerName', nameInput.value.trim());
       }
       
+      // If game is over, reset and start immediately
       if (world.over) {
         resetWorld();
+        // Start the game immediately after reset
+        setTimeout(() => {
+          start();
+        }, 100);
       } else {
         start();
       }
     } catch (e) {
       console.error("Error in startBtn click:", e);
       resetWorld();
+      setTimeout(() => {
+        start();
+      }, 100);
     }
   };
   
