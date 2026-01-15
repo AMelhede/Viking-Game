@@ -3,33 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Viking Run - Modern Edition</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <title>Viking Run</title>
   <style>
     :root{
-      /* Apple-inspired color palette */
-      --bg-primary: #000000;
-      --bg-secondary: #1d1d1f;
-      --bg-tertiary: #2c2c2e;
-      --glass-bg: rgba(255, 255, 255, 0.08);
-      --glass-border: rgba(255, 255, 255, 0.12);
-      --glass-shadow: rgba(0, 0, 0, 0.5);
-      --text-primary: #f5f5f7;
-      --text-secondary: rgba(245, 245, 247, 0.8);
-      --text-muted: rgba(245, 245, 247, 0.6);
-      --gold-primary: #ffd700;
-      --gold-secondary: #ffed4e;
-      --gold-accent: rgba(255, 215, 0, 0.2);
-      --accent-primary: #0071e3;
-      --accent-secondary: #0077ed;
-      --success: #30d158;
-      --warning: #ff9500;
-      --danger: #ff3b30;
-      --platform: #48484a;
-      --enemy: #ff3b30;
-      --heart: #ff3b30;
+      --bg: #000000;
+      --surface: #1d1d1f;
+      --text: #f5f5f7;
+      --text-secondary: rgba(245, 245, 247, 0.6);
+      --accent: #ffd700;
+      --accent-subtle: rgba(255, 215, 0, 0.15);
     }
 
     * {
@@ -41,31 +23,12 @@
     html, body {
       height: 100%;
       margin: 0;
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
       overflow: hidden;
       user-select: none;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    
-    /* Gold ribbon accent (10-30% of design) */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, 
-        transparent 0%,
-        var(--gold-primary) 20%,
-        var(--gold-secondary) 50%,
-        var(--gold-primary) 80%,
-        transparent 100%);
-      z-index: 1000;
-      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
     }
 
     .wrap{ 
@@ -73,47 +36,25 @@
       display: flex; 
       align-items: center; 
       justify-content: center; 
-      padding: 20px; 
+      padding: 24px; 
     }
     
     .shell{
-      width: min(1200px, calc(100vw - 40px));
-      height: min(800px, calc(100vh - 40px));
-      border-radius: 20px;
-      background: var(--bg-secondary);
-      backdrop-filter: blur(40px) saturate(180%);
-      box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      width: min(1200px, calc(100vw - 48px));
+      height: min(800px, calc(100vh - 48px));
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       position: relative;
       overflow: hidden;
-    }
-    
-    /* Gold ribbon accent on shell */
-    .shell::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 10%;
-      right: 10%;
-      height: 3px;
-      background: linear-gradient(90deg, 
-        transparent 0%,
-        var(--gold-primary) 30%,
-        var(--gold-secondary) 50%,
-        var(--gold-primary) 70%,
-        transparent 100%);
-      z-index: 1;
-      box-shadow: 0 2px 6px rgba(255, 215, 0, 0.4);
     }
 
     .topbar{ 
       position: absolute; 
-      left: 24px; 
-      right: 24px; 
-      top: 20px; 
-      height: 64px; 
+      left: 20px; 
+      right: 20px; 
+      top: 16px; 
+      height: 56px; 
       display: flex; 
       align-items: center; 
       justify-content: space-between; 
@@ -124,165 +65,102 @@
     .leftpack, .rightpack{ 
       display: flex; 
       align-items: center; 
-      gap: 16px; 
+      gap: 12px; 
       pointer-events: auto; 
     }
     
     .title{ 
-      display: flex; 
-      align-items: center; 
-      gap: 12px; 
-      padding: 10px 18px; 
-      border-radius: 12px; 
-      background: rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(30px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      padding: 8px 16px; 
+      border-radius: 10px; 
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     
     .title strong{ 
       font-weight: 600; 
-      font-size: 17px;
-      letter-spacing: -0.3px;
-      color: var(--text-primary);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-    }
-    
-    /* Gold accent on title */
-    .title::after {
-      content: '';
-      width: 30px;
-      height: 2px;
-      background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
-      border-radius: 2px;
-      box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+      font-size: 15px;
+      letter-spacing: -0.2px;
+      color: var(--text);
     }
     
     .pill{ 
-      font-size: 11px; 
-      padding: 5px 12px; 
-      border-radius: 12px; 
-      background: rgba(255, 215, 0, 0.15);
-      color: var(--gold-primary);
-      border: 1px solid rgba(255, 215, 0, 0.3);
+      font-size: 10px; 
+      padding: 4px 10px; 
+      border-radius: 8px; 
+      background: var(--accent-subtle);
+      color: var(--accent);
       font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      letter-spacing: 0.5px;
     }
     
     .scorecard{ 
       display: flex; 
       align-items: center; 
       gap: 20px; 
-      padding: 10px 18px; 
-      border-radius: 12px; 
-      background: rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(30px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-      position: relative;
-    }
-    
-    /* Gold accent line on scorecard */
-    .scorecard::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 2px;
-      height: 60%;
-      background: linear-gradient(180deg, var(--gold-primary), var(--gold-secondary));
-      border-radius: 2px;
+      padding: 8px 16px; 
+      border-radius: 10px; 
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     
     .stat{ 
       display: flex;
       flex-direction: column;
-      gap: 4px; 
-      min-width: 80px; 
+      gap: 2px; 
+      min-width: 70px; 
     }
     
     .stat .k{ 
-      font-size: 11px; 
-      color: var(--text-muted); 
+      font-size: 10px; 
+      color: var(--text-secondary); 
       text-transform: uppercase; 
-      font-weight: 600; 
+      font-weight: 500; 
       letter-spacing: 0.5px;
     }
     
     .stat .v{ 
-      font-size: 22px; 
+      font-size: 20px; 
       font-weight: 600; 
       line-height: 1; 
-      color: var(--gold-primary);
+      color: var(--accent);
       letter-spacing: -0.5px;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-      text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
     }
 
     .btn{ 
       border: 1px solid rgba(255, 255, 255, 0.1); 
-      background: rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(30px) saturate(180%);
-      color: var(--text-primary); 
-      padding: 9px 16px; 
-      border-radius: 10px; 
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text); 
+      padding: 8px 14px; 
+      border-radius: 8px; 
       cursor: pointer; 
-      transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+      transition: all 0.15s; 
       font-weight: 500; 
-      font-size: 13px; 
+      font-size: 12px; 
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
-      transition: left 0.5s;
-    }
-    
-    .btn:hover::before {
-      left: 100%;
     }
     
     .btn:hover{ 
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 215, 0, 0.3);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    }
-    
-    .btn:active {
-      transform: translateY(0);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
     }
     
     .btn.primary{ 
-      background: linear-gradient(135deg, var(--gold-primary), var(--gold-secondary));
+      background: var(--accent);
       border: none;
       color: #000;
       font-weight: 600;
-      box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
     }
     
     .btn.primary:hover {
-      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-      transform: translateY(-1px);
+      background: #ffed4e;
     }
 
     .hudline{ 
       position: absolute; 
-      left: 24px; 
-      right: 24px; 
-      bottom: 24px; 
+      left: 20px; 
+      right: 20px; 
+      bottom: 20px; 
       display: flex; 
       justify-content: center; 
       z-index: 100; 
@@ -290,29 +168,26 @@
     }
     
     .hint{ 
-      max-width: 900px; 
-      padding: 16px 28px; 
-      border-radius: 16px; 
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
+      max-width: 700px; 
+      padding: 12px 20px; 
+      border-radius: 10px; 
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       color: var(--text-secondary); 
-      font-size: 13px; 
+      font-size: 12px; 
       text-align: center; 
-      box-shadow: 0 8px 24px var(--glass-shadow);
       pointer-events: auto;
     }
     
     kbd{ 
       background: rgba(255, 255, 255, 0.1); 
-      border-radius: 6px; 
-      padding: 4px 10px; 
-      color: var(--text-primary); 
-      border: 1px solid rgba(255, 255, 255, 0.2); 
-      margin: 0 4px; 
-      font-weight: 600;
-      font-size: 12px;
-      font-family: 'Inter', monospace;
+      border-radius: 4px; 
+      padding: 2px 6px; 
+      color: var(--text); 
+      border: 1px solid rgba(255, 255, 255, 0.15); 
+      margin: 0 2px; 
+      font-weight: 500;
+      font-size: 11px;
     }
 
     .canvas{ 
@@ -331,164 +206,107 @@
       place-items: center; 
       pointer-events: none; 
       z-index: 200; 
-      background: rgba(0, 0, 0, 0.6); 
-      backdrop-filter: blur(12px); 
+      background: rgba(0, 0, 0, 0.7); 
+      backdrop-filter: blur(20px); 
     }
     
     .card{ 
       pointer-events: auto; 
-      width: min(600px, 90%); 
-      border-radius: 20px; 
-      padding: 44px; 
-      background: var(--bg-secondary);
-      backdrop-filter: blur(40px) saturate(180%);
+      width: min(500px, 90%); 
+      border-radius: 18px; 
+      padding: 40px; 
+      background: var(--surface);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
       text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    /* Gold ribbon accent on card */
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 15%;
-      right: 15%;
-      height: 2px;
-      background: linear-gradient(90deg, 
-        transparent 0%,
-        var(--gold-primary) 25%,
-        var(--gold-secondary) 50%,
-        var(--gold-primary) 75%,
-        transparent 100%);
-      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
     }
     
     .card h1{ 
-      font-size: 34px; 
-      margin: 0 0 18px; 
+      font-size: 28px; 
+      margin: 0 0 16px; 
       font-weight: 600;
-      letter-spacing: -0.8px;
-      color: var(--text-primary);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-    }
-    
-    /* Gold accent under title */
-    .card h1::after {
-      content: '';
-      display: block;
-      width: 60px;
-      height: 2px;
-      background: linear-gradient(90deg, var(--gold-primary), var(--gold-secondary));
-      margin: 12px auto 0;
-      border-radius: 2px;
-      box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+      letter-spacing: -0.5px;
+      color: var(--text);
     }
     
     .card p{ 
-      margin: 0 0 32px; 
+      margin: 0 0 24px; 
       color: var(--text-secondary); 
-      line-height: 1.7; 
-      font-size: 15px;
+      line-height: 1.6; 
+      font-size: 14px;
     }
     
     .powerup-list {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin: 24px 0;
+      gap: 8px;
+      margin: 20px 0;
     }
     
     .powerup-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
-      padding: 16px;
+      gap: 6px;
+      padding: 12px;
       background: rgba(255, 255, 255, 0.03);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      transition: all 0.2s;
-    }
-    
-    .powerup-item:hover {
-      background: rgba(255, 255, 255, 0.06);
-      transform: translateY(-2px);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
     
     .powerup-item .icon {
-      font-size: 32px;
+      font-size: 24px;
     }
     
     .powerup-item .name {
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 10px;
+      color: var(--text-secondary);
       text-transform: uppercase;
-      font-weight: 600;
-      letter-spacing: 0.5px;
+      font-weight: 500;
     }
 
     .weapon-indicator {
       position: absolute;
-      top: 100px;
-      left: 24px;
-      padding: 12px 20px;
-      border-radius: 12px;
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      box-shadow: 0 8px 24px var(--glass-shadow);
+      top: 90px;
+      left: 20px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       display: none;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       z-index: 50;
+      font-size: 12px;
+      color: var(--accent);
     }
 
     .weapon-indicator.active {
       display: flex;
     }
 
-    .weapon-icon {
-      font-size: 24px;
-    }
-
-    .weapon-text {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
     .lives-display {
       position: absolute;
-      top: 100px;
-      right: 24px;
+      top: 90px;
+      right: 20px;
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
-      padding: 12px 20px;
-      border-radius: 12px;
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      box-shadow: 0 8px 24px var(--glass-shadow);
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       z-index: 150;
       pointer-events: none;
     }
 
     .life-heart {
-      font-size: 24px;
-      transition: transform 0.2s;
+      font-size: 20px;
+      transition: opacity 0.2s;
     }
 
     .life-heart.lost {
-      opacity: 0.3;
-      transform: scale(0.8);
-    }
-
-    .highscore-btn {
-      margin-top: 12px;
+      opacity: 0.2;
     }
 
     .highscore-modal {
@@ -496,8 +314,8 @@
       position: fixed;
       inset: 0;
       z-index: 300;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(20px);
       place-items: center;
     }
 
@@ -506,77 +324,76 @@
     }
 
     .highscore-card {
-      width: min(700px, 90%);
+      width: min(600px, 90%);
       max-height: 80vh;
       overflow-y: auto;
       padding: 32px;
-      border-radius: 24px;
-      background: var(--glass-bg);
-      backdrop-filter: blur(30px);
-      border: 1px solid var(--glass-border);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .highscore-tabs {
       display: flex;
-      gap: 8px;
+      gap: 4px;
       margin-bottom: 24px;
-      border-bottom: 1px solid var(--glass-border);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .highscore-tab {
-      padding: 12px 20px;
+      padding: 10px 16px;
       background: transparent;
       border: none;
       color: var(--text-secondary);
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      transition: all 0.2s;
+      transition: all 0.15s;
+      font-size: 13px;
     }
 
     .highscore-tab.active {
-      color: var(--accent-primary);
-      border-bottom-color: var(--accent-primary);
+      color: var(--accent);
+      border-bottom-color: var(--accent);
     }
 
     .highscore-list {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
     .highscore-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px;
+      padding: 12px;
       background: rgba(255, 255, 255, 0.03);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .highscore-item.rank-1 {
-      background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.1));
-      border-color: rgba(251, 191, 36, 0.3);
+      background: var(--accent-subtle);
+      border-color: rgba(255, 215, 0, 0.2);
     }
 
     .highscore-rank {
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--gold);
-      min-width: 40px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 35px;
     }
 
     .highscore-score {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
     }
 
     .highscore-date {
-      font-size: 12px;
-      color: var(--text-muted);
+      font-size: 11px;
+      color: var(--text-secondary);
     }
   </style>
 </head>
@@ -595,47 +412,47 @@
             <div class="stat" id="multiplierStat" style="display: none;"><div class="k">Multiplier</div><div class="v" id="multiplierV">1x</div></div>
           </div>
         </div>
-        <div class="lives-display" id="livesDisplay">
-          <span class="life-heart" id="life1">❤️</span>
-          <span class="life-heart" id="life2">❤️</span>
-          <span class="life-heart" id="life3">❤️</span>
-        </div>
         <div class="rightpack">
           <button class="btn" id="pauseBtn">Pause</button>
           <button class="btn" id="soundBtn">Sound: Off</button>
           <button class="btn primary" id="restartBtn">Restart</button>
         </div>
+        <div class="lives-display" id="livesDisplay">
+          <span class="life-heart" id="life1">❤️</span>
+          <span class="life-heart" id="life2">❤️</span>
+          <span class="life-heart" id="life3">❤️</span>
+        </div>
       </div>
 
       <div class="weapon-indicator" id="weaponIndicator">
-        <span class="weapon-icon">⚔️</span>
-        <span class="weapon-text">Press SPACE to attack!</span>
+        <span>⚔️</span>
+        <span>Press SPACE to attack</span>
       </div>
 
       <div class="hudline">
         <div class="hint" id="hint">
-          <kbd>Space</kbd> Jump/Attack | <kbd>↓</kbd> Duck | Collect <b style="color: var(--gold);">Mead</b> 🍺 and <b style="color: var(--accent-primary);">Powerups</b> | Jump on <b style="color: var(--platform);">Platforms</b> | Defeat <b style="color: var(--danger);">Enemies</b> ⚔️
+          <kbd>Space</kbd> Jump/Attack | <kbd>↓</kbd> Duck | Collect items, jump on platforms, defeat enemies
         </div>
       </div>
 
       <div class="overlay" id="overlay">
         <div class="card">
           <h1 id="overlayTitle">Viking Run</h1>
-          <p id="overlayText" style="white-space: pre-line;">Embark on an epic adventure! Jump on platforms, defeat enemies with weapons, collect powerups, and survive as long as you can!</p>
+          <p id="overlayText" style="white-space: pre-line;">Jump on platforms, defeat enemies with weapons, collect powerups, and survive.</p>
           <div class="powerup-list">
             <div class="powerup-item"><div class="icon">⚡</div><div class="name">Speed</div></div>
             <div class="powerup-item"><div class="icon">🛡</div><div class="name">Shield</div></div>
             <div class="powerup-item"><div class="icon">🦘</div><div class="name">Double Jump</div></div>
             <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
           </div>
-          <button class="btn primary" id="startBtn" style="padding: 16px 40px; font-size: 16px; margin-top: 8px;">Start Game</button>
-          <button class="btn highscore-btn" id="highscoreBtn" style="padding: 12px 24px; font-size: 14px;">View High Scores</button>
+          <button class="btn primary" id="startBtn" style="padding: 12px 32px; font-size: 14px; margin-top: 8px;">Start Game</button>
+          <button class="btn" id="highscoreBtn" style="padding: 10px 24px; font-size: 12px; margin-top: 8px;">High Scores</button>
         </div>
       </div>
 
       <div class="highscore-modal" id="highscoreModal">
         <div class="highscore-card">
-          <h2 style="margin-bottom: 24px; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">High Scores</h2>
+          <h2 style="margin-bottom: 24px; font-size: 24px; font-weight: 600; color: var(--text);">High Scores</h2>
           <div class="highscore-tabs">
             <button class="highscore-tab active" data-period="alltime">All Time</button>
             <button class="highscore-tab" data-period="yearly">Yearly</button>
@@ -655,8 +472,6 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const lerp = (a, b, t) => a + (b - a) * t;
   const rand = (a, b) => a + Math.random() * (b - a);
   const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 
@@ -685,7 +500,6 @@
   window.addEventListener("resize", resize);
   resize();
 
-  // Sounds
   let AC = null;
   const beep = (type, freq, dur, gain = 0.2) => {
     if (!OPT.sound) return;
@@ -697,10 +511,10 @@
     o.start(); o.stop(AC.currentTime + dur);
   };
 
-  const OPT = { sound: false, difficulty: "normal" };
+  const OPT = { sound: false };
   const world = { 
     started: false, paused: false, over: false, 
-    score: 0, mead: 0, speed: 450, t: 0, groundY: 0, camX: 0,
+    score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
     lives: 3, maxLives: 3,
     nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextWeaponAt: 0, nextHeartAt: 0,
     powerups: {
@@ -713,8 +527,8 @@
 
   const viking = {
     x: 100, y: 0, vy: 0, w: 50, h: 70, 
-    onGround: false, ducking: false, anim: 0, faceplant: 0,
-    jumpsUsed: 0, maxJumps: 1, jumpPressed: false,
+    onGround: false, ducking: false, faceplant: 0,
+    jumpsUsed: 0, maxJumps: 1,
     hasWeapon: false, weaponType: null, attacking: false, attackCooldown: 0
   };
 
@@ -725,7 +539,6 @@
   const Platforms = [];
   const Enemies = [];
   const Weapons = [];
-  const Projectiles = [];
   const Hearts = [];
 
   const spawnObstacle = (x) => {
@@ -763,7 +576,6 @@
       y: world.groundY,
       w: 50,
       h: 60,
-      health: 1,
       defeated: false,
       hit: false
     });
@@ -821,7 +633,6 @@
     viking.faceplant = 0;
     viking.ducking = false;
     viking.onGround = true;
-    viking.jumpPressed = false;
     viking.hasWeapon = false;
     viking.weaponType = null;
     viking.attacking = false;
@@ -833,11 +644,10 @@
     Platforms.length = 0;
     Enemies.length = 0;
     Weapons.length = 0;
-    Projectiles.length = 0;
     Hearts.length = 0;
     world.nextObstacleAt = viking.x + 400;
     world.nextMeadAt = viking.x + 200;
-    world.nextPowerupAt = viking.x + 600;
+    world.nextPowerupAt = viking.x + 2000; // Much rarer
     world.nextPlatformAt = viking.x + 350;
     world.nextEnemyAt = viking.x + 500;
     world.nextWeaponAt = viking.x + 400;
@@ -855,7 +665,7 @@
     overlay.style.display = "grid";
     weaponIndicator.classList.remove("active");
     $("overlayTitle").textContent = "Viking Run";
-    $("overlayText").textContent = "Embark on an epic adventure! Jump on platforms, defeat enemies with weapons, collect powerups, and survive as long as you can!";
+    $("overlayText").textContent = "Jump on platforms, defeat enemies with weapons, collect powerups, and survive.";
     startBtn.textContent = "Start Game";
     statePill.textContent = "Ready";
     pauseBtn.textContent = "Pause";
@@ -870,7 +680,6 @@
     if (world.powerups.scoreMultiplier.active) {
       multStat.style.display = "flex";
       multV.textContent = world.powerups.scoreMultiplier.multiplier + "x";
-      multV.style.color = "#fbbf24";
     } else {
       multStat.style.display = "none";
     }
@@ -881,7 +690,6 @@
       weaponIndicator.classList.remove("active");
     }
 
-    // Update lives display
     for (let i = 1; i <= 3; i++) {
       const lifeEl = $(`life${i}`);
       if (lifeEl) {
@@ -894,7 +702,6 @@
     }
   };
 
-  // High Score System
   const HighScoreManager = {
     getPeriodKey: (period) => {
       const now = new Date();
@@ -914,17 +721,16 @@
       }
     },
 
-    saveScore: (score, period = 'alltime') => {
+    saveScore: (score) => {
       const now = new Date();
       const scoreEntry = { score, date: now.toISOString() };
       
-      // Save to all periods
       ['daily', 'weekly', 'monthly', 'yearly', 'alltime'].forEach(p => {
         const k = HighScoreManager.getPeriodKey(p);
         let s = JSON.parse(localStorage.getItem(k) || '[]');
         s.push(scoreEntry);
         s.sort((a, b) => b.score - a.score);
-        s = s.slice(0, 10); // Keep top 10
+        s = s.slice(0, 10);
         localStorage.setItem(k, JSON.stringify(s));
       });
     },
@@ -940,7 +746,7 @@
       list.innerHTML = '';
       
       if (scores.length === 0) {
-        list.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No scores yet. Be the first!</div>';
+        list.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No scores yet</div>';
         return;
       }
       
@@ -951,7 +757,7 @@
         div.innerHTML = `
           <div>
             <div class="highscore-rank">#${index + 1}</div>
-            <div class="highscore-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+            <div class="highscore-date">${date.toLocaleDateString()}</div>
           </div>
           <div class="highscore-score">${Math.floor(item.score).toLocaleString()}</div>
         `;
@@ -960,8 +766,8 @@
     }
   };
 
-  // Input
-  const Input = { jump: false, duck: false, jumpJustPressed: false, attack: false, attackJustPressed: false };
+  // Input - SIMPLIFIED ATTACK SYSTEM
+  const Input = { jump: false, duck: false, jumpJustPressed: false, attackPressed: false };
   
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space") { 
@@ -969,10 +775,9 @@
         Input.jumpJustPressed = true;
       }
       Input.jump = true;
-      // Attack if you have a weapon - trigger on keydown
-      if (viking.hasWeapon && !Input.attack) {
-        Input.attackJustPressed = true;
-        Input.attack = true;
+      // Attack when you have weapon
+      if (viking.hasWeapon) {
+        Input.attackPressed = true;
       }
       if(!world.started && !world.over) start(); 
     }
@@ -994,10 +799,8 @@
       Input.jumpJustPressed = true;
     }
     Input.jump = true;
-    // Attack if you have a weapon
-    if (viking.hasWeapon && !Input.attack) {
-      Input.attackJustPressed = true;
-      Input.attack = true;
+    if (viking.hasWeapon) {
+      Input.attackPressed = true;
     }
     if(!world.started && !world.over) start(); 
     e.preventDefault();
@@ -1017,7 +820,6 @@
     beep("square", 300, 0.2);
   };
 
-  // Drawing functions
   const drawViking = (x, y) => {
     ctx.save();
     ctx.translate(x, y);
@@ -1026,7 +828,6 @@
     const bob = viking.onGround ? Math.sin(world.t * 12) * 4 : 0;
     const duckH = viking.ducking ? 0.6 : 1;
 
-    // Weapon in hand
     if (viking.hasWeapon && !viking.ducking) {
       ctx.save();
       ctx.translate(15, -40);
@@ -1049,22 +850,17 @@
       ctx.restore();
     }
 
-    // Tunic (Body)
     ctx.fillStyle = "#556677";
     ctx.fillRect(-20, -50 * duckH + bob, 40, 50 * duckH);
 
-    // Head
     ctx.fillStyle = "#ffdbac";
     ctx.beginPath(); ctx.arc(0, -65 * duckH + bob, 15, 0, Math.PI * 2); ctx.fill();
 
-    // Beard
     ctx.fillStyle = "#e67e22";
     ctx.beginPath(); ctx.moveTo(-12, -60 * duckH + bob); ctx.lineTo(12, -60 * duckH + bob); ctx.lineTo(0, -35 * duckH + bob); ctx.fill();
 
-    // Helmet
     ctx.fillStyle = "#7f8c8d";
     ctx.beginPath(); ctx.arc(0, -70 * duckH + bob, 16, Math.PI, 0); ctx.fill();
-    // Horns
     ctx.fillStyle = "#ecf0f1";
     ctx.beginPath(); ctx.moveTo(-15, -75 * duckH + bob); ctx.lineTo(-25, -90 * duckH + bob); ctx.lineTo(-10, -80 * duckH + bob); ctx.fill();
     ctx.beginPath(); ctx.moveTo(15, -75 * duckH + bob); ctx.lineTo(25, -90 * duckH + bob); ctx.lineTo(10, -80 * duckH + bob); ctx.fill();
@@ -1075,23 +871,16 @@
   const drawPlatform = (p) => {
     ctx.save();
     ctx.translate(p.x, p.y);
-    
-    // Platform shadow
     ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
     ctx.fillRect(0, p.height, p.width, 5);
-    
-    // Platform top
     const gradient = ctx.createLinearGradient(0, 0, 0, p.height);
     gradient.addColorStop(0, "#64748b");
     gradient.addColorStop(1, "#475569");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, p.width, p.height);
-    
-    // Platform border
     ctx.strokeStyle = "#334155";
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, p.width, p.height);
-    
     ctx.restore();
   };
 
@@ -1099,36 +888,21 @@
     if (e.defeated) return;
     ctx.save();
     ctx.translate(e.x, e.y);
-    
-    // Glow effect
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#dc2626";
-    
-    // Body
     ctx.fillStyle = "#dc2626";
     ctx.fillRect(-e.w/2, -e.h, e.w, e.h);
-    
-    // Head
     ctx.fillStyle = "#991b1b";
     ctx.beginPath();
     ctx.arc(0, -e.h - 12, 15, 0, Math.PI * 2);
     ctx.fill();
-    
-    // Eyes (glowing)
     ctx.fillStyle = "#ff0000";
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "#ff0000";
     ctx.beginPath();
     ctx.arc(-6, -e.h - 10, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
     ctx.arc(6, -e.h - 10, 3, 0, Math.PI * 2);
     ctx.fill();
-    
-    // Weapon (sword)
     ctx.fillStyle = "#888";
     ctx.fillRect(e.w/2 - 2, -e.h + 10, 4, 20);
-    
     ctx.restore();
   };
 
@@ -1138,8 +912,6 @@
     ctx.rotate(w.rotation);
     
     const size = w.size || 25;
-    
-    // Glow effect
     const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     glowGradient.addColorStop(0, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "80");
     glowGradient.addColorStop(0.5, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "40");
@@ -1165,12 +937,10 @@
       ctx.fillRect(-5, -size, 10, size * 0.3);
     }
     
-    // Border glow
     ctx.strokeStyle = "#FFF";
     ctx.lineWidth = 2;
     ctx.shadowBlur = 20;
     ctx.shadowColor = w.type === "axe" ? "#8b5cf6" : "#6366f1";
-    
     ctx.restore();
   };
 
@@ -1178,10 +948,7 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
-    
     const size = 20 * pulse;
-    
-    // Glow
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     gradient.addColorStop(0, "#ef4444AA");
     gradient.addColorStop(0.5, "#ef444460");
@@ -1190,8 +957,6 @@
     ctx.beginPath();
     ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
     ctx.fill();
-    
-    // Heart shape
     ctx.fillStyle = "#ef4444";
     ctx.shadowBlur = 20;
     ctx.shadowColor = "#ef4444";
@@ -1200,7 +965,6 @@
     ctx.bezierCurveTo(-size * 0.5, -size * 0.2, -size, size * 0.1, 0, size * 0.8);
     ctx.bezierCurveTo(size, size * 0.1, size * 0.5, -size * 0.2, 0, size * 0.3);
     ctx.fill();
-    
     ctx.restore();
   };
 
@@ -1269,10 +1033,8 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
-    
     const size = 22 * pulse;
     const color = getPowerupColor(type);
-    
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     gradient.addColorStop(0, color + "AA");
     gradient.addColorStop(0.5, color + "60");
@@ -1281,22 +1043,18 @@
     ctx.beginPath();
     ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
     ctx.fill();
-    
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(0, 0, size, 0, Math.PI * 2);
     ctx.fill();
-    
     ctx.strokeStyle = "#FFF";
     ctx.lineWidth = 3;
     ctx.stroke();
-    
     ctx.fillStyle = "#FFF";
     ctx.font = `bold ${size * 0.9}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(getPowerupSymbol(type), 0, 0);
-    
     ctx.restore();
   };
 
@@ -1319,13 +1077,9 @@
       const platformLeft = p.x;
       const platformRight = p.x + p.width;
       const vikingBottom = viking.y;
-      const vikingTop = viking.y - 70;
       const platformTop = p.y;
-      const platformBottom = p.y + p.height;
       
-      // Check if viking is horizontally overlapping with platform
       if (vikingRight > platformLeft && vikingLeft < platformRight) {
-        // Check if viking is falling onto platform from above
         if (vikingBottom <= platformTop + 5 && vikingBottom + viking.vy * dt >= platformTop && viking.vy >= 0) {
           viking.y = platformTop;
           viking.vy = 0;
@@ -1333,8 +1087,7 @@
           viking.jumpsUsed = 0;
           return true;
         }
-        // Check if viking is hitting platform from below
-        if (vikingTop >= platformBottom - 5 && vikingTop + viking.vy * dt <= platformBottom && viking.vy < 0) {
+        if (viking.y - 70 >= platformBottom - 5 && (viking.y - 70) + viking.vy * dt <= platformBottom && viking.vy < 0) {
           viking.vy = 0;
           return true;
         }
@@ -1351,7 +1104,6 @@
 
     world.t += dt;
     
-    // Update powerups
     const baseSpeed = 200;
     const speedMultiplier = world.powerups.speedBoost.active ? 1.5 : 1;
     world.speed = Math.min(400, world.speed + 2 * dt * speedMultiplier);
@@ -1363,7 +1115,6 @@
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
     world.score += world.speed * 0.015 * dt * scoreMultiplier;
     
-    // Update powerup timers
     for (const key in world.powerups) {
       const p = world.powerups[key];
       if (p.active) {
@@ -1377,24 +1128,22 @@
       }
     }
 
-    // Attack logic
+    // ATTACK SYSTEM - FIXED
     if (viking.attackCooldown > 0) {
       viking.attackCooldown -= dt;
     }
     
-    // Attack on key press (not hold)
-    if (Input.attackJustPressed && viking.hasWeapon && viking.attackCooldown <= 0) {
+    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0) {
       viking.attacking = true;
       viking.attackCooldown = 0.6;
-      Input.attackJustPressed = false;
+      Input.attackPressed = false; // Reset immediately
       
-      // Check for enemy hits - larger range
+      // Attack enemies
       for (const e of Enemies) {
         if (!e.defeated && !e.hit) {
           const distX = Math.abs(viking.x - e.x);
           const distY = Math.abs((viking.y - 35) - (e.y - e.h/2));
-          // Attack range: 80px horizontally, 50px vertically
-          if (distX < 80 && distY < 50) {
+          if (distX < 90 && distY < 55) {
             e.defeated = true;
             e.hit = true;
             world.score += 100 * scoreMultiplier;
@@ -1406,11 +1155,6 @@
       }
       
       setTimeout(() => { viking.attacking = false; }, 300);
-    }
-    
-    // Reset attack flag after processing
-    if (Input.attack && !Input.attackJustPressed) {
-      Input.attack = false;
     }
 
     // Jump logic
@@ -1425,10 +1169,8 @@
     viking.vy += 1600 * dt;
     viking.y += viking.vy * dt;
 
-    // Platform collision (check before ground)
     const onPlatform = checkPlatformCollision(dt);
     
-    // Ground collision
     if (!onPlatform && viking.y >= world.groundY) {
       viking.y = world.groundY;
       viking.vy = 0;
@@ -1451,7 +1193,7 @@
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      world.nextPowerupAt += rand(600, 1000);
+      world.nextPowerupAt += rand(2500, 4000); // MUCH RARER
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
@@ -1472,29 +1214,17 @@
       world.nextHeartAt += rand(600, 1000);
     }
     
-    // Update obstacles
-    for (const o of Obstacles) {
-      o.x -= world.speed * dt;
-    }
+    // Update all objects
+    for (const o of Obstacles) o.x -= world.speed * dt;
+    for (const p of Platforms) p.x -= world.speed * dt;
     
-    // Update platforms
-    for (const p of Platforms) {
-      p.x -= world.speed * dt;
-    }
-    
-    // Update enemies - move backwards relative to world speed (towards player)
     for (const e of Enemies) {
       if (!e.defeated) {
-        // Enemies move backwards slower than world speed, so they approach the player
         e.x -= world.speed * 0.4 * dt;
-        // Remove if off screen behind player
-        if (e.x < viking.x - W - 200) {
-          e.defeated = true;
-        }
+        if (e.x < viking.x - W - 200) e.defeated = true;
       }
     }
     
-    // Update weapons
     for (const w of Weapons) {
       if (!w.taken) {
         w.rotation += dt * 3;
@@ -1502,7 +1232,6 @@
       }
     }
     
-    // Update hearts
     for (const h of Hearts) {
       if (!h.taken) {
         h.rotation += dt * 2;
@@ -1511,7 +1240,6 @@
       }
     }
     
-    // Update powerups
     for (const p of Powerups) {
       if (!p.taken) {
         p.rotation += dt * 4;
@@ -1520,7 +1248,6 @@
       }
     }
     
-    // Update meads
     for (const m of Meads) {
       if (!m.taken) {
         m.rotation += dt * 2;
@@ -1528,7 +1255,6 @@
       }
     }
     
-    // Update particles
     for (let i = Particles.length - 1; i >= 0; i--) {
       const p = Particles[i];
       p.x += p.vx * dt;
@@ -1552,16 +1278,15 @@
             world.over = true;
             viking.faceplant = 1.5;
             statePill.textContent = "Game Over";
-            HighScoreManager.saveScore(world.score, 'alltime');
+            HighScoreManager.saveScore(world.score);
             beep("sawtooth", 100, 0.4);
             setTimeout(() => { 
               overlay.style.display = "grid";
               $("overlayTitle").textContent = "Game Over";
-              $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
+              $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
               startBtn.textContent = "Play Again";
             }, 1200);
           } else {
-            // Brief invincibility after losing a life
             world.powerups.invincibility.active = true;
             world.powerups.invincibility.timeLeft = 2;
           }
@@ -1572,12 +1297,11 @@
       }
     }
 
-    // Collisions - Enemies (without weapon = lose life)
+    // Collisions - Enemies
     for (const e of Enemies) {
       if (!e.defeated && !e.hit) {
         const distX = Math.abs(viking.x - e.x);
         const distY = Math.abs((viking.y - 35) - (e.y - e.h/2));
-        // Better collision detection - check if viking overlaps with enemy
         if (distX < 35 && distY < 45 && !viking.hasWeapon && !world.powerups.invincibility.active) {
           e.hit = true;
           e.defeated = true;
@@ -1590,16 +1314,15 @@
             world.over = true;
             viking.faceplant = 1.5;
             statePill.textContent = "Game Over";
-            HighScoreManager.saveScore(world.score, 'alltime');
+            HighScoreManager.saveScore(world.score);
             beep("sawtooth", 100, 0.4);
             setTimeout(() => { 
               overlay.style.display = "grid";
               $("overlayTitle").textContent = "Game Over";
-              $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
+              $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
               startBtn.textContent = "Play Again";
             }, 1200);
           } else {
-            // Brief invincibility after losing a life
             world.powerups.invincibility.active = true;
             world.powerups.invincibility.timeLeft = 2;
           }
@@ -1661,15 +1384,13 @@
   const draw = () => {
     ctx.clearRect(0, 0, W, H);
     
-    // Modern gradient background
     const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-    bgGradient.addColorStop(0, "#0a0e27");
-    bgGradient.addColorStop(1, "#1a1f3a");
+    bgGradient.addColorStop(0, "#0a0a0a");
+    bgGradient.addColorStop(1, "#1a1a1a");
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, W, H);
     
-    // Animated water effect
-    ctx.strokeStyle = "rgba(99, 102, 241, 0.2)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
     ctx.lineWidth = 2;
     for (let i = 0; i < 5; i++) {
       const y = world.groundY + (H - world.groundY) * (i / 5) + Math.sin(world.t * 2 + i) * 3;
@@ -1679,42 +1400,34 @@
       ctx.stroke();
     }
 
-    // Ground line
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"; 
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"; 
     ctx.lineWidth = 3; 
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "rgba(255, 255, 255, 0.3)";
     ctx.beginPath(); 
     ctx.moveTo(0, world.groundY); 
     ctx.lineTo(W, world.groundY); 
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     ctx.save();
     ctx.translate(-world.camX, 0);
 
-    // Draw platforms
     for (const p of Platforms) {
       if (p.x > viking.x - W - 100 && p.x < viking.x + W + 100) {
         drawPlatform(p);
       }
     }
 
-    // Draw weapons
     for (const w of Weapons) {
       if (!w.taken && w.x > viking.x - W - 100 && w.x < viking.x + W + 100) {
         drawWeapon(w);
       }
     }
 
-    // Draw hearts
     for (const h of Hearts) {
       if (!h.taken && h.x > viking.x - W - 100 && h.x < viking.x + W + 100) {
         drawHeart(h.x, h.y, h.pulse, h.rotation);
       }
     }
 
-    // Draw enemies
     for (const e of Enemies) {
       if (!e.defeated && e.x > viking.x - W - 100 && e.x < viking.x + W + 100) {
         drawEnemy(e);
@@ -1730,7 +1443,6 @@
       }
     }
 
-    // Invincibility effect
     if (world.powerups.invincibility.active) {
       ctx.save();
       ctx.globalAlpha = 0.4 + Math.sin(world.t * 25) * 0.2;
@@ -1747,13 +1459,11 @@
     drawViking(viking.x, viking.y);
     ctx.restore();
     
-    // Particles
     ctx.save();
     ctx.translate(-world.camX, 0);
     for (const p of Particles) drawParticle(p);
     ctx.restore();
     
-    // Powerup indicators
     if (world.started && !world.paused && !world.over) {
       let yPos = 100;
       for (const key in world.powerups) {
@@ -1761,13 +1471,13 @@
         if (p.active) {
           ctx.save();
           ctx.fillStyle = getPowerupColor(key);
-          ctx.font = "bold 18px Inter";
+          ctx.font = "600 16px -apple-system";
           ctx.textAlign = "left";
           ctx.shadowBlur = 8;
           ctx.shadowColor = getPowerupColor(key);
-          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 28, yPos);
+          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 24, yPos);
           ctx.restore();
-          yPos += 30;
+          yPos += 26;
         }
       }
     }
@@ -1806,10 +1516,10 @@
     soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off"; 
   };
 
-  // High score modal
   const highscoreBtn = $("highscoreBtn");
   const highscoreModal = $("highscoreModal");
   const highscoreTabs = document.querySelectorAll(".highscore-tab");
+  const closeHighscoreBtn = $("closeHighscoreBtn");
   
   highscoreBtn.onclick = () => {
     highscoreModal.classList.add("active");
@@ -1825,15 +1535,12 @@
     };
   });
   
-  // Close highscore modal
-  const closeHighscoreBtn = $("closeHighscoreBtn");
   if (closeHighscoreBtn) {
     closeHighscoreBtn.onclick = () => {
       highscoreModal.classList.remove("active");
     };
   }
   
-  // Close modal when clicking outside
   highscoreModal.onclick = (e) => {
     if (e.target === highscoreModal) {
       highscoreModal.classList.remove("active");
