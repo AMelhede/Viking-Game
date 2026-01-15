@@ -447,8 +447,10 @@
             <div class="powerup-item"><div class="icon">🦘</div><div class="name">Double Jump</div></div>
             <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
           </div>
-          <button class="btn primary" id="startBtn" style="padding: 12px 32px; font-size: 14px; margin-top: 8px;">Start Game</button>
-          <button class="btn" id="highscoreBtn" style="padding: 10px 24px; font-size: 12px; margin-top: 8px;">High Scores</button>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
+            <button class="btn primary" id="startBtn" style="padding: 12px 32px; font-size: 14px; width: 100%;">Start Game</button>
+            <button class="btn" id="highscoreBtn" style="padding: 10px 24px; font-size: 12px; width: 100%;">High Scores</button>
+          </div>
         </div>
       </div>
 
@@ -568,8 +570,10 @@
   const spawnPlatform = (x) => {
     const width = rand(80, 150);
     const height = 20;
-    const y = world.groundY - rand(100, 250);
-    Platforms.push({ x, y, width, height });
+    // Sometimes spawn low platforms that require ducking (at ground level or slightly above)
+    const isLowPlatform = Math.random() < 0.3; // 30% chance
+    const y = isLowPlatform ? world.groundY - rand(30, 50) : world.groundY - rand(100, 250);
+    Platforms.push({ x, y, width, height, isLow: isLowPlatform });
   };
 
   const spawnEnemy = (x) => {
@@ -1121,7 +1125,7 @@
   };
 
   const checkPlatformCollision = (dt) => {
-    const vikingHeight = 70;
+    const vikingHeight = viking.ducking ? 42 : 70; // Ducking makes viking shorter
     const vikingWidth = 40;
     const vikingLeft = viking.x - vikingWidth/2;
     const vikingRight = viking.x + vikingWidth/2;
@@ -1136,7 +1140,46 @@
       
       // Check horizontal overlap
       if (vikingRight > platformLeft && vikingLeft < platformRight) {
-        // Landing on platform from above
+        // Low platform collision - must duck or jump over
+        if (p.isLow) {
+          // If viking hits low platform while standing, lose life
+          if (!viking.ducking && vikingBottom > platformTop - 5 && vikingTop < platformBottom + 5) {
+            if (!world.powerups.invincibility.active) {
+              world.lives--;
+              addParticle(viking.x, viking.y, "#ef4444", 15);
+              beep("sawtooth", 150, 0.3);
+              updateHUD();
+              
+              if (world.lives <= 0) {
+                world.over = true;
+                viking.faceplant = 1.5;
+                if (statePill) statePill.textContent = "Game Over";
+                HighScoreManager.saveScore(world.score);
+                beep("sawtooth", 100, 0.4);
+                setTimeout(() => { 
+                  if (overlay) {
+                    overlay.style.display = "grid";
+                    overlay.style.visibility = "visible";
+                    overlay.style.opacity = "1";
+                  }
+                  const overlayTitle = $("overlayTitle");
+                  const overlayText = $("overlayText");
+                  if (overlayTitle) overlayTitle.textContent = "Game Over";
+                  if (overlayText) overlayText.textContent = `Hit a low platform!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                  if (startBtn) startBtn.textContent = "Play Again";
+                }, 1200);
+              } else {
+                world.powerups.invincibility.active = true;
+                world.powerups.invincibility.timeLeft = 2;
+              }
+            }
+            return false; // Don't land on low platform
+          }
+          // Can pass under if ducking
+          return false;
+        }
+        
+        // Regular platform - landing from above
         if (vikingBottom <= platformTop + 10 && vikingBottom + viking.vy * dt >= platformTop && viking.vy >= 0) {
           viking.y = platformTop;
           viking.vy = 0;
@@ -1194,17 +1237,18 @@
       viking.attackCooldown -= dt;
     }
     
-    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0) {
+    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0 && !viking.ducking) {
       viking.attacking = true;
-      viking.attackCooldown = 0.6;
+      viking.attackCooldown = 0.5;
       Input.attackPressed = false; // Reset immediately
       
-      // Attack enemies
+      // Attack enemies - larger range
       for (const e of Enemies) {
         if (!e.defeated && !e.hit) {
           const distX = Math.abs(viking.x - e.x);
-          const distY = Math.abs((viking.y - 35) - (e.y - e.h/2));
-          if (distX < 90 && distY < 55) {
+          const distY = Math.abs(viking.y - e.y);
+          // Attack range: 100px horizontally, 80px vertically
+          if (distX < 100 && distY < 80) {
             e.defeated = true;
             e.hit = true;
             world.score += 100 * scoreMultiplier;
@@ -1244,7 +1288,8 @@
       }
     }
 
-    viking.ducking = Input.duck && viking.onGround;
+    // Ducking works in air or on ground
+    viking.ducking = Input.duck;
 
     // Spawn logic - REDUCED FREQUENCY
     if (viking.x > world.nextObstacleAt - W) {
@@ -1371,36 +1416,41 @@
     for (const e of Enemies) {
       if (!e.defeated && !e.hit) {
         const distX = Math.abs(viking.x - e.x);
-        const distY = Math.abs((viking.y - 35) - (e.y - e.h/2));
-        if (distX < 35 && distY < 45 && !viking.hasWeapon && !world.powerups.invincibility.active) {
-          e.hit = true;
-          e.defeated = true;
-          world.lives--;
-          addParticle(e.x, e.y, "#ef4444", 15);
-          beep("sawtooth", 150, 0.3);
-          updateHUD();
-          
-          if (world.lives <= 0) {
-            world.over = true;
-            viking.faceplant = 1.5;
-            statePill.textContent = "Game Over";
-            HighScoreManager.saveScore(world.score);
-            beep("sawtooth", 100, 0.4);
-            setTimeout(() => { 
-              if (overlay) {
-                overlay.style.display = "grid";
-                overlay.style.visibility = "visible";
-                overlay.style.opacity = "1";
-              }
-              const overlayTitle = $("overlayTitle");
-              const overlayText = $("overlayText");
-              if (overlayTitle) overlayTitle.textContent = "Game Over";
-              if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-              if (startBtn) startBtn.textContent = "Play Again";
-            }, 1200);
-          } else {
-            world.powerups.invincibility.active = true;
-            world.powerups.invincibility.timeLeft = 2;
+        const distY = Math.abs(viking.y - e.y);
+        // Enemy collision: 45px horizontal, 60px vertical
+        if (distX < 45 && distY < 60) {
+          // If you have a weapon, you can attack (handled in attack system)
+          // If you don't have a weapon, you take damage
+          if (!viking.hasWeapon && !world.powerups.invincibility.active) {
+            e.hit = true;
+            e.defeated = false; // Enemy doesn't die, you take damage
+            world.lives--;
+            addParticle(viking.x, viking.y, "#ef4444", 15);
+            beep("sawtooth", 150, 0.3);
+            updateHUD();
+            
+            if (world.lives <= 0) {
+              world.over = true;
+              viking.faceplant = 1.5;
+              if (statePill) statePill.textContent = "Game Over";
+              HighScoreManager.saveScore(world.score);
+              beep("sawtooth", 100, 0.4);
+              setTimeout(() => { 
+                if (overlay) {
+                  overlay.style.display = "grid";
+                  overlay.style.visibility = "visible";
+                  overlay.style.opacity = "1";
+                }
+                const overlayTitle = $("overlayTitle");
+                const overlayText = $("overlayText");
+                if (overlayTitle) overlayTitle.textContent = "Game Over";
+                if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                if (startBtn) startBtn.textContent = "Play Again";
+              }, 1200);
+            } else {
+              world.powerups.invincibility.active = true;
+              world.powerups.invincibility.timeLeft = 2;
+            }
           }
         }
       }
