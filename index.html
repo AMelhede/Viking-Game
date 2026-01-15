@@ -6,22 +6,22 @@
   <title>Viking Run</title>
   <style>
     :root{
-      /* Apple Design System Colors - Bright & Readable */
-      --bg: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+      /* Apple Design System Colors - HIGH CONTRAST & READABLE */
+      --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       --bg-dark: #1a1a2e;
-      --surface: rgba(255, 255, 255, 0.85);
-      --surface-elevated: rgba(255, 255, 255, 0.92);
-      --surface-dark: rgba(30, 30, 46, 0.9);
-      --text: #1d1d1f;
-      --text-secondary: rgba(29, 29, 31, 0.75);
-      --text-tertiary: rgba(29, 29, 31, 0.6);
+      --surface: #ffffff;
+      --surface-elevated: #ffffff;
+      --surface-dark: rgba(30, 30, 46, 0.95);
+      --text: #000000;
+      --text-secondary: #333333;
+      --text-tertiary: #666666;
       --text-light: #ffffff;
-      --separator: rgba(0, 0, 0, 0.15);
+      --separator: rgba(0, 0, 0, 0.2);
       --accent: #007aff;
       --accent-hover: #0051d5;
-      --accent-gradient: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
-      --shadow: rgba(0, 0, 0, 0.15);
-      --shadow-lg: rgba(0, 0, 0, 0.25);
+      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --shadow: rgba(0, 0, 0, 0.2);
+      --shadow-lg: rgba(0, 0, 0, 0.3);
     }
 
     * {
@@ -227,10 +227,10 @@
       width: min(480px, 90%); 
       border-radius: 24px; 
       padding: 40px; 
-      background: rgba(255, 255, 255, 0.95);
+      background: #ffffff;
       backdrop-filter: blur(40px);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
       text-align: center;
     }
     
@@ -239,12 +239,12 @@
       margin: 0 0 16px; 
       font-weight: 800;
       letter-spacing: -1px;
-      color: #1d1d1f;
+      color: #000000;
     }
     
     .card p{ 
       margin: 0 0 28px; 
-      color: var(--text-secondary); 
+      color: #333333; 
       line-height: 1.5; 
       font-size: 15px;
     }
@@ -1308,39 +1308,46 @@
       viking.attackCooldown -= dt;
     }
     
-    // Attack on space press when you have weapon - COMPLETELY FIXED
-    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0 && !viking.ducking) {
-      viking.attacking = true;
-      viking.attackCooldown = 0.4;
-      
-      // Attack enemies - VERY LARGE RANGE AND PROPER CHECKING
-      let killedEnemy = false;
-      for (let i = Enemies.length - 1; i >= 0; i--) {
-        const e = Enemies[i];
-        if (!e.defeated) {
-          const distX = Math.abs(viking.x - e.x);
-          const distY = Math.abs(viking.y - e.y);
-          // Attack range: 150px horizontally, 120px vertically - EXTREMELY FORGIVING
-          if (distX < 150 && distY < 120) {
-            e.defeated = true;
-            e.hit = true;
-            killedEnemy = true;
-            world.score += 100 * scoreMultiplier;
-            addParticle(e.x, e.y, "#dc2626", 30);
-            beep("square", 700, 0.4);
-            updateHUD();
-            // Remove enemy from array
-            Enemies.splice(i, 1);
+    // Attack system - SIMPLIFIED AND GUARANTEED TO WORK
+    if (viking.hasWeapon && viking.attackCooldown <= 0) {
+      // Check if attack button is pressed
+      if (Input.attackPressed && !viking.ducking) {
+        viking.attacking = true;
+        viking.attackCooldown = 0.5;
+        
+        // Attack ALL enemies in range
+        let killedAny = false;
+        for (let i = Enemies.length - 1; i >= 0; i--) {
+          const e = Enemies[i];
+          if (!e.defeated) {
+            const distX = Math.abs(viking.x - e.x);
+            const distY = Math.abs(viking.y - e.y);
+            // HUGE attack range: 200px horizontal, 150px vertical
+            if (distX < 200 && distY < 150) {
+              e.defeated = true;
+              e.hit = true;
+              killedAny = true;
+              world.score += 100 * scoreMultiplier;
+              addParticle(e.x, e.y, "#dc2626", 35);
+              beep("square", 800, 0.5);
+              updateHUD();
+              // Remove enemy immediately
+              Enemies.splice(i, 1);
+              console.log("ENEMY KILLED! Remaining:", Enemies.length);
+            }
           }
         }
+        
+        if (killedAny) {
+          console.log("Attack successful! Killed enemy");
+        } else {
+          console.log("Attack attempted but no enemy in range");
+        }
+        
+        // Reset attack input
+        Input.attackPressed = false;
+        setTimeout(() => { viking.attacking = false; }, 400);
       }
-      
-      if (killedEnemy) {
-        console.log("Enemy killed!");
-      }
-      
-      Input.attackPressed = false; // Always reset after attack
-      setTimeout(() => { viking.attacking = false; }, 300);
     }
 
     // Jump logic
