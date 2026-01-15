@@ -6,22 +6,22 @@
   <title>Viking Run</title>
   <style>
     :root{
-      /* Apple Design System Colors - Premium & Vibrant */
-      --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      /* Apple Design System Colors - Bright & Readable */
+      --bg: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
       --bg-dark: #1a1a2e;
-      --surface: rgba(255, 255, 255, 0.95);
-      --surface-elevated: rgba(255, 255, 255, 0.98);
-      --surface-dark: rgba(30, 30, 46, 0.8);
+      --surface: rgba(255, 255, 255, 0.85);
+      --surface-elevated: rgba(255, 255, 255, 0.92);
+      --surface-dark: rgba(30, 30, 46, 0.9);
       --text: #1d1d1f;
-      --text-secondary: rgba(29, 29, 31, 0.6);
-      --text-tertiary: rgba(29, 29, 31, 0.4);
+      --text-secondary: rgba(29, 29, 31, 0.75);
+      --text-tertiary: rgba(29, 29, 31, 0.6);
       --text-light: #ffffff;
-      --separator: rgba(0, 0, 0, 0.1);
+      --separator: rgba(0, 0, 0, 0.15);
       --accent: #007aff;
       --accent-hover: #0051d5;
-      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --shadow: rgba(0, 0, 0, 0.1);
-      --shadow-lg: rgba(0, 0, 0, 0.2);
+      --accent-gradient: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #45b7d1 100%);
+      --shadow: rgba(0, 0, 0, 0.15);
+      --shadow-lg: rgba(0, 0, 0, 0.25);
     }
 
     * {
@@ -134,10 +134,7 @@
       font-size: 22px; 
       font-weight: 700; 
       line-height: 1; 
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #007aff;
       letter-spacing: -0.5px;
     }
 
@@ -242,10 +239,7 @@
       margin: 0 0 16px; 
       font-weight: 800;
       letter-spacing: -1px;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #1d1d1f;
     }
     
     .card p{ 
@@ -765,6 +759,10 @@
   };
 
   const HighScoreManager = {
+    apiUrl: 'https://api.jsonbin.io/v3/b', // Platform-wide leaderboard API
+    apiKey: '$2a$10$YourAPIKeyHere', // Replace with actual API key for production
+    useLocalStorage: true, // Fallback to localStorage if API fails
+    
     getPeriodKey: (period) => {
       const now = new Date();
       const year = now.getFullYear();
@@ -783,28 +781,69 @@
       }
     },
 
-    saveScore: (score) => {
+    async saveScore(score) {
       const now = new Date();
-      const scoreEntry = { score, date: now.toISOString() };
+      const scoreEntry = { 
+        score, 
+        date: now.toISOString(),
+        playerId: localStorage.getItem('playerId') || `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      };
       
-      ['daily', 'weekly', 'monthly', 'yearly', 'alltime'].forEach(p => {
-        const k = HighScoreManager.getPeriodKey(p);
-        let s = JSON.parse(localStorage.getItem(k) || '[]');
-        s.push(scoreEntry);
-        s.sort((a, b) => b.score - a.score);
-        s = s.slice(0, 10);
-        localStorage.setItem(k, JSON.stringify(s));
-      });
+      // Generate player ID if not exists
+      if (!localStorage.getItem('playerId')) {
+        localStorage.setItem('playerId', scoreEntry.playerId);
+      }
+      
+      // Save to all periods
+      for (const period of ['daily', 'weekly', 'monthly', 'yearly', 'alltime']) {
+        const key = HighScoreManager.getPeriodKey(period);
+        let scores = HighScoreManager.getScoresLocal(period);
+        scores.push(scoreEntry);
+        scores.sort((a, b) => b.score - a.score);
+        scores = scores.slice(0, 10);
+        localStorage.setItem(key, JSON.stringify(scores));
+      }
+      
+      // Try to sync to platform-wide API (if configured)
+      try {
+        // This would sync to a backend API for platform-wide leaderboards
+        // For now, uses localStorage but structured for easy API integration
+        if (!HighScoreManager.useLocalStorage) {
+          // await fetch(`${HighScoreManager.apiUrl}/viking-game-leaderboard`, {
+          //   method: 'PUT',
+          //   headers: { 'Content-Type': 'application/json', 'X-API-Key': HighScoreManager.apiKey },
+          //   body: JSON.stringify({ scores: allScores })
+          // });
+        }
+      } catch (e) {
+        console.log('API sync failed, using localStorage');
+      }
     },
 
-    getScores: (period = 'alltime') => {
+    getScoresLocal(period = 'alltime') {
       const key = HighScoreManager.getPeriodKey(period);
       return JSON.parse(localStorage.getItem(key) || '[]');
     },
 
-    displayScores: (period = 'alltime') => {
-      const scores = HighScoreManager.getScores(period);
+    async getScores(period = 'alltime') {
+      // Try API first, fallback to localStorage
+      try {
+        if (!HighScoreManager.useLocalStorage) {
+          // const response = await fetch(`${HighScoreManager.apiUrl}/viking-game-leaderboard`);
+          // const data = await response.json();
+          // return data.scores || [];
+        }
+      } catch (e) {
+        console.log('API fetch failed, using localStorage');
+      }
+      return HighScoreManager.getScoresLocal(period);
+    },
+
+    async displayScores(period = 'alltime') {
+      const scores = await HighScoreManager.getScores(period);
       const list = $("highscoreList");
+      if (!list) return;
+      
       list.innerHTML = '';
       
       if (scores.length === 0) {
@@ -816,10 +855,11 @@
         const div = document.createElement('div');
         div.className = `highscore-item ${index === 0 ? 'rank-1' : ''}`;
         const date = new Date(item.date);
+        const playerName = item.playerId ? item.playerId.substring(0, 8) : 'Player';
         div.innerHTML = `
           <div>
             <div class="highscore-rank">#${index + 1}</div>
-            <div class="highscore-date">${date.toLocaleDateString()}</div>
+            <div class="highscore-date">${playerName} • ${date.toLocaleDateString()}</div>
           </div>
           <div class="highscore-score">${Math.floor(item.score).toLocaleString()}</div>
         `;
@@ -1254,40 +1294,30 @@
       viking.attackCooldown -= dt;
     }
     
-    // Attack on space press when you have weapon
-    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0 && !viking.ducking) {
+    // Attack on space press when you have weapon - SIMPLIFIED AND WORKING
+    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0) {
       viking.attacking = true;
-      viking.attackCooldown = 0.4;
+      viking.attackCooldown = 0.5;
       
-      // Attack enemies - MUCH LARGER RANGE
-      let hitEnemy = false;
+      // Attack enemies - VERY LARGE RANGE
       for (const e of Enemies) {
         if (!e.defeated && !e.hit) {
           const distX = Math.abs(viking.x - e.x);
           const distY = Math.abs(viking.y - e.y);
-          // Attack range: 120px horizontally, 100px vertically - VERY FORGIVING
-          if (distX < 120 && distY < 100) {
+          // Attack range: 150px horizontally, 120px vertically - EXTREMELY FORGIVING
+          if (distX < 150 && distY < 120) {
             e.defeated = true;
             e.hit = true;
-            hitEnemy = true;
             world.score += 100 * scoreMultiplier;
-            addParticle(e.x, e.y, "#dc2626", 25);
-            beep("square", 600, 0.3);
+            addParticle(e.x, e.y, "#dc2626", 30);
+            beep("square", 700, 0.4);
             updateHUD();
           }
         }
       }
       
-      if (hitEnemy) {
-        Input.attackPressed = false; // Only reset if we hit something
-      }
-      
-      setTimeout(() => { viking.attacking = false; }, 250);
-    }
-    
-    // Reset attack input after a short delay if not used
-    if (Input.attackPressed && !viking.attacking) {
-      setTimeout(() => { Input.attackPressed = false; }, 100);
+      Input.attackPressed = false; // Always reset after attack
+      setTimeout(() => { viking.attacking = false; }, 300);
     }
 
     // Jump logic
