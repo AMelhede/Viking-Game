@@ -690,32 +690,40 @@
   };
 
   const updateHUD = () => {
-    scoreV.textContent = Math.floor(world.score).toLocaleString();
-    meadV.textContent = world.mead;
-    const multStat = $("multiplierStat");
-    const multV = $("multiplierV");
-    if (world.powerups.scoreMultiplier.active) {
-      multStat.style.display = "flex";
-      multV.textContent = world.powerups.scoreMultiplier.multiplier + "x";
-    } else {
-      multStat.style.display = "none";
-    }
-    
-    if (viking.hasWeapon) {
-      weaponIndicator.classList.add("active");
-    } else {
-      weaponIndicator.classList.remove("active");
-    }
-
-    for (let i = 1; i <= 3; i++) {
-      const lifeEl = $(`life${i}`);
-      if (lifeEl) {
-        if (i <= world.lives) {
-          lifeEl.classList.remove("lost");
+    try {
+      if (scoreV) scoreV.textContent = Math.floor(world.score).toLocaleString();
+      if (meadV) meadV.textContent = world.mead;
+      const multStat = $("multiplierStat");
+      const multV = $("multiplierV");
+      if (multStat && multV) {
+        if (world.powerups.scoreMultiplier.active) {
+          multStat.style.display = "flex";
+          multV.textContent = world.powerups.scoreMultiplier.multiplier + "x";
         } else {
-          lifeEl.classList.add("lost");
+          multStat.style.display = "none";
         }
       }
+      
+      if (weaponIndicator) {
+        if (viking.hasWeapon) {
+          weaponIndicator.classList.add("active");
+        } else {
+          weaponIndicator.classList.remove("active");
+        }
+      }
+
+      for (let i = 1; i <= 3; i++) {
+        const lifeEl = $(`life${i}`);
+        if (lifeEl) {
+          if (i <= world.lives) {
+            lifeEl.classList.remove("lost");
+          } else {
+            lifeEl.classList.add("lost");
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error in updateHUD:", e);
     }
   };
 
