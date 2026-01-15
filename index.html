@@ -6,12 +6,16 @@
   <title>Viking Run</title>
   <style>
     :root{
+      /* Apple Design System Colors */
       --bg: #000000;
-      --surface: #1d1d1f;
-      --text: #f5f5f7;
-      --text-secondary: rgba(245, 245, 247, 0.6);
-      --accent: #ffd700;
-      --accent-subtle: rgba(255, 215, 0, 0.15);
+      --surface: #1c1c1e;
+      --surface-elevated: #2c2c2e;
+      --text: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --text-tertiary: rgba(255, 255, 255, 0.4);
+      --separator: rgba(255, 255, 255, 0.1);
+      --accent: #007aff;
+      --accent-hover: #0051d5;
     }
 
     * {
@@ -70,38 +74,36 @@
     }
     
     .title{ 
-      padding: 8px 16px; 
-      border-radius: 10px; 
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 12px; 
+      border-radius: 8px; 
+      background: transparent;
     }
     
     .title strong{ 
       font-weight: 600; 
-      font-size: 15px;
-      letter-spacing: -0.2px;
+      font-size: 17px;
+      letter-spacing: -0.4px;
       color: var(--text);
     }
     
     .pill{ 
-      font-size: 10px; 
-      padding: 4px 10px; 
-      border-radius: 8px; 
-      background: var(--accent-subtle);
-      color: var(--accent);
+      font-size: 11px; 
+      padding: 4px 8px; 
+      border-radius: 6px; 
+      background: var(--surface-elevated);
+      color: var(--text-secondary);
       font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
     
     .scorecard{ 
       display: flex; 
       align-items: center; 
-      gap: 20px; 
-      padding: 8px 16px; 
-      border-radius: 10px; 
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 24px; 
+      padding: 0;
+      background: transparent;
+      border: none;
     }
     
     .stat{ 
@@ -120,40 +122,39 @@
     }
     
     .stat .v{ 
-      font-size: 20px; 
+      font-size: 22px; 
       font-weight: 600; 
       line-height: 1; 
-      color: var(--accent);
+      color: var(--text);
       letter-spacing: -0.5px;
     }
 
     .btn{ 
-      border: 1px solid rgba(255, 255, 255, 0.1); 
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text); 
-      padding: 8px 14px; 
+      border: none; 
+      background: var(--surface-elevated);
+      color: var(--accent); 
+      padding: 8px 16px; 
       border-radius: 8px; 
       cursor: pointer; 
-      transition: all 0.15s; 
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
       font-weight: 500; 
-      font-size: 12px; 
+      font-size: 13px; 
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
     }
     
     .btn:hover{ 
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--surface-elevated);
+      opacity: 0.8;
     }
     
     .btn.primary{ 
       background: var(--accent);
-      border: none;
-      color: #000;
+      color: #ffffff;
       font-weight: 600;
     }
     
     .btn.primary:hover {
-      background: #ffed4e;
+      background: var(--accent-hover);
     }
 
     .hudline{ 
@@ -212,28 +213,27 @@
     
     .card{ 
       pointer-events: auto; 
-      width: min(500px, 90%); 
-      border-radius: 18px; 
-      padding: 40px; 
+      width: min(480px, 90%); 
+      border-radius: 20px; 
+      padding: 32px; 
       background: var(--surface);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--separator);
       text-align: center;
     }
     
     .card h1{ 
-      font-size: 28px; 
-      margin: 0 0 16px; 
-      font-weight: 600;
-      letter-spacing: -0.5px;
+      font-size: 34px; 
+      margin: 0 0 12px; 
+      font-weight: 700;
+      letter-spacing: -0.8px;
       color: var(--text);
     }
     
     .card p{ 
-      margin: 0 0 24px; 
+      margin: 0 0 28px; 
       color: var(--text-secondary); 
-      line-height: 1.6; 
-      font-size: 14px;
+      line-height: 1.5; 
+      font-size: 15px;
     }
     
     .powerup-list {
@@ -498,7 +498,7 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   };
   window.addEventListener("resize", resize);
-  resize();
+  resize(); // Initialize immediately
 
   let AC = null;
   const beep = (type, freq, dur, gain = 0.2) => {
@@ -618,6 +618,7 @@
   };
 
   const resetWorld = () => {
+    if (!H) resize(); // Ensure H is set
     world.started = false;
     world.paused = false;
     world.over = false;
@@ -645,13 +646,13 @@
     Enemies.length = 0;
     Weapons.length = 0;
     Hearts.length = 0;
-    world.nextObstacleAt = viking.x + 400;
-    world.nextMeadAt = viking.x + 200;
-    world.nextPowerupAt = viking.x + 2000; // Much rarer
-    world.nextPlatformAt = viking.x + 350;
-    world.nextEnemyAt = viking.x + 500;
-    world.nextWeaponAt = viking.x + 400;
-    world.nextHeartAt = viking.x + 800;
+    world.nextObstacleAt = viking.x + 600;
+    world.nextMeadAt = viking.x + 400;
+    world.nextPowerupAt = viking.x + 6000; // MUCH RARER
+    world.nextPlatformAt = viking.x + 500;
+    world.nextEnemyAt = viking.x + 800;
+    world.nextWeaponAt = viking.x + 600;
+    world.nextHeartAt = viking.x + 1200;
     world.lives = 3;
     world.maxLives = 3;
     world.powerups = {
@@ -1182,36 +1183,36 @@
 
     viking.ducking = Input.duck && viking.onGround;
 
-    // Spawn logic
+    // Spawn logic - REDUCED FREQUENCY
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      world.nextObstacleAt += rand(250, 400);
+      world.nextObstacleAt += rand(500, 800);
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
-      world.nextMeadAt += rand(150, 300);
+      world.nextMeadAt += rand(400, 600);
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      world.nextPowerupAt += rand(2500, 4000); // MUCH RARER
+      world.nextPowerupAt += rand(6000, 10000); // MUCH RARER
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
-      world.nextPlatformAt += rand(300, 500);
+      world.nextPlatformAt += rand(500, 800);
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
-      world.nextEnemyAt += rand(400, 700);
+      world.nextEnemyAt += rand(700, 1200);
     }
     if (viking.x > world.nextWeaponAt - W && !viking.hasWeapon) {
       spawnWeapon(world.nextWeaponAt);
-      world.nextWeaponAt += rand(400, 700);
+      world.nextWeaponAt += rand(700, 1200);
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < world.maxLives) {
         spawnHeart(world.nextHeartAt);
       }
-      world.nextHeartAt += rand(600, 1000);
+      world.nextHeartAt += rand(1000, 1800);
     }
     
     // Update all objects
@@ -1547,6 +1548,7 @@
     }
   };
 
+  resize(); // Ensure resize before reset
   resetWorld();
   requestAnimationFrame(tick);
 })();
