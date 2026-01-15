@@ -25,6 +25,7 @@
       --gold: #fbbf24;
       --platform: #475569;
       --enemy: #dc2626;
+      --heart: #ef4444;
     }
 
     * {
@@ -347,6 +348,124 @@
       font-weight: 600;
       color: var(--text-primary);
     }
+
+    .lives-display {
+      position: absolute;
+      top: 100px;
+      right: 24px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 24px var(--glass-shadow);
+      z-index: 50;
+    }
+
+    .life-heart {
+      font-size: 24px;
+      transition: transform 0.2s;
+    }
+
+    .life-heart.lost {
+      opacity: 0.3;
+      transform: scale(0.8);
+    }
+
+    .highscore-btn {
+      margin-top: 12px;
+    }
+
+    .highscore-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      place-items: center;
+    }
+
+    .highscore-modal.active {
+      display: grid;
+    }
+
+    .highscore-card {
+      width: min(700px, 90%);
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 32px;
+      border-radius: 24px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(30px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .highscore-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .highscore-tab {
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .highscore-tab.active {
+      color: var(--accent-primary);
+      border-bottom-color: var(--accent-primary);
+    }
+
+    .highscore-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .highscore-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .highscore-item.rank-1 {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.1));
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .highscore-rank {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gold);
+      min-width: 40px;
+    }
+
+    .highscore-score {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .highscore-date {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 
@@ -362,6 +481,11 @@
             <div class="stat"><div class="k">Score</div><div class="v" id="scoreV">0</div></div>
             <div class="stat"><div class="k">Mead</div><div class="v" id="meadV">0</div></div>
             <div class="stat" id="multiplierStat" style="display: none;"><div class="k">Multiplier</div><div class="v" id="multiplierV">1x</div></div>
+          </div>
+          <div class="lives-display" id="livesDisplay">
+            <span class="life-heart" id="life1">❤️</span>
+            <span class="life-heart" id="life2">❤️</span>
+            <span class="life-heart" id="life3">❤️</span>
           </div>
         </div>
         <div class="rightpack">
@@ -393,6 +517,22 @@
             <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
           </div>
           <button class="btn primary" id="startBtn" style="padding: 16px 40px; font-size: 16px; margin-top: 8px;">Start Game</button>
+          <button class="btn highscore-btn" id="highscoreBtn" style="padding: 12px 24px; font-size: 14px;">View High Scores</button>
+        </div>
+      </div>
+
+      <div class="highscore-modal" id="highscoreModal">
+        <div class="highscore-card">
+          <h2 style="margin-bottom: 24px; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">High Scores</h2>
+          <div class="highscore-tabs">
+            <button class="highscore-tab active" data-period="alltime">All Time</button>
+            <button class="highscore-tab" data-period="yearly">Yearly</button>
+            <button class="highscore-tab" data-period="monthly">Monthly</button>
+            <button class="highscore-tab" data-period="weekly">Weekly</button>
+            <button class="highscore-tab" data-period="daily">Daily</button>
+          </div>
+          <div class="highscore-list" id="highscoreList"></div>
+          <button class="btn" style="margin-top: 24px; width: 100%;" onclick="$('highscoreModal').classList.remove('active')">Close</button>
         </div>
       </div>
     </div>
@@ -449,7 +589,8 @@
   const world = { 
     started: false, paused: false, over: false, 
     score: 0, mead: 0, speed: 450, t: 0, groundY: 0, camX: 0,
-    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextWeaponAt: 0,
+    lives: 3, maxLives: 3,
+    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextWeaponAt: 0, nextHeartAt: 0,
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
@@ -473,6 +614,7 @@
   const Enemies = [];
   const Weapons = [];
   const Projectiles = [];
+  const Hearts = [];
 
   const spawnObstacle = (x) => {
     const type = Math.random() > 0.4 ? "shield" : "rock";
@@ -527,6 +669,16 @@
     });
   };
 
+  const spawnHeart = (x) => {
+    Hearts.push({
+      x,
+      y: world.groundY - rand(50, 150),
+      taken: false,
+      pulse: 0,
+      rotation: 0
+    });
+  };
+
   const addParticle = (x, y, color, count = 5) => {
     for (let i = 0; i < count; i++) {
       Particles.push({
@@ -569,12 +721,16 @@
     Enemies.length = 0;
     Weapons.length = 0;
     Projectiles.length = 0;
+    Hearts.length = 0;
     world.nextObstacleAt = viking.x + 600;
     world.nextMeadAt = viking.x + 300;
     world.nextPowerupAt = viking.x + 800;
     world.nextPlatformAt = viking.x + 500;
     world.nextEnemyAt = viking.x + 1000;
     world.nextWeaponAt = viking.x + 700;
+    world.nextHeartAt = viking.x + 1200;
+    world.lives = 3;
+    world.maxLives = 3;
     world.powerups = {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
@@ -610,6 +766,89 @@
       weaponIndicator.classList.add("active");
     } else {
       weaponIndicator.classList.remove("active");
+    }
+
+    // Update lives display
+    for (let i = 1; i <= 3; i++) {
+      const lifeEl = $(`life${i}`);
+      if (lifeEl) {
+        if (i <= world.lives) {
+          lifeEl.classList.remove("lost");
+        } else {
+          lifeEl.classList.add("lost");
+        }
+      }
+    }
+  };
+
+  // High Score System
+  const HighScoreManager = {
+    getPeriodKey: (period) => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const week = Math.floor(now.getDate() / 7);
+      const day = now.toDateString();
+      
+      switch(period) {
+        case 'daily': return `highscore_daily_${day}`;
+        case 'weekly': return `highscore_weekly_${year}_${Math.floor(month / 4)}_${week}`;
+        case 'monthly': return `highscore_monthly_${year}_${month}`;
+        case 'yearly': return `highscore_yearly_${year}`;
+        case 'alltime': return 'highscore_alltime';
+        default: return 'highscore_alltime';
+      }
+    },
+
+    saveScore: (score, period = 'alltime') => {
+      const key = HighScoreManager.getPeriodKey(period);
+      let scores = JSON.parse(localStorage.getItem(key) || '[]');
+      scores.push({ score, date: new Date().toISOString() });
+      scores.sort((a, b) => b.score - a.score);
+      scores = scores.slice(0, 10); // Keep top 10
+      localStorage.setItem(key, JSON.stringify(scores));
+      
+      // Also save to all periods
+      ['daily', 'weekly', 'monthly', 'yearly', 'alltime'].forEach(p => {
+        if (p !== period) {
+          const k = HighScoreManager.getPeriodKey(p);
+          let s = JSON.parse(localStorage.getItem(k) || '[]');
+          s.push({ score, date: new Date().toISOString() });
+          s.sort((a, b) => b.score - a.score);
+          s = s.slice(0, 10);
+          localStorage.setItem(k, JSON.stringify(s));
+        }
+      });
+    },
+
+    getScores: (period = 'alltime') => {
+      const key = HighScoreManager.getPeriodKey(period);
+      return JSON.parse(localStorage.getItem(key) || '[]');
+    },
+
+    displayScores: (period = 'alltime') => {
+      const scores = HighScoreManager.getScores(period);
+      const list = $("highscoreList");
+      list.innerHTML = '';
+      
+      if (scores.length === 0) {
+        list.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No scores yet. Be the first!</div>';
+        return;
+      }
+      
+      scores.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `highscore-item ${index === 0 ? 'rank-1' : ''}`;
+        const date = new Date(item.date);
+        div.innerHTML = `
+          <div>
+            <div class="highscore-rank">#${index + 1}</div>
+            <div class="highscore-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+          </div>
+          <div class="highscore-score">${Math.floor(item.score).toLocaleString()}</div>
+        `;
+        list.appendChild(div);
+      });
     }
   };
 
@@ -797,6 +1036,36 @@
     // Glow
     ctx.shadowBlur = 15;
     ctx.shadowColor = w.type === "axe" ? "#8b5cf6" : "#6366f1";
+    
+    ctx.restore();
+  };
+
+  const drawHeart = (x, y, pulse, rotation) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    
+    const size = 20 * pulse;
+    
+    // Glow
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
+    gradient.addColorStop(0, "#ef4444AA");
+    gradient.addColorStop(0.5, "#ef444460");
+    gradient.addColorStop(1, "#ef444400");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Heart shape
+    ctx.fillStyle = "#ef4444";
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#ef4444";
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.3);
+    ctx.bezierCurveTo(-size * 0.5, -size * 0.2, -size, size * 0.1, 0, size * 0.8);
+    ctx.bezierCurveTo(size, size * 0.1, size * 0.5, -size * 0.2, 0, size * 0.3);
+    ctx.fill();
     
     ctx.restore();
   };
@@ -1035,6 +1304,10 @@
       spawnWeapon(world.nextWeaponAt);
       world.nextWeaponAt += rand(600, 1000);
     }
+    if (viking.x > world.nextHeartAt - W && world.lives < world.maxLives) {
+      spawnHeart(world.nextHeartAt);
+      world.nextHeartAt += rand(1000, 1800);
+    }
     
     // Update platforms
     for (const p of Platforms) {
@@ -1057,6 +1330,15 @@
       if (!w.taken) {
         w.rotation += dt * 3;
         w.x -= world.speed * dt;
+      }
+    }
+    
+    // Update hearts
+    for (const h of Hearts) {
+      if (!h.taken) {
+        h.rotation += dt * 2;
+        h.pulse = Math.sin(world.t * 8) * 0.2 + 1;
+        h.x -= world.speed * dt;
       }
     }
     
@@ -1091,16 +1373,28 @@
     for (const o of Obstacles) {
       if (viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
         if (!world.powerups.invincibility.active) {
-          world.over = true;
-          viking.faceplant = 1.5;
-          statePill.textContent = "Game Over";
-          beep("sawtooth", 100, 0.4);
-          setTimeout(() => { 
-            overlay.style.display = "grid";
-            $("overlayTitle").textContent = "Game Over";
-            $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
-            startBtn.textContent = "Play Again";
-          }, 1200);
+          world.lives--;
+          addParticle(o.x, world.groundY - 20, "#ef4444", 15);
+          beep("sawtooth", 150, 0.3);
+          updateHUD();
+          
+          if (world.lives <= 0) {
+            world.over = true;
+            viking.faceplant = 1.5;
+            statePill.textContent = "Game Over";
+            HighScoreManager.saveScore(world.score, 'alltime');
+            beep("sawtooth", 100, 0.4);
+            setTimeout(() => { 
+              overlay.style.display = "grid";
+              $("overlayTitle").textContent = "Game Over";
+              $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
+              startBtn.textContent = "Play Again";
+            }, 1200);
+          } else {
+            // Brief invincibility after losing a life
+            world.powerups.invincibility.active = true;
+            world.powerups.invincibility.timeLeft = 2;
+          }
         } else {
           addParticle(o.x, world.groundY - 20, "#4ECDC4", 12);
           beep("sine", 400, 0.15);
@@ -1108,20 +1402,33 @@
       }
     }
 
-    // Collisions - Enemies (without weapon = death)
+    // Collisions - Enemies (without weapon = lose life)
     for (const e of Enemies) {
       if (!e.defeated && Math.hypot(viking.x - e.x, viking.y - e.y) < 35) {
         if (!viking.hasWeapon && !world.powerups.invincibility.active) {
-          world.over = true;
-          viking.faceplant = 1.5;
-          statePill.textContent = "Game Over";
-          beep("sawtooth", 100, 0.4);
-          setTimeout(() => { 
-            overlay.style.display = "grid";
-            $("overlayTitle").textContent = "Game Over";
-            $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
-            startBtn.textContent = "Play Again";
-          }, 1200);
+          world.lives--;
+          addParticle(e.x, e.y, "#ef4444", 15);
+          beep("sawtooth", 150, 0.3);
+          e.defeated = true;
+          updateHUD();
+          
+          if (world.lives <= 0) {
+            world.over = true;
+            viking.faceplant = 1.5;
+            statePill.textContent = "Game Over";
+            HighScoreManager.saveScore(world.score, 'alltime');
+            beep("sawtooth", 100, 0.4);
+            setTimeout(() => { 
+              overlay.style.display = "grid";
+              $("overlayTitle").textContent = "Game Over";
+              $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
+              startBtn.textContent = "Play Again";
+            }, 1200);
+          } else {
+            // Brief invincibility after losing a life
+            world.powerups.invincibility.active = true;
+            world.powerups.invincibility.timeLeft = 2;
+          }
         }
       }
     }
@@ -1157,6 +1464,19 @@
         activatePowerup(p.type);
         addParticle(p.x, p.y, getPowerupColor(p.type), 15);
         beep("square", 600, 0.25);
+      }
+    }
+
+    // Collisions - Hearts
+    for (const h of Hearts) {
+      if (!h.taken && Math.hypot(viking.x - h.x, (viking.y-30) - h.y) < 40) {
+        h.taken = true;
+        if (world.lives < world.maxLives) {
+          world.lives++;
+          addParticle(h.x, h.y, "#ef4444", 20);
+          beep("sine", 600, 0.2);
+          updateHUD();
+        }
       }
     }
 
@@ -1210,6 +1530,13 @@
     for (const w of Weapons) {
       if (!w.taken && w.x > viking.x - W - 100 && w.x < viking.x + W + 100) {
         drawWeapon(w);
+      }
+    }
+
+    // Draw hearts
+    for (const h of Hearts) {
+      if (!h.taken && h.x > viking.x - W - 100 && h.x < viking.x + W + 100) {
+        drawHeart(h.x, h.y, h.pulse, h.rotation);
       }
     }
 
@@ -1304,6 +1631,25 @@
     OPT.sound = !OPT.sound; 
     soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off"; 
   };
+
+  // High score modal
+  const highscoreBtn = $("highscoreBtn");
+  const highscoreModal = $("highscoreModal");
+  const highscoreTabs = document.querySelectorAll(".highscore-tab");
+  
+  highscoreBtn.onclick = () => {
+    highscoreModal.classList.add("active");
+    HighScoreManager.displayScores('alltime');
+  };
+  
+  highscoreTabs.forEach(tab => {
+    tab.onclick = () => {
+      highscoreTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const period = tab.dataset.period;
+      HighScoreManager.displayScores(period);
+    };
+  });
 
   resetWorld();
   requestAnimationFrame(tick);
