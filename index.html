@@ -1345,10 +1345,16 @@
             HighScoreManager.saveScore(world.score);
             beep("sawtooth", 100, 0.4);
             setTimeout(() => { 
-              overlay.style.display = "grid";
-              $("overlayTitle").textContent = "Game Over";
-              $("overlayText").textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-              startBtn.textContent = "Play Again";
+              if (overlay) {
+                overlay.style.display = "grid";
+                overlay.style.visibility = "visible";
+                overlay.style.opacity = "1";
+              }
+              const overlayTitle = $("overlayTitle");
+              const overlayText = $("overlayText");
+              if (overlayTitle) overlayTitle.textContent = "Game Over";
+              if (overlayText) overlayText.textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+              if (startBtn) startBtn.textContent = "Play Again";
             }, 1200);
           } else {
             world.powerups.invincibility.active = true;
@@ -1381,10 +1387,16 @@
             HighScoreManager.saveScore(world.score);
             beep("sawtooth", 100, 0.4);
             setTimeout(() => { 
-              overlay.style.display = "grid";
-              $("overlayTitle").textContent = "Game Over";
-              $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-              startBtn.textContent = "Play Again";
+              if (overlay) {
+                overlay.style.display = "grid";
+                overlay.style.visibility = "visible";
+                overlay.style.opacity = "1";
+              }
+              const overlayTitle = $("overlayTitle");
+              const overlayText = $("overlayText");
+              if (overlayTitle) overlayTitle.textContent = "Game Over";
+              if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+              if (startBtn) startBtn.textContent = "Play Again";
             }, 1200);
           } else {
             world.powerups.invincibility.active = true;
