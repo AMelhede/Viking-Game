@@ -6,16 +6,22 @@
   <title>Viking Run</title>
   <style>
     :root{
-      /* Apple Design System Colors */
-      --bg: #000000;
-      --surface: #1c1c1e;
-      --surface-elevated: #2c2c2e;
-      --text: #ffffff;
-      --text-secondary: rgba(255, 255, 255, 0.6);
-      --text-tertiary: rgba(255, 255, 255, 0.4);
-      --separator: rgba(255, 255, 255, 0.1);
+      /* Apple Design System Colors - Premium & Vibrant */
+      --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --bg-dark: #1a1a2e;
+      --surface: rgba(255, 255, 255, 0.95);
+      --surface-elevated: rgba(255, 255, 255, 0.98);
+      --surface-dark: rgba(30, 30, 46, 0.8);
+      --text: #1d1d1f;
+      --text-secondary: rgba(29, 29, 31, 0.6);
+      --text-tertiary: rgba(29, 29, 31, 0.4);
+      --text-light: #ffffff;
+      --separator: rgba(0, 0, 0, 0.1);
       --accent: #007aff;
       --accent-hover: #0051d5;
+      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --shadow: rgba(0, 0, 0, 0.1);
+      --shadow-lg: rgba(0, 0, 0, 0.2);
     }
 
     * {
@@ -28,6 +34,7 @@
       height: 100%;
       margin: 0;
       background: var(--bg);
+      background-attachment: fixed;
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
       overflow: hidden;
@@ -46,11 +53,13 @@
     .shell{
       width: min(1200px, calc(100vw - 48px));
       height: min(800px, calc(100vh - 48px));
-      border-radius: 18px;
+      border-radius: 24px;
       background: var(--surface);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: none;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05);
       position: relative;
       overflow: hidden;
+      backdrop-filter: blur(40px);
     }
 
     .topbar{ 
@@ -123,9 +132,12 @@
     
     .stat .v{ 
       font-size: 22px; 
-      font-weight: 600; 
+      font-weight: 700; 
       line-height: 1; 
-      color: var(--text);
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       letter-spacing: -0.5px;
     }
 
@@ -216,19 +228,24 @@
     .card{ 
       pointer-events: auto; 
       width: min(480px, 90%); 
-      border-radius: 20px; 
-      padding: 32px; 
-      background: var(--surface);
-      border: 1px solid var(--separator);
+      border-radius: 24px; 
+      padding: 40px; 
+      background: var(--surface-elevated);
+      backdrop-filter: blur(40px);
+      border: none;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       text-align: center;
     }
     
     .card h1{ 
-      font-size: 34px; 
-      margin: 0 0 12px; 
-      font-weight: 700;
-      letter-spacing: -0.8px;
-      color: var(--text);
+      font-size: 36px; 
+      margin: 0 0 16px; 
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     
     .card p{ 
@@ -1232,34 +1249,45 @@
       }
     }
 
-    // ATTACK SYSTEM - FIXED
+    // ATTACK SYSTEM - FIXED AND WORKING
     if (viking.attackCooldown > 0) {
       viking.attackCooldown -= dt;
     }
     
+    // Attack on space press when you have weapon
     if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0 && !viking.ducking) {
       viking.attacking = true;
-      viking.attackCooldown = 0.5;
-      Input.attackPressed = false; // Reset immediately
+      viking.attackCooldown = 0.4;
       
-      // Attack enemies - larger range
+      // Attack enemies - MUCH LARGER RANGE
+      let hitEnemy = false;
       for (const e of Enemies) {
         if (!e.defeated && !e.hit) {
           const distX = Math.abs(viking.x - e.x);
           const distY = Math.abs(viking.y - e.y);
-          // Attack range: 100px horizontally, 80px vertically
-          if (distX < 100 && distY < 80) {
+          // Attack range: 120px horizontally, 100px vertically - VERY FORGIVING
+          if (distX < 120 && distY < 100) {
             e.defeated = true;
             e.hit = true;
+            hitEnemy = true;
             world.score += 100 * scoreMultiplier;
-            addParticle(e.x, e.y, "#dc2626", 20);
-            beep("square", 500, 0.25);
+            addParticle(e.x, e.y, "#dc2626", 25);
+            beep("square", 600, 0.3);
             updateHUD();
           }
         }
       }
       
-      setTimeout(() => { viking.attacking = false; }, 300);
+      if (hitEnemy) {
+        Input.attackPressed = false; // Only reset if we hit something
+      }
+      
+      setTimeout(() => { viking.attacking = false; }, 250);
+    }
+    
+    // Reset attack input after a short delay if not used
+    if (Input.attackPressed && !viking.attacking) {
+      setTimeout(() => { Input.attackPressed = false; }, 100);
     }
 
     // Jump logic
@@ -1412,44 +1440,50 @@
       }
     }
 
-    // Collisions - Enemies
+    // Collisions - Enemies - FIXED TO ACTUALLY KILL YOU
     for (const e of Enemies) {
-      if (!e.defeated && !e.hit) {
+      if (!e.defeated) {
         const distX = Math.abs(viking.x - e.x);
         const distY = Math.abs(viking.y - e.y);
-        // Enemy collision: 45px horizontal, 60px vertical
-        if (distX < 45 && distY < 60) {
-          // If you have a weapon, you can attack (handled in attack system)
-          // If you don't have a weapon, you take damage
+        // Enemy collision: 50px horizontal, 70px vertical - MORE FORGIVING COLLISION
+        if (distX < 50 && distY < 70) {
+          // If you're attacking, don't take damage
+          if (viking.attacking) {
+            // Attack handles this
+            continue;
+          }
+          
+          // If you don't have a weapon OR you're not attacking, you take damage
           if (!viking.hasWeapon && !world.powerups.invincibility.active) {
-            e.hit = true;
-            e.defeated = false; // Enemy doesn't die, you take damage
-            world.lives--;
-            addParticle(viking.x, viking.y, "#ef4444", 15);
-            beep("sawtooth", 150, 0.3);
-            updateHUD();
-            
-            if (world.lives <= 0) {
-              world.over = true;
-              viking.faceplant = 1.5;
-              if (statePill) statePill.textContent = "Game Over";
-              HighScoreManager.saveScore(world.score);
-              beep("sawtooth", 100, 0.4);
-              setTimeout(() => { 
-                if (overlay) {
-                  overlay.style.display = "grid";
-                  overlay.style.visibility = "visible";
-                  overlay.style.opacity = "1";
-                }
-                const overlayTitle = $("overlayTitle");
-                const overlayText = $("overlayText");
-                if (overlayTitle) overlayTitle.textContent = "Game Over";
-                if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                if (startBtn) startBtn.textContent = "Play Again";
-              }, 1200);
-            } else {
-              world.powerups.invincibility.active = true;
-              world.powerups.invincibility.timeLeft = 2;
+            if (!e.hit) { // Only hit once
+              e.hit = true;
+              world.lives--;
+              addParticle(viking.x, viking.y, "#ef4444", 20);
+              beep("sawtooth", 200, 0.4);
+              updateHUD();
+              
+              if (world.lives <= 0) {
+                world.over = true;
+                viking.faceplant = 1.5;
+                if (statePill) statePill.textContent = "Game Over";
+                HighScoreManager.saveScore(world.score);
+                beep("sawtooth", 100, 0.5);
+                setTimeout(() => { 
+                  if (overlay) {
+                    overlay.style.display = "grid";
+                    overlay.style.visibility = "visible";
+                    overlay.style.opacity = "1";
+                  }
+                  const overlayTitle = $("overlayTitle");
+                  const overlayText = $("overlayText");
+                  if (overlayTitle) overlayTitle.textContent = "Game Over";
+                  if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                  if (startBtn) startBtn.textContent = "Play Again";
+                }, 1200);
+              } else {
+                world.powerups.invincibility.active = true;
+                world.powerups.invincibility.timeLeft = 1.5; // Shorter invincibility
+              }
             }
           }
         }
