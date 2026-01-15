@@ -447,7 +447,7 @@
 
       <div class="hudline">
         <div class="hint" id="hint">
-          <kbd>Space</kbd> Jump | <kbd>↓</kbd> Duck | Collect items, jump on platforms, avoid enemies
+          <kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Collect items, jump on platforms, avoid enemies
         </div>
       </div>
 
@@ -458,7 +458,6 @@
           <div class="powerup-list">
             <div class="powerup-item"><div class="icon">⚡</div><div class="name">Speed</div></div>
             <div class="powerup-item"><div class="icon">🛡</div><div class="name">Shield</div></div>
-            <div class="powerup-item"><div class="icon">🦘</div><div class="name">Double Jump</div></div>
             <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
           </div>
           <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%;">
@@ -538,7 +537,6 @@
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
-      doubleJump: { active: false, timeLeft: 0 },
       scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
     }
   };
@@ -569,7 +567,7 @@
   };
 
   const spawnPowerup = (x) => {
-    const types = ["speedBoost", "invincibility", "doubleJump", "scoreMultiplier"];
+    const types = ["speedBoost", "invincibility", "scoreMultiplier"];
     const type = pick(types);
     Powerups.push({ 
       x, 
@@ -585,7 +583,7 @@
     const width = rand(80, 150);
     const height = 20;
     // Sometimes spawn low platforms that require ducking (at ground level or slightly above)
-    const isLowPlatform = Math.random() < 0.3; // 30% chance
+    const isLowPlatform = Math.random() < 0.5; // 50% chance - more duck scenarios
     const y = isLowPlatform ? world.groundY - rand(30, 50) : world.groundY - rand(100, 250);
     Platforms.push({ x, y, width, height, isLow: isLowPlatform });
   };
@@ -684,7 +682,6 @@
       world.powerups = {
         speedBoost: { active: false, timeLeft: 0 },
         invincibility: { active: false, timeLeft: 0 },
-        doubleJump: { active: false, timeLeft: 0 },
         scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
       };
       viking.jumpsUsed = 0;
@@ -1123,7 +1120,6 @@
     const colors = {
       speedBoost: "#FF6B6B",
       invincibility: "#4ECDC4",
-      doubleJump: "#95E1D3",
       scoreMultiplier: "#FFD93D"
     };
     return colors[type] || "#FFF";
@@ -1133,7 +1129,6 @@
     const symbols = {
       speedBoost: "⚡",
       invincibility: "🛡",
-      doubleJump: "🦘",
       scoreMultiplier: "⭐"
     };
     return symbols[type] || "?";
@@ -1144,9 +1139,7 @@
     p.active = true;
     p.timeLeft = 10;
     
-    if (type === "doubleJump") {
-      viking.maxJumps = 2;
-    } else if (type === "scoreMultiplier") {
+    if (type === "scoreMultiplier") {
       p.multiplier = 2;
     }
     updateHUD();
@@ -1308,7 +1301,6 @@
         p.timeLeft -= dt;
         if (p.timeLeft <= 0) {
           p.active = false;
-          if (key === "doubleJump") viking.maxJumps = 1;
           if (key === "scoreMultiplier") p.multiplier = 1;
           updateHUD();
         }
@@ -1366,7 +1358,7 @@
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
-      world.nextPlatformAt += rand(500, 800);
+      world.nextPlatformAt += rand(350, 600);
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
