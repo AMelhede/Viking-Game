@@ -891,9 +891,10 @@
         Input.jumpJustPressed = true;
       }
       Input.jump = true;
-      // Attack when you have weapon
-      if (viking.hasWeapon) {
+      // Attack when you have weapon - SET IMMEDIATELY
+      if (viking.hasWeapon && world.started && !world.paused && !world.over) {
         Input.attackPressed = true;
+        console.log("Attack key pressed! hasWeapon:", viking.hasWeapon, "attackCooldown:", viking.attackCooldown);
       }
       if(!world.started && !world.over) start(); 
     }
@@ -915,8 +916,10 @@
       Input.jumpJustPressed = true;
     }
     Input.jump = true;
-    if (viking.hasWeapon) {
+    // Attack when you have weapon - SET IMMEDIATELY
+    if (viking.hasWeapon && world.started && !world.paused && !world.over) {
       Input.attackPressed = true;
+      console.log("Attack touch pressed! hasWeapon:", viking.hasWeapon);
     }
     if(!world.started && !world.over) start(); 
     e.preventDefault();
