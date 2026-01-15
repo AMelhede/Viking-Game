@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Viking Run</title>
+  <style>
+    :root{
+      /* Viking Theme Palette */
+      --bg0:#0b141a;
+      --bg1:#1a2b3c;
+      --glass: rgba(15, 25, 35, 0.75);
+      --glass2: rgba(255,255,255,0.08);
+      --ink: rgba(255,255,255,0.95);
+      --muted: rgba(200,210,220,0.7);
+      --muted2: rgba(200,210,220,0.5);
+      --good:#FFD700; /* Gold/Mead */
+      --warn:#FF8C00;
+      --bad:#FF4500; /* Blood/Fire */
+      --accent:#A5F2FF; /* Ice */
+      --accent2:#E0E0E0; /* Steel */
+      --shadow: rgba(0,0,0,0.55);
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background:
+        radial-gradient(1200px 800px at 70% 30%, rgba(165,242,255,0.12), transparent 60%),
+        radial-gradient(1000px 700px at 25% 65%, rgba(255,215,0,0.08), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+
+    .wrap{ height: 100%; display: grid; place-items: center; padding: 18px; box-sizing: border-box; }
+    .shell{
+      width: min(1100px, calc(100vw - 24px));
+      height: min(720px, calc(100vh - 24px));
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08) inset;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .topbar{ position: absolute; left: 15px; right: 15px; top: 12px; height: 46px; display: flex; align-items: center; justify-content: space-between; z-index: 5; pointer-events: none; }
+    .leftpack, .rightpack{ display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+    .title{ display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--glass); backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .title strong{ font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
+    .pill{ font-size: 11px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.1); color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+    .scorecard{ display: flex; align-items: center; gap: 15px; padding: 8px 14px; border-radius: 14px; background: var(--glass); backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0,0,0,0.4); min-width: 180px; }
+    .stat{ display: grid; gap: 2px; min-width: 60px; }
+    .stat .k{ font-size: 10px; color: var(--muted2); text-transform: uppercase; font-weight: 700; }
+    .stat .v{ font-size: 20px; font-weight: 900; line-height: 1.0; }
+
+    .btn{ border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: var(--ink); padding: 9px 14px; border-radius: 12px; cursor: pointer; transition: 0.1s; font-weight: 700; font-size: 13px; backdrop-filter: blur(8px); }
+    .btn:hover{ background: rgba(255,255,255,0.15); border-color: var(--accent); }
+    .btn.primary{ background: rgba(255, 215, 0, 0.2); border-color: rgba(255, 215, 0, 0.4); }
+
+    .hudline{ position: absolute; left: 12px; right: 12px; bottom: 15px; display: flex; justify-content: center; z-index: 5; pointer-events: none; }
+    .hint{ max-width: 800px; padding: 12px 20px; border-radius: 16px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); color: var(--muted); font-size: 13px; text-align: center; backdrop-filter: blur(10px); pointer-events: auto; }
+    kbd{ background: rgba(255,255,255,0.15); border-radius: 6px; padding: 2px 6px; color: #fff; border: 1px solid rgba(255,255,255,0.2); margin: 0 2px; }
+
+    .canvas{ position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .overlay{ position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 10; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); }
+    .card{ pointer-events: auto; width: min(500px, 90%); border-radius: 24px; padding: 30px; background: rgba(20, 30, 45, 0.9); border: 1px solid var(--accent); box-shadow: 0 40px 100px rgba(0,0,0,0.8); text-align: center; }
+    .card h1{ font-size: 28px; margin: 0 0 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+    .card p{ margin: 0 0 20px; color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="shell" id="shell">
+      <canvas class="canvas" id="c"></canvas>
+
+      <div class="topbar">
+        <div class="leftpack">
+          <div class="title"><strong>Viking Run</strong> <span class="pill" id="statePill">Ready</span></div>
+          <div class="scorecard">
+            <div class="stat"><div class="k">Score</div><div class="v" id="scoreV">0</div></div>
+            <div class="stat"><div class="k">Mead</div><div class="v" id="meadV">0</div></div>
+            <div class="stat" id="multiplierStat" style="display: none;"><div class="k">Multiplier</div><div class="v" id="multiplierV">1x</div></div>
+          </div>
+        </div>
+        <div class="rightpack">
+          <button class="btn" id="pauseBtn">Pause</button>
+          <button class="btn" id="soundBtn">Sound: Off</button>
+          <button class="btn primary" id="restartBtn">Restart</button>
+        </div>
+      </div>
+
+      <div class="hudline">
+        <div class="hint" id="hint">
+          Press <kbd>Space</kbd> or Tap to jump. Press <kbd>↓</kbd> to duck. 
+          Grab <b>Mead</b> 🍺 and <b>Powerups</b> ⚡🛡🦘⭐; avoid <b>Shields</b> 🛡.
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay">
+        <div class="card">
+          <h1 id="overlayTitle">Viking Saga</h1>
+          <p id="overlayText" style="white-space: pre-line;">Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities! Become the legend of the North.</p>
+          <button class="btn primary" id="startBtn" style="padding: 12px 30px; font-size: 16px;">Set Sail (Start)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+
+  const canvas = $("c");
+  const shell = $("shell");
+  const scoreV = $("scoreV");
+  const meadV = $("meadV");
+  const statePill = $("statePill");
+  const overlay = $("overlay");
+  const startBtn = $("startBtn");
+  const pauseBtn = $("pauseBtn");
+  const restartBtn = $("restartBtn");
+  const soundBtn = $("soundBtn");
+
+  let W, H, DPR, ctx;
+  const resize = () => {
+    const rect = shell.getBoundingClientRect();
+    DPR = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
+    W = Math.floor(rect.width); H = Math.floor(rect.height);
+    canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx = canvas.getContext("2d");
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  };
+  window.addEventListener("resize", resize);
+  resize();
+
+  // Sounds
+  let AC = null;
+  const beep = (type, freq, dur, gain = 0.2) => {
+    if (!OPT.sound) return;
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, AC.currentTime);
+    g.gain.setValueAtTime(gain, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.01, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  };
+
+  const OPT = { sound: false, difficulty: "normal" };
+  const world = { 
+    started: false, paused: false, over: false, 
+    score: 0, mead: 0, speed: 450, t: 0, groundY: 0, camX: 0,
+    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0,
+    powerups: {
+      speedBoost: { active: false, timeLeft: 0 },
+      invincibility: { active: false, timeLeft: 0 },
+      doubleJump: { active: false, timeLeft: 0 },
+      scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
+    }
+  };
+
+  const viking = {
+    x: 100, y: 0, vy: 0, w: 50, h: 70, 
+    onGround: false, ducking: false, anim: 0, faceplant: 0,
+    jumpsUsed: 0, maxJumps: 1
+  };
+
+  const Obstacles = [];
+  const Meads = [];
+  const Powerups = [];
+  const Particles = [];
+
+  const spawnObstacle = (x) => {
+    const type = Math.random() > 0.4 ? "shield" : "rock";
+    Obstacles.push({ x, type, w: 45, h: 45 });
+  };
+
+  const spawnMead = (x) => {
+    Meads.push({ x, y: world.groundY - rand(40, 160), taken: false });
+  };
+
+  const spawnPowerup = (x) => {
+    const types = ["speedBoost", "invincibility", "doubleJump", "scoreMultiplier"];
+    const type = pick(types);
+    Powerups.push({ 
+      x, 
+      y: world.groundY - rand(60, 180), 
+      type, 
+      taken: false,
+      rotation: 0,
+      pulse: 0
+    });
+  };
+
+  const addParticle = (x, y, color, count = 5) => {
+    for (let i = 0; i < count; i++) {
+      Particles.push({
+        x, y,
+        vx: rand(-100, 100),
+        vy: rand(-150, -50),
+        life: 1,
+        color,
+        size: rand(3, 8)
+      });
+    }
+  };
+
+  const resetWorld = () => {
+    world.started = false;
+    world.paused = false;
+    world.over = false;
+    world.score = 0; 
+    world.mead = 0; 
+    world.speed = 450; 
+    world.t = 0;
+    world.groundY = H * 0.8;
+    world.camX = 0;
+    viking.x = 100;
+    viking.y = world.groundY; 
+    viking.vy = 0; 
+    viking.faceplant = 0;
+    viking.ducking = false;
+    viking.onGround = true;
+    Obstacles.length = 0; 
+    Meads.length = 0; 
+    Powerups.length = 0;
+    Particles.length = 0;
+    world.nextObstacleAt = viking.x + 600;
+    world.nextMeadAt = viking.x + 300;
+    world.nextPowerupAt = viking.x + 800;
+    // Reset powerup states
+    world.powerups = {
+      speedBoost: { active: false, timeLeft: 0 },
+      invincibility: { active: false, timeLeft: 0 },
+      doubleJump: { active: false, timeLeft: 0 },
+      scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
+    };
+    viking.jumpsUsed = 0;
+    viking.maxJumps = 1;
+    overlay.style.display = "grid";
+    $("overlayTitle").textContent = "Viking Saga";
+    $("overlayText").textContent = "Raid the coast! Jump over enemy shields and grab golden mugs of mead. Collect powerups for special abilities! Become the legend of the North.";
+    startBtn.textContent = "Set Sail (Start)";
+    statePill.textContent = "Ready";
+    pauseBtn.textContent = "Pause";
+    updateHUD();
+  };
+
+  const updateHUD = () => {
+    scoreV.textContent = Math.floor(world.score);
+    meadV.textContent = world.mead;
+    const multStat = $("multiplierStat");
+    const multV = $("multiplierV");
+    if (world.powerups.scoreMultiplier.active) {
+      multStat.style.display = "grid";
+      multV.textContent = world.powerups.scoreMultiplier.multiplier + "x";
+    } else {
+      multStat.style.display = "none";
+    }
+  };
+
+  // Input
+  const Input = { jump: false, duck: false };
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") { Input.jump = true; if(!world.started) start(); }
+    if (e.code === "ArrowDown") Input.duck = true;
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space") Input.jump = false;
+    if (e.code === "ArrowDown") Input.duck = false;
+  });
+  canvas.addEventListener("pointerdown", () => { Input.jump = true; if(!world.started) start(); });
+  window.addEventListener("pointerup", () => Input.jump = false);
+
+  const start = () => {
+    if (world.started) return;
+    world.started = true;
+    overlay.style.display = "none";
+    statePill.textContent = "Raiding";
+    beep("square", 300, 0.2);
+  };
+
+  // Drawing functions
+  const drawViking = (x, y) => {
+    ctx.save();
+    ctx.translate(x, y);
+    if (viking.faceplant > 0) ctx.rotate(viking.faceplant * -1);
+
+    const bob = viking.onGround ? Math.sin(world.t * 12) * 4 : 0;
+    const duckH = viking.ducking ? 0.6 : 1;
+
+    // Tunic (Body)
+    ctx.fillStyle = "#556677";
+    ctx.fillRect(-20, -50 * duckH + bob, 40, 50 * duckH);
+
+    // Head
+    ctx.fillStyle = "#ffdbac";
+    ctx.beginPath(); ctx.arc(0, -65 * duckH + bob, 15, 0, Math.PI * 2); ctx.fill();
+
+    // Beard (Danish Viking Orange)
+    ctx.fillStyle = "#e67e22";
+    ctx.beginPath(); ctx.moveTo(-12, -60 * duckH + bob); ctx.lineTo(12, -60 * duckH + bob); ctx.lineTo(0, -35 * duckH + bob); ctx.fill();
+
+    // Helmet
+    ctx.fillStyle = "#7f8c8d";
+    ctx.beginPath(); ctx.arc(0, -70 * duckH + bob, 16, Math.PI, 0); ctx.fill();
+    // Horns
+    ctx.fillStyle = "#ecf0f1";
+    ctx.beginPath(); ctx.moveTo(-15, -75 * duckH + bob); ctx.lineTo(-25, -90 * duckH + bob); ctx.lineTo(-10, -80 * duckH + bob); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(15, -75 * duckH + bob); ctx.lineTo(25, -90 * duckH + bob); ctx.lineTo(10, -80 * duckH + bob); ctx.fill();
+
+    ctx.restore();
+  };
+
+  const drawShield = (x, y) => {
+    ctx.save();
+    ctx.translate(x, world.groundY);
+    // Outer wood
+    ctx.fillStyle = "#5d4037";
+    ctx.beginPath(); ctx.arc(0, -22, 22, 0, Math.PI * 2); ctx.fill();
+    // Metal rim
+    ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 3; ctx.stroke();
+    // Center boss
+    ctx.fillStyle = "#7f8c8d";
+    ctx.beginPath(); ctx.arc(0, -22, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  };
+
+  const drawRock = (x, y) => {
+    ctx.fillStyle = "#2c3e50";
+    ctx.beginPath(); ctx.moveTo(x-25, world.groundY); ctx.lineTo(x, world.groundY-45); ctx.lineTo(x+25, world.groundY); ctx.fill();
+  };
+
+  const drawMead = (x, y) => {
+    ctx.save();
+    ctx.translate(x, y);
+    // Mug
+    ctx.fillStyle = "#f1c40f";
+    ctx.fillRect(-10, -15, 20, 25);
+    // Foam
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(-5, -15, 6, 0, Math.PI*2); ctx.arc(5, -15, 6, 0, Math.PI*2); ctx.fill();
+    // Handle
+    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(10, -2, 8, -Math.PI/2, Math.PI/2); ctx.stroke();
+    ctx.restore();
+  };
+
+  const getPowerupColor = (type) => {
+    const colors = {
+      speedBoost: "#FF6B6B",
+      invincibility: "#4ECDC4",
+      doubleJump: "#95E1D3",
+      scoreMultiplier: "#FFD93D"
+    };
+    return colors[type] || "#FFF";
+  };
+
+  const getPowerupSymbol = (type) => {
+    const symbols = {
+      speedBoost: "⚡",
+      invincibility: "🛡",
+      doubleJump: "🦘",
+      scoreMultiplier: "⭐"
+    };
+    return symbols[type] || "?";
+  };
+
+    const activatePowerup = (type) => {
+    const p = world.powerups[type];
+    p.active = true;
+    p.timeLeft = 8; // 8 seconds
+    
+    if (type === "doubleJump") {
+      viking.maxJumps = 2;
+    } else if (type === "scoreMultiplier") {
+      p.multiplier = 2;
+    }
+    updateHUD();
+  };
+
+  const drawPowerup = (x, y, type, rotation, pulse) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    
+    const size = 20 * pulse;
+    const color = getPowerupColor(type);
+    
+    // Glow effect
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
+    gradient.addColorStop(0, color + "80");
+    gradient.addColorStop(0.5, color + "40");
+    gradient.addColorStop(1, color + "00");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Main circle
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, size, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Border
+    ctx.strokeStyle = "#FFF";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Symbol
+    ctx.fillStyle = "#FFF";
+    ctx.font = `${size * 0.8}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(getPowerupSymbol(type), 0, 0);
+    
+    ctx.restore();
+  };
+
+  const drawParticle = (p) => {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  const update = (dt) => {
+    if (!world.started || world.paused || world.over) return;
+
+    world.t += dt;
+    
+    // Update powerups
+    const baseSpeed = 450;
+    const speedMultiplier = world.powerups.speedBoost.active ? 1.5 : 1;
+    world.speed = Math.min(900, world.speed + 5 * dt * speedMultiplier);
+    if (!world.powerups.speedBoost.active && world.speed > baseSpeed) {
+      world.speed = Math.max(baseSpeed, world.speed - 10 * dt);
+    }
+    
+    viking.x += world.speed * dt;
+    const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
+    world.score += world.speed * 0.01 * dt * scoreMultiplier;
+    
+    // Update powerup timers
+    for (const key in world.powerups) {
+      const p = world.powerups[key];
+      if (p.active) {
+        p.timeLeft -= dt;
+        if (p.timeLeft <= 0) {
+          p.active = false;
+          if (key === "doubleJump") viking.maxJumps = 1;
+          if (key === "scoreMultiplier") p.multiplier = 1;
+          updateHUD();
+        }
+      }
+    }
+
+    // Jump logic
+    if (Input.jump && !viking.ducking && viking.jumpsUsed < viking.maxJumps) {
+      if (viking.onGround || viking.jumpsUsed === 0) {
+        viking.vy = -650;
+        viking.onGround = false;
+        viking.jumpsUsed++;
+        beep("sine", 200, 0.1);
+      }
+    }
+    viking.vy += 1600 * dt;
+    viking.y += viking.vy * dt;
+
+    if (viking.y >= world.groundY) {
+      viking.y = world.groundY;
+      viking.vy = 0;
+      viking.onGround = true;
+      viking.jumpsUsed = 0;
+    }
+
+    viking.ducking = Input.duck && viking.onGround;
+
+    // Spawn logic
+    if (viking.x > world.nextObstacleAt - W) {
+      spawnObstacle(world.nextObstacleAt);
+      world.nextObstacleAt += rand(300, 600);
+    }
+    if (viking.x > world.nextMeadAt - W) {
+      spawnMead(world.nextMeadAt);
+      world.nextMeadAt += rand(200, 400);
+    }
+    if (viking.x > world.nextPowerupAt - W) {
+      spawnPowerup(world.nextPowerupAt);
+      world.nextPowerupAt += rand(800, 1500);
+    }
+    
+    // Update powerups
+    for (const p of Powerups) {
+      if (!p.taken) {
+        p.rotation += dt * 3;
+        p.pulse = Math.sin(world.t * 8) * 0.2 + 1;
+      }
+    }
+    
+    // Update particles
+    for (let i = Particles.length - 1; i >= 0; i--) {
+      const p = Particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 300 * dt;
+      p.life -= dt * 2;
+      if (p.life <= 0) Particles.splice(i, 1);
+    }
+
+    // Collisions
+    const vH = viking.ducking ? 30 : 60;
+    const vRect = { x: viking.x - 15, y: viking.y - vH, w: 30, h: vH };
+
+    for (const o of Obstacles) {
+      if (viking.x > o.x - 20 && viking.x < o.x + 20 && viking.y > world.groundY - 40 && !viking.ducking) {
+        if (!world.powerups.invincibility.active) {
+          world.over = true;
+          viking.faceplant = 1.5;
+          statePill.textContent = "Washed Up";
+          beep("sawtooth", 100, 0.4);
+          setTimeout(() => { 
+            overlay.style.display = "grid";
+            $("overlayTitle").textContent = "Game Over!";
+            $("overlayText").textContent = `Final Score: ${Math.floor(world.score)}\nMead Collected: ${world.mead}\n\nPress Restart to play again!`;
+            startBtn.textContent = "Play Again";
+          }, 1000);
+        } else {
+          addParticle(o.x, world.groundY - 20, "#4ECDC4", 8);
+          beep("sine", 400, 0.1);
+        }
+      }
+    }
+
+    for (const m of Meads) {
+      if (!m.taken && Math.hypot(viking.x - m.x, (viking.y-30) - m.y) < 40) {
+        m.taken = true;
+        world.mead++;
+        world.score += 50 * scoreMultiplier;
+        addParticle(m.x, m.y, "#FFD700", 5);
+        beep("sine", 800, 0.1);
+        updateHUD();
+      }
+    }
+    
+    // Powerup collisions
+    for (const p of Powerups) {
+      if (!p.taken && Math.hypot(viking.x - p.x, (viking.y-30) - p.y) < 35) {
+        p.taken = true;
+        activatePowerup(p.type);
+        addParticle(p.x, p.y, getPowerupColor(p.type), 10);
+        beep("square", 600, 0.2);
+      }
+    }
+
+    world.camX = viking.x - 150;
+  };
+
+  const draw = () => {
+    ctx.clearRect(0, 0, W, H);
+    
+    // Fjord Background (Water)
+    const grad = ctx.createLinearGradient(0, world.groundY, 0, H);
+    grad.addColorStop(0, "#2980b9"); grad.addColorStop(1, "#2c3e50");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, world.groundY, W, H - world.groundY);
+
+    // Snowy Ground Line
+    ctx.strokeStyle = "#ecf0f1"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(0, world.groundY); ctx.lineTo(W, world.groundY); ctx.stroke();
+
+    ctx.save();
+    ctx.translate(-world.camX, 0);
+
+    for (const m of Meads) if (!m.taken) drawMead(m.x, m.y);
+    for (const p of Powerups) if (!p.taken) drawPowerup(p.x, p.y, p.type, p.rotation, p.pulse);
+    for (const o of Obstacles) {
+      if (o.type === "shield") drawShield(o.x, o.y);
+      else drawRock(o.x, o.y);
+    }
+
+    // Draw invincibility effect
+    if (world.powerups.invincibility.active) {
+      ctx.save();
+      ctx.globalAlpha = 0.3 + Math.sin(world.t * 20) * 0.2;
+      ctx.strokeStyle = "#4ECDC4";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(viking.x, viking.y - 30, 40, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawViking(viking.x, viking.y);
+    ctx.restore();
+    
+    // Draw particles
+    ctx.save();
+    ctx.translate(-world.camX, 0);
+    for (const p of Particles) drawParticle(p);
+    ctx.restore();
+    
+    // Draw powerup indicators
+    if (world.started && !world.paused && !world.over) {
+      let yPos = 80;
+      for (const key in world.powerups) {
+        const p = world.powerups[key];
+        if (p.active) {
+          ctx.save();
+          ctx.fillStyle = getPowerupColor(key);
+          ctx.font = "16px Arial";
+          ctx.textAlign = "left";
+          ctx.fillText(`${getPowerupSymbol(key)} ${Math.ceil(p.timeLeft)}s`, 15, yPos);
+          ctx.restore();
+          yPos += 25;
+        }
+      }
+    }
+  };
+
+  let last = performance.now();
+  const tick = (t) => {
+    const dt = Math.min(0.1, (t - last) / 1000);
+    last = t;
+    update(dt);
+    draw();
+    requestAnimationFrame(tick);
+  };
+
+  startBtn.onclick = start;
+  restartBtn.onclick = () => { 
+    resetWorld(); 
+    // Don't auto-start, show start screen
+  };
+  pauseBtn.onclick = () => { 
+    if (!world.started || world.over) return;
+    world.paused = !world.paused; 
+    pauseBtn.textContent = world.paused ? "Resume" : "Pause";
+    statePill.textContent = world.paused ? "Paused" : "Raiding";
+  };
+  soundBtn.onclick = () => { OPT.sound = !OPT.sound; soundBtn.textContent = `Sound: ${OPT.sound ? "On" : "Off"}`; };
+
+  resetWorld();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
