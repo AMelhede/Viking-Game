@@ -483,11 +483,11 @@
             <div class="stat"><div class="k">Mead</div><div class="v" id="meadV">0</div></div>
             <div class="stat" id="multiplierStat" style="display: none;"><div class="k">Multiplier</div><div class="v" id="multiplierV">1x</div></div>
           </div>
-          <div class="lives-display" id="livesDisplay">
-            <span class="life-heart" id="life1">❤️</span>
-            <span class="life-heart" id="life2">❤️</span>
-            <span class="life-heart" id="life3">❤️</span>
-          </div>
+        </div>
+        <div class="lives-display" id="livesDisplay">
+          <span class="life-heart" id="life1">❤️</span>
+          <span class="life-heart" id="life2">❤️</span>
+          <span class="life-heart" id="life3">❤️</span>
         </div>
         <div class="rightpack">
           <button class="btn" id="pauseBtn">Pause</button>
@@ -857,7 +857,8 @@
         Input.jumpJustPressed = true;
       }
       Input.jump = true;
-      if (viking.hasWeapon && viking.onGround) {
+      // Attack if you have a weapon (can attack in air or on ground)
+      if (viking.hasWeapon) {
         Input.attack = true;
       }
       if(!world.started && !world.over) start(); 
@@ -881,7 +882,8 @@
       Input.jumpJustPressed = true;
     }
     Input.jump = true;
-    if (viking.hasWeapon && viking.onGround) {
+    // Attack if you have a weapon
+    if (viking.hasWeapon) {
       Input.attack = true;
     }
     if(!world.started && !world.over) start(); 
@@ -1176,21 +1178,30 @@
 
   const checkPlatformCollision = (dt) => {
     for (const p of Platforms) {
-      const vikingLeft = viking.x - 15;
-      const vikingRight = viking.x + 15;
+      const vikingLeft = viking.x - 20;
+      const vikingRight = viking.x + 20;
       const platformLeft = p.x;
       const platformRight = p.x + p.width;
       const vikingBottom = viking.y;
+      const vikingTop = viking.y - 70;
       const platformTop = p.y;
+      const platformBottom = p.y + p.height;
       
-      if (vikingRight > platformLeft && vikingLeft < platformRight &&
-          vikingBottom <= platformTop && vikingBottom + viking.vy * dt >= platformTop &&
-          viking.vy >= 0) {
-        viking.y = platformTop;
-        viking.vy = 0;
-        viking.onGround = true;
-        viking.jumpsUsed = 0;
-        return true;
+      // Check if viking is horizontally overlapping with platform
+      if (vikingRight > platformLeft && vikingLeft < platformRight) {
+        // Check if viking is falling onto platform from above
+        if (vikingBottom <= platformTop + 5 && vikingBottom + viking.vy * dt >= platformTop && viking.vy >= 0) {
+          viking.y = platformTop;
+          viking.vy = 0;
+          viking.onGround = true;
+          viking.jumpsUsed = 0;
+          return true;
+        }
+        // Check if viking is hitting platform from below
+        if (vikingTop >= platformBottom - 5 && vikingTop + viking.vy * dt <= platformBottom && viking.vy < 0) {
+          viking.vy = 0;
+          return true;
+        }
       }
     }
     return false;
@@ -1235,18 +1246,23 @@
       viking.attackCooldown -= dt;
     }
     
-    if (Input.attack && viking.hasWeapon && viking.onGround && viking.attackCooldown <= 0) {
+    if (Input.attack && viking.hasWeapon && viking.attackCooldown <= 0) {
       viking.attacking = true;
       viking.attackCooldown = 0.5;
+      Input.attack = false; // Reset attack input
       
       // Check for enemy hits
       for (const e of Enemies) {
-        if (!e.defeated && Math.hypot(viking.x - e.x, viking.y - e.y) < 60) {
-          e.defeated = true;
-          e.health = 0;
-          world.score += 100 * scoreMultiplier;
-          addParticle(e.x, e.y, "#dc2626", 15);
-          beep("square", 400, 0.2);
+        if (!e.defeated && !e.hit) {
+          const dist = Math.hypot(viking.x - e.x, viking.y - e.y);
+          if (dist < 70) {
+            e.defeated = true;
+            e.hit = true;
+            world.score += 100 * scoreMultiplier;
+            addParticle(e.x, e.y, "#dc2626", 15);
+            beep("square", 400, 0.2);
+            updateHUD();
+          }
         }
       }
       
@@ -1317,12 +1333,13 @@
       p.x -= world.speed * dt;
     }
     
-    // Update enemies - move backwards relative to world speed
+    // Update enemies - move backwards relative to world speed (towards player)
     for (const e of Enemies) {
       if (!e.defeated) {
-        e.x -= world.speed * 0.3 * dt; // Move backwards at 30% of world speed
-        // Remove if off screen
-        if (e.x < viking.x - W - 100) {
+        // Enemies move backwards slower than world speed, so they approach the player
+        e.x -= world.speed * 0.4 * dt;
+        // Remove if off screen behind player
+        if (e.x < viking.x - W - 200) {
           e.defeated = true;
         }
       }
@@ -1410,33 +1427,32 @@
     for (const e of Enemies) {
       if (!e.defeated && !e.hit) {
         const distX = Math.abs(viking.x - e.x);
-        const distY = Math.abs(viking.y - e.y);
-        if (distX < 30 && distY < 40) {
-          if (!viking.hasWeapon && !world.powerups.invincibility.active) {
-            e.hit = true;
-            e.defeated = true;
-            world.lives--;
-            addParticle(e.x, e.y, "#ef4444", 15);
-            beep("sawtooth", 150, 0.3);
-            updateHUD();
-            
-            if (world.lives <= 0) {
-              world.over = true;
-              viking.faceplant = 1.5;
-              statePill.textContent = "Game Over";
-              HighScoreManager.saveScore(world.score, 'alltime');
-              beep("sawtooth", 100, 0.4);
-              setTimeout(() => { 
-                overlay.style.display = "grid";
-                $("overlayTitle").textContent = "Game Over";
-                $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
-                startBtn.textContent = "Play Again";
-              }, 1200);
-            } else {
-              // Brief invincibility after losing a life
-              world.powerups.invincibility.active = true;
-              world.powerups.invincibility.timeLeft = 2;
-            }
+        const distY = Math.abs((viking.y - 35) - (e.y - e.h/2));
+        // Better collision detection - check if viking overlaps with enemy
+        if (distX < 35 && distY < 45 && !viking.hasWeapon && !world.powerups.invincibility.active) {
+          e.hit = true;
+          e.defeated = true;
+          world.lives--;
+          addParticle(e.x, e.y, "#ef4444", 15);
+          beep("sawtooth", 150, 0.3);
+          updateHUD();
+          
+          if (world.lives <= 0) {
+            world.over = true;
+            viking.faceplant = 1.5;
+            statePill.textContent = "Game Over";
+            HighScoreManager.saveScore(world.score, 'alltime');
+            beep("sawtooth", 100, 0.4);
+            setTimeout(() => { 
+              overlay.style.display = "grid";
+              $("overlayTitle").textContent = "Game Over";
+              $("overlayText").textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}\n\nGet a weapon to defeat enemies!`;
+              startBtn.textContent = "Play Again";
+            }, 1200);
+          } else {
+            // Brief invincibility after losing a life
+            world.powerups.invincibility.active = true;
+            world.powerups.invincibility.timeLeft = 2;
           }
         }
       }
