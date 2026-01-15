@@ -179,25 +179,28 @@
     
     .hint{ 
       max-width: 700px; 
-      padding: 12px 20px; 
-      border-radius: 10px; 
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text-secondary); 
-      font-size: 12px; 
+      padding: 14px 24px; 
+      border-radius: 12px; 
+      background: #ffffff;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      color: #000000; 
+      font-size: 13px; 
+      font-weight: 600;
       text-align: center; 
       pointer-events: auto;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     }
     
     kbd{ 
-      background: rgba(255, 255, 255, 0.1); 
+      background: #000000; 
       border-radius: 4px; 
-      padding: 2px 6px; 
-      color: var(--text); 
-      border: 1px solid rgba(255, 255, 255, 0.15); 
-      margin: 0 2px; 
-      font-weight: 500;
-      font-size: 11px;
+      padding: 3px 8px; 
+      color: #ffffff; 
+      border: 1px solid #000000; 
+      margin: 0 3px; 
+      font-weight: 700;
+      font-size: 12px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .canvas{ 
@@ -891,10 +894,10 @@
         Input.jumpJustPressed = true;
       }
       Input.jump = true;
-      // Attack when you have weapon - SET IMMEDIATELY
-      if (viking.hasWeapon && world.started && !world.paused && !world.over) {
+      // Attack when you have weapon - ALWAYS SET
+      if (viking.hasWeapon) {
         Input.attackPressed = true;
-        console.log("Attack key pressed! hasWeapon:", viking.hasWeapon, "attackCooldown:", viking.attackCooldown);
+        console.log("✓ SPACE PRESSED - Attack set! hasWeapon:", viking.hasWeapon, "cooldown:", viking.attackCooldown.toFixed(2));
       }
       if(!world.started && !world.over) start(); 
     }
@@ -916,10 +919,10 @@
       Input.jumpJustPressed = true;
     }
     Input.jump = true;
-    // Attack when you have weapon - SET IMMEDIATELY
-    if (viking.hasWeapon && world.started && !world.paused && !world.over) {
+    // Attack when you have weapon - ALWAYS SET
+    if (viking.hasWeapon) {
       Input.attackPressed = true;
-      console.log("Attack touch pressed! hasWeapon:", viking.hasWeapon);
+      console.log("✓ TOUCH PRESSED - Attack set! hasWeapon:", viking.hasWeapon);
     }
     if(!world.started && !world.over) start(); 
     e.preventDefault();
@@ -1311,45 +1314,54 @@
       viking.attackCooldown -= dt;
     }
     
-    // Attack system - SIMPLIFIED AND GUARANTEED TO WORK
-    if (viking.hasWeapon && viking.attackCooldown <= 0) {
-      // Check if attack button is pressed
-      if (Input.attackPressed && !viking.ducking) {
+    // Attack system - COMPLETELY REWRITTEN TO WORK
+    // Check attack EVERY FRAME when you have weapon
+    if (viking.hasWeapon) {
+      // If attack is pressed and cooldown is ready
+      if (Input.attackPressed && viking.attackCooldown <= 0 && !viking.ducking) {
+        console.log("ATTACK TRIGGERED! Enemies:", Enemies.length);
         viking.attacking = true;
-        viking.attackCooldown = 0.5;
+        viking.attackCooldown = 0.6;
         
-        // Attack ALL enemies in range
+        // Attack ALL enemies in range - MASSIVE RANGE
         let killedAny = false;
         for (let i = Enemies.length - 1; i >= 0; i--) {
           const e = Enemies[i];
           if (!e.defeated) {
             const distX = Math.abs(viking.x - e.x);
             const distY = Math.abs(viking.y - e.y);
-            // HUGE attack range: 200px horizontal, 150px vertical
-            if (distX < 200 && distY < 150) {
+            // MASSIVE attack range: 250px horizontal, 200px vertical
+            if (distX < 250 && distY < 200) {
+              console.log("KILLING ENEMY at distance:", distX, distY);
               e.defeated = true;
               e.hit = true;
               killedAny = true;
               world.score += 100 * scoreMultiplier;
-              addParticle(e.x, e.y, "#dc2626", 35);
-              beep("square", 800, 0.5);
+              addParticle(e.x, e.y, "#dc2626", 40);
+              beep("square", 900, 0.6);
               updateHUD();
               // Remove enemy immediately
               Enemies.splice(i, 1);
-              console.log("ENEMY KILLED! Remaining:", Enemies.length);
+              console.log("✓ ENEMY KILLED! Remaining:", Enemies.length);
             }
           }
         }
         
         if (killedAny) {
-          console.log("Attack successful! Killed enemy");
+          console.log("✓✓✓ ATTACK SUCCESSFUL! ✓✓✓");
         } else {
-          console.log("Attack attempted but no enemy in range");
+          console.log("✗ Attack attempted but no enemy in range. Enemies:", Enemies.length);
+          if (Enemies.length > 0) {
+            const e = Enemies[0];
+            const distX = Math.abs(viking.x - e.x);
+            const distY = Math.abs(viking.y - e.y);
+            console.log("Closest enemy distance:", distX, distY);
+          }
         }
         
-        // Reset attack input
+        // Reset attack input AFTER processing
         Input.attackPressed = false;
-        setTimeout(() => { viking.attacking = false; }, 400);
+        setTimeout(() => { viking.attacking = false; }, 500);
       }
     }
 
