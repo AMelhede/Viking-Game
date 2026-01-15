@@ -1285,13 +1285,14 @@
     world.t += dt;
     
     const baseSpeed = 200;
-    const speedMultiplier = world.powerups.speedBoost.active ? 1.5 : 1;
-    world.speed = Math.min(400, world.speed + 2 * dt * speedMultiplier);
-    if (!world.powerups.speedBoost.active && world.speed > baseSpeed) {
-      world.speed = Math.max(baseSpeed, world.speed - 5 * dt);
+    world.speed = Math.min(350, world.speed + 2 * dt);
+    if (world.speed > baseSpeed) {
+      world.speed = Math.max(baseSpeed, world.speed - 3 * dt);
     }
     
-    viking.x += world.speed * dt;
+    // Speed boost: 1.5x movement speed when active
+    const actualSpeed = world.powerups.speedBoost.active ? world.speed * 1.5 : world.speed;
+    viking.x += actualSpeed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
     world.score += world.speed * 0.015 * dt * scoreMultiplier;
     
