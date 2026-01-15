@@ -781,17 +781,26 @@
       }
     },
 
-    async saveScore(score) {
+    async saveScore(score, playerName = null) {
       const now = new Date();
+      const playerId = localStorage.getItem('playerId') || `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const name = playerName || localStorage.getItem('playerName') || `Player${playerId.substring(7, 11)}`;
+      
       const scoreEntry = { 
         score, 
         date: now.toISOString(),
-        playerId: localStorage.getItem('playerId') || `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        playerId: playerId,
+        playerName: name
       };
       
       // Generate player ID if not exists
       if (!localStorage.getItem('playerId')) {
-        localStorage.setItem('playerId', scoreEntry.playerId);
+        localStorage.setItem('playerId', playerId);
+      }
+      
+      // Save player name if provided
+      if (playerName) {
+        localStorage.setItem('playerName', playerName);
       }
       
       // Save to all periods
@@ -851,15 +860,20 @@
         return;
       }
       
+      const currentPlayerId = localStorage.getItem('playerId');
+      const currentPlayerName = localStorage.getItem('playerName') || 'You';
+      
       scores.forEach((item, index) => {
         const div = document.createElement('div');
-        div.className = `highscore-item ${index === 0 ? 'rank-1' : ''}`;
+        const isCurrentPlayer = item.playerId === currentPlayerId;
+        div.className = `highscore-item ${index === 0 ? 'rank-1' : ''} ${isCurrentPlayer ? 'current-player' : ''}`;
         const date = new Date(item.date);
-        const playerName = item.playerId ? item.playerId.substring(0, 8) : 'Player';
+        const playerName = item.playerName || item.playerId?.substring(0, 8) || 'Player';
+        const displayName = isCurrentPlayer ? `${playerName} (You)` : playerName;
         div.innerHTML = `
           <div>
             <div class="highscore-rank">#${index + 1}</div>
-            <div class="highscore-date">${playerName} • ${date.toLocaleDateString()}</div>
+            <div class="highscore-date">${displayName} • ${date.toLocaleDateString()}</div>
           </div>
           <div class="highscore-score">${Math.floor(item.score).toLocaleString()}</div>
         `;
@@ -1294,26 +1308,35 @@
       viking.attackCooldown -= dt;
     }
     
-    // Attack on space press when you have weapon - SIMPLIFIED AND WORKING
-    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0) {
+    // Attack on space press when you have weapon - COMPLETELY FIXED
+    if (Input.attackPressed && viking.hasWeapon && viking.attackCooldown <= 0 && !viking.ducking) {
       viking.attacking = true;
-      viking.attackCooldown = 0.5;
+      viking.attackCooldown = 0.4;
       
-      // Attack enemies - VERY LARGE RANGE
-      for (const e of Enemies) {
-        if (!e.defeated && !e.hit) {
+      // Attack enemies - VERY LARGE RANGE AND PROPER CHECKING
+      let killedEnemy = false;
+      for (let i = Enemies.length - 1; i >= 0; i--) {
+        const e = Enemies[i];
+        if (!e.defeated) {
           const distX = Math.abs(viking.x - e.x);
           const distY = Math.abs(viking.y - e.y);
           // Attack range: 150px horizontally, 120px vertically - EXTREMELY FORGIVING
           if (distX < 150 && distY < 120) {
             e.defeated = true;
             e.hit = true;
+            killedEnemy = true;
             world.score += 100 * scoreMultiplier;
             addParticle(e.x, e.y, "#dc2626", 30);
             beep("square", 700, 0.4);
             updateHUD();
+            // Remove enemy from array
+            Enemies.splice(i, 1);
           }
         }
+      }
+      
+      if (killedEnemy) {
+        console.log("Enemy killed!");
       }
       
       Input.attackPressed = false; // Always reset after attack
@@ -1470,34 +1493,35 @@
       }
     }
 
-    // Collisions - Enemies - FIXED TO ACTUALLY KILL YOU
+    // Collisions - Enemies - COMPLETELY FIXED TO KILL YOU
     for (const e of Enemies) {
       if (!e.defeated) {
         const distX = Math.abs(viking.x - e.x);
         const distY = Math.abs(viking.y - e.y);
-        // Enemy collision: 50px horizontal, 70px vertical - MORE FORGIVING COLLISION
+        // Enemy collision: 50px horizontal, 70px vertical
         if (distX < 50 && distY < 70) {
-          // If you're attacking, don't take damage
+          // If you're attacking RIGHT NOW, you kill the enemy (handled above)
           if (viking.attacking) {
-            // Attack handles this
-            continue;
+            continue; // Attack system handles killing
           }
           
-          // If you don't have a weapon OR you're not attacking, you take damage
-          if (!viking.hasWeapon && !world.powerups.invincibility.active) {
-            if (!e.hit) { // Only hit once
+          // Otherwise, enemy hits you - YOU TAKE DAMAGE
+          if (!world.powerups.invincibility.active) {
+            // Mark enemy as hit so it doesn't hit multiple times
+            if (!e.hit) {
               e.hit = true;
               world.lives--;
-              addParticle(viking.x, viking.y, "#ef4444", 20);
-              beep("sawtooth", 200, 0.4);
+              addParticle(viking.x, viking.y, "#ef4444", 25);
+              beep("sawtooth", 250, 0.5);
               updateHUD();
+              console.log("Hit by enemy! Lives:", world.lives);
               
               if (world.lives <= 0) {
                 world.over = true;
                 viking.faceplant = 1.5;
                 if (statePill) statePill.textContent = "Game Over";
-                HighScoreManager.saveScore(world.score);
-                beep("sawtooth", 100, 0.5);
+                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+                beep("sawtooth", 100, 0.6);
                 setTimeout(() => { 
                   if (overlay) {
                     overlay.style.display = "grid";
@@ -1512,7 +1536,7 @@
                 }, 1200);
               } else {
                 world.powerups.invincibility.active = true;
-                world.powerups.invincibility.timeLeft = 1.5; // Shorter invincibility
+                world.powerups.invincibility.timeLeft = 1.5;
               }
             }
           }
