@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Viking Run</title>
-  <!-- WebGazer.js for Eye Tracking -->
-  <script src="https://webgazer.cs.brown.edu/webgazer.js" type="text/javascript"></script>
+  <!-- MediaPipe Face Landmarker for Eye/Gaze Tracking + rPPG -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0"></script>
   <style>
     :root{
       /* Apple Design System Colors - HIGH CONTRAST & READABLE */
@@ -293,6 +293,54 @@
       50% { opacity: 0.5; transform: scale(1.2); }
     }
     
+    .bpm-display {
+      position: absolute;
+      top: 110px;
+      left: 20px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(185, 28, 28, 0.9));
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      z-index: 150;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    
+    .bpm-display.active {
+      display: flex;
+    }
+    
+    .bpm-display .heart-icon {
+      font-size: 18px;
+      animation: heartbeat 1s ease-in-out infinite;
+    }
+    
+    .bpm-display #bpmValue {
+      font-size: 20px;
+      font-weight: 800;
+      min-width: 36px;
+      text-align: center;
+    }
+    
+    .bpm-display .bpm-label {
+      font-size: 11px;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      15% { transform: scale(1.15); }
+      30% { transform: scale(1); }
+      45% { transform: scale(1.1); }
+      60% { transform: scale(1); }
+    }
+    
     .calibration-overlay {
       position: absolute;
       inset: 0;
@@ -489,6 +537,13 @@
         <span>Eye Tracking Active</span>
       </div>
       
+      <!-- Heart Rate (BPM) Display -->
+      <div class="bpm-display" id="bpmDisplay">
+        <span class="heart-icon">❤️</span>
+        <span id="bpmValue">--</span>
+        <span class="bpm-label">BPM</span>
+      </div>
+      
       <!-- Gaze Zone Indicator - shows what zone you're looking at -->
       <div id="gazeZoneIndicator" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; color:white; z-index:1000; display:none; pointer-events:none;"></div>
       
@@ -496,7 +551,7 @@
       <div class="calibration-overlay" id="calibrationOverlay">
         <div class="calibration-card">
           <h2>👁️ Eye Tracking Calibration</h2>
-          <p style="margin-bottom: 16px;"><strong>How it works:</strong> Look at each blue dot and click it.<br>This teaches WebGazer where you're looking.</p>
+          <p style="margin-bottom: 16px;"><strong>How it works:</strong> Look at each blue dot and click it.<br>This trains the eye tracker on your gaze patterns.</p>
           <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
             <p style="margin: 0; font-size: 14px; color: #0369a1;">
               <strong>👆 TIP:</strong> Keep your head still and move only your eyes.<br>
@@ -2543,17 +2598,9 @@
     pauseBtn.textContent = world.paused ? "Resume" : "Pause";
     statePill.textContent = world.paused ? "Paused" : "Playing";
     
-    // Pause/resume WebGazer for performance
-    if (typeof webgazer !== 'undefined' && eyeTrackingEnabled) {
-      try {
-        if (world.paused) {
-          webgazer.pause();
-        } else {
-          webgazer.resume();
-        }
-      } catch (e) {
-        console.warn("WebGazer pause/resume error:", e);
-      }
+    // Hide/show gaze zone indicator when paused
+    if (gazeZoneIndicator && eyeTrackingEnabled) {
+      gazeZoneIndicator.style.display = world.paused ? 'none' : 'block';
     }
   };
   
@@ -2605,7 +2652,7 @@
   };
 
   // ==========================================
-  // EYE TRACKING WITH WEBGAZER.JS
+  // EYE TRACKING WITH MEDIAPIPE FACE LANDMARKER + rPPG
   // ==========================================
   
   const eyeTrackBtn = $("eyeTrackBtn");
@@ -2615,17 +2662,41 @@
   const finishCalibrationBtn = $("finishCalibrationBtn");
   const eyeTrackingIndicator = $("eyeTrackingIndicator");
   const gazeCursor = $("gazeCursor");
+  const gazeZoneIndicator = $("gazeZoneIndicator");
   
   let eyeTrackingEnabled = false;
   let calibrationClicks = 0;
-  let gazeY = 0;
   let lastGazeAction = 0;
   
-  // Check if WebGazer is available
-  const webgazerAvailable = typeof webgazer !== 'undefined';
+  // MediaPipe Face Landmarker
+  let faceLandmarker = null;
+  let videoElement = null;
+  let videoStream = null;
+  let animationFrameId = null;
   
-  if (!webgazerAvailable) {
-    console.warn("WebGazer.js not loaded - eye tracking disabled");
+  // Gaze calibration thresholds (learned from calibration)
+  const gazeCalibration = {
+    upThreshold: 0.35,    // Iris position ratio for "looking up"
+    downThreshold: 0.65,  // Iris position ratio for "looking down"
+    samples: [],          // Calibration samples
+    isCalibrating: false
+  };
+  
+  // rPPG Heart Rate Detection
+  const rPPG = {
+    signalBuffer: [],      // Green channel samples
+    timestamps: [],        // Sample timestamps
+    bufferSize: 300,       // ~10 seconds at 30fps
+    bpm: 0,
+    lastBPMUpdate: 0,
+    smoothedBPM: 0
+  };
+  
+  // Check if MediaPipe is available
+  const mediapipeAvailable = typeof vision !== 'undefined';
+  
+  if (!mediapipeAvailable) {
+    console.warn("MediaPipe not loaded - eye tracking disabled");
     if (eyeTrackBtn) {
       eyeTrackBtn.textContent = "👁️ Eye Tracking Unavailable";
       eyeTrackBtn.disabled = true;
@@ -2633,9 +2704,316 @@
     }
   }
   
+  // Initialize MediaPipe Face Landmarker
+  const initFaceLandmarker = async () => {
+    try {
+      const { FaceLandmarker, FilesetResolver } = vision;
+      
+      const filesetResolver = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+      );
+      
+      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          delegate: "GPU"
+        },
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: false,
+        runningMode: "VIDEO",
+        numFaces: 1
+      });
+      
+      console.log("MediaPipe Face Landmarker initialized");
+      return true;
+    } catch (e) {
+      console.error("Error initializing Face Landmarker:", e);
+      return false;
+    }
+  };
+  
+  // Start camera
+  const startCamera = async () => {
+    try {
+      // Create hidden video element
+      videoElement = document.createElement('video');
+      videoElement.setAttribute('autoplay', '');
+      videoElement.setAttribute('playsinline', '');
+      videoElement.style.position = 'fixed';
+      videoElement.style.top = '10px';
+      videoElement.style.right = '10px';
+      videoElement.style.width = '160px';
+      videoElement.style.height = '120px';
+      videoElement.style.borderRadius = '8px';
+      videoElement.style.border = '2px solid #4ade80';
+      videoElement.style.zIndex = '9999';
+      videoElement.style.transform = 'scaleX(-1)'; // Mirror
+      document.body.appendChild(videoElement);
+      
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user"
+        }
+      });
+      
+      videoElement.srcObject = videoStream;
+      await videoElement.play();
+      
+      console.log("Camera started");
+      return true;
+    } catch (e) {
+      console.error("Error starting camera:", e);
+      alert("Could not access camera. Please allow camera access.");
+      return false;
+    }
+  };
+  
+  // Calculate gaze direction from iris landmarks
+  const calculateGaze = (landmarks) => {
+    if (!landmarks || landmarks.length < 478) return { vertical: 0.5, horizontal: 0.5 };
+    
+    // Key landmarks for iris and eye corners
+    // Left eye: corners 33 (outer), 133 (inner), iris center 468
+    // Right eye: corners 362 (outer), 263 (inner), iris center 473
+    
+    const leftIris = landmarks[468];
+    const leftOuter = landmarks[33];
+    const leftInner = landmarks[133];
+    const leftTop = landmarks[159];
+    const leftBottom = landmarks[145];
+    
+    const rightIris = landmarks[473];
+    const rightOuter = landmarks[362];
+    const rightInner = landmarks[263];
+    const rightTop = landmarks[386];
+    const rightBottom = landmarks[374];
+    
+    // Calculate horizontal position (0 = left, 1 = right)
+    const leftEyeWidth = Math.abs(leftInner.x - leftOuter.x);
+    const leftIrisHoriz = (leftIris.x - leftOuter.x) / leftEyeWidth;
+    
+    const rightEyeWidth = Math.abs(rightInner.x - rightOuter.x);
+    const rightIrisHoriz = (rightIris.x - rightOuter.x) / rightEyeWidth;
+    
+    const horizontal = (leftIrisHoriz + rightIrisHoriz) / 2;
+    
+    // Calculate vertical position (0 = up, 1 = down)
+    const leftEyeHeight = Math.abs(leftBottom.y - leftTop.y);
+    const leftIrisVert = (leftIris.y - leftTop.y) / leftEyeHeight;
+    
+    const rightEyeHeight = Math.abs(rightBottom.y - rightTop.y);
+    const rightIrisVert = (rightIris.y - rightTop.y) / rightEyeHeight;
+    
+    const vertical = (leftIrisVert + rightIrisVert) / 2;
+    
+    return { vertical: Math.max(0, Math.min(1, vertical)), horizontal: Math.max(0, Math.min(1, horizontal)) };
+  };
+  
+  // Extract forehead ROI for rPPG
+  const extractForeheadROI = (landmarks, videoWidth, videoHeight) => {
+    if (!landmarks || landmarks.length < 478) return null;
+    
+    // Forehead landmarks: 10 (center top), 67 (left), 109 (center), 338 (right)
+    const forehead = [landmarks[10], landmarks[67], landmarks[109], landmarks[338]];
+    
+    // Calculate bounding box
+    const xs = forehead.map(p => p.x * videoWidth);
+    const ys = forehead.map(p => p.y * videoHeight);
+    
+    return {
+      x: Math.min(...xs),
+      y: Math.min(...ys),
+      width: Math.max(...xs) - Math.min(...xs),
+      height: Math.max(...ys) - Math.min(...ys)
+    };
+  };
+  
+  // Process rPPG signal and calculate heart rate
+  const processRPPG = (greenValue, timestamp) => {
+    rPPG.signalBuffer.push(greenValue);
+    rPPG.timestamps.push(timestamp);
+    
+    // Keep buffer at fixed size
+    while (rPPG.signalBuffer.length > rPPG.bufferSize) {
+      rPPG.signalBuffer.shift();
+      rPPG.timestamps.shift();
+    }
+    
+    // Need at least 5 seconds of data
+    if (rPPG.signalBuffer.length < 150) return;
+    
+    // Update BPM every 2 seconds
+    if (timestamp - rPPG.lastBPMUpdate < 2000) return;
+    rPPG.lastBPMUpdate = timestamp;
+    
+    // Simple peak detection using zero-crossing of derivative
+    const signal = [...rPPG.signalBuffer];
+    
+    // Detrend (remove DC component)
+    const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
+    const detrended = signal.map(v => v - mean);
+    
+    // Simple moving average filter
+    const windowSize = 5;
+    const filtered = [];
+    for (let i = 0; i < detrended.length; i++) {
+      let sum = 0;
+      let count = 0;
+      for (let j = Math.max(0, i - windowSize); j <= Math.min(detrended.length - 1, i + windowSize); j++) {
+        sum += detrended[j];
+        count++;
+      }
+      filtered.push(sum / count);
+    }
+    
+    // Count peaks (zero crossings from negative to positive)
+    let peaks = 0;
+    for (let i = 1; i < filtered.length; i++) {
+      if (filtered[i - 1] < 0 && filtered[i] >= 0) {
+        peaks++;
+      }
+    }
+    
+    // Calculate BPM
+    const duration = (rPPG.timestamps[rPPG.timestamps.length - 1] - rPPG.timestamps[0]) / 1000; // seconds
+    const rawBPM = (peaks / duration) * 60;
+    
+    // Clamp to realistic range (40-200 BPM)
+    const clampedBPM = Math.max(40, Math.min(200, rawBPM));
+    
+    // Smooth with exponential moving average
+    rPPG.smoothedBPM = rPPG.smoothedBPM === 0 
+      ? clampedBPM 
+      : rPPG.smoothedBPM * 0.7 + clampedBPM * 0.3;
+    
+    rPPG.bpm = Math.round(rPPG.smoothedBPM);
+    
+    // Update BPM display
+    const bpmValue = $("bpmValue");
+    if (bpmValue) {
+      bpmValue.textContent = rPPG.bpm;
+    }
+  };
+  
+  // Main processing loop
+  const processFrame = async () => {
+    if (!faceLandmarker || !videoElement || videoElement.readyState < 2) {
+      animationFrameId = requestAnimationFrame(processFrame);
+      return;
+    }
+    
+    const startTimeMs = performance.now();
+    const results = faceLandmarker.detectForVideo(videoElement, startTimeMs);
+    
+    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+      const landmarks = results.faceLandmarks[0];
+      
+      // Calculate gaze
+      const gaze = calculateGaze(landmarks);
+      
+      // During calibration, collect samples
+      if (gazeCalibration.isCalibrating) {
+        gazeCalibration.samples.push(gaze.vertical);
+      }
+      
+      // Update gaze cursor position
+      if (gazeCursor && eyeTrackingEnabled) {
+        const x = gaze.horizontal * window.innerWidth;
+        const y = gaze.vertical * window.innerHeight;
+        gazeCursor.style.left = x + 'px';
+        gazeCursor.style.top = y + 'px';
+        gazeCursor.classList.add("active");
+      }
+      
+      // Determine gaze direction
+      const isLookingUp = gaze.vertical < gazeCalibration.upThreshold;
+      const isLookingDown = gaze.vertical > gazeCalibration.downThreshold;
+      
+      // Show gaze zone indicator
+      if (eyeTrackingEnabled && gazeZoneIndicator) {
+        if (isLookingUp) {
+          gazeZoneIndicator.style.display = 'block';
+          gazeZoneIndicator.style.background = 'rgba(74, 222, 128, 0.9)';
+          gazeZoneIndicator.textContent = '👆 JUMP ZONE';
+        } else if (isLookingDown) {
+          gazeZoneIndicator.style.display = 'block';
+          gazeZoneIndicator.style.background = 'rgba(251, 191, 36, 0.9)';
+          gazeZoneIndicator.textContent = '👇 DUCK ZONE';
+        } else {
+          gazeZoneIndicator.style.display = 'block';
+          gazeZoneIndicator.style.background = 'rgba(100, 100, 100, 0.7)';
+          gazeZoneIndicator.textContent = '👀 CENTER';
+        }
+      }
+      
+      // Control game
+      const now = Date.now();
+      if (eyeTrackingEnabled && world.started && !world.paused && !world.over) {
+        if (isLookingUp && now - lastGazeAction > 200) {
+          Input.jumpJustPressed = true;
+          Input.jump = true;
+          Input.duck = false;
+          lastGazeAction = now;
+          if (gazeCursor) gazeCursor.style.background = 'rgba(74, 222, 128, 0.8)';
+        } else if (isLookingDown) {
+          Input.duck = true;
+          Input.jump = false;
+          Input.jumpJustPressed = false;
+          if (gazeCursor) gazeCursor.style.background = 'rgba(251, 191, 36, 0.8)';
+        } else {
+          Input.duck = false;
+          if (now - lastGazeAction > 150) {
+            Input.jump = false;
+            Input.jumpJustPressed = false;
+          }
+          if (gazeCursor) gazeCursor.style.background = 'rgba(255, 107, 107, 0.6)';
+        }
+      }
+      
+      // rPPG: Extract green channel from forehead
+      if (eyeTrackingEnabled) {
+        try {
+          const roi = extractForeheadROI(landmarks, videoElement.videoWidth, videoElement.videoHeight);
+          if (roi && roi.width > 10 && roi.height > 10) {
+            // Create canvas to extract pixel data
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = roi.width;
+            tempCanvas.height = roi.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(
+              videoElement,
+              roi.x, roi.y, roi.width, roi.height,
+              0, 0, roi.width, roi.height
+            );
+            
+            const imageData = tempCtx.getImageData(0, 0, roi.width, roi.height);
+            const pixels = imageData.data;
+            
+            // Calculate average green channel value
+            let greenSum = 0;
+            let count = 0;
+            for (let i = 1; i < pixels.length; i += 4) {
+              greenSum += pixels[i]; // Green channel
+              count++;
+            }
+            const avgGreen = greenSum / count;
+            
+            processRPPG(avgGreen, startTimeMs);
+          }
+        } catch (e) {
+          // Ignore rPPG errors
+        }
+      }
+    }
+    
+    animationFrameId = requestAnimationFrame(processFrame);
+  };
+  
   // Eye tracking button click - start calibration
-  if (eyeTrackBtn && webgazerAvailable) {
-    eyeTrackBtn.onclick = () => {
+  if (eyeTrackBtn && mediapipeAvailable) {
+    eyeTrackBtn.onclick = async () => {
       // Show calibration overlay
       if (calibrationOverlay) {
         calibrationOverlay.classList.add("active");
@@ -2643,161 +3021,47 @@
       
       // Reset calibration
       calibrationClicks = 0;
-      calibrationPoints.forEach(p => p.classList.remove("clicked"));
+      gazeCalibration.samples = [];
+      calibrationPoints.forEach(p => {
+        p.classList.remove("clicked");
+        p.textContent = "";
+        p.style.transform = "";
+      });
       if (calibrationStatus) {
-        calibrationStatus.textContent = "Click all 9 points to calibrate (0/9)";
+        calibrationStatus.textContent = "Initializing camera and face tracking...";
       }
       
-      // Start WebGazer
-      try {
-        // Initialize WebGazer with proper settings per official docs
-        const gazeZoneIndicator = $("gazeZoneIndicator");
-        
-        webgazer
-          .setTracker('TFFacemesh')  // Use MediaPipe Facemesh for face detection
-          .setRegression('ridge')     // Ridge regression for gaze prediction
-          .setGazeListener((data, elapsedTime) => {
-            if (data == null) {
-              return;
-            }
-            
-            
-            // Use raw data if bound fails
-            let x = data.x;
-            let y = data.y;
-            
-            try {
-              const bounded = webgazer.util.bound(data);
-              if (bounded) {
-                x = bounded.x;
-                y = bounded.y;
-              }
-            } catch (e) {}
-            
-            // Get screen dimensions and center
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            const centerX = screenWidth / 2;
-            const centerY = screenHeight / 2;
-            
-            // Calculate position relative to center (normalized -1 to 1)
-            const relX = (x - centerX) / centerX; // -1 = left edge, 1 = right edge
-            const relY = (y - centerY) / centerY; // -1 = top edge, 1 = bottom edge
-            
-            const now = Date.now();
-            
-            // Update gaze cursor position - ALWAYS when enabled
-            if (gazeCursor && eyeTrackingEnabled) {
-              gazeCursor.style.left = x + 'px';
-              gazeCursor.style.top = y + 'px';
-              gazeCursor.classList.add("active");
-            }
-            
-            // Store gaze Y for game control
-            gazeY = y;
-            
-            // FLEXIBLE DETECTION: Use whichever axis shows more movement
-            // This handles the case where calibration is rotated
-            const absRelX = Math.abs(relX);
-            const absRelY = Math.abs(relY);
-            
-            // Determine if looking "up" or "down" using EITHER axis
-            // If Y movement is stronger, use Y. If X movement is stronger, use X (rotated calibration)
-            let isLookingUp = false;
-            let isLookingDown = false;
-            
-            if (absRelY >= absRelX) {
-              // Y axis is dominant - normal behavior
-              isLookingUp = relY < -0.3;   // Looking at top 35% of screen
-              isLookingDown = relY > 0.3;  // Looking at bottom 35% of screen
-            } else {
-              // X axis is dominant - calibration might be rotated
-              // Treat LEFT as UP and RIGHT as DOWN (or vice versa)
-              isLookingUp = relX < -0.3;   // Looking at left 35% = treat as UP
-              isLookingDown = relX > 0.3;  // Looking at right 35% = treat as DOWN
-            }
-            
-            // Show gaze zone indicator (always when eye tracking enabled)
-            if (eyeTrackingEnabled && gazeZoneIndicator) {
-              if (isLookingUp) {
-                gazeZoneIndicator.style.display = 'block';
-                gazeZoneIndicator.style.background = 'rgba(74, 222, 128, 0.9)';
-                gazeZoneIndicator.textContent = '👆 JUMP ZONE';
-              } else if (isLookingDown) {
-                gazeZoneIndicator.style.display = 'block';
-                gazeZoneIndicator.style.background = 'rgba(251, 191, 36, 0.9)';
-                gazeZoneIndicator.textContent = '👇 DUCK ZONE';
-              } else {
-                gazeZoneIndicator.style.display = 'block';
-                gazeZoneIndicator.style.background = 'rgba(100, 100, 100, 0.7)';
-                gazeZoneIndicator.textContent = '👀 CENTER';
-              }
-            }
-            
-            // Control game with eye gaze
-            if (eyeTrackingEnabled && world.started && !world.paused && !world.over) {
-              // JUMP when looking up (or left if calibration rotated)
-              if (isLookingUp && now - lastGazeAction > 200) {
-                Input.jumpJustPressed = true;
-                Input.jump = true;
-                Input.duck = false;
-                lastGazeAction = now;
-                if (gazeCursor) gazeCursor.style.background = 'rgba(74, 222, 128, 0.8)';
-              }
-              // DUCK when looking down (or right if calibration rotated)
-              else if (isLookingDown) {
-                Input.duck = true;
-                Input.jump = false;
-                Input.jumpJustPressed = false;
-                if (gazeCursor) gazeCursor.style.background = 'rgba(251, 191, 36, 0.8)';
-              }
-              // Center = normal
-              else {
-                Input.duck = false;
-                if (now - lastGazeAction > 150) {
-                  Input.jump = false;
-                  Input.jumpJustPressed = false;
-                }
-                if (gazeCursor) gazeCursor.style.background = 'rgba(255, 107, 107, 0.6)';
-              }
-            }
-          })
-          .begin();
-        
-        // Show video preview during calibration so users can see themselves
-        webgazer.showVideoPreview(true)
-          .showPredictionPoints(true);
-        
-        // Save calibration data between sessions
-        window.saveDataAcrossSessions = true;
-        
-      } catch (e) {
-        console.error("Error starting WebGazer:", e);
-        alert("Could not start eye tracking. Please:\n1. Allow camera access\n2. Make sure you're on HTTPS or localhost\n3. Check browser compatibility");
+      // Initialize MediaPipe and camera
+      const mpInit = await initFaceLandmarker();
+      if (!mpInit) {
         calibrationOverlay.classList.remove("active");
+        alert("Could not initialize face tracking.");
+        return;
+      }
+      
+      const camInit = await startCamera();
+      if (!camInit) {
+        calibrationOverlay.classList.remove("active");
+        return;
+      }
+      
+      // Start processing
+      gazeCalibration.isCalibrating = true;
+      processFrame();
+      
+      if (calibrationStatus) {
+        calibrationStatus.textContent = "Look at each point and click it 5 times (0/9)";
       }
     };
   }
   
-  // Calibration point clicks - MUST register with WebGazer for training
+  // Calibration point clicks
   calibrationPoints.forEach(point => {
     let clickCount = 0;
     point.onclick = () => {
-      // Get center position of calibration point
-      const rect = point.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      
-      // CRITICAL: Register this point with WebGazer for gaze training
-      try {
-        if (typeof webgazer !== 'undefined') {
-          webgazer.recordScreenPosition(x, y);
-        }
-      } catch (e) {}
-      
       clickCount++;
       
-      // Need 5 clicks per point for good accuracy
+      // Need 5 clicks per point
       if (clickCount >= 5 && !point.classList.contains("clicked")) {
         point.classList.add("clicked");
         calibrationClicks++;
@@ -2805,19 +3069,27 @@
         if (calibrationStatus) {
           if (calibrationClicks >= 9) {
             calibrationStatus.textContent = "✓ Calibration complete! Click the button below to start.";
+            
+            // Calculate thresholds from samples
+            if (gazeCalibration.samples.length > 50) {
+              gazeCalibration.samples.sort((a, b) => a - b);
+              const len = gazeCalibration.samples.length;
+              gazeCalibration.upThreshold = gazeCalibration.samples[Math.floor(len * 0.25)];
+              gazeCalibration.downThreshold = gazeCalibration.samples[Math.floor(len * 0.75)];
+            }
+            gazeCalibration.isCalibrating = false;
           } else {
-            calibrationStatus.textContent = `Click all 9 points 5x each (${calibrationClicks}/9 done)`;
+            calibrationStatus.textContent = `Look at each point and click it 5 times (${calibrationClicks}/9)`;
           }
         }
       } else if (!point.classList.contains("clicked")) {
-        // Show progress for this point
         point.style.transform = `scale(${1 + clickCount * 0.1})`;
         point.textContent = `${clickCount}/5`;
       }
     };
   });
   
-  // Finish calibration and start game with eye tracking
+  // Finish calibration and start game
   if (finishCalibrationBtn) {
     finishCalibrationBtn.onclick = () => {
       if (calibrationClicks < 5) {
@@ -2830,10 +3102,17 @@
       
       // Enable eye tracking
       eyeTrackingEnabled = true;
+      gazeCalibration.isCalibrating = false;
       
-      // Show indicator
+      // Show indicators
       if (eyeTrackingIndicator) {
         eyeTrackingIndicator.classList.add("active");
+      }
+      
+      // Show BPM display
+      const bpmDisplay = $("bpmDisplay");
+      if (bpmDisplay) {
+        bpmDisplay.classList.add("active");
       }
       
       // Update button text
@@ -2848,40 +3127,42 @@
         gazeCursor.classList.add("active");
       }
       
-      // Update hint to show eye tracking instructions
+      // Hide video preview (minimize it)
+      if (videoElement) {
+        videoElement.style.width = '80px';
+        videoElement.style.height = '60px';
+        videoElement.style.opacity = '0.5';
+      }
+      
+      // Update hint
       const hint = $("hint");
       if (hint) {
         hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
       }
       
-      // Hide video preview after calibration (less distracting during gameplay)
-      try {
-        webgazer.showVideoPreview(false)
-          .showPredictionPoints(false);
-      } catch (e) {}
-      
       // Start the game
       if (!world.started) {
         start();
       }
-      
     };
   }
   
-  // Toggle eye tracking on/off during game
+  // Toggle eye tracking on/off
   window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyE" && webgazerAvailable) {
+    if (e.code === "KeyE" && mediapipeAvailable && faceLandmarker) {
       const hint = $("hint");
+      const bpmDisplay = $("bpmDisplay");
       if (eyeTrackingEnabled) {
         eyeTrackingEnabled = false;
         if (eyeTrackingIndicator) eyeTrackingIndicator.classList.remove("active");
         if (gazeCursor) gazeCursor.classList.remove("active");
+        if (gazeZoneIndicator) gazeZoneIndicator.style.display = 'none';
+        if (bpmDisplay) bpmDisplay.classList.remove("active");
         if (eyeTrackBtn) {
           eyeTrackBtn.textContent = "👁️ Enable Eye Tracking";
           eyeTrackBtn.style.background = "";
           eyeTrackBtn.style.color = "";
         }
-        // Restore original hint
         if (hint) {
           hint.innerHTML = '<kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Press <kbd>E</kbd> for Eye Tracking';
         }
@@ -2889,12 +3170,12 @@
         eyeTrackingEnabled = true;
         if (eyeTrackingIndicator) eyeTrackingIndicator.classList.add("active");
         if (gazeCursor) gazeCursor.classList.add("active");
+        if (bpmDisplay) bpmDisplay.classList.add("active");
         if (eyeTrackBtn) {
           eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
           eyeTrackBtn.style.background = "#4ade80";
           eyeTrackBtn.style.color = "#000";
         }
-        // Show eye tracking hint
         if (hint) {
           hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
         }
