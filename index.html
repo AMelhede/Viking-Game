@@ -601,7 +601,7 @@
             <span class="life-heart" id="life3">❤️</span>
           </div>
           <button class="btn" id="pauseBtn">Pause</button>
-          <button class="btn" id="soundBtn">Sound: Off</button>
+          <button class="btn" id="soundBtn">Sound: On</button>
           <button class="btn primary" id="restartBtn">Restart</button>
         </div>
       </div>
@@ -734,62 +734,102 @@
         break;
       }
       case 'mead': {
-        // Gulp/drink sound
-        const osc = AC.createOscillator();
-        const gain = AC.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
-        osc.frequency.setValueAtTime(280, now + 0.12);
-        osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        osc.connect(gain);
-        gain.connect(AC.destination);
-        osc.start(now);
-        osc.stop(now + 0.3);
+        // Gulp/drink sound - bubbly beer drinking effect
+        // Multiple "gulp" sounds
+        [0, 0.12, 0.24].forEach((delay, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          const filter = AC.createBiquadFilter();
+          osc.type = 'sine';
+          // Descending pitch for each gulp
+          osc.frequency.setValueAtTime(400 - i * 50, now + delay);
+          osc.frequency.exponentialRampToValueAtTime(150, now + delay + 0.08);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(600, now + delay);
+          gain.gain.setValueAtTime(0.3, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.1);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now + delay);
+          osc.stop(now + delay + 0.15);
+        });
+        // Add a satisfying "ahh" at the end
+        const ahhOsc = AC.createOscillator();
+        const ahhGain = AC.createGain();
+        ahhOsc.type = 'sine';
+        ahhOsc.frequency.setValueAtTime(220, now + 0.35);
+        ahhOsc.frequency.linearRampToValueAtTime(180, now + 0.55);
+        ahhGain.gain.setValueAtTime(0.15, now + 0.35);
+        ahhGain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        ahhOsc.connect(ahhGain);
+        ahhGain.connect(AC.destination);
+        ahhOsc.start(now + 0.35);
+        ahhOsc.stop(now + 0.65);
         break;
       }
       case 'damage': {
-        // Impact/hurt sound
+        // Viking grunt/hurt sound
         const osc = AC.createOscillator();
         const gain = AC.createGain();
+        const filter = AC.createBiquadFilter();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
-        gain.gain.setValueAtTime(0.35, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        osc.connect(gain);
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(500, now);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(filter);
+        filter.connect(gain);
         gain.connect(AC.destination);
         osc.start(now);
-        osc.stop(now + 0.35);
-        // Add noise burst
-        const noise = AC.createOscillator();
-        const noiseGain = AC.createGain();
-        noise.type = 'square';
-        noise.frequency.setValueAtTime(80, now);
-        noiseGain.gain.setValueAtTime(0.15, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        noise.connect(noiseGain);
-        noiseGain.connect(AC.destination);
-        noise.start(now);
-        noise.stop(now + 0.2);
+        osc.stop(now + 0.3);
+        // Impact thud
+        const thud = AC.createOscillator();
+        const thudGain = AC.createGain();
+        thud.type = 'sine';
+        thud.frequency.setValueAtTime(60, now);
+        thud.frequency.exponentialRampToValueAtTime(30, now + 0.1);
+        thudGain.gain.setValueAtTime(0.35, now);
+        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        thud.connect(thudGain);
+        thudGain.connect(AC.destination);
+        thud.start(now);
+        thud.stop(now + 0.2);
         break;
       }
       case 'gameover': {
-        // Dramatic low horn
-        [0, 0.15, 0.3].forEach((delay, i) => {
+        // Epic Viking death horn - dramatic descending notes
+        [0, 0.2, 0.4, 0.6].forEach((delay, i) => {
           const osc = AC.createOscillator();
           const gain = AC.createGain();
+          const filter = AC.createBiquadFilter();
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime([110, 87, 65][i], now + delay);
-          gain.gain.setValueAtTime(0.2, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.5);
-          osc.connect(gain);
+          // Descending minor notes for dramatic effect
+          osc.frequency.setValueAtTime([146.8, 130.8, 110, 82.4][i], now + delay);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(400, now + delay);
+          gain.gain.setValueAtTime(0.3, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.6);
+          osc.connect(filter);
+          filter.connect(gain);
           gain.connect(AC.destination);
           osc.start(now + delay);
-          osc.stop(now + delay + 0.6);
+          osc.stop(now + delay + 0.7);
         });
+        // Add a crash/impact sound
+        const crash = AC.createOscillator();
+        const crashGain = AC.createGain();
+        crash.type = 'square';
+        crash.frequency.setValueAtTime(60, now);
+        crash.frequency.exponentialRampToValueAtTime(20, now + 0.3);
+        crashGain.gain.setValueAtTime(0.25, now);
+        crashGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        crash.connect(crashGain);
+        crashGain.connect(AC.destination);
+        crash.start(now);
+        crash.stop(now + 0.5);
         break;
       }
       case 'heart': {
@@ -977,7 +1017,7 @@
   document.addEventListener('click', startMusicOnInteraction);
   document.addEventListener('keydown', startMusicOnInteraction);
 
-  const OPT = { sound: false };
+  const OPT = { sound: true }; // Sound ON by default
   const world = { 
     started: false, paused: false, over: false, 
     score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
