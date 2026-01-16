@@ -611,7 +611,6 @@
   const pauseBtn = $("pauseBtn");
   const restartBtn = $("restartBtn");
   const soundBtn = $("soundBtn");
-  const weaponIndicator = $("weaponIndicator");
 
   let W, H, DPR, ctx;
   const resize = () => {
@@ -1191,7 +1190,7 @@
     started: false, paused: false, over: false, 
     score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
     lives: 3, maxLives: 3,
-    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextWeaponAt: 0, nextHeartAt: 0,
+    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextHeartAt: 0,
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
@@ -1202,8 +1201,7 @@
   const viking = {
     x: 100, y: 0, vy: 0, w: 50, h: 70, 
     onGround: false, ducking: false, faceplant: 0,
-    jumpsUsed: 0, maxJumps: 1,
-    hasWeapon: false, weaponType: null, attacking: false, attackCooldown: 0
+    jumpsUsed: 0, maxJumps: 1
   };
 
   const Obstacles = [];
@@ -1212,7 +1210,6 @@
   const Particles = [];
   const Platforms = [];
   const Enemies = [];
-  const Weapons = [];
   const Hearts = [];
 
   const spawnObstacle = (x) => {
@@ -1253,23 +1250,10 @@
       w: 50,
       h: 60,
       defeated: false,
-      hit: false, // Track if this enemy has hit the player
       hit: false
     });
   };
 
-  const spawnWeapon = (x) => {
-    const types = ["axe", "sword"];
-    const type = pick(types);
-    Weapons.push({
-      x,
-      y: world.groundY - rand(80, 180),
-      type,
-      taken: false,
-      rotation: 0,
-      size: 30
-    });
-  };
 
   const spawnHeart = (x) => {
     Hearts.push({
@@ -1317,24 +1301,18 @@
       viking.faceplant = 0;
       viking.ducking = false;
       viking.onGround = true;
-      viking.hasWeapon = false;
-      viking.weaponType = null;
-      viking.attacking = false;
-      viking.attackCooldown = 0;
       Obstacles.length = 0; 
       Meads.length = 0; 
       Powerups.length = 0;
       Particles.length = 0;
       Platforms.length = 0;
       Enemies.length = 0;
-      Weapons.length = 0;
       Hearts.length = 0;
     world.nextObstacleAt = viking.x + 600;
       world.nextMeadAt = viking.x + 400;
       world.nextPowerupAt = viking.x + 6000;
       world.nextPlatformAt = viking.x + 500;
       world.nextEnemyAt = viking.x + 800;
-      world.nextWeaponAt = viking.x + 600;
       world.nextHeartAt = viking.x + 1200;
       world.lives = 3;
       world.maxLives = 3;
@@ -1348,17 +1326,12 @@
       Input.jump = false;
       Input.duck = false;
       Input.jumpJustPressed = false;
-      Input.attackPressed = false;
       
       // Force overlay to show
       if (overlay) {
         overlay.style.display = "grid";
         overlay.style.visibility = "visible";
         overlay.style.opacity = "1";
-      }
-      if (weaponIndicator) {
-        weaponIndicator.classList.remove("active");
-        weaponIndicator.style.display = "none";
       }
       const overlayTitle = $("overlayTitle");
       const overlayText = $("overlayText");
@@ -1394,13 +1367,6 @@
         }
       }
       
-      if (weaponIndicator) {
-        if (viking.hasWeapon) {
-          weaponIndicator.classList.add("active");
-        } else {
-          weaponIndicator.classList.remove("active");
-        }
-      }
 
       for (let i = 1; i <= 3; i++) {
         const lifeEl = $(`life${i}`);
@@ -1542,8 +1508,7 @@
     }
   };
 
-  // Input - SIMPLIFIED ATTACK SYSTEM
-  const Input = { jump: false, duck: false, jumpJustPressed: false, attackPressed: false };
+  const Input = { jump: false, duck: false, jumpJustPressed: false };
   
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space") { 
@@ -1551,7 +1516,6 @@
         Input.jumpJustPressed = true;
       }
       Input.jump = true;
-      // Attack system removed
       if(!world.started && !world.over) start(); 
     }
     if (e.code === "ArrowDown") Input.duck = true;
@@ -1607,28 +1571,6 @@
 
     const bob = viking.onGround ? Math.sin(world.t * 12) * 4 : 0;
     const duckH = viking.ducking ? 0.6 : 1;
-
-    if (viking.hasWeapon && !viking.ducking) {
-      ctx.save();
-      ctx.translate(15, -40);
-      ctx.rotate(viking.attacking ? -Math.PI / 3 : 0);
-      if (viking.weaponType === "axe") {
-        ctx.fillStyle = "#8b5cf6";
-        ctx.fillRect(-3, -20, 6, 25);
-        ctx.fillStyle = "#6366f1";
-        ctx.beginPath();
-        ctx.moveTo(-8, -20);
-        ctx.lineTo(8, -20);
-        ctx.lineTo(0, -35);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = "#6366f1";
-        ctx.fillRect(-2, -25, 4, 30);
-        ctx.fillStyle = "#8b5cf6";
-        ctx.fillRect(-4, -30, 8, 8);
-      }
-      ctx.restore();
-    }
 
     ctx.fillStyle = "#556677";
     ctx.fillRect(-20, -50 * duckH + bob, 40, 50 * duckH);
@@ -1730,43 +1672,6 @@
     ctx.restore();
   };
 
-  const drawWeapon = (w) => {
-    ctx.save();
-    ctx.translate(w.x, w.y);
-    ctx.rotate(w.rotation);
-    
-    const size = w.size || 25;
-    const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
-    glowGradient.addColorStop(0, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "80");
-    glowGradient.addColorStop(0.5, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "40");
-    glowGradient.addColorStop(1, (w.type === "axe" ? "#8b5cf6" : "#6366f1") + "00");
-    ctx.fillStyle = glowGradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    if (w.type === "axe") {
-      ctx.fillStyle = "#8b5cf6";
-      ctx.fillRect(-4, -size * 0.6, 8, size * 0.8);
-      ctx.fillStyle = "#6366f1";
-      ctx.beginPath();
-      ctx.moveTo(-size * 0.4, -size * 0.6);
-      ctx.lineTo(size * 0.4, -size * 0.6);
-      ctx.lineTo(0, -size);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = "#6366f1";
-      ctx.fillRect(-3, -size * 0.8, 6, size);
-      ctx.fillStyle = "#8b5cf6";
-      ctx.fillRect(-5, -size, 10, size * 0.3);
-    }
-    
-    ctx.strokeStyle = "#FFF";
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = w.type === "axe" ? "#8b5cf6" : "#6366f1";
-    ctx.restore();
-  };
 
   const drawHeart = (x, y, pulse, rotation) => {
     ctx.save();
@@ -2012,13 +1917,6 @@
       }
     }
 
-    // ATTACK SYSTEM - FIXED AND WORKING
-    if (viking.attackCooldown > 0) {
-      viking.attackCooldown -= dt;
-    }
-    
-    // Attack system removed - enemies cannot be killed
-
     // Jump logic
     if (Input.jumpJustPressed && !viking.ducking && viking.jumpsUsed < viking.maxJumps) {
       viking.vy = -680;
@@ -2069,10 +1967,6 @@
       spawnEnemy(world.nextEnemyAt);
       world.nextEnemyAt += rand(700, 1200);
     }
-    if (viking.x > world.nextWeaponAt - W && !viking.hasWeapon) {
-      spawnWeapon(world.nextWeaponAt);
-      world.nextWeaponAt += rand(700, 1200);
-    }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < world.maxLives) {
         spawnHeart(world.nextHeartAt);
@@ -2091,12 +1985,6 @@
       }
     }
     
-    for (const w of Weapons) {
-      if (!w.taken) {
-        w.rotation += dt * 3;
-        w.x -= world.speed * dt;
-      }
-    }
     
     for (const h of Hearts) {
       if (!h.taken) {
@@ -2247,17 +2135,6 @@
       }
     }
     
-    // Collisions - Weapons
-    for (const w of Weapons) {
-      if (!w.taken && Math.hypot(viking.x - w.x, (viking.y-30) - w.y) < 40) {
-        w.taken = true;
-        viking.hasWeapon = true;
-        viking.weaponType = w.type;
-        addParticle(w.x, w.y, "#6366f1", 12);
-        beep("square", 500, 0.2);
-        updateHUD();
-      }
-    }
     
     // Collisions - Powerups
     for (const p of Powerups) {
@@ -2321,11 +2198,6 @@
       }
     }
 
-    for (const w of Weapons) {
-      if (!w.taken && w.x > viking.x - W - 100 && w.x < viking.x + W + 100) {
-        drawWeapon(w);
-      }
-    }
 
     for (const h of Hearts) {
       if (!h.taken && h.x > viking.x - W - 100 && h.x < viking.x + W + 100) {
