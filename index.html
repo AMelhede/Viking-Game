@@ -637,7 +637,32 @@
     o.start(); o.stop(AC.currentTime + dur);
   };
   
-  // Enhanced Viking sound effects
+  // ===== AUTHENTIC VIKING SOUND EFFECTS =====
+  // Inspired by Vikings TV series - using advanced synthesis techniques
+  
+  // Helper: Create white noise buffer
+  const createNoiseBuffer = (duration) => {
+    const bufferSize = AC.sampleRate * duration;
+    const buffer = AC.createBuffer(1, bufferSize, AC.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  };
+  
+  // Helper: Create formant filter for voice sounds
+  const createFormant = (freq, q, gain) => {
+    const filter = AC.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = freq;
+    filter.Q.value = q;
+    const gn = AC.createGain();
+    gn.gain.value = gain;
+    filter.connect(gn);
+    return { filter, gain: gn };
+  };
+  
   const playSFX = (sfxType) => {
     if (!OPT.sound) return;
     if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -646,351 +671,334 @@
     
     switch(sfxType) {
       case 'jump': {
-        // Whoosh sound
-        const osc = AC.createOscillator();
-        const gain = AC.createGain();
+        // Leather armor creak + cloth whoosh
+        const noise = AC.createBufferSource();
+        noise.buffer = createNoiseBuffer(0.2);
         const filter = AC.createBiquadFilter();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(2000, now);
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1500, now);
+        filter.frequency.exponentialRampToValueAtTime(3000, now + 0.1);
+        filter.Q.value = 1;
+        const gain = AC.createGain();
         gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.connect(filter);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        noise.connect(filter);
         filter.connect(gain);
         gain.connect(AC.destination);
-        osc.start(now);
-        osc.stop(now + 0.25);
+        noise.start(now);
         break;
       }
       case 'powerup': {
-        // Magical chime - ascending notes
-        [0, 0.08, 0.16].forEach((delay, i) => {
+        // Ancient Nordic rune activation - mystical shimmer
+        const notes = [293.7, 349.2, 440, 523.3]; // D4, F4, A4, C5 - minor chord
+        notes.forEach((freq, i) => {
           const osc = AC.createOscillator();
           const gain = AC.createGain();
           osc.type = 'sine';
-          osc.frequency.setValueAtTime([523, 659, 784][i], now + delay);
-          gain.gain.setValueAtTime(0.2, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.3);
+          osc.frequency.setValueAtTime(freq, now + i * 0.06);
+          // Add shimmer vibrato
+          const vibrato = AC.createOscillator();
+          const vibGain = AC.createGain();
+          vibrato.frequency.value = 8;
+          vibGain.gain.value = 5;
+          vibrato.connect(vibGain);
+          vibGain.connect(osc.frequency);
+          vibrato.start(now);
+          vibrato.stop(now + 0.6);
+          gain.gain.setValueAtTime(0, now + i * 0.06);
+          gain.gain.linearRampToValueAtTime(0.15, now + i * 0.06 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
           osc.connect(gain);
           gain.connect(AC.destination);
-          osc.start(now + delay);
-          osc.stop(now + delay + 0.35);
+          osc.start(now + i * 0.06);
+          osc.stop(now + 0.6);
         });
         break;
       }
       case 'mead': {
-        // REALISTIC Viking mead drinking - like in Vikings TV show
-        // Deep gulping sounds with throat resonance
-        const bufferSize = 4096;
-        const noiseNode = AC.createScriptProcessor(bufferSize, 1, 1);
-        const noiseGain = AC.createGain();
-        const noiseFilter = AC.createBiquadFilter();
-        let gulpPhase = 0;
-        noiseNode.onaudioprocess = (e) => {
-          const output = e.outputBuffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            gulpPhase += 0.1;
-            const gulpMod = Math.sin(gulpPhase * 0.5) * 0.5 + 0.5;
-            output[i] = (Math.random() * 2 - 1) * gulpMod * 0.3;
-          }
-        };
-        noiseFilter.type = 'bandpass';
-        noiseFilter.frequency.setValueAtTime(800, now);
-        noiseFilter.Q.setValueAtTime(3, now);
-        noiseGain.gain.setValueAtTime(0.4, now);
-        noiseGain.gain.setValueAtTime(0.5, now + 0.15);
-        noiseGain.gain.setValueAtTime(0.4, now + 0.3);
-        noiseGain.gain.setValueAtTime(0.5, now + 0.45);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-        noiseNode.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(AC.destination);
-        setTimeout(() => noiseNode.disconnect(), 700);
-        // Throat/Adam's apple movement
-        [0, 0.18, 0.36].forEach((delay) => {
-          const throat = AC.createOscillator();
-          const tGain = AC.createGain();
-          const tFilter = AC.createBiquadFilter();
-          throat.type = 'sine';
-          throat.frequency.setValueAtTime(180, now + delay);
-          throat.frequency.exponentialRampToValueAtTime(120, now + delay + 0.1);
-          tFilter.type = 'lowpass';
-          tFilter.frequency.setValueAtTime(250, now + delay);
-          tGain.gain.setValueAtTime(0.3, now + delay);
-          tGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.12);
-          throat.connect(tFilter);
-          tFilter.connect(tGain);
-          tGain.connect(AC.destination);
-          throat.start(now + delay);
-          throat.stop(now + delay + 0.15);
+        // Authentic drinking from horn - liquid + gulps + satisfied exhale
+        // Liquid pouring/sloshing
+        const liquid = AC.createBufferSource();
+        liquid.buffer = createNoiseBuffer(0.8);
+        const liqFilter = AC.createBiquadFilter();
+        liqFilter.type = 'bandpass';
+        liqFilter.frequency.value = 2500;
+        liqFilter.Q.value = 2;
+        const liqGain = AC.createGain();
+        // Rhythmic gulping modulation
+        liqGain.gain.setValueAtTime(0.1, now);
+        [0.12, 0.24, 0.36, 0.48].forEach(t => {
+          liqGain.gain.setValueAtTime(0.2, now + t);
+          liqGain.gain.setValueAtTime(0.05, now + t + 0.08);
         });
-        // Satisfied "AHHH!" exhale - deep male voice
-        const ahh = AC.createOscillator();
-        const ahhGain = AC.createGain();
-        const ahhFilter = AC.createBiquadFilter();
-        ahh.type = 'sawtooth';
-        ahh.frequency.setValueAtTime(95, now + 0.6); // Deep male voice
-        ahh.frequency.linearRampToValueAtTime(75, now + 1.0);
-        ahhFilter.type = 'lowpass';
-        ahhFilter.frequency.setValueAtTime(400, now + 0.6);
-        ahhFilter.frequency.linearRampToValueAtTime(200, now + 1.0);
-        ahhGain.gain.setValueAtTime(0.3, now + 0.6);
-        ahhGain.gain.exponentialRampToValueAtTime(0.01, now + 1.1);
-        ahh.connect(ahhFilter);
-        ahhFilter.connect(ahhGain);
-        ahhGain.connect(AC.destination);
-        ahh.start(now + 0.6);
-        ahh.stop(now + 1.15);
+        liqGain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        liquid.connect(liqFilter);
+        liqFilter.connect(liqGain);
+        liqGain.connect(AC.destination);
+        liquid.start(now);
+        
+        // Throat swallowing - low frequency pulses
+        [0.1, 0.22, 0.34, 0.46].forEach(delay => {
+          const gulp = AC.createOscillator();
+          const gGain = AC.createGain();
+          gulp.type = 'sine';
+          gulp.frequency.setValueAtTime(150, now + delay);
+          gulp.frequency.exponentialRampToValueAtTime(80, now + delay + 0.08);
+          gGain.gain.setValueAtTime(0.25, now + delay);
+          gGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.1);
+          gulp.connect(gGain);
+          gGain.connect(AC.destination);
+          gulp.start(now + delay);
+          gulp.stop(now + delay + 0.12);
+        });
+        
+        // Satisfied "AHHH" exhale - formant synthesis for realistic voice
+        const voice = AC.createOscillator();
+        voice.type = 'sawtooth';
+        voice.frequency.setValueAtTime(95, now + 0.6);
+        voice.frequency.linearRampToValueAtTime(80, now + 1.0);
+        // Formants for "AH" vowel (male voice)
+        const f1 = createFormant(700, 10, 0.4);  // First formant
+        const f2 = createFormant(1200, 12, 0.25); // Second formant
+        const f3 = createFormant(2500, 15, 0.1);  // Third formant
+        const masterGain = AC.createGain();
+        masterGain.gain.setValueAtTime(0, now + 0.6);
+        masterGain.gain.linearRampToValueAtTime(0.3, now + 0.65);
+        masterGain.gain.exponentialRampToValueAtTime(0.01, now + 1.1);
+        voice.connect(f1.filter);
+        voice.connect(f2.filter);
+        voice.connect(f3.filter);
+        f1.gain.connect(masterGain);
+        f2.gain.connect(masterGain);
+        f3.gain.connect(masterGain);
+        masterGain.connect(AC.destination);
+        voice.start(now + 0.6);
+        voice.stop(now + 1.15);
         break;
       }
       case 'damage': {
-        // REALISTIC Viking grunt of pain - inspired by Vikings TV show
-        // Deep guttural "UGH!" with multiple voice harmonics
-        const fundamentals = [110, 165, 220]; // A2, E3, A3 harmonics
-        fundamentals.forEach((freq, i) => {
-          const voice = AC.createOscillator();
-          const vGain = AC.createGain();
-          const vFilter = AC.createBiquadFilter();
-          voice.type = i === 0 ? 'sawtooth' : 'triangle';
-          voice.frequency.setValueAtTime(freq, now);
-          voice.frequency.exponentialRampToValueAtTime(freq * 0.7, now + 0.25);
-          vFilter.type = 'lowpass';
-          vFilter.frequency.setValueAtTime(800 - i * 200, now);
-          vFilter.frequency.exponentialRampToValueAtTime(200, now + 0.25);
-          vGain.gain.setValueAtTime(0.25 - i * 0.05, now);
-          vGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-          voice.connect(vFilter);
-          vFilter.connect(vGain);
-          vGain.connect(AC.destination);
-          voice.start(now);
-          voice.stop(now + 0.35);
-        });
-        // Metal clash impact - sword/axe hit
-        const metal = AC.createOscillator();
-        const metalGain = AC.createGain();
-        const metalFilter = AC.createBiquadFilter();
-        metal.type = 'square';
-        metal.frequency.setValueAtTime(1200, now);
-        metal.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-        metalFilter.type = 'highpass';
-        metalFilter.frequency.setValueAtTime(400, now);
-        metalGain.gain.setValueAtTime(0.15, now);
-        metalGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        metal.connect(metalFilter);
-        metalFilter.connect(metalGain);
-        metalGain.connect(AC.destination);
-        metal.start(now);
-        metal.stop(now + 0.12);
-        // Body impact thud
+        // Viking battle grunt - deep "UGH!" with impact
+        // Voice with formants for guttural grunt
+        const voice = AC.createOscillator();
+        voice.type = 'sawtooth';
+        voice.frequency.setValueAtTime(120, now);
+        voice.frequency.exponentialRampToValueAtTime(70, now + 0.2);
+        // Formants for "UH" grunt sound
+        const f1 = createFormant(500, 8, 0.5);
+        const f2 = createFormant(1000, 10, 0.3);
+        const masterGain = AC.createGain();
+        masterGain.gain.setValueAtTime(0.4, now);
+        masterGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        voice.connect(f1.filter);
+        voice.connect(f2.filter);
+        f1.gain.connect(masterGain);
+        f2.gain.connect(masterGain);
+        masterGain.connect(AC.destination);
+        voice.start(now);
+        voice.stop(now + 0.3);
+        
+        // Shield/armor impact - metallic crash
+        const impact = AC.createBufferSource();
+        impact.buffer = createNoiseBuffer(0.15);
+        const impFilter = AC.createBiquadFilter();
+        impFilter.type = 'highpass';
+        impFilter.frequency.value = 800;
+        const impGain = AC.createGain();
+        impGain.gain.setValueAtTime(0.3, now);
+        impGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        impact.connect(impFilter);
+        impFilter.connect(impGain);
+        impGain.connect(AC.destination);
+        impact.start(now);
+        
+        // Body thud
         const thud = AC.createOscillator();
         const thudGain = AC.createGain();
         thud.type = 'sine';
-        thud.frequency.setValueAtTime(55, now);
-        thud.frequency.exponentialRampToValueAtTime(30, now + 0.15);
-        thudGain.gain.setValueAtTime(0.5, now);
-        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        thud.connect(thudGain);
-        thudGain.connect(AC.destination);
-        thud.start(now);
-        thud.stop(now + 0.25);
-        break;
-      }
-      case 'gameover': {
-        // REALISTIC Viking funeral horn - like Ragnar's death in Vikings TV show
-        // Deep, mournful Gjallarhorn with breath noise and harmonics
-        
-        // Main drone - very low, somber
-        const drone = AC.createOscillator();
-        const droneGain = AC.createGain();
-        const droneFilter = AC.createBiquadFilter();
-        drone.type = 'sawtooth';
-        drone.frequency.setValueAtTime(55, now); // Very low A1
-        drone.frequency.linearRampToValueAtTime(49, now + 2.5); // Drop to G1
-        droneFilter.type = 'lowpass';
-        droneFilter.frequency.setValueAtTime(200, now);
-        droneGain.gain.setValueAtTime(0, now);
-        droneGain.gain.linearRampToValueAtTime(0.4, now + 0.3);
-        droneGain.gain.setValueAtTime(0.4, now + 1.8);
-        droneGain.gain.exponentialRampToValueAtTime(0.01, now + 2.8);
-        drone.connect(droneFilter);
-        droneFilter.connect(droneGain);
-        droneGain.connect(AC.destination);
-        drone.start(now);
-        drone.stop(now + 3);
-        
-        // Upper harmonic (5th above) for richness
-        const fifth = AC.createOscillator();
-        const fifthGain = AC.createGain();
-        fifth.type = 'triangle';
-        fifth.frequency.setValueAtTime(82.4, now + 0.2); // E2
-        fifth.frequency.linearRampToValueAtTime(73.4, now + 2.5); // D2
-        fifthGain.gain.setValueAtTime(0.2, now + 0.2);
-        fifthGain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
-        fifth.connect(droneFilter);
-        droneFilter.connect(fifthGain);
-        fifthGain.connect(AC.destination);
-        fifth.start(now + 0.2);
-        fifth.stop(now + 2.7);
-        
-        // Breath/wind noise for realism
-        const bufferSize = 4096;
-        const breath = AC.createScriptProcessor(bufferSize, 1, 1);
-        const breathGain = AC.createGain();
-        const breathFilter = AC.createBiquadFilter();
-        breath.onaudioprocess = (e) => {
-          const output = e.outputBuffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            output[i] = (Math.random() * 2 - 1) * 0.1;
-          }
-        };
-        breathFilter.type = 'bandpass';
-        breathFilter.frequency.setValueAtTime(150, now);
-        breathFilter.Q.setValueAtTime(2, now);
-        breathGain.gain.setValueAtTime(0.15, now);
-        breathGain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
-        breath.connect(breathFilter);
-        breathFilter.connect(breathGain);
-        breathGain.connect(AC.destination);
-        setTimeout(() => breath.disconnect(), 2800);
-        break;
-      }
-      case 'heart': {
-        // Healing sound - gentle Nordic chime
-        const chime = AC.createOscillator();
-        const chimeGain = AC.createGain();
-        chime.type = 'sine';
-        chime.frequency.setValueAtTime(392, now); // G4
-        chime.frequency.setValueAtTime(523, now + 0.15); // C5
-        chimeGain.gain.setValueAtTime(0.25, now);
-        chimeGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-        chime.connect(chimeGain);
-        chimeGain.connect(AC.destination);
-        chime.start(now);
-        chime.stop(now + 0.55);
-        break;
-      }
-      case 'warhorn': {
-        // EPIC GJALLARHORN - Viking war horn like in Vikings TV show!
-        // Multiple harmonics for rich, authentic sound
-        
-        // Fundamental - deep resonant base
-        const fund = AC.createOscillator();
-        const fundGain = AC.createGain();
-        const masterFilter = AC.createBiquadFilter();
-        fund.type = 'sawtooth';
-        fund.frequency.setValueAtTime(73.4, now); // Low D2
-        fund.frequency.linearRampToValueAtTime(110, now + 0.4); // Rise to A2
-        fund.frequency.setValueAtTime(110, now + 0.4);
-        fund.frequency.linearRampToValueAtTime(73.4, now + 1.8); // Fall back
-        masterFilter.type = 'lowpass';
-        masterFilter.frequency.setValueAtTime(600, now);
-        fundGain.gain.setValueAtTime(0, now);
-        fundGain.gain.linearRampToValueAtTime(0.5, now + 0.2);
-        fundGain.gain.setValueAtTime(0.5, now + 1.2);
-        fundGain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
-        fund.connect(masterFilter);
-        masterFilter.connect(fundGain);
-        fundGain.connect(AC.destination);
-        fund.start(now);
-        fund.stop(now + 2.1);
-        
-        // 2nd harmonic (octave)
-        const oct = AC.createOscillator();
-        const octGain = AC.createGain();
-        oct.type = 'triangle';
-        oct.frequency.setValueAtTime(146.8, now);
-        oct.frequency.linearRampToValueAtTime(220, now + 0.4);
-        oct.frequency.linearRampToValueAtTime(146.8, now + 1.8);
-        octGain.gain.setValueAtTime(0.2, now + 0.1);
-        octGain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
-        oct.connect(masterFilter);
-        masterFilter.connect(octGain);
-        octGain.connect(AC.destination);
-        oct.start(now + 0.05);
-        oct.stop(now + 1.9);
-        
-        // 3rd harmonic (5th) for richness
-        const fifth = AC.createOscillator();
-        const fifthGain = AC.createGain();
-        fifth.type = 'sine';
-        fifth.frequency.setValueAtTime(110, now);
-        fifth.frequency.linearRampToValueAtTime(165, now + 0.4);
-        fifth.frequency.linearRampToValueAtTime(110, now + 1.8);
-        fifthGain.gain.setValueAtTime(0.1, now + 0.15);
-        fifthGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
-        fifth.connect(masterFilter);
-        masterFilter.connect(fifthGain);
-        fifthGain.connect(AC.destination);
-        fifth.start(now + 0.1);
-        fifth.stop(now + 1.6);
-        
-        // Breath/wind noise through horn
-        const bufferSize = 4096;
-        const breath = AC.createScriptProcessor(bufferSize, 1, 1);
-        const breathGain = AC.createGain();
-        const breathFilter = AC.createBiquadFilter();
-        breath.onaudioprocess = (e) => {
-          const output = e.outputBuffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            output[i] = (Math.random() * 2 - 1) * 0.15;
-          }
-        };
-        breathFilter.type = 'bandpass';
-        breathFilter.frequency.setValueAtTime(200, now);
-        breathFilter.Q.setValueAtTime(3, now);
-        breathGain.gain.setValueAtTime(0, now);
-        breathGain.gain.linearRampToValueAtTime(0.2, now + 0.1);
-        breathGain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
-        breath.connect(breathFilter);
-        breathFilter.connect(breathGain);
-        breathGain.connect(AC.destination);
-        setTimeout(() => breath.disconnect(), 2000);
-        break;
-      }
-      case 'stomp': {
-        // Mario-style enemy stomp - satisfying squish + bounce
-        // Impact thud
-        const thud = AC.createOscillator();
-        const thudGain = AC.createGain();
-        thud.type = 'sine';
-        thud.frequency.setValueAtTime(150, now);
-        thud.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+        thud.frequency.setValueAtTime(60, now);
+        thud.frequency.exponentialRampToValueAtTime(25, now + 0.1);
         thudGain.gain.setValueAtTime(0.5, now);
         thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
         thud.connect(thudGain);
         thudGain.connect(AC.destination);
         thud.start(now);
         thud.stop(now + 0.2);
-        // Squish sound
-        const squish = AC.createOscillator();
-        const squishGain = AC.createGain();
-        const squishFilter = AC.createBiquadFilter();
-        squish.type = 'sawtooth';
-        squish.frequency.setValueAtTime(400, now);
-        squish.frequency.exponentialRampToValueAtTime(100, now + 0.08);
-        squishFilter.type = 'lowpass';
-        squishFilter.frequency.setValueAtTime(800, now);
-        squishGain.gain.setValueAtTime(0.2, now);
-        squishGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        squish.connect(squishFilter);
-        squishFilter.connect(squishGain);
-        squishGain.connect(AC.destination);
-        squish.start(now);
-        squish.stop(now + 0.12);
-        // Victory pop
-        const pop = AC.createOscillator();
-        const popGain = AC.createGain();
-        pop.type = 'sine';
-        pop.frequency.setValueAtTime(600, now + 0.05);
-        pop.frequency.exponentialRampToValueAtTime(900, now + 0.12);
-        popGain.gain.setValueAtTime(0.2, now + 0.05);
-        popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        pop.connect(popGain);
-        popGain.connect(AC.destination);
-        pop.start(now + 0.05);
-        pop.stop(now + 0.25);
+        break;
+      }
+      case 'gameover': {
+        // Mournful Viking funeral horn - like Ragnar's death scene
+        // Deep droning horn with natural harmonics and breath
+        const fundamental = 55; // Very low A1
+        
+        // Create multiple harmonics for realistic horn timbre
+        [1, 2, 3, 4, 5].forEach((harmonic, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = i === 0 ? 'sawtooth' : 'triangle';
+          const freq = fundamental * harmonic;
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.linearRampToValueAtTime(freq * 0.9, now + 3);
+          // Add vibrato for realism
+          if (i < 3) {
+            const vib = AC.createOscillator();
+            const vibG = AC.createGain();
+            vib.frequency.value = 4 + i;
+            vibG.gain.value = freq * 0.01;
+            vib.connect(vibG);
+            vibG.connect(osc.frequency);
+            vib.start(now);
+            vib.stop(now + 3.5);
+          }
+          // Amplitude envelope - slow swell
+          const amp = [0.4, 0.2, 0.1, 0.05, 0.025][i];
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(amp, now + 0.5);
+          gain.gain.setValueAtTime(amp, now + 2);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
+          osc.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now);
+          osc.stop(now + 3.6);
+        });
+        
+        // Breath noise through horn
+        const breath = AC.createBufferSource();
+        breath.buffer = createNoiseBuffer(3.5);
+        const bFilter = AC.createBiquadFilter();
+        bFilter.type = 'bandpass';
+        bFilter.frequency.value = 120;
+        bFilter.Q.value = 3;
+        const bGain = AC.createGain();
+        bGain.gain.setValueAtTime(0, now);
+        bGain.gain.linearRampToValueAtTime(0.15, now + 0.3);
+        bGain.gain.exponentialRampToValueAtTime(0.01, now + 3);
+        breath.connect(bFilter);
+        bFilter.connect(bGain);
+        bGain.connect(AC.destination);
+        breath.start(now);
+        break;
+      }
+      case 'heart': {
+        // Healing rune glow - warm mystical sound
+        const notes = [196, 293.7, 392]; // G3, D4, G4 - open fifth
+        notes.forEach((freq, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, now + i * 0.08);
+          gain.gain.linearRampToValueAtTime(0.15, now + i * 0.08 + 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+          osc.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + 0.7);
+        });
+        break;
+      }
+      case 'warhorn': {
+        // EPIC GJALLARHORN - authentic Viking war horn
+        // Based on actual Norse horn acoustics with harmonics and breath
+        const fundamental = 65.4; // Low C2 - deep war horn
+        
+        // Natural horn harmonics (odd harmonics emphasized like real horns)
+        [1, 2, 3, 4, 5, 6, 8].forEach((harmonic, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          const filter = AC.createBiquadFilter();
+          osc.type = i < 2 ? 'sawtooth' : 'triangle';
+          const freq = fundamental * harmonic;
+          // War horn call: rise, sustain, fall
+          osc.frequency.setValueAtTime(freq * 0.9, now);
+          osc.frequency.linearRampToValueAtTime(freq, now + 0.3);
+          osc.frequency.setValueAtTime(freq, now + 1.5);
+          osc.frequency.linearRampToValueAtTime(freq * 0.85, now + 2.5);
+          // Add slight vibrato
+          const vib = AC.createOscillator();
+          const vibG = AC.createGain();
+          vib.frequency.value = 5;
+          vibG.gain.value = freq * 0.015;
+          vib.connect(vibG);
+          vibG.connect(osc.frequency);
+          vib.start(now + 0.3);
+          vib.stop(now + 2.5);
+          // Filter to shape tone
+          filter.type = 'lowpass';
+          filter.frequency.value = 800;
+          filter.Q.value = 0.5;
+          // Amplitude based on harmonic
+          const amps = [0.5, 0.3, 0.15, 0.08, 0.04, 0.02, 0.01];
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(amps[i] || 0.01, now + 0.2);
+          gain.gain.setValueAtTime(amps[i] || 0.01, now + 1.8);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 2.8);
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now);
+          osc.stop(now + 2.9);
+        });
+        
+        // Breath/wind through horn
+        const breath = AC.createBufferSource();
+        breath.buffer = createNoiseBuffer(2.8);
+        const bFilter = AC.createBiquadFilter();
+        bFilter.type = 'bandpass';
+        bFilter.frequency.value = 180;
+        bFilter.Q.value = 4;
+        const bGain = AC.createGain();
+        bGain.gain.setValueAtTime(0, now);
+        bGain.gain.linearRampToValueAtTime(0.2, now + 0.15);
+        bGain.gain.setValueAtTime(0.2, now + 1.8);
+        bGain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
+        breath.connect(bFilter);
+        bFilter.connect(bGain);
+        bGain.connect(AC.destination);
+        breath.start(now);
+        break;
+      }
+      case 'stomp': {
+        // Viking boot stomp on enemy - heavy impact + crunch
+        // Deep body impact
+        const thud = AC.createOscillator();
+        const thudGain = AC.createGain();
+        thud.type = 'sine';
+        thud.frequency.setValueAtTime(100, now);
+        thud.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+        thudGain.gain.setValueAtTime(0.6, now);
+        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        thud.connect(thudGain);
+        thudGain.connect(AC.destination);
+        thud.start(now);
+        thud.stop(now + 0.2);
+        
+        // Armor/bone crunch
+        const crunch = AC.createBufferSource();
+        crunch.buffer = createNoiseBuffer(0.1);
+        const cFilter = AC.createBiquadFilter();
+        cFilter.type = 'bandpass';
+        cFilter.frequency.value = 2000;
+        cFilter.Q.value = 2;
+        const cGain = AC.createGain();
+        cGain.gain.setValueAtTime(0.25, now);
+        cGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        crunch.connect(cFilter);
+        cFilter.connect(cGain);
+        cGain.connect(AC.destination);
+        crunch.start(now);
+        
+        // Short victory grunt "HA!"
+        const grunt = AC.createOscillator();
+        const gGain = AC.createGain();
+        grunt.type = 'sawtooth';
+        grunt.frequency.setValueAtTime(140, now + 0.05);
+        grunt.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+        gGain.gain.setValueAtTime(0.2, now + 0.05);
+        gGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        grunt.connect(gGain);
+        gGain.connect(AC.destination);
+        grunt.start(now + 0.05);
+        grunt.stop(now + 0.18);
         break;
       }
     }
@@ -1418,13 +1426,16 @@
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
-      const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-      const week = Math.floor(weekStart.getDate() / 7);
-      const day = now.toDateString();
+      const day = now.toDateString(); // Get day BEFORE any mutations
+      
+      // Clone date for week calculation to avoid mutating 'now'
+      const weekCalc = new Date(now.getTime());
+      weekCalc.setDate(weekCalc.getDate() - weekCalc.getDay());
+      const weekNum = Math.ceil(weekCalc.getDate() / 7);
       
       switch(period) {
         case 'daily': return `highscore_daily_${day}`;
-        case 'weekly': return `highscore_weekly_${year}_W${Math.floor((now.getDate() + weekStart.getDay()) / 7)}`;
+        case 'weekly': return `highscore_weekly_${year}_W${weekNum}`;
         case 'monthly': return `highscore_monthly_${year}_${month}`;
         case 'yearly': return `highscore_yearly_${year}`;
         case 'alltime': return 'highscore_alltime';
@@ -2181,7 +2192,7 @@
           // STOMP! Kill the enemy Mario-style
           e.defeated = true;
           e.hit = true;
-          viking.vy = -400; // Bounce up after stomp
+          viking.vy = -750; // High bounce after stomp - higher than normal jump!
           world.score += 150;
           addParticle(e.x, e.y - e.h/2, "#fbbf24", 20);
           playSFX('stomp');
@@ -2672,10 +2683,26 @@
     };
   }
   
-  // Calibration point clicks
+  // Calibration point clicks - MUST register with WebGazer for training
   calibrationPoints.forEach(point => {
+    let clickCount = 0;
     point.onclick = () => {
-      if (!point.classList.contains("clicked")) {
+      // Get center position of calibration point
+      const rect = point.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      
+      // CRITICAL: Register this point with WebGazer for gaze training
+      try {
+        if (typeof webgazer !== 'undefined') {
+          webgazer.recordScreenPosition(x, y);
+        }
+      } catch (e) {}
+      
+      clickCount++;
+      
+      // Need 5 clicks per point for good accuracy
+      if (clickCount >= 5 && !point.classList.contains("clicked")) {
         point.classList.add("clicked");
         calibrationClicks++;
         
@@ -2683,9 +2710,13 @@
           if (calibrationClicks >= 9) {
             calibrationStatus.textContent = "✓ Calibration complete! Click the button below to start.";
           } else {
-            calibrationStatus.textContent = `Click all 9 points to calibrate (${calibrationClicks}/9)`;
+            calibrationStatus.textContent = `Click all 9 points 5x each (${calibrationClicks}/9 done)`;
           }
         }
+      } else if (!point.classList.contains("clicked")) {
+        // Show progress for this point
+        point.style.transform = `scale(${1 + clickCount * 0.1})`;
+        point.textContent = `${clickCount}/5`;
       }
     };
   });
