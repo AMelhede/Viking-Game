@@ -260,55 +260,6 @@
       font-size: 15px;
     }
     
-    .powerup-list {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin: 20px 0;
-    }
-    
-    .powerup-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding: 12px;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    .powerup-item .icon {
-      font-size: 24px;
-    }
-    
-    .powerup-item .name {
-      font-size: 10px;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      font-weight: 500;
-    }
-
-    .weapon-indicator {
-      position: absolute;
-      top: 90px;
-      left: 20px;
-      padding: 10px 16px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      display: none;
-      align-items: center;
-      gap: 10px;
-      z-index: 50;
-      font-size: 12px;
-      color: var(--accent);
-    }
-
-    .weapon-indicator.active {
-      display: flex;
-    }
-
     .eye-tracking-indicator {
       position: absolute;
       top: 70px;
@@ -606,10 +557,6 @@
         </div>
       </div>
 
-      <div class="weapon-indicator" id="weaponIndicator">
-        <span>⚔️</span>
-        <span>Press SPACE to attack</span>
-      </div>
 
       <div class="hudline">
         <div class="hint" id="hint">
@@ -979,7 +926,6 @@
       setTimeout(playMelody, 2000);
       
       musicPlaying = true;
-      console.log("Viking music started");
     } catch (e) {
       console.error("Error starting music:", e);
     }
@@ -997,7 +943,6 @@
       musicGain.disconnect();
       musicGain = null;
     }
-    console.log("Viking music stopped");
   };
   
   const setMusicVolume = (muted) => {
@@ -1315,7 +1260,6 @@
           // });
         }
       } catch (e) {
-        console.log('API sync failed, using localStorage');
       }
     },
 
@@ -1333,7 +1277,6 @@
           // return data.scores || [];
         }
       } catch (e) {
-        console.log('API fetch failed, using localStorage');
       }
       return HighScoreManager.getScoresLocal(period);
     },
@@ -1971,7 +1914,6 @@
             addParticle(viking.x, viking.y, "#ef4444", 25);
             playSFX('damage');
             updateHUD();
-            console.log("Hit by enemy! Lives:", world.lives, "Enemy pos:", e.x, e.y, "Viking pos:", viking.x, viking.y);
               
             if (world.lives <= 0) {
               world.over = true;
@@ -2324,9 +2266,6 @@
       // Start WebGazer
       try {
         // Initialize WebGazer with proper settings per official docs
-        // Debug: track gaze data reception
-        let gazeDataCount = 0;
-        let lastDebugLog = 0;
         const gazeZoneIndicator = $("gazeZoneIndicator");
         
         webgazer
@@ -2337,7 +2276,6 @@
               return;
             }
             
-            gazeDataCount++;
             
             // Use raw data if bound fails
             let x = data.x;
@@ -2361,12 +2299,7 @@
             const relX = (x - centerX) / centerX; // -1 = left edge, 1 = right edge
             const relY = (y - centerY) / centerY; // -1 = top edge, 1 = bottom edge
             
-            // Debug logging every second - show BOTH axes
             const now = Date.now();
-            if (now - lastDebugLog > 1000) {
-              console.log(`[EYE TRACKING] X: ${Math.round(x)} (rel: ${relX.toFixed(2)}), Y: ${Math.round(y)} (rel: ${relY.toFixed(2)}), Data: ${gazeDataCount}`);
-              lastDebugLog = now;
-            }
             
             // Update gaze cursor position - ALWAYS when enabled
             if (gazeCursor && eyeTrackingEnabled) {
@@ -2420,7 +2353,6 @@
             if (eyeTrackingEnabled && world.started && !world.paused && !world.over) {
               // JUMP when looking up (or left if calibration rotated)
               if (isLookingUp && now - lastGazeAction > 200) {
-                console.log('[EYE TRACKING] JUMP TRIGGERED!');
                 Input.jumpJustPressed = true;
                 Input.jump = true;
                 Input.duck = false;
@@ -2429,7 +2361,6 @@
               }
               // DUCK when looking down (or right if calibration rotated)
               else if (isLookingDown) {
-                console.log('[EYE TRACKING] DUCK TRIGGERED!');
                 Input.duck = true;
                 Input.jump = false;
                 Input.jumpJustPressed = false;
@@ -2455,7 +2386,6 @@
         // Save calibration data between sessions
         window.saveDataAcrossSessions = true;
         
-        console.log("WebGazer started with TFFacemesh tracker and ridge regression");
       } catch (e) {
         console.error("Error starting WebGazer:", e);
         alert("Could not start eye tracking. Please:\n1. Allow camera access\n2. Make sure you're on HTTPS or localhost\n3. Check browser compatibility");
@@ -2530,7 +2460,6 @@
         start();
       }
       
-      console.log("Eye tracking enabled - look UP to jump, DOWN to duck");
     };
   }
   
@@ -2551,7 +2480,6 @@
         if (hint) {
           hint.innerHTML = '<kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Press <kbd>E</kbd> for Eye Tracking';
         }
-        console.log("Eye tracking disabled");
       } else {
         eyeTrackingEnabled = true;
         if (eyeTrackingIndicator) eyeTrackingIndicator.classList.add("active");
@@ -2565,7 +2493,6 @@
         if (hint) {
           hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
         }
-        console.log("Eye tracking enabled");
       }
     }
   });
