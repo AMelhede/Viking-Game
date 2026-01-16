@@ -1084,6 +1084,7 @@
       w: 50,
       h: 60,
       defeated: false,
+      hit: false, // Track if this enemy has hit the player
       hit: false
     });
   };
@@ -1954,47 +1955,50 @@
       }
     }
 
-    // Collisions - Enemies - COMPLETELY FIXED TO KILL YOU
+    // Collisions - Enemies - FIXED: All enemies cause damage
     for (const e of Enemies) {
-      if (!e.defeated) {
+      if (!e.defeated && !e.hit) {
         const distX = Math.abs(viking.x - e.x);
         const distY = Math.abs(viking.y - e.y);
-        // Enemy collision: 50px horizontal, 70px vertical
-        if (distX < 50 && distY < 70) {
-          // Enemy hits you - YOU TAKE DAMAGE (attack system removed)
+        // Enemy collision: 60px horizontal, 80px vertical (more forgiving)
+        const hitRange = distX < 60 && distY < 80;
+        
+        if (hitRange) {
+          // Enemy hits you - YOU TAKE DAMAGE
           if (!world.powerups.invincibility.active) {
-            // Mark enemy as hit so it doesn't hit multiple times
-            if (!e.hit) {
-              e.hit = true;
-              world.lives--;
-              addParticle(viking.x, viking.y, "#ef4444", 25);
-              playSFX('damage');
-              updateHUD();
-              console.log("Hit by enemy! Lives:", world.lives);
+            e.hit = true; // Mark so this enemy doesn't hit multiple times
+            world.lives--;
+            addParticle(viking.x, viking.y, "#ef4444", 25);
+            playSFX('damage');
+            updateHUD();
+            console.log("Hit by enemy! Lives:", world.lives, "Enemy pos:", e.x, e.y, "Viking pos:", viking.x, viking.y);
               
-              if (world.lives <= 0) {
-                world.over = true;
-                viking.faceplant = 1.5;
-                if (statePill) statePill.textContent = "Game Over";
-                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
-                playSFX('gameover');
-                setTimeout(() => { 
-                  if (overlay) {
-                    overlay.style.display = "grid";
-                    overlay.style.visibility = "visible";
-                    overlay.style.opacity = "1";
-                  }
-                  const overlayTitle = $("overlayTitle");
-                  const overlayText = $("overlayText");
-                  if (overlayTitle) overlayTitle.textContent = "Game Over";
-                  if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                  if (startBtn) startBtn.textContent = "Play Again";
-                }, 1200);
-              } else {
-                world.powerups.invincibility.active = true;
-                world.powerups.invincibility.timeLeft = 1.5;
-              }
+            if (world.lives <= 0) {
+              world.over = true;
+              viking.faceplant = 1.5;
+              if (statePill) statePill.textContent = "Game Over";
+              HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+              playSFX('gameover');
+              setTimeout(() => { 
+                if (overlay) {
+                  overlay.style.display = "grid";
+                  overlay.style.visibility = "visible";
+                  overlay.style.opacity = "1";
+                }
+                const overlayTitle = $("overlayTitle");
+                const overlayText = $("overlayText");
+                if (overlayTitle) overlayTitle.textContent = "Game Over";
+                if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                if (startBtn) startBtn.textContent = "Play Again";
+              }, 1200);
+            } else {
+              // Brief invincibility after being hit
+              world.powerups.invincibility.active = true;
+              world.powerups.invincibility.timeLeft = 1.5;
             }
+          } else {
+            // If invincible, mark enemy as passed so it doesn't block later
+            e.hit = true;
           }
         }
       }
@@ -2347,10 +2351,20 @@
               }
             } catch (e) {}
             
-            // Debug logging every second
+            // Get screen dimensions and center
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const centerX = screenWidth / 2;
+            const centerY = screenHeight / 2;
+            
+            // Calculate position relative to center (normalized -1 to 1)
+            const relX = (x - centerX) / centerX; // -1 = left edge, 1 = right edge
+            const relY = (y - centerY) / centerY; // -1 = top edge, 1 = bottom edge
+            
+            // Debug logging every second - show BOTH axes
             const now = Date.now();
             if (now - lastDebugLog > 1000) {
-              console.log(`[EYE TRACKING] Gaze Y: ${Math.round(y)}, Screen Height: ${window.innerHeight}, Data count: ${gazeDataCount}, Enabled: ${eyeTrackingEnabled}, Started: ${world.started}`);
+              console.log(`[EYE TRACKING] X: ${Math.round(x)} (rel: ${relX.toFixed(2)}), Y: ${Math.round(y)} (rel: ${relY.toFixed(2)}), Data: ${gazeDataCount}`);
               lastDebugLog = now;
             }
             
@@ -2364,31 +2378,48 @@
             // Store gaze Y for game control
             gazeY = y;
             
-            const screenHeight = window.innerHeight;
-            const topThreshold = screenHeight * 0.4;    // Top 40% = JUMP
-            const bottomThreshold = screenHeight * 0.6; // Bottom 40% = DUCK
+            // FLEXIBLE DETECTION: Use whichever axis shows more movement
+            // This handles the case where calibration is rotated
+            const absRelX = Math.abs(relX);
+            const absRelY = Math.abs(relY);
+            
+            // Determine if looking "up" or "down" using EITHER axis
+            // If Y movement is stronger, use Y. If X movement is stronger, use X (rotated calibration)
+            let isLookingUp = false;
+            let isLookingDown = false;
+            
+            if (absRelY >= absRelX) {
+              // Y axis is dominant - normal behavior
+              isLookingUp = relY < -0.3;   // Looking at top 35% of screen
+              isLookingDown = relY > 0.3;  // Looking at bottom 35% of screen
+            } else {
+              // X axis is dominant - calibration might be rotated
+              // Treat LEFT as UP and RIGHT as DOWN (or vice versa)
+              isLookingUp = relX < -0.3;   // Looking at left 35% = treat as UP
+              isLookingDown = relX > 0.3;  // Looking at right 35% = treat as DOWN
+            }
             
             // Show gaze zone indicator (always when eye tracking enabled)
             if (eyeTrackingEnabled && gazeZoneIndicator) {
-              if (y < topThreshold) {
+              if (isLookingUp) {
                 gazeZoneIndicator.style.display = 'block';
                 gazeZoneIndicator.style.background = 'rgba(74, 222, 128, 0.9)';
-                gazeZoneIndicator.textContent = '👆 LOOKING UP - JUMP!';
-              } else if (y > bottomThreshold) {
+                gazeZoneIndicator.textContent = '👆 JUMP ZONE';
+              } else if (isLookingDown) {
                 gazeZoneIndicator.style.display = 'block';
                 gazeZoneIndicator.style.background = 'rgba(251, 191, 36, 0.9)';
-                gazeZoneIndicator.textContent = '👇 LOOKING DOWN - DUCK!';
+                gazeZoneIndicator.textContent = '👇 DUCK ZONE';
               } else {
                 gazeZoneIndicator.style.display = 'block';
                 gazeZoneIndicator.style.background = 'rgba(100, 100, 100, 0.7)';
-                gazeZoneIndicator.textContent = '👀 LOOKING CENTER';
+                gazeZoneIndicator.textContent = '👀 CENTER';
               }
             }
             
             // Control game with eye gaze
             if (eyeTrackingEnabled && world.started && !world.paused && !world.over) {
-              // Look at top 40% of screen = JUMP
-              if (y < topThreshold && now - lastGazeAction > 200) {
+              // JUMP when looking up (or left if calibration rotated)
+              if (isLookingUp && now - lastGazeAction > 200) {
                 console.log('[EYE TRACKING] JUMP TRIGGERED!');
                 Input.jumpJustPressed = true;
                 Input.jump = true;
@@ -2396,15 +2427,15 @@
                 lastGazeAction = now;
                 if (gazeCursor) gazeCursor.style.background = 'rgba(74, 222, 128, 0.8)';
               }
-              // Look at bottom 40% of screen = DUCK
-              else if (y > bottomThreshold) {
+              // DUCK when looking down (or right if calibration rotated)
+              else if (isLookingDown) {
                 console.log('[EYE TRACKING] DUCK TRIGGERED!');
                 Input.duck = true;
                 Input.jump = false;
                 Input.jumpJustPressed = false;
                 if (gazeCursor) gazeCursor.style.background = 'rgba(251, 191, 36, 0.8)';
               }
-              // Look at middle = normal
+              // Center = normal
               else {
                 Input.duck = false;
                 if (now - lastGazeAction > 150) {
