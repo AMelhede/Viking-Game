@@ -2162,22 +2162,22 @@
     for (const e of Enemies) {
       if (!e.defeated && !e.hit) {
         const distX = Math.abs(viking.x - e.x);
+        const vikingHeight = viking.ducking ? 42 : 70;
+        const vikingTop = viking.y - vikingHeight;
         const vikingBottom = viking.y;
         const enemyTop = e.y - e.h;
         const enemyBottom = e.y;
         
-        // Check if viking is above enemy and falling down
-        const landingOnTop = viking.vy > 0 && 
-                            vikingBottom >= enemyTop - 20 && 
-                            vikingBottom <= enemyTop + 30 &&
-                            distX < 40;
+        // Basic overlap check - are they colliding at all?
+        const horizontalOverlap = distX < 45;
+        const verticalOverlap = vikingBottom > enemyTop && vikingTop < enemyBottom;
         
-        // Side collision (get hurt)
-        const sideHit = distX < 50 && 
-                       vikingBottom > enemyTop + 30 && 
-                       viking.y - 70 < enemyBottom;
+        // Check if viking is coming from above (stomping)
+        const comingFromAbove = viking.vy > 0 && 
+                               vikingBottom <= enemyTop + 25 &&
+                               vikingBottom >= enemyTop - 15;
         
-        if (landingOnTop) {
+        if (horizontalOverlap && comingFromAbove) {
           // STOMP! Kill the enemy Mario-style
           e.defeated = true;
           e.hit = true;
@@ -2186,8 +2186,8 @@
           addParticle(e.x, e.y - e.h/2, "#fbbf24", 20);
           playSFX('stomp');
           updateHUD();
-        } else if (sideHit) {
-          // Enemy hits you from side - YOU TAKE DAMAGE
+        } else if (horizontalOverlap && verticalOverlap) {
+          // Side/front collision - YOU TAKE DAMAGE
           if (!world.powerups.invincibility.active) {
             e.hit = true;
             world.lives--;
