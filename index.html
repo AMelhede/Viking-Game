@@ -547,6 +547,9 @@
         <span>Eye Tracking Active</span>
       </div>
       
+      <!-- Gaze Zone Indicator - shows what zone you're looking at -->
+      <div id="gazeZoneIndicator" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; color:white; z-index:1000; display:none; pointer-events:none;"></div>
+      
       <!-- Calibration Overlay -->
       <div class="calibration-overlay" id="calibrationOverlay">
         <div class="calibration-card">
@@ -2277,18 +2280,41 @@
       // Start WebGazer
       try {
         // Initialize WebGazer with proper settings per official docs
+        // Debug: track gaze data reception
+        let gazeDataCount = 0;
+        let lastDebugLog = 0;
+        const gazeZoneIndicator = $("gazeZoneIndicator");
+        
         webgazer
           .setTracker('TFFacemesh')  // Use MediaPipe Facemesh for face detection
           .setRegression('ridge')     // Ridge regression for gaze prediction
           .setGazeListener((data, elapsedTime) => {
-            if (data == null) return;
+            if (data == null) {
+              return;
+            }
             
-            // Bound predictions to viewport
-            const bounded = webgazer.util.bound(data);
-            const x = bounded.x;
-            const y = bounded.y;
+            gazeDataCount++;
             
-            // Update gaze cursor position
+            // Use raw data if bound fails
+            let x = data.x;
+            let y = data.y;
+            
+            try {
+              const bounded = webgazer.util.bound(data);
+              if (bounded) {
+                x = bounded.x;
+                y = bounded.y;
+              }
+            } catch (e) {}
+            
+            // Debug logging every second
+            const now = Date.now();
+            if (now - lastDebugLog > 1000) {
+              console.log(`[EYE TRACKING] Gaze Y: ${Math.round(y)}, Screen Height: ${window.innerHeight}, Data count: ${gazeDataCount}, Enabled: ${eyeTrackingEnabled}, Started: ${world.started}`);
+              lastDebugLog = now;
+            }
+            
+            // Update gaze cursor position - ALWAYS when enabled
             if (gazeCursor && eyeTrackingEnabled) {
               gazeCursor.style.left = x + 'px';
               gazeCursor.style.top = y + 'px';
@@ -2298,37 +2324,53 @@
             // Store gaze Y for game control
             gazeY = y;
             
+            const screenHeight = window.innerHeight;
+            const topThreshold = screenHeight * 0.4;    // Top 40% = JUMP
+            const bottomThreshold = screenHeight * 0.6; // Bottom 40% = DUCK
+            
+            // Show gaze zone indicator (always when eye tracking enabled)
+            if (eyeTrackingEnabled && gazeZoneIndicator) {
+              if (y < topThreshold) {
+                gazeZoneIndicator.style.display = 'block';
+                gazeZoneIndicator.style.background = 'rgba(74, 222, 128, 0.9)';
+                gazeZoneIndicator.textContent = '👆 LOOKING UP - JUMP!';
+              } else if (y > bottomThreshold) {
+                gazeZoneIndicator.style.display = 'block';
+                gazeZoneIndicator.style.background = 'rgba(251, 191, 36, 0.9)';
+                gazeZoneIndicator.textContent = '👇 LOOKING DOWN - DUCK!';
+              } else {
+                gazeZoneIndicator.style.display = 'block';
+                gazeZoneIndicator.style.background = 'rgba(100, 100, 100, 0.7)';
+                gazeZoneIndicator.textContent = '👀 LOOKING CENTER';
+              }
+            }
+            
             // Control game with eye gaze
             if (eyeTrackingEnabled && world.started && !world.paused && !world.over) {
-              const screenHeight = window.innerHeight;
-              const now = Date.now();
-              
-              // Look at top 35% of screen = jump (more forgiving)
-              if (y < screenHeight * 0.35 && now - lastGazeAction > 250) {
-                if (!Input.jump) {
-                  Input.jumpJustPressed = true;
-                }
+              // Look at top 40% of screen = JUMP
+              if (y < topThreshold && now - lastGazeAction > 200) {
+                console.log('[EYE TRACKING] JUMP TRIGGERED!');
+                Input.jumpJustPressed = true;
                 Input.jump = true;
                 Input.duck = false;
                 lastGazeAction = now;
-                // Visual feedback
                 if (gazeCursor) gazeCursor.style.background = 'rgba(74, 222, 128, 0.8)';
               }
-              // Look at bottom 35% of screen = duck (more forgiving)
-              else if (y > screenHeight * 0.65) {
+              // Look at bottom 40% of screen = DUCK
+              else if (y > bottomThreshold) {
+                console.log('[EYE TRACKING] DUCK TRIGGERED!');
                 Input.duck = true;
                 Input.jump = false;
-                // Visual feedback
+                Input.jumpJustPressed = false;
                 if (gazeCursor) gazeCursor.style.background = 'rgba(251, 191, 36, 0.8)';
               }
               // Look at middle = normal
               else {
                 Input.duck = false;
-                // Reset jump after a short delay
                 if (now - lastGazeAction > 150) {
                   Input.jump = false;
+                  Input.jumpJustPressed = false;
                 }
-                // Reset cursor color
                 if (gazeCursor) gazeCursor.style.background = 'rgba(255, 107, 107, 0.6)';
               }
             }
