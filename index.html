@@ -1209,7 +1209,7 @@
       world.over = false;
       world.score = 0; 
       world.mead = 0; 
-      world.speed = 260; 
+      world.speed = 230; 
       world.t = 0;
     world.groundY = H * 0.8;
       world.camX = 0;
@@ -1841,8 +1841,8 @@
 
     world.t += dt;
     
-    const baseSpeed = 260;
-    world.speed = Math.min(450, world.speed + 4 * dt);
+    const baseSpeed = 230;
+    world.speed = Math.min(400, world.speed + 3 * dt);
     if (world.speed > baseSpeed) {
       world.speed = Math.max(baseSpeed, world.speed - 3 * dt);
     }
@@ -1897,7 +1897,7 @@
     // Spawn logic - REDUCED FREQUENCY
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      world.nextObstacleAt += rand(350, 550);
+      world.nextObstacleAt += rand(425, 675);
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
@@ -1913,13 +1913,13 @@
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
-      world.nextEnemyAt += rand(500, 900);
+      world.nextEnemyAt += rand(600, 1050);
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < 5) { // Only spawn hearts if lives < 5
         spawnHeart(world.nextHeartAt);
       }
-      world.nextHeartAt += rand(1800, 3000);
+      world.nextHeartAt += rand(1400, 2400);
     }
     if (viking.x > world.nextGoldAt - W) {
       spawnGold(world.nextGoldAt);
