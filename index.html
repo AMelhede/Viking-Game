@@ -551,7 +551,13 @@
       <div class="calibration-overlay" id="calibrationOverlay">
         <div class="calibration-card">
           <h2>👁️ Eye Tracking Calibration</h2>
-          <p>Click each blue dot while looking at it.<br>This helps WebGazer learn your eye movements.</p>
+          <p style="margin-bottom: 16px;"><strong>How it works:</strong> Look at each blue dot and click it.<br>This teaches WebGazer where you're looking.</p>
+          <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 14px; color: #0369a1;">
+              <strong>👆 TIP:</strong> Keep your head still and move only your eyes.<br>
+              Good lighting helps accuracy!
+            </p>
+          </div>
           <div class="calibration-points" id="calibrationPoints">
             <div class="calibration-point" data-pos="1"></div>
             <div class="calibration-point" data-pos="2"></div>
@@ -563,8 +569,16 @@
             <div class="calibration-point" data-pos="8"></div>
             <div class="calibration-point" data-pos="9"></div>
           </div>
-          <p id="calibrationStatus">Click all 9 points to calibrate</p>
-          <button class="btn primary" id="finishCalibrationBtn" style="margin-top: 20px; padding: 12px 32px;">Start Playing with Eye Tracking</button>
+          <p id="calibrationStatus" style="font-weight: 600;">Click all 9 points to calibrate (0/9)</p>
+          <div style="background: #ecfdf5; padding: 12px; border-radius: 8px; margin-top: 16px;">
+            <p style="margin: 0; font-size: 13px; color: #047857;">
+              <strong>During gameplay:</strong><br>
+              👀 Look at TOP of screen → Viking JUMPS<br>
+              👀 Look at BOTTOM of screen → Viking DUCKS<br>
+              Press <kbd style="background:#000;color:#fff;padding:2px 6px;border-radius:4px;">E</kbd> to toggle eye tracking on/off
+            </p>
+          </div>
+          <button class="btn primary" id="finishCalibrationBtn" style="margin-top: 24px; padding: 14px 32px; font-size: 15px;">Start Playing with Eye Tracking</button>
         </div>
       </div>
 
@@ -604,12 +618,7 @@
         <div class="card">
           <h1 id="overlayTitle">Viking Run</h1>
           <p id="overlayText" style="white-space: pre-line;">Jump on platforms, avoid enemies, collect powerups, and survive.</p>
-          <div class="powerup-list">
-            <div class="powerup-item"><div class="icon">⚡</div><div class="name">Speed</div></div>
-            <div class="powerup-item"><div class="icon">🛡</div><div class="name">Shield</div></div>
-            <div class="powerup-item"><div class="icon">⭐</div><div class="name">2x Score</div></div>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 280px; margin: 0 auto;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 280px; margin: 20px auto 0;">
             <button class="btn primary" id="startBtn" style="padding: 14px 32px; font-size: 15px; width: 100%; height: 48px;">Start Game</button>
             <button class="btn" id="eyeTrackBtn" style="padding: 12px 24px; font-size: 14px; width: 100%; height: 44px;">👁️ Enable Eye Tracking</button>
             <button class="btn" id="highscoreBtn" style="padding: 12px 24px; font-size: 14px; width: 100%; height: 44px;">High Scores</button>
@@ -677,6 +686,293 @@
     o.connect(g); g.connect(AC.destination);
     o.start(); o.stop(AC.currentTime + dur);
   };
+  
+  // Enhanced Viking sound effects
+  const playSFX = (sfxType) => {
+    if (!OPT.sound) return;
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const now = AC.currentTime;
+    
+    switch(sfxType) {
+      case 'jump': {
+        // Whoosh sound
+        const osc = AC.createOscillator();
+        const gain = AC.createGain();
+        const filter = AC.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2000, now);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(AC.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+        break;
+      }
+      case 'powerup': {
+        // Magical chime - ascending notes
+        [0, 0.08, 0.16].forEach((delay, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime([523, 659, 784][i], now + delay);
+          gain.gain.setValueAtTime(0.2, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.3);
+          osc.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now + delay);
+          osc.stop(now + delay + 0.35);
+        });
+        break;
+      }
+      case 'mead': {
+        // Gulp/drink sound
+        const osc = AC.createOscillator();
+        const gain = AC.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
+        osc.frequency.setValueAtTime(280, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain);
+        gain.connect(AC.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+        break;
+      }
+      case 'damage': {
+        // Impact/hurt sound
+        const osc = AC.createOscillator();
+        const gain = AC.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain);
+        gain.connect(AC.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+        // Add noise burst
+        const noise = AC.createOscillator();
+        const noiseGain = AC.createGain();
+        noise.type = 'square';
+        noise.frequency.setValueAtTime(80, now);
+        noiseGain.gain.setValueAtTime(0.15, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        noise.connect(noiseGain);
+        noiseGain.connect(AC.destination);
+        noise.start(now);
+        noise.stop(now + 0.2);
+        break;
+      }
+      case 'gameover': {
+        // Dramatic low horn
+        [0, 0.15, 0.3].forEach((delay, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime([110, 87, 65][i], now + delay);
+          gain.gain.setValueAtTime(0.2, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.5);
+          osc.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now + delay);
+          osc.stop(now + delay + 0.6);
+        });
+        break;
+      }
+      case 'heart': {
+        // Healing chime
+        const osc = AC.createOscillator();
+        const gain = AC.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(660, now + 0.1);
+        osc.frequency.setValueAtTime(880, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.connect(gain);
+        gain.connect(AC.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+        break;
+      }
+    }
+  };
+
+  // ==========================================
+  // VIKING BACKGROUND MUSIC SYSTEM
+  // ==========================================
+  let musicContext = null;
+  let musicPlaying = false;
+  let musicNodes = [];
+  let musicGain = null;
+  
+  const startVikingMusic = () => {
+    if (musicPlaying) return;
+    
+    try {
+      if (!musicContext) {
+        musicContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      if (musicContext.state === 'suspended') {
+        musicContext.resume();
+      }
+      
+      // Master gain for music volume
+      musicGain = musicContext.createGain();
+      musicGain.gain.setValueAtTime(0.15, musicContext.currentTime);
+      musicGain.connect(musicContext.destination);
+      
+      // Create a deep, epic Nordic drone
+      const createDrone = (freq, type = 'sine') => {
+        const osc = musicContext.createOscillator();
+        const gain = musicContext.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, musicContext.currentTime);
+        gain.gain.setValueAtTime(0.3, musicContext.currentTime);
+        osc.connect(gain);
+        gain.connect(musicGain);
+        osc.start();
+        musicNodes.push({ osc, gain });
+        return { osc, gain };
+      };
+      
+      // Base drone - low D (73.4 Hz) for epic feel
+      createDrone(73.4, 'sine');
+      createDrone(73.4 * 2, 'triangle'); // Octave
+      createDrone(73.4 * 1.5, 'sine'); // Fifth (A)
+      
+      // Slow modulating pad
+      const lfo = musicContext.createOscillator();
+      const lfoGain = musicContext.createGain();
+      lfo.frequency.setValueAtTime(0.1, musicContext.currentTime); // Very slow
+      lfoGain.gain.setValueAtTime(20, musicContext.currentTime);
+      lfo.connect(lfoGain);
+      
+      // Connect LFO to drone frequencies for subtle movement
+      if (musicNodes[0]) {
+        lfoGain.connect(musicNodes[0].osc.frequency);
+      }
+      lfo.start();
+      musicNodes.push({ osc: lfo, gain: lfoGain });
+      
+      // Create rhythmic element - like a slow heartbeat drum
+      const createDrum = () => {
+        const playBeat = () => {
+          if (!musicPlaying || !musicContext) return;
+          
+          const now = musicContext.currentTime;
+          const drumOsc = musicContext.createOscillator();
+          const drumGain = musicContext.createGain();
+          
+          drumOsc.type = 'sine';
+          drumOsc.frequency.setValueAtTime(60, now);
+          drumOsc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+          
+          drumGain.gain.setValueAtTime(0.4, now);
+          drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+          
+          drumOsc.connect(drumGain);
+          drumGain.connect(musicGain);
+          drumOsc.start(now);
+          drumOsc.stop(now + 0.4);
+          
+          // Next beat in 1.5 seconds (slow, epic rhythm)
+          if (musicPlaying) {
+            setTimeout(playBeat, 1500);
+          }
+        };
+        playBeat();
+      };
+      
+      createDrum();
+      
+      // Occasional horn-like melody notes
+      const playMelody = () => {
+        if (!musicPlaying || !musicContext) return;
+        
+        const notes = [146.8, 164.8, 196, 220, 246.9]; // D3, E3, G3, A3, B3 - minor pentatonic
+        const note = notes[Math.floor(Math.random() * notes.length)];
+        const now = musicContext.currentTime;
+        
+        const hornOsc = musicContext.createOscillator();
+        const hornGain = musicContext.createGain();
+        
+        hornOsc.type = 'sawtooth';
+        hornOsc.frequency.setValueAtTime(note, now);
+        
+        hornGain.gain.setValueAtTime(0, now);
+        hornGain.gain.linearRampToValueAtTime(0.1, now + 0.3);
+        hornGain.gain.linearRampToValueAtTime(0.08, now + 1);
+        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 2);
+        
+        // Low-pass filter for warmer sound
+        const filter = musicContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, now);
+        
+        hornOsc.connect(filter);
+        filter.connect(hornGain);
+        hornGain.connect(musicGain);
+        hornOsc.start(now);
+        hornOsc.stop(now + 2.5);
+        
+        // Next melody note in 3-6 seconds
+        if (musicPlaying) {
+          setTimeout(playMelody, 3000 + Math.random() * 3000);
+        }
+      };
+      
+      setTimeout(playMelody, 2000);
+      
+      musicPlaying = true;
+      console.log("Viking music started");
+    } catch (e) {
+      console.error("Error starting music:", e);
+    }
+  };
+  
+  const stopVikingMusic = () => {
+    musicPlaying = false;
+    musicNodes.forEach(node => {
+      try {
+        if (node.osc) node.osc.stop();
+      } catch (e) {}
+    });
+    musicNodes = [];
+    if (musicGain) {
+      musicGain.disconnect();
+      musicGain = null;
+    }
+    console.log("Viking music stopped");
+  };
+  
+  const setMusicVolume = (muted) => {
+    if (musicGain) {
+      musicGain.gain.setValueAtTime(muted ? 0 : 0.15, musicContext.currentTime);
+    }
+  };
+  
+  // Start music on first user interaction
+  const startMusicOnInteraction = () => {
+    if (!musicPlaying && OPT.sound) {
+      startVikingMusic();
+    }
+    document.removeEventListener('click', startMusicOnInteraction);
+    document.removeEventListener('keydown', startMusicOnInteraction);
+  };
+  document.addEventListener('click', startMusicOnInteraction);
+  document.addEventListener('keydown', startMusicOnInteraction);
 
   const OPT = { sound: false };
   const world = { 
@@ -1372,7 +1668,7 @@
               if (!world.powerups.invincibility.active) {
                 world.lives--;
                 addParticle(viking.x, viking.y, "#ef4444", 15);
-                beep("sawtooth", 150, 0.3);
+                playSFX('damage');
                 updateHUD();
                 
                 if (world.lives <= 0) {
@@ -1380,7 +1676,7 @@
                   viking.faceplant = 1.5;
                   if (statePill) statePill.textContent = "Game Over";
                   HighScoreManager.saveScore(world.score);
-                  beep("sawtooth", 100, 0.4);
+                  playSFX('gameover');
                   setTimeout(() => { 
                     if (overlay) {
                       overlay.style.display = "grid";
@@ -1470,7 +1766,7 @@
       viking.vy = -680;
       viking.onGround = false;
       viking.jumpsUsed++;
-      beep("sine", 200, 0.1);
+      playSFX('jump');
       Input.jumpJustPressed = false;
     }
     
@@ -1583,7 +1879,7 @@
           o.hit = true;
           world.lives--;
           addParticle(o.x, world.groundY - 20, "#ef4444", 15);
-          beep("sawtooth", 150, 0.3);
+          playSFX('damage');
           updateHUD();
           
           if (world.lives <= 0) {
@@ -1591,7 +1887,7 @@
         viking.faceplant = 1.5;
             statePill.textContent = "Game Over";
             HighScoreManager.saveScore(world.score);
-        beep("sawtooth", 100, 0.4);
+        playSFX('gameover');
             setTimeout(() => { 
               if (overlay) {
                 overlay.style.display = "grid";
@@ -1629,7 +1925,7 @@
               e.hit = true;
               world.lives--;
               addParticle(viking.x, viking.y, "#ef4444", 25);
-              beep("sawtooth", 250, 0.5);
+              playSFX('damage');
               updateHUD();
               console.log("Hit by enemy! Lives:", world.lives);
               
@@ -1638,7 +1934,7 @@
                 viking.faceplant = 1.5;
                 if (statePill) statePill.textContent = "Game Over";
                 HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
-                beep("sawtooth", 100, 0.6);
+                playSFX('gameover');
                 setTimeout(() => { 
                   if (overlay) {
                     overlay.style.display = "grid";
@@ -1668,7 +1964,7 @@
         world.mead++;
         world.score += 75 * scoreMultiplier;
         addParticle(m.x, m.y, "#FFD700", 8);
-        beep("sine", 800, 0.12);
+        playSFX('mead');
         updateHUD();
       }
     }
@@ -1691,7 +1987,7 @@
         p.taken = true;
         activatePowerup(p.type);
         addParticle(p.x, p.y, getPowerupColor(p.type), 15);
-        beep("square", 600, 0.25);
+        playSFX('powerup');
       }
     }
 
@@ -1702,7 +1998,7 @@
         if (world.lives < world.maxLives) {
           world.lives++;
           addParticle(h.x, h.y, "#ef4444", 20);
-          beep("sine", 600, 0.2);
+          playSFX('heart');
           updateHUD();
         }
       }
@@ -1872,11 +2168,35 @@
     world.paused = !world.paused; 
     pauseBtn.textContent = world.paused ? "Resume" : "Pause";
     statePill.textContent = world.paused ? "Paused" : "Playing";
+    
+    // Pause/resume WebGazer for performance
+    if (typeof webgazer !== 'undefined' && eyeTrackingEnabled) {
+      try {
+        if (world.paused) {
+          webgazer.pause();
+        } else {
+          webgazer.resume();
+        }
+      } catch (e) {
+        console.warn("WebGazer pause/resume error:", e);
+      }
+    }
   };
   
   soundBtn.onclick = () => { 
     OPT.sound = !OPT.sound; 
-    soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off"; 
+    soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off";
+    
+    // Control Viking music
+    if (OPT.sound) {
+      if (!musicPlaying) {
+        startVikingMusic();
+      } else {
+        setMusicVolume(false);
+      }
+    } else {
+      setMusicVolume(true);
+    }
   };
 
   const highscoreBtn = $("highscoreBtn");
@@ -1951,64 +2271,81 @@
       calibrationClicks = 0;
       calibrationPoints.forEach(p => p.classList.remove("clicked"));
       if (calibrationStatus) {
-        calibrationStatus.textContent = "Click all 9 points to calibrate";
+        calibrationStatus.textContent = "Click all 9 points to calibrate (0/9)";
       }
       
       // Start WebGazer
       try {
-        webgazer.setRegression('ridge')
+        // Initialize WebGazer with proper settings per official docs
+        webgazer
+          .setTracker('TFFacemesh')  // Use MediaPipe Facemesh for face detection
+          .setRegression('ridge')     // Ridge regression for gaze prediction
           .setGazeListener((data, elapsedTime) => {
             if (data == null) return;
             
+            // Bound predictions to viewport
+            const bounded = webgazer.util.bound(data);
+            const x = bounded.x;
+            const y = bounded.y;
+            
             // Update gaze cursor position
             if (gazeCursor && eyeTrackingEnabled) {
-              gazeCursor.style.left = data.x + 'px';
-              gazeCursor.style.top = data.y + 'px';
+              gazeCursor.style.left = x + 'px';
+              gazeCursor.style.top = y + 'px';
               gazeCursor.classList.add("active");
             }
             
             // Store gaze Y for game control
-            gazeY = data.y;
+            gazeY = y;
             
             // Control game with eye gaze
             if (eyeTrackingEnabled && world.started && !world.paused && !world.over) {
               const screenHeight = window.innerHeight;
               const now = Date.now();
               
-              // Look at top 30% of screen = jump
-              if (data.y < screenHeight * 0.3 && now - lastGazeAction > 300) {
+              // Look at top 35% of screen = jump (more forgiving)
+              if (y < screenHeight * 0.35 && now - lastGazeAction > 250) {
                 if (!Input.jump) {
                   Input.jumpJustPressed = true;
                 }
                 Input.jump = true;
                 Input.duck = false;
                 lastGazeAction = now;
+                // Visual feedback
+                if (gazeCursor) gazeCursor.style.background = 'rgba(74, 222, 128, 0.8)';
               }
-              // Look at bottom 30% of screen = duck
-              else if (data.y > screenHeight * 0.7) {
+              // Look at bottom 35% of screen = duck (more forgiving)
+              else if (y > screenHeight * 0.65) {
                 Input.duck = true;
                 Input.jump = false;
+                // Visual feedback
+                if (gazeCursor) gazeCursor.style.background = 'rgba(251, 191, 36, 0.8)';
               }
               // Look at middle = normal
               else {
                 Input.duck = false;
                 // Reset jump after a short delay
-                if (now - lastGazeAction > 200) {
+                if (now - lastGazeAction > 150) {
                   Input.jump = false;
                 }
+                // Reset cursor color
+                if (gazeCursor) gazeCursor.style.background = 'rgba(255, 107, 107, 0.6)';
               }
             }
           })
           .begin();
         
-        // Hide WebGazer's default video preview
-        webgazer.showVideoPreview(false)
-          .showPredictionPoints(false);
+        // Show video preview during calibration so users can see themselves
+        webgazer.showVideoPreview(true)
+          .showPredictionPoints(true);
         
-        console.log("WebGazer started for calibration");
+        // Save calibration data between sessions
+        window.saveDataAcrossSessions = true;
+        
+        console.log("WebGazer started with TFFacemesh tracker and ridge regression");
       } catch (e) {
         console.error("Error starting WebGazer:", e);
-        alert("Could not start eye tracking. Please allow camera access and try again.");
+        alert("Could not start eye tracking. Please:\n1. Allow camera access\n2. Make sure you're on HTTPS or localhost\n3. Check browser compatibility");
         calibrationOverlay.classList.remove("active");
       }
     };
@@ -2025,7 +2362,7 @@
           if (calibrationClicks >= 9) {
             calibrationStatus.textContent = "✓ Calibration complete! Click the button below to start.";
           } else {
-            calibrationStatus.textContent = `${calibrationClicks}/9 points clicked`;
+            calibrationStatus.textContent = `Click all 9 points to calibrate (${calibrationClicks}/9)`;
           }
         }
       }
@@ -2063,6 +2400,18 @@
         gazeCursor.classList.add("active");
       }
       
+      // Update hint to show eye tracking instructions
+      const hint = $("hint");
+      if (hint) {
+        hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
+      }
+      
+      // Hide video preview after calibration (less distracting during gameplay)
+      try {
+        webgazer.showVideoPreview(false)
+          .showPredictionPoints(false);
+      } catch (e) {}
+      
       // Start the game
       if (!world.started) {
         start();
@@ -2075,6 +2424,7 @@
   // Toggle eye tracking on/off during game
   window.addEventListener("keydown", (e) => {
     if (e.code === "KeyE" && webgazerAvailable) {
+      const hint = $("hint");
       if (eyeTrackingEnabled) {
         eyeTrackingEnabled = false;
         if (eyeTrackingIndicator) eyeTrackingIndicator.classList.remove("active");
@@ -2083,6 +2433,10 @@
           eyeTrackBtn.textContent = "👁️ Enable Eye Tracking";
           eyeTrackBtn.style.background = "";
           eyeTrackBtn.style.color = "";
+        }
+        // Restore original hint
+        if (hint) {
+          hint.innerHTML = '<kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Press <kbd>E</kbd> for Eye Tracking';
         }
         console.log("Eye tracking disabled");
       } else {
@@ -2093,6 +2447,10 @@
           eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
           eyeTrackBtn.style.background = "#4ade80";
           eyeTrackBtn.style.color = "#000";
+        }
+        // Show eye tracking hint
+        if (hint) {
+          hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
         }
         console.log("Eye tracking enabled");
       }
