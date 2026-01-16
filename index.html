@@ -705,31 +705,36 @@
         break;
       }
       case 'mead': {
-        // Simple cartoon-style gulp sounds - clean and satisfying
-        [0, 0.15, 0.3].forEach((delay, i) => {
+        // Hearty Viking drinking - deep gulps with satisfied grunt
+        [0, 0.18, 0.36].forEach((delay, i) => {
           const gulp = AC.createOscillator();
           const gain = AC.createGain();
-          gulp.type = 'sine';
-          gulp.frequency.setValueAtTime(400 - i * 40, now + delay);
-          gulp.frequency.exponentialRampToValueAtTime(200, now + delay + 0.1);
-          gain.gain.setValueAtTime(0.3, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.12);
+          gulp.type = 'triangle';
+          gulp.frequency.setValueAtTime(180, now + delay);
+          gulp.frequency.exponentialRampToValueAtTime(90, now + delay + 0.12);
+          gain.gain.setValueAtTime(0.35, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.14);
           gulp.connect(gain);
           gain.connect(AC.destination);
           gulp.start(now + delay);
-          gulp.stop(now + delay + 0.15);
+          gulp.stop(now + delay + 0.16);
         });
-        // Coin-like ding at end for satisfaction
-        const ding = AC.createOscillator();
-        const dingGain = AC.createGain();
-        ding.type = 'sine';
-        ding.frequency.value = 880;
-        dingGain.gain.setValueAtTime(0.15, now + 0.45);
-        dingGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
-        ding.connect(dingGain);
-        dingGain.connect(AC.destination);
-        ding.start(now + 0.45);
-        ding.stop(now + 0.75);
+        // Satisfied "AAAH" grunt
+        const grunt = AC.createOscillator();
+        const gruntGain = AC.createGain();
+        grunt.type = 'sawtooth';
+        grunt.frequency.setValueAtTime(100, now + 0.55);
+        grunt.frequency.exponentialRampToValueAtTime(70, now + 0.8);
+        gruntGain.gain.setValueAtTime(0.2, now + 0.55);
+        gruntGain.gain.exponentialRampToValueAtTime(0.01, now + 0.85);
+        const gruntFilter = AC.createBiquadFilter();
+        gruntFilter.type = 'lowpass';
+        gruntFilter.frequency.value = 400;
+        grunt.connect(gruntFilter);
+        gruntFilter.connect(gruntGain);
+        gruntGain.connect(AC.destination);
+        grunt.start(now + 0.55);
+        grunt.stop(now + 0.9);
         break;
       }
       case 'damage': {
@@ -782,25 +787,29 @@
         break;
       }
       case 'gameover': {
-        // Simple descending "game over" tone - clean and clear
-        const osc = AC.createOscillator();
-        const gain = AC.createGain();
-        const filter = AC.createBiquadFilter();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(220, now);
-        osc.frequency.linearRampToValueAtTime(110, now + 0.8);
-        osc.frequency.linearRampToValueAtTime(55, now + 1.5);
-        filter.type = 'lowpass';
-        filter.frequency.value = 400;
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
-        gain.gain.setValueAtTime(0.4, now + 1);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 2);
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(AC.destination);
-        osc.start(now);
-        osc.stop(now + 2.1);
+        // Somber Viking funeral horn - mournful fade
+        const fundamental = 55; // A1 - very low, somber
+        [1, 2].forEach((harmonic, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = 'triangle';
+          const freq = fundamental * harmonic;
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.linearRampToValueAtTime(freq * 0.85, now + 2.5);
+          const amp = [0.35, 0.15][i];
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(amp, now + 0.3);
+          gain.gain.setValueAtTime(amp * 0.8, now + 1.5);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
+          const filter = AC.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 300;
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now);
+          osc.stop(now + 3.1);
+        });
         break;
       }
       case 'heart': {
@@ -822,89 +831,154 @@
         break;
       }
       case 'warhorn': {
-        // Simple, clean war horn - single tone with smooth envelope
-        const osc = AC.createOscillator();
-        const gain = AC.createGain();
-        const filter = AC.createBiquadFilter();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(110, now);
-        osc.frequency.linearRampToValueAtTime(147, now + 0.3);
-        osc.frequency.setValueAtTime(147, now + 1.0);
-        osc.frequency.linearRampToValueAtTime(110, now + 1.5);
-        filter.type = 'lowpass';
-        filter.frequency.value = 600;
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.5, now + 0.2);
-        gain.gain.setValueAtTime(0.5, now + 1.0);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(AC.destination);
-        osc.start(now);
-        osc.stop(now + 1.9);
+        // Deep Viking war horn - like blowing through animal horn
+        const fundamental = 73.4; // D2 - deep and powerful
+        [1, 2, 3].forEach((harmonic, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = i === 0 ? 'sawtooth' : 'triangle';
+          const freq = fundamental * harmonic;
+          osc.frequency.setValueAtTime(freq * 0.95, now);
+          osc.frequency.linearRampToValueAtTime(freq, now + 0.4);
+          osc.frequency.setValueAtTime(freq, now + 1.2);
+          osc.frequency.linearRampToValueAtTime(freq * 0.9, now + 2);
+          const amp = [0.3, 0.15, 0.08][i];
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(amp, now + 0.3);
+          gain.gain.setValueAtTime(amp, now + 1.2);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
+          const filter = AC.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 500;
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now);
+          osc.stop(now + 2.3);
+        });
         break;
       }
       case 'stomp': {
-        // Satisfying stomp - deep thud + pop
+        // Heavy Viking boot on wooden deck
         const thud = AC.createOscillator();
         const thudGain = AC.createGain();
         thud.type = 'sine';
-        thud.frequency.setValueAtTime(120, now);
-        thud.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        thud.frequency.setValueAtTime(80, now);
+        thud.frequency.exponentialRampToValueAtTime(35, now + 0.08);
         thudGain.gain.setValueAtTime(0.5, now);
-        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
         thud.connect(thudGain);
         thudGain.connect(AC.destination);
         thud.start(now);
-        thud.stop(now + 0.2);
-        // Satisfying pop
-        const pop = AC.createOscillator();
-        const popGain = AC.createGain();
-        pop.type = 'sine';
-        pop.frequency.setValueAtTime(600, now + 0.02);
-        pop.frequency.exponentialRampToValueAtTime(300, now + 0.08);
-        popGain.gain.setValueAtTime(0.25, now + 0.02);
-        popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        pop.connect(popGain);
-        popGain.connect(AC.destination);
-        pop.start(now + 0.02);
-        pop.stop(now + 0.15);
+        thud.stop(now + 0.15);
+        // Wood creak
+        const creak = AC.createOscillator();
+        const creakGain = AC.createGain();
+        creak.type = 'triangle';
+        creak.frequency.setValueAtTime(250, now + 0.03);
+        creak.frequency.exponentialRampToValueAtTime(180, now + 0.1);
+        creakGain.gain.setValueAtTime(0.12, now + 0.03);
+        creakGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        creak.connect(creakGain);
+        creakGain.connect(AC.destination);
+        creak.start(now + 0.03);
+        creak.stop(now + 0.15);
         break;
       }
       case 'gold': {
-        // Exciting coin collect sound - bright and shiny
-        const coin1 = AC.createOscillator();
-        const coin1Gain = AC.createGain();
-        coin1.type = 'sine';
-        coin1.frequency.value = 1047; // C6
-        coin1Gain.gain.setValueAtTime(0.3, now);
-        coin1Gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        coin1.connect(coin1Gain);
-        coin1Gain.connect(AC.destination);
-        coin1.start(now);
-        coin1.stop(now + 0.25);
-        // Second higher note
-        const coin2 = AC.createOscillator();
-        const coin2Gain = AC.createGain();
-        coin2.type = 'sine';
-        coin2.frequency.value = 1319; // E6
-        coin2Gain.gain.setValueAtTime(0.3, now + 0.08);
-        coin2Gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        coin2.connect(coin2Gain);
-        coin2Gain.connect(AC.destination);
-        coin2.start(now + 0.08);
-        coin2.stop(now + 0.35);
-        // Third even higher note
-        const coin3 = AC.createOscillator();
-        const coin3Gain = AC.createGain();
-        coin3.type = 'sine';
-        coin3.frequency.value = 1568; // G6
-        coin3Gain.gain.setValueAtTime(0.25, now + 0.16);
-        coin3Gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        coin3.connect(coin3Gain);
-        coin3Gain.connect(AC.destination);
-        coin3.start(now + 0.16);
-        coin3.stop(now + 0.45);
+        // Metal coins clinking together
+        [0, 0.05, 0.12].forEach((delay, i) => {
+          const clink = AC.createOscillator();
+          const gain = AC.createGain();
+          clink.type = 'sine';
+          const freqs = [2200, 2600, 2400];
+          clink.frequency.setValueAtTime(freqs[i], now + delay);
+          clink.frequency.exponentialRampToValueAtTime(freqs[i] * 0.7, now + delay + 0.08);
+          gain.gain.setValueAtTime(0.2, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.1);
+          clink.connect(gain);
+          gain.connect(AC.destination);
+          clink.start(now + delay);
+          clink.stop(now + delay + 0.12);
+        });
+        // Low thud of coin bag
+        const bag = AC.createOscillator();
+        const bagGain = AC.createGain();
+        bag.type = 'sine';
+        bag.frequency.setValueAtTime(150, now + 0.15);
+        bag.frequency.exponentialRampToValueAtTime(80, now + 0.22);
+        bagGain.gain.setValueAtTime(0.15, now + 0.15);
+        bagGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        bag.connect(bagGain);
+        bagGain.connect(AC.destination);
+        bag.start(now + 0.15);
+        bag.stop(now + 0.28);
+        break;
+      }
+      case 'shipStart': {
+        // War drums + ship horn for Viking longship activation
+        // Deep war drums
+        [0, 0.3, 0.6].forEach((delay) => {
+          const drum = AC.createOscillator();
+          const drumGain = AC.createGain();
+          drum.type = 'sine';
+          drum.frequency.setValueAtTime(55, now + delay);
+          drum.frequency.exponentialRampToValueAtTime(35, now + delay + 0.2);
+          drumGain.gain.setValueAtTime(0.5, now + delay);
+          drumGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.25);
+          drum.connect(drumGain);
+          drumGain.connect(AC.destination);
+          drum.start(now + delay);
+          drum.stop(now + delay + 0.3);
+        });
+        // Ship horn - triumphant
+        const horn = AC.createOscillator();
+        const hornGain = AC.createGain();
+        const hornFilter = AC.createBiquadFilter();
+        horn.type = 'sawtooth';
+        horn.frequency.setValueAtTime(110, now + 0.1);
+        horn.frequency.linearRampToValueAtTime(165, now + 0.5);
+        hornFilter.type = 'lowpass';
+        hornFilter.frequency.value = 400;
+        hornGain.gain.setValueAtTime(0, now);
+        hornGain.gain.linearRampToValueAtTime(0.35, now + 0.3);
+        hornGain.gain.setValueAtTime(0.35, now + 0.7);
+        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        horn.connect(hornFilter);
+        hornFilter.connect(hornGain);
+        hornGain.connect(AC.destination);
+        horn.start(now);
+        horn.stop(now + 1.3);
+        break;
+      }
+      case 'shipDestroy': {
+        // Crushing wood + water splash
+        const crush = AC.createBufferSource();
+        crush.buffer = createNoiseBuffer(0.2);
+        const crushFilter = AC.createBiquadFilter();
+        crushFilter.type = 'lowpass';
+        crushFilter.frequency.value = 800;
+        const crushGain = AC.createGain();
+        crushGain.gain.setValueAtTime(0.4, now);
+        crushGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        crush.connect(crushFilter);
+        crushFilter.connect(crushGain);
+        crushGain.connect(AC.destination);
+        crush.start(now);
+        // Splash
+        const splash = AC.createBufferSource();
+        splash.buffer = createNoiseBuffer(0.3);
+        const splashFilter = AC.createBiquadFilter();
+        splashFilter.type = 'bandpass';
+        splashFilter.frequency.value = 2000;
+        splashFilter.Q.value = 1;
+        const splashGain = AC.createGain();
+        splashGain.gain.setValueAtTime(0.2, now + 0.05);
+        splashGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        splash.connect(splashFilter);
+        splashFilter.connect(splashGain);
+        splashGain.connect(AC.destination);
+        splash.start(now + 0.05);
         break;
       }
     }
@@ -1130,7 +1204,7 @@
   };
 
   const spawnPowerup = (x) => {
-    const types = ["speedBoost", "invincibility", "scoreMultiplier"];
+    const types = ["speedBoost", "invincibility", "scoreMultiplier", "vikingShip"];
     const type = pick(types);
     Powerups.push({ 
       x, 
@@ -1238,7 +1312,8 @@
       world.powerups = {
         speedBoost: { active: false, timeLeft: 0 },
         invincibility: { active: false, timeLeft: 0 },
-        scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
+        scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
+        vikingShip: { active: false, timeLeft: 0 }
       };
       viking.jumpsUsed = 0;
       viking.maxJumps = 1;
@@ -1477,7 +1552,134 @@
     }
   };
 
+  // Draw Viking longship (when ship powerup is active)
+  const drawVikingShip = (x, y) => {
+    ctx.save();
+    ctx.translate(x, y + 20); // Offset to sit on water level
+    
+    const bob = Math.sin(world.t * 4) * 3; // Gentle rocking
+    const oarPhase = Math.sin(world.t * 8);
+    
+    // Water splash particles behind ship
+    if (Math.random() < 0.3) {
+      addParticle(x - 80, y + 10, "#4A90D9", 8);
+    }
+    
+    // Ship hull - curved wooden longship
+    ctx.fillStyle = "#5D4E37";
+    ctx.beginPath();
+    ctx.moveTo(-70, bob);
+    ctx.quadraticCurveTo(-80, -20 + bob, -60, -35 + bob);
+    ctx.lineTo(60, -35 + bob);
+    ctx.quadraticCurveTo(85, -20 + bob, 70, bob + 5);
+    ctx.quadraticCurveTo(0, 15 + bob, -70, bob);
+    ctx.fill();
+    
+    // Hull stripes
+    ctx.strokeStyle = "#3D2E17";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-65, -10 + bob);
+    ctx.quadraticCurveTo(0, -5 + bob, 65, -10 + bob);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-60, -25 + bob);
+    ctx.quadraticCurveTo(0, -20 + bob, 60, -25 + bob);
+    ctx.stroke();
+    
+    // Dragon head prow
+    ctx.fillStyle = "#8B4513";
+    ctx.beginPath();
+    ctx.moveTo(70, -35 + bob);
+    ctx.quadraticCurveTo(90, -50 + bob, 85, -70 + bob);
+    ctx.quadraticCurveTo(80, -65 + bob, 75, -70 + bob);
+    ctx.quadraticCurveTo(70, -55 + bob, 65, -40 + bob);
+    ctx.fill();
+    // Dragon eye
+    ctx.fillStyle = "#FFD700";
+    ctx.beginPath();
+    ctx.arc(78, -55 + bob, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(79, -55 + bob, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Tail curl at stern
+    ctx.fillStyle = "#8B4513";
+    ctx.beginPath();
+    ctx.moveTo(-60, -35 + bob);
+    ctx.quadraticCurveTo(-75, -55 + bob, -65, -75 + bob);
+    ctx.quadraticCurveTo(-60, -65 + bob, -55, -45 + bob);
+    ctx.fill();
+    
+    // Mast
+    ctx.fillStyle = "#4A3C2A";
+    ctx.fillRect(-5, -100 + bob, 10, 70);
+    
+    // Sail - red and white stripes (classic Viking)
+    ctx.beginPath();
+    ctx.moveTo(0, -95 + bob);
+    ctx.lineTo(45, -80 + bob);
+    ctx.lineTo(45, -40 + bob);
+    ctx.lineTo(0, -35 + bob);
+    ctx.closePath();
+    ctx.fillStyle = "#C41E3A";
+    ctx.fill();
+    // White stripe
+    ctx.fillStyle = "#FFF";
+    ctx.fillRect(15, -75 + bob, 25, 15);
+    
+    // Oars (animated)
+    ctx.strokeStyle = "#5D4E37";
+    ctx.lineWidth = 3;
+    [-40, -20, 0, 20].forEach((ox, i) => {
+      const oarAngle = oarPhase * 0.3 + (i % 2 === 0 ? 0 : Math.PI);
+      ctx.save();
+      ctx.translate(ox, -5 + bob);
+      ctx.rotate(0.4 + Math.sin(world.t * 8 + i) * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 40);
+      ctx.stroke();
+      // Oar blade
+      ctx.fillStyle = "#5D4E37";
+      ctx.fillRect(-5, 35, 10, 15);
+      ctx.restore();
+    });
+    
+    // Viking warrior on ship (small)
+    ctx.fillStyle = "#556677";
+    ctx.fillRect(-8, -50 + bob, 16, 20);
+    ctx.fillStyle = "#ffdbac";
+    ctx.beginPath();
+    ctx.arc(0, -55 + bob, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7f8c8d";
+    ctx.beginPath();
+    ctx.arc(0, -58 + bob, 7, Math.PI, 0);
+    ctx.fill();
+    
+    // Shield on side
+    ctx.fillStyle = "#C41E3A";
+    ctx.beginPath();
+    ctx.arc(35, -20 + bob, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFD700";
+    ctx.beginPath();
+    ctx.arc(35, -20 + bob, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+  };
+
   const drawViking = (x, y) => {
+    // Check if Viking ship mode is active
+    if (world.powerups.vikingShip.active) {
+      drawVikingShip(x, y);
+      return;
+    }
+    
     ctx.save();
     ctx.translate(x, y);
     if (viking.faceplant > 0) ctx.rotate(viking.faceplant * -1);
@@ -1677,7 +1879,8 @@
     const colors = {
       speedBoost: "#FF6B6B",
       invincibility: "#4ECDC4",
-      scoreMultiplier: "#FFD93D"
+      scoreMultiplier: "#FFD93D",
+      vikingShip: "#8B4513"
     };
     return colors[type] || "#FFF";
   };
@@ -1686,7 +1889,8 @@
     const symbols = {
       speedBoost: "⚡",
       invincibility: "🛡",
-      scoreMultiplier: "⭐"
+      scoreMultiplier: "⭐",
+      vikingShip: "⛵"
     };
     return symbols[type] || "?";
   };
@@ -1694,7 +1898,13 @@
   const activatePowerup = (type) => {
     const p = world.powerups[type];
     p.active = true;
-    p.timeLeft = 10;
+    
+    if (type === "vikingShip") {
+      p.timeLeft = rand(5, 10); // Random 5-10 seconds
+      playSFX('shipStart');
+    } else {
+      p.timeLeft = 10;
+    }
     
     if (type === "scoreMultiplier") {
       p.multiplier = 2;
@@ -1776,7 +1986,7 @@
           if (!viking.ducking && vikingBottom > platformTop && vikingTop < platformBottom) {
             // Check if hitting from side (not landing from above)
             if (vikingBottom > platformTop + 10 || viking.vy < 0) {
-              if (!world.powerups.invincibility.active) {
+              if (!world.powerups.invincibility.active && !world.powerups.vikingShip.active) {
                 world.lives--;
                 addParticle(viking.x, viking.y, "#ef4444", 15);
                 playSFX('damage');
@@ -1980,7 +2190,14 @@
     // Collisions - Obstacles
     for (const o of Obstacles) {
       if (!o.hit && viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
-        if (!world.powerups.invincibility.active) {
+        // Viking ship destroys everything!
+        if (world.powerups.vikingShip.active) {
+          o.hit = true;
+          addParticle(o.x, world.groundY - 20, "#8B4513", 20);
+          addParticle(o.x, world.groundY - 30, "#4A90D9", 15);
+          playSFX('shipDestroy');
+          world.score += 100; // Bonus for destroying
+        } else if (!world.powerups.invincibility.active) {
           o.hit = true;
           world.lives--;
           addParticle(o.x, world.groundY - 20, "#ef4444", 15);
@@ -2027,8 +2244,21 @@
         const enemyBottom = e.y;
         
         // Basic overlap check - are they colliding at all?
-        const horizontalOverlap = distX < 45;
+        // Ship has wider collision area
+        const shipWidth = world.powerups.vikingShip.active ? 90 : 45;
+        const horizontalOverlap = distX < shipWidth;
         const verticalOverlap = vikingBottom > enemyTop && vikingTop < enemyBottom;
+        
+        // Viking ship destroys everything on contact!
+        if (world.powerups.vikingShip.active && horizontalOverlap) {
+          e.defeated = true;
+          e.hit = true;
+          world.score += 200; // Bonus for destroying enemies
+          addParticle(e.x, e.y - e.h/2, "#8B4513", 25);
+          addParticle(e.x, e.y - e.h/2, "#4A90D9", 15);
+          playSFX('shipDestroy');
+          continue;
+        }
         
         // Check if viking is coming from above (stomping)
         const comingFromAbove = viking.vy > 0 && 
@@ -2203,6 +2433,26 @@
       ctx.shadowColor = "#4ECDC4";
       ctx.beginPath();
       ctx.arc(viking.x, viking.y - 30, 45, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    
+    // Viking ship water wake effect
+    if (world.powerups.vikingShip.active) {
+      ctx.save();
+      ctx.globalAlpha = 0.3 + Math.sin(world.t * 10) * 0.1;
+      ctx.strokeStyle = "#4A90D9";
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#4A90D9";
+      // Draw wake lines behind ship
+      ctx.beginPath();
+      ctx.moveTo(viking.x - 80, viking.y + 15);
+      ctx.quadraticCurveTo(viking.x - 120, viking.y + 25, viking.x - 160, viking.y + 20);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(viking.x - 80, viking.y + 20);
+      ctx.quadraticCurveTo(viking.x - 130, viking.y + 35, viking.x - 180, viking.y + 25);
       ctx.stroke();
       ctx.restore();
     }
