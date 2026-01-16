@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Viking Run</title>
   <!-- MediaPipe Face Landmarker for Eye/Gaze Tracking + rPPG -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js"></script>
   <style>
     :root{
       /* Apple Design System Colors - HIGH CONTRAST & READABLE */
@@ -760,36 +760,65 @@
         break;
       }
       case 'mead': {
-        // Hearty Viking drinking - deep gulps with satisfied grunt
-        [0, 0.18, 0.36].forEach((delay, i) => {
-          const gulp = AC.createOscillator();
-          const gain = AC.createGain();
-          gulp.type = 'triangle';
-          gulp.frequency.setValueAtTime(180, now + delay);
-          gulp.frequency.exponentialRampToValueAtTime(90, now + delay + 0.12);
-          gain.gain.setValueAtTime(0.35, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.14);
-          gulp.connect(gain);
-          gain.connect(AC.destination);
+        // Realistic Viking mead drinking - liquid gulping + wooden mug
+        // Liquid gulping sounds (filtered noise bursts)
+        [0, 0.2, 0.4].forEach((delay, i) => {
+          const gulp = AC.createBufferSource();
+          gulp.buffer = createNoiseBuffer(0.15);
+          const gulpFilter = AC.createBiquadFilter();
+          gulpFilter.type = 'bandpass';
+          gulpFilter.frequency.setValueAtTime(400 + i * 100, now + delay);
+          gulpFilter.frequency.exponentialRampToValueAtTime(200, now + delay + 0.12);
+          gulpFilter.Q.value = 2;
+          const gulpGain = AC.createGain();
+          gulpGain.gain.setValueAtTime(0, now + delay);
+          gulpGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.02);
+          gulpGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.14);
+          gulp.connect(gulpFilter);
+          gulpFilter.connect(gulpGain);
+          gulpGain.connect(AC.destination);
           gulp.start(now + delay);
-          gulp.stop(now + delay + 0.16);
         });
-        // Satisfied "AAAH" grunt
-        const grunt = AC.createOscillator();
-        const gruntGain = AC.createGain();
-        grunt.type = 'sawtooth';
-        grunt.frequency.setValueAtTime(100, now + 0.55);
-        grunt.frequency.exponentialRampToValueAtTime(70, now + 0.8);
-        gruntGain.gain.setValueAtTime(0.2, now + 0.55);
-        gruntGain.gain.exponentialRampToValueAtTime(0.01, now + 0.85);
-        const gruntFilter = AC.createBiquadFilter();
-        gruntFilter.type = 'lowpass';
-        gruntFilter.frequency.value = 400;
-        grunt.connect(gruntFilter);
-        gruntFilter.connect(gruntGain);
-        gruntGain.connect(AC.destination);
-        grunt.start(now + 0.55);
-        grunt.stop(now + 0.9);
+        
+        // Wooden mug "clunk" when setting down
+        const clunk = AC.createOscillator();
+        const clunkGain = AC.createGain();
+        clunk.type = 'sine';
+        clunk.frequency.setValueAtTime(200, now + 0.65);
+        clunk.frequency.exponentialRampToValueAtTime(120, now + 0.75);
+        clunkGain.gain.setValueAtTime(0.15, now + 0.65);
+        clunkGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        const clunkFilter = AC.createBiquadFilter();
+        clunkFilter.type = 'lowpass';
+        clunkFilter.frequency.value = 600;
+        clunk.connect(clunkFilter);
+        clunkFilter.connect(clunkGain);
+        clunkGain.connect(AC.destination);
+        clunk.start(now + 0.65);
+        clunk.stop(now + 0.85);
+        
+        // Satisfied "ahh" exhale with proper formants
+        const exhale = AC.createOscillator();
+        const exhaleGain = AC.createGain();
+        exhale.type = 'sawtooth';
+        exhale.frequency.setValueAtTime(120, now + 0.7);
+        exhale.frequency.exponentialRampToValueAtTime(80, now + 1.0);
+        
+        // Formants for "ahh" sound
+        const f1 = createFormant(700, 10, 0.4);
+        const f2 = createFormant(1200, 8, 0.25);
+        
+        exhaleGain.gain.setValueAtTime(0, now + 0.7);
+        exhaleGain.gain.linearRampToValueAtTime(0.18, now + 0.75);
+        exhaleGain.gain.exponentialRampToValueAtTime(0.01, now + 1.05);
+        
+        exhale.connect(f1.filter);
+        exhale.connect(f2.filter);
+        f1.gain.connect(exhaleGain);
+        f2.gain.connect(exhaleGain);
+        exhaleGain.connect(AC.destination);
+        exhale.start(now + 0.7);
+        exhale.stop(now + 1.1);
         break;
       }
       case 'damage': {
@@ -842,28 +871,49 @@
         break;
       }
       case 'gameover': {
-        // Somber Viking funeral horn - mournful fade
-        const fundamental = 55; // A1 - very low, somber
+        // Somber Viking funeral horn - deep, mournful, not farty
+        const fundamental = 73.4; // D2 - deep but not too low
+        const duration = 3.0;
+        
+        // Main horn tone with proper resonance
         [1, 2].forEach((harmonic, i) => {
           const osc = AC.createOscillator();
           const gain = AC.createGain();
-          osc.type = 'triangle';
+          osc.type = 'square'; // Square wave for horn
           const freq = fundamental * harmonic;
+          
+          // Slow mournful descent
           osc.frequency.setValueAtTime(freq, now);
-          osc.frequency.linearRampToValueAtTime(freq * 0.85, now + 2.5);
-          const amp = [0.35, 0.15][i];
+          osc.frequency.linearRampToValueAtTime(freq * 0.82, now + duration);
+          
+          // Formant for horn resonance
+          const formant = AC.createBiquadFilter();
+          formant.type = 'bandpass';
+          formant.frequency.value = 150 + i * 100;
+          formant.Q.value = 2;
+          
+          // Slow fade envelope
+          const amp = [0.3, 0.12][i];
           gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(amp, now + 0.3);
-          gain.gain.setValueAtTime(amp * 0.8, now + 1.5);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 3);
-          const filter = AC.createBiquadFilter();
-          filter.type = 'lowpass';
-          filter.frequency.value = 300;
-          osc.connect(filter);
-          filter.connect(gain);
+          gain.gain.linearRampToValueAtTime(amp, now + 0.4);
+          gain.gain.setValueAtTime(amp * 0.9, now + duration * 0.6);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          
+          // Reverb-like effect with delay
+          const delay = AC.createDelay(0.1);
+          delay.delayTime.value = 0.08;
+          const delayGain = AC.createGain();
+          delayGain.gain.value = 0.3;
+          
+          osc.connect(formant);
+          formant.connect(gain);
+          formant.connect(delay);
+          delay.connect(delayGain);
+          delayGain.connect(gain);
           gain.connect(AC.destination);
+          
           osc.start(now);
-          osc.stop(now + 3.1);
+          osc.stop(now + duration);
         });
         break;
       }
@@ -886,31 +936,77 @@
         break;
       }
       case 'warhorn': {
-        // Deep Viking war horn - like blowing through animal horn
-        const fundamental = 73.4; // D2 - deep and powerful
-        [1, 2, 3].forEach((harmonic, i) => {
+        // Realistic Viking war horn - proper horn resonance, no "fart" sounds
+        const fundamental = 98; // G2 - proper horn note
+        const duration = 2.0;
+        
+        // Main horn tone - square wave with formants for horn resonance
+        [1, 2, 3, 4].forEach((harmonic, i) => {
           const osc = AC.createOscillator();
           const gain = AC.createGain();
-          osc.type = i === 0 ? 'sawtooth' : 'triangle';
+          osc.type = 'square'; // Square wave for horn-like sound
           const freq = fundamental * harmonic;
-          osc.frequency.setValueAtTime(freq * 0.95, now);
-          osc.frequency.linearRampToValueAtTime(freq, now + 0.4);
-          osc.frequency.setValueAtTime(freq, now + 1.2);
-          osc.frequency.linearRampToValueAtTime(freq * 0.9, now + 2);
-          const amp = [0.3, 0.15, 0.08][i];
+          
+          // Horn call pattern: rise, hold, fall
+          osc.frequency.setValueAtTime(freq * 0.92, now);
+          osc.frequency.linearRampToValueAtTime(freq, now + 0.3);
+          osc.frequency.setValueAtTime(freq, now + 1.0);
+          osc.frequency.linearRampToValueAtTime(freq * 0.88, now + duration);
+          
+          // Formant filters for horn resonance
+          const formant1 = AC.createBiquadFilter();
+          formant1.type = 'bandpass';
+          formant1.frequency.value = 200 + i * 50;
+          formant1.Q.value = 2;
+          
+          const formant2 = AC.createBiquadFilter();
+          formant2.type = 'bandpass';
+          formant2.frequency.value = 400 + i * 100;
+          formant2.Q.value = 1.5;
+          
+          // Amplitude envelope
+          const amp = [0.25, 0.12, 0.06, 0.03][i];
           gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(amp, now + 0.3);
-          gain.gain.setValueAtTime(amp, now + 1.2);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
-          const filter = AC.createBiquadFilter();
-          filter.type = 'lowpass';
-          filter.frequency.value = 500;
-          osc.connect(filter);
-          filter.connect(gain);
+          gain.gain.linearRampToValueAtTime(amp, now + 0.2);
+          gain.gain.setValueAtTime(amp, now + 1.0);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          
+          // Slight vibrato for natural horn sound
+          const vibrato = AC.createOscillator();
+          const vibGain = AC.createGain();
+          vibrato.frequency.value = 5.5;
+          vibGain.gain.value = 2;
+          vibrato.connect(vibGain);
+          vibGain.connect(osc.frequency);
+          
+          osc.connect(formant1);
+          formant1.connect(formant2);
+          formant2.connect(gain);
           gain.connect(AC.destination);
+          
+          vibrato.start(now);
+          vibrato.stop(now + duration);
           osc.start(now);
-          osc.stop(now + 2.3);
+          osc.stop(now + duration);
         });
+        
+        // Breath noise - filtered white noise for realism
+        const breath = AC.createBufferSource();
+        breath.buffer = createNoiseBuffer(0.4);
+        const breathFilter = AC.createBiquadFilter();
+        breathFilter.type = 'bandpass';
+        breathFilter.frequency.value = 800;
+        breathFilter.Q.value = 1;
+        const breathGain = AC.createGain();
+        breathGain.gain.setValueAtTime(0, now);
+        breathGain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+        breathGain.gain.setValueAtTime(0.08, now + 1.5);
+        breathGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        breath.connect(breathFilter);
+        breathFilter.connect(breathGain);
+        breathGain.connect(AC.destination);
+        breath.start(now);
+        
         break;
       }
       case 'stomp': {
@@ -941,99 +1037,251 @@
         break;
       }
       case 'gold': {
-        // Metal coins clinking together
-        [0, 0.05, 0.12].forEach((delay, i) => {
-          const clink = AC.createOscillator();
+        // Proper metallic coin clinking - multiple coins with reverb
+        const coinFreqs = [2400, 2800, 3200, 2600, 3000];
+        coinFreqs.forEach((freq, i) => {
+          const delay = i * 0.04;
+          const coin = AC.createOscillator();
           const gain = AC.createGain();
-          clink.type = 'sine';
-          const freqs = [2200, 2600, 2400];
-          clink.frequency.setValueAtTime(freqs[i], now + delay);
-          clink.frequency.exponentialRampToValueAtTime(freqs[i] * 0.7, now + delay + 0.08);
-          gain.gain.setValueAtTime(0.2, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.1);
-          clink.connect(gain);
+          coin.type = 'triangle'; // Triangle for metallic "ting"
+          coin.frequency.setValueAtTime(freq, now + delay);
+          coin.frequency.exponentialRampToValueAtTime(freq * 0.6, now + delay + 0.15);
+          
+          // Metallic resonance filter
+          const metallic = AC.createBiquadFilter();
+          metallic.type = 'bandpass';
+          metallic.frequency.value = freq;
+          metallic.Q.value = 8;
+          
+          gain.gain.setValueAtTime(0, now + delay);
+          gain.gain.linearRampToValueAtTime(0.25, now + delay + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.18);
+          
+          // Reverb/delay for multiple coins
+          const delayNode = AC.createDelay(0.1);
+          delayNode.delayTime.value = 0.05;
+          const delayGain = AC.createGain();
+          delayGain.gain.value = 0.4;
+          
+          coin.connect(metallic);
+          metallic.connect(gain);
+          metallic.connect(delayNode);
+          delayNode.connect(delayGain);
+          delayGain.connect(gain);
           gain.connect(AC.destination);
-          clink.start(now + delay);
-          clink.stop(now + delay + 0.12);
+          
+          coin.start(now + delay);
+          coin.stop(now + delay + 0.2);
         });
-        // Low thud of coin bag
+        
+        // Coin bag "chink" - lower metallic sound
         const bag = AC.createOscillator();
         const bagGain = AC.createGain();
-        bag.type = 'sine';
-        bag.frequency.setValueAtTime(150, now + 0.15);
-        bag.frequency.exponentialRampToValueAtTime(80, now + 0.22);
-        bagGain.gain.setValueAtTime(0.15, now + 0.15);
-        bagGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        bag.connect(bagGain);
+        bag.type = 'triangle';
+        bag.frequency.setValueAtTime(800, now + 0.2);
+        bag.frequency.exponentialRampToValueAtTime(400, now + 0.3);
+        bagGain.gain.setValueAtTime(0.2, now + 0.2);
+        bagGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        const bagFilter = AC.createBiquadFilter();
+        bagFilter.type = 'lowpass';
+        bagFilter.frequency.value = 1200;
+        bag.connect(bagFilter);
+        bagFilter.connect(bagGain);
         bagGain.connect(AC.destination);
-        bag.start(now + 0.15);
-        bag.stop(now + 0.28);
+        bag.start(now + 0.2);
+        bag.stop(now + 0.4);
         break;
       }
       case 'shipStart': {
-        // War drums + ship horn for Viking longship activation
-        // Deep war drums
-        [0, 0.3, 0.6].forEach((delay) => {
-          const drum = AC.createOscillator();
-          const drumGain = AC.createGain();
-          drum.type = 'sine';
-          drum.frequency.setValueAtTime(55, now + delay);
-          drum.frequency.exponentialRampToValueAtTime(35, now + delay + 0.2);
-          drumGain.gain.setValueAtTime(0.5, now + delay);
-          drumGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.25);
-          drum.connect(drumGain);
-          drumGain.connect(AC.destination);
-          drum.start(now + delay);
-          drum.stop(now + delay + 0.3);
-        });
-        // Ship horn - triumphant
+        // Epic Viking longship activation - horn + oars + wind
+        // Epic war horn blast
         const horn = AC.createOscillator();
         const hornGain = AC.createGain();
+        horn.type = 'square';
+        horn.frequency.setValueAtTime(98, now);
+        horn.frequency.linearRampToValueAtTime(147, now + 0.4);
+        horn.frequency.setValueAtTime(147, now + 0.8);
+        horn.frequency.linearRampToValueAtTime(98, now + 1.2);
         const hornFilter = AC.createBiquadFilter();
-        horn.type = 'sawtooth';
-        horn.frequency.setValueAtTime(110, now + 0.1);
-        horn.frequency.linearRampToValueAtTime(165, now + 0.5);
-        hornFilter.type = 'lowpass';
-        hornFilter.frequency.value = 400;
+        hornFilter.type = 'bandpass';
+        hornFilter.frequency.value = 200;
+        hornFilter.Q.value = 2;
         hornGain.gain.setValueAtTime(0, now);
-        hornGain.gain.linearRampToValueAtTime(0.35, now + 0.3);
-        hornGain.gain.setValueAtTime(0.35, now + 0.7);
-        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        hornGain.gain.linearRampToValueAtTime(0.4, now + 0.2);
+        hornGain.gain.setValueAtTime(0.4, now + 0.8);
+        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
         horn.connect(hornFilter);
         hornFilter.connect(hornGain);
         hornGain.connect(AC.destination);
         horn.start(now);
-        horn.stop(now + 1.3);
+        horn.stop(now + 1.5);
+        
+        // Oar splashes (rhythmic water sounds)
+        [0.3, 0.6, 0.9].forEach((delay) => {
+          const splash = AC.createBufferSource();
+          splash.buffer = createNoiseBuffer(0.15);
+          const splashFilter = AC.createBiquadFilter();
+          splashFilter.type = 'bandpass';
+          splashFilter.frequency.value = 1500;
+          splashFilter.Q.value = 1.5;
+          const splashGain = AC.createGain();
+          splashGain.gain.setValueAtTime(0.15, now + delay);
+          splashGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.2);
+          splash.connect(splashFilter);
+          splashFilter.connect(splashGain);
+          splashGain.connect(AC.destination);
+          splash.start(now + delay);
+        });
+        
+        // Wind/air whoosh
+        const wind = AC.createBufferSource();
+        wind.buffer = createNoiseBuffer(0.8);
+        const windFilter = AC.createBiquadFilter();
+        windFilter.type = 'lowpass';
+        windFilter.frequency.value = 400;
+        const windGain = AC.createGain();
+        windGain.gain.setValueAtTime(0, now);
+        windGain.gain.linearRampToValueAtTime(0.12, now + 0.3);
+        windGain.gain.setValueAtTime(0.12, now + 1.0);
+        windGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+        wind.connect(windFilter);
+        windFilter.connect(windGain);
+        windGain.connect(AC.destination);
+        wind.start(now);
         break;
       }
       case 'shipDestroy': {
-        // Crushing wood + water splash
+        // Viking ship destroying obstacle - crushing impact
+        const crush = AC.createBufferSource();
+        crush.buffer = createNoiseBuffer(0.25);
+        const crushFilter = AC.createBiquadFilter();
+        crushFilter.type = 'lowpass';
+        crushFilter.frequency.value = 600;
+        const crushGain = AC.createGain();
+        crushGain.gain.setValueAtTime(0.5, now);
+        crushGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        crush.connect(crushFilter);
+        crushFilter.connect(crushGain);
+        crushGain.connect(AC.destination);
+        crush.start(now);
+        
+        // Water splash
+        const splash = AC.createBufferSource();
+        splash.buffer = createNoiseBuffer(0.3);
+        const splashFilter = AC.createBiquadFilter();
+        splashFilter.type = 'bandpass';
+        splashFilter.frequency.value = 1800;
+        splashFilter.Q.value = 1.5;
+        const splashGain = AC.createGain();
+        splashGain.gain.setValueAtTime(0.25, now + 0.05);
+        splashGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        splash.connect(splashFilter);
+        splashFilter.connect(splashGain);
+        splashGain.connect(AC.destination);
+        splash.start(now + 0.05);
+        break;
+      }
+      case 'shipDestroyEnemy': {
+        // Viking warriors shouting + destruction when ship destroys enemies
+        // Viking battle shout "SKOL!" or "FOR VALHALLA!"
+        const shout1 = AC.createOscillator();
+        const shout1Gain = AC.createGain();
+        shout1.type = 'sawtooth';
+        shout1.frequency.setValueAtTime(180, now);
+        shout1.frequency.linearRampToValueAtTime(140, now + 0.15);
+        const shout1Formant = createFormant(800, 12, 0.5);
+        shout1Gain.gain.setValueAtTime(0.3, now);
+        shout1Gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        shout1.connect(shout1Formant.filter);
+        shout1Formant.gain.connect(shout1Gain);
+        shout1Gain.connect(AC.destination);
+        shout1.start(now);
+        shout1.stop(now + 0.25);
+        
+        // Second shout
+        const shout2 = AC.createOscillator();
+        const shout2Gain = AC.createGain();
+        shout2.type = 'sawtooth';
+        shout2.frequency.setValueAtTime(160, now + 0.1);
+        shout2.frequency.linearRampToValueAtTime(120, now + 0.25);
+        const shout2Formant = createFormant(700, 10, 0.4);
+        shout2Gain.gain.setValueAtTime(0.25, now + 0.1);
+        shout2Gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        shout2.connect(shout2Formant.filter);
+        shout2Formant.gain.connect(shout2Gain);
+        shout2Gain.connect(AC.destination);
+        shout2.start(now + 0.1);
+        shout2.stop(now + 0.35);
+        
+        // Crushing impact
         const crush = AC.createBufferSource();
         crush.buffer = createNoiseBuffer(0.2);
         const crushFilter = AC.createBiquadFilter();
         crushFilter.type = 'lowpass';
         crushFilter.frequency.value = 800;
         const crushGain = AC.createGain();
-        crushGain.gain.setValueAtTime(0.4, now);
-        crushGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        crushGain.gain.setValueAtTime(0.4, now + 0.15);
+        crushGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         crush.connect(crushFilter);
         crushFilter.connect(crushGain);
         crushGain.connect(AC.destination);
-        crush.start(now);
-        // Splash
-        const splash = AC.createBufferSource();
-        splash.buffer = createNoiseBuffer(0.3);
-        const splashFilter = AC.createBiquadFilter();
-        splashFilter.type = 'bandpass';
-        splashFilter.frequency.value = 2000;
-        splashFilter.Q.value = 1;
-        const splashGain = AC.createGain();
-        splashGain.gain.setValueAtTime(0.2, now + 0.05);
-        splashGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        splash.connect(splashFilter);
-        splashFilter.connect(splashGain);
-        splashGain.connect(AC.destination);
-        splash.start(now + 0.05);
+        crush.start(now + 0.15);
+        break;
+      }
+      case 'speedBoost': {
+        // Fast whoosh/wind sound for speed boost
+        const whoosh = AC.createBufferSource();
+        whoosh.buffer = createNoiseBuffer(0.4);
+        const whooshFilter = AC.createBiquadFilter();
+        whooshFilter.type = 'lowpass';
+        whooshFilter.frequency.setValueAtTime(2000, now);
+        whooshFilter.frequency.exponentialRampToValueAtTime(400, now + 0.4);
+        const whooshGain = AC.createGain();
+        whooshGain.gain.setValueAtTime(0, now);
+        whooshGain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+        whooshGain.gain.setValueAtTime(0.3, now + 0.2);
+        whooshGain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        whoosh.connect(whooshFilter);
+        whooshFilter.connect(whooshGain);
+        whooshGain.connect(AC.destination);
+        whoosh.start(now);
+        break;
+      }
+      case 'invincibility': {
+        // Shield activation - metallic shimmer + protective aura
+        // Metallic shimmer
+        [0, 0.05, 0.1].forEach((delay, i) => {
+          const shimmer = AC.createOscillator();
+          const gain = AC.createGain();
+          shimmer.type = 'triangle';
+          shimmer.frequency.value = 1200 + i * 400;
+          gain.gain.setValueAtTime(0, now + delay);
+          gain.gain.linearRampToValueAtTime(0.2, now + delay + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.15);
+          const metallic = AC.createBiquadFilter();
+          metallic.type = 'bandpass';
+          metallic.frequency.value = shimmer.frequency.value;
+          metallic.Q.value = 10;
+          shimmer.connect(metallic);
+          metallic.connect(gain);
+          gain.connect(AC.destination);
+          shimmer.start(now + delay);
+          shimmer.stop(now + delay + 0.2);
+        });
+        
+        // Protective aura - low hum
+        const aura = AC.createOscillator();
+        const auraGain = AC.createGain();
+        aura.type = 'sine';
+        aura.frequency.value = 110;
+        auraGain.gain.setValueAtTime(0, now);
+        auraGain.gain.linearRampToValueAtTime(0.15, now + 0.1);
+        auraGain.gain.setValueAtTime(0.15, now + 0.3);
+        auraGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        aura.connect(auraGain);
+        auraGain.connect(AC.destination);
+        aura.start(now);
+        aura.stop(now + 0.55);
         break;
       }
     }
@@ -1957,6 +2205,12 @@
     if (type === "vikingShip") {
       p.timeLeft = rand(5, 10); // Random 5-10 seconds
       playSFX('shipStart');
+    } else if (type === "speedBoost") {
+      p.timeLeft = 10;
+      playSFX('speedBoost');
+    } else if (type === "invincibility") {
+      p.timeLeft = 10;
+      playSFX('invincibility');
     } else {
       p.timeLeft = 10;
     }
@@ -2113,7 +2367,14 @@
     }
     
     // Speed boost: 1.5x movement speed when active
-    const actualSpeed = world.powerups.speedBoost.active ? world.speed * 1.5 : world.speed;
+    // Viking ship: 1.8x speed (faster than speed boost!)
+    let speedMultiplier = 1.0;
+    if (world.powerups.vikingShip.active) {
+      speedMultiplier = 1.8;
+    } else if (world.powerups.speedBoost.active) {
+      speedMultiplier = 1.5;
+    }
+    const actualSpeed = world.speed * speedMultiplier;
     viking.x += actualSpeed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
     world.score += world.speed * 0.015 * dt * scoreMultiplier;
@@ -2311,7 +2572,7 @@
           world.score += 200; // Bonus for destroying enemies
           addParticle(e.x, e.y - e.h/2, "#8B4513", 25);
           addParticle(e.x, e.y - e.h/2, "#4A90D9", 15);
-          playSFX('shipDestroy');
+          playSFX('shipDestroyEnemy');
           continue;
         }
         
@@ -2693,7 +2954,7 @@
   };
   
   // Check if MediaPipe is available
-  const mediapipeAvailable = typeof vision !== 'undefined';
+  const mediapipeAvailable = typeof window.tasksVision !== 'undefined';
   
   if (!mediapipeAvailable) {
     console.warn("MediaPipe not loaded - eye tracking disabled");
@@ -2707,7 +2968,7 @@
   // Initialize MediaPipe Face Landmarker
   const initFaceLandmarker = async () => {
     try {
-      const { FaceLandmarker, FilesetResolver } = vision;
+      const { FaceLandmarker, FilesetResolver } = window.tasksVision;
       
       const filesetResolver = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
