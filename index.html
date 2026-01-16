@@ -681,118 +681,157 @@
         break;
       }
       case 'mead': {
-        // Gulp/drink sound - bubbly beer drinking effect
-        // Multiple "gulp" sounds
-        [0, 0.12, 0.24].forEach((delay, i) => {
-          const osc = AC.createOscillator();
-          const gain = AC.createGain();
+        // Viking mead drinking - hearty gulps with satisfied grunt
+        [0, 0.15, 0.3].forEach((delay, i) => {
+          const gulp = AC.createOscillator();
+          const gGain = AC.createGain();
           const filter = AC.createBiquadFilter();
-          osc.type = 'sine';
-          // Descending pitch for each gulp
-          osc.frequency.setValueAtTime(400 - i * 50, now + delay);
-          osc.frequency.exponentialRampToValueAtTime(150, now + delay + 0.08);
+          gulp.type = 'triangle';
+          gulp.frequency.setValueAtTime(300 - i * 30, now + delay);
+          gulp.frequency.exponentialRampToValueAtTime(100, now + delay + 0.12);
           filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(600, now + delay);
-          gain.gain.setValueAtTime(0.3, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.1);
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(AC.destination);
-          osc.start(now + delay);
-          osc.stop(now + delay + 0.15);
+          filter.frequency.setValueAtTime(400, now + delay);
+          gGain.gain.setValueAtTime(0.35, now + delay);
+          gGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.12);
+          gulp.connect(filter);
+          filter.connect(gGain);
+          gGain.connect(AC.destination);
+          gulp.start(now + delay);
+          gulp.stop(now + delay + 0.15);
         });
-        // Add a satisfying "ahh" at the end
-        const ahhOsc = AC.createOscillator();
-        const ahhGain = AC.createGain();
-        ahhOsc.type = 'sine';
-        ahhOsc.frequency.setValueAtTime(220, now + 0.35);
-        ahhOsc.frequency.linearRampToValueAtTime(180, now + 0.55);
-        ahhGain.gain.setValueAtTime(0.15, now + 0.35);
-        ahhGain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-        ahhOsc.connect(ahhGain);
-        ahhGain.connect(AC.destination);
-        ahhOsc.start(now + 0.35);
-        ahhOsc.stop(now + 0.65);
+        // Satisfied Viking grunt "AHHH!"
+        const grunt = AC.createOscillator();
+        const gruntGain = AC.createGain();
+        const gruntFilter = AC.createBiquadFilter();
+        grunt.type = 'sawtooth';
+        grunt.frequency.setValueAtTime(130, now + 0.45);
+        grunt.frequency.linearRampToValueAtTime(90, now + 0.7);
+        gruntFilter.type = 'lowpass';
+        gruntFilter.frequency.setValueAtTime(300, now + 0.45);
+        gruntGain.gain.setValueAtTime(0.25, now + 0.45);
+        gruntGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        grunt.connect(gruntFilter);
+        gruntFilter.connect(gruntGain);
+        gruntGain.connect(AC.destination);
+        grunt.start(now + 0.45);
+        grunt.stop(now + 0.85);
         break;
       }
       case 'damage': {
-        // Viking grunt/hurt sound
-        const osc = AC.createOscillator();
-        const gain = AC.createGain();
-        const filter = AC.createBiquadFilter();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(500, now);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(AC.destination);
-        osc.start(now);
-        osc.stop(now + 0.3);
-        // Impact thud
-        const thud = AC.createOscillator();
-        const thudGain = AC.createGain();
-        thud.type = 'sine';
-        thud.frequency.setValueAtTime(60, now);
-        thud.frequency.exponentialRampToValueAtTime(30, now + 0.1);
-        thudGain.gain.setValueAtTime(0.35, now);
-        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        thud.connect(thudGain);
-        thudGain.connect(AC.destination);
-        thud.start(now);
-        thud.stop(now + 0.2);
+        // Viking battle cry/pain - "ARGH!"
+        const cry = AC.createOscillator();
+        const cryGain = AC.createGain();
+        const cryFilter = AC.createBiquadFilter();
+        cry.type = 'sawtooth';
+        cry.frequency.setValueAtTime(180, now);
+        cry.frequency.exponentialRampToValueAtTime(100, now + 0.2);
+        cryFilter.type = 'lowpass';
+        cryFilter.frequency.setValueAtTime(600, now);
+        cryFilter.frequency.exponentialRampToValueAtTime(200, now + 0.2);
+        cryGain.gain.setValueAtTime(0.4, now);
+        cryGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        cry.connect(cryFilter);
+        cryFilter.connect(cryGain);
+        cryGain.connect(AC.destination);
+        cry.start(now);
+        cry.stop(now + 0.35);
+        // Shield/armor impact
+        const impact = AC.createOscillator();
+        const impactGain = AC.createGain();
+        impact.type = 'triangle';
+        impact.frequency.setValueAtTime(80, now);
+        impact.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+        impactGain.gain.setValueAtTime(0.5, now);
+        impactGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        impact.connect(impactGain);
+        impactGain.connect(AC.destination);
+        impact.start(now);
+        impact.stop(now + 0.25);
         break;
       }
       case 'gameover': {
-        // Epic Viking death horn - dramatic descending notes
-        [0, 0.2, 0.4, 0.6].forEach((delay, i) => {
-          const osc = AC.createOscillator();
-          const gain = AC.createGain();
-          const filter = AC.createBiquadFilter();
-          osc.type = 'sawtooth';
-          // Descending minor notes for dramatic effect
-          osc.frequency.setValueAtTime([146.8, 130.8, 110, 82.4][i], now + delay);
-          filter.type = 'lowpass';
-          filter.frequency.setValueAtTime(400, now + delay);
-          gain.gain.setValueAtTime(0.3, now + delay);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.6);
-          osc.connect(filter);
-          filter.connect(gain);
-          gain.connect(AC.destination);
-          osc.start(now + delay);
-          osc.stop(now + delay + 0.7);
-        });
-        // Add a crash/impact sound
-        const crash = AC.createOscillator();
-        const crashGain = AC.createGain();
-        crash.type = 'square';
-        crash.frequency.setValueAtTime(60, now);
-        crash.frequency.exponentialRampToValueAtTime(20, now + 0.3);
-        crashGain.gain.setValueAtTime(0.25, now);
-        crashGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        crash.connect(crashGain);
-        crashGain.connect(AC.destination);
-        crash.start(now);
-        crash.stop(now + 0.5);
+        // Viking funeral horn - low mournful war horn
+        const horn = AC.createOscillator();
+        const hornGain = AC.createGain();
+        const hornFilter = AC.createBiquadFilter();
+        horn.type = 'sawtooth';
+        horn.frequency.setValueAtTime(73.4, now); // Low D - mournful
+        horn.frequency.linearRampToValueAtTime(65.4, now + 1.5);
+        hornFilter.type = 'lowpass';
+        hornFilter.frequency.setValueAtTime(300, now);
+        hornGain.gain.setValueAtTime(0.4, now);
+        hornGain.gain.linearRampToValueAtTime(0.3, now + 0.5);
+        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
+        horn.connect(hornFilter);
+        hornFilter.connect(hornGain);
+        hornGain.connect(AC.destination);
+        horn.start(now);
+        horn.stop(now + 2);
+        // Second horn (harmony)
+        const horn2 = AC.createOscillator();
+        const horn2Gain = AC.createGain();
+        horn2.type = 'sawtooth';
+        horn2.frequency.setValueAtTime(55, now + 0.3); // Low A
+        hornFilter.type = 'lowpass';
+        horn2Gain.gain.setValueAtTime(0.25, now + 0.3);
+        horn2Gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+        horn2.connect(hornFilter);
+        hornFilter.connect(horn2Gain);
+        horn2Gain.connect(AC.destination);
+        horn2.start(now + 0.3);
+        horn2.stop(now + 1.8);
         break;
       }
       case 'heart': {
-        // Healing chime
-        const osc = AC.createOscillator();
-        const gain = AC.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.setValueAtTime(660, now + 0.1);
-        osc.frequency.setValueAtTime(880, now + 0.2);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc.connect(gain);
-        gain.connect(AC.destination);
-        osc.start(now);
-        osc.stop(now + 0.45);
+        // Healing sound - gentle Nordic chime
+        const chime = AC.createOscillator();
+        const chimeGain = AC.createGain();
+        chime.type = 'sine';
+        chime.frequency.setValueAtTime(392, now); // G4
+        chime.frequency.setValueAtTime(523, now + 0.15); // C5
+        chimeGain.gain.setValueAtTime(0.25, now);
+        chimeGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        chime.connect(chimeGain);
+        chimeGain.connect(AC.destination);
+        chime.start(now);
+        chime.stop(now + 0.55);
+        break;
+      }
+      case 'warhorn': {
+        // VIKING WAR HORN - game start!
+        // Main horn blast
+        const horn = AC.createOscillator();
+        const hornGain = AC.createGain();
+        const hornFilter = AC.createBiquadFilter();
+        horn.type = 'sawtooth';
+        horn.frequency.setValueAtTime(110, now); // A2
+        horn.frequency.linearRampToValueAtTime(146.8, now + 0.3); // D3
+        horn.frequency.setValueAtTime(146.8, now + 0.3);
+        horn.frequency.linearRampToValueAtTime(110, now + 1.2);
+        hornFilter.type = 'lowpass';
+        hornFilter.frequency.setValueAtTime(500, now);
+        hornGain.gain.setValueAtTime(0, now);
+        hornGain.gain.linearRampToValueAtTime(0.5, now + 0.15);
+        hornGain.gain.setValueAtTime(0.5, now + 0.8);
+        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+        horn.connect(hornFilter);
+        hornFilter.connect(hornGain);
+        hornGain.connect(AC.destination);
+        horn.start(now);
+        horn.stop(now + 1.6);
+        // Harmonic overtone
+        const overtone = AC.createOscillator();
+        const overGain = AC.createGain();
+        overtone.type = 'triangle';
+        overtone.frequency.setValueAtTime(220, now + 0.1);
+        overtone.frequency.linearRampToValueAtTime(293.7, now + 0.4);
+        overGain.gain.setValueAtTime(0.15, now + 0.1);
+        overGain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        overtone.connect(hornFilter);
+        hornFilter.connect(overGain);
+        overGain.connect(AC.destination);
+        overtone.start(now + 0.1);
+        overtone.stop(now + 1.3);
         break;
       }
     }
@@ -856,42 +895,60 @@
       lfo.start();
       musicNodes.push({ osc: lfo, gain: lfoGain });
       
-      // Create rhythmic element - like a slow heartbeat drum
-      const createDrum = () => {
+      // Viking war drum - deep, powerful beats
+      const createWarDrum = () => {
+        let beatCount = 0;
         const playBeat = () => {
           if (!musicPlaying || !musicContext) return;
           
           const now = musicContext.currentTime;
-          const drumOsc = musicContext.createOscillator();
+          beatCount++;
+          
+          // Main drum hit
+          const drum = musicContext.createOscillator();
           const drumGain = musicContext.createGain();
-          
-          drumOsc.type = 'sine';
-          drumOsc.frequency.setValueAtTime(60, now);
-          drumOsc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
-          
-          drumGain.gain.setValueAtTime(0.4, now);
-          drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-          
-          drumOsc.connect(drumGain);
+          drum.type = 'sine';
+          drum.frequency.setValueAtTime(50, now);
+          drum.frequency.exponentialRampToValueAtTime(25, now + 0.25);
+          drumGain.gain.setValueAtTime(0.5, now);
+          drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          drum.connect(drumGain);
           drumGain.connect(musicGain);
-          drumOsc.start(now);
-          drumOsc.stop(now + 0.4);
+          drum.start(now);
+          drum.stop(now + 0.5);
           
-          // Next beat in 1.5 seconds (slow, epic rhythm)
+          // Accent on every 4th beat (stronger)
+          if (beatCount % 4 === 1) {
+            const accent = musicContext.createOscillator();
+            const accentGain = musicContext.createGain();
+            accent.type = 'triangle';
+            accent.frequency.setValueAtTime(40, now);
+            accent.frequency.exponentialRampToValueAtTime(20, now + 0.3);
+            accentGain.gain.setValueAtTime(0.6, now);
+            accentGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            accent.connect(accentGain);
+            accentGain.connect(musicGain);
+            accent.start(now);
+            accent.stop(now + 0.6);
+          }
+          
+          // Viking march rhythm: BOOM - boom - BOOM - boom
+          const nextBeat = beatCount % 2 === 0 ? 800 : 1200;
           if (musicPlaying) {
-            setTimeout(playBeat, 1500);
+            setTimeout(playBeat, nextBeat);
           }
         };
         playBeat();
       };
       
-      createDrum();
+      createWarDrum();
       
-      // Occasional horn-like melody notes
+      // Nordic war horn melody - uses D minor scale (Viking sound)
       const playMelody = () => {
         if (!musicPlaying || !musicContext) return;
         
-        const notes = [146.8, 164.8, 196, 220, 246.9]; // D3, E3, G3, A3, B3 - minor pentatonic
+        // D minor pentatonic - authentic Nordic sound
+        const notes = [146.8, 174.6, 196, 220, 261.6]; // D3, F3, G3, A3, C4
         const note = notes[Math.floor(Math.random() * notes.length)];
         const now = musicContext.currentTime;
         
@@ -1367,7 +1424,7 @@
       }
       if (statePill) statePill.textContent = "Playing";
       if (pauseBtn) pauseBtn.textContent = "Pause";
-    beep("square", 300, 0.2);
+      playSFX('warhorn'); // Viking war horn!
     } catch (e) {
       console.error("Error in start:", e);
     }
@@ -1441,21 +1498,65 @@
     if (e.defeated) return;
     ctx.save();
     ctx.translate(e.x, e.y);
+    
+    // Saxon/British warrior - enemy of Vikings
+    // Body - blue tunic (British colors)
+    ctx.fillStyle = "#1e3a5f";
+    ctx.fillRect(-e.w/2 + 5, -e.h + 15, e.w - 10, e.h - 15);
+    
+    // Chainmail armor overlay
+    ctx.fillStyle = "#6b7280";
+    ctx.fillRect(-e.w/2 + 8, -e.h + 15, e.w - 16, 25);
+    
+    // Head
+    ctx.fillStyle = "#d4a574";
+    ctx.beginPath();
+    ctx.arc(0, -e.h - 5, 14, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Saxon helmet (round with nose guard)
+    ctx.fillStyle = "#71717a";
+    ctx.beginPath();
+    ctx.arc(0, -e.h - 8, 16, Math.PI, 0);
+    ctx.fill();
+    // Nose guard
+    ctx.fillRect(-2, -e.h - 10, 4, 15);
+    
+    // Eyes (angry)
+    ctx.fillStyle = "#000";
+    ctx.fillRect(-7, -e.h - 5, 4, 3);
+    ctx.fillRect(3, -e.h - 5, 4, 3);
+    
+    // Shield (round Saxon shield with cross)
     ctx.fillStyle = "#dc2626";
-    ctx.fillRect(-e.w/2, -e.h, e.w, e.h);
-    ctx.fillStyle = "#991b1b";
     ctx.beginPath();
-    ctx.arc(0, -e.h - 12, 15, 0, Math.PI * 2);
+    ctx.arc(-e.w/2 - 8, -e.h/2, 18, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#ff0000";
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Cross on shield
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(-6, -e.h - 10, 3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(-e.w/2 - 8, -e.h/2 - 12);
+    ctx.lineTo(-e.w/2 - 8, -e.h/2 + 12);
+    ctx.moveTo(-e.w/2 - 20, -e.h/2);
+    ctx.lineTo(-e.w/2 + 4, -e.h/2);
+    ctx.stroke();
+    
+    // Spear
+    ctx.fillStyle = "#78350f";
+    ctx.fillRect(e.w/2, -e.h + 5, 4, 50);
+    // Spear tip
+    ctx.fillStyle = "#a1a1aa";
     ctx.beginPath();
-    ctx.arc(6, -e.h - 10, 3, 0, Math.PI * 2);
+    ctx.moveTo(e.w/2 + 2, -e.h + 5);
+    ctx.lineTo(e.w/2 - 3, -e.h - 10);
+    ctx.lineTo(e.w/2 + 7, -e.h - 10);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = "#888";
-    ctx.fillRect(e.w/2 - 2, -e.h + 10, 4, 20);
+    
     ctx.restore();
   };
 
