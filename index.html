@@ -680,6 +680,128 @@
     o.connect(g); g.connect(AC.destination);
     o.start(); o.stop(AC.currentTime + dur);
   };
+
+  // Powerup looping sounds manager
+  const powerupSounds = {
+    speedBoost: null,
+    invincibility: null,
+    vikingShip: null,
+    scoreMultiplier: null
+  };
+  
+  const stopPowerupSound = (type) => {
+    if (powerupSounds[type]) {
+      try {
+        powerupSounds[type].stop();
+        powerupSounds[type].disconnect();
+      } catch (e) {}
+      powerupSounds[type] = null;
+    }
+  };
+  
+  const startPowerupSound = (type) => {
+    if (!OPT.sound) return;
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Stop existing sound if any
+    stopPowerupSound(type);
+    
+    const now = AC.currentTime;
+    let source = null;
+    
+    switch(type) {
+      case 'speedBoost': {
+        // Continuous whoosh/wind sound
+        const whoosh = AC.createBufferSource();
+        whoosh.buffer = createNoiseBuffer(0.5);
+        whoosh.loop = true;
+        const whooshFilter = AC.createBiquadFilter();
+        whooshFilter.type = 'lowpass';
+        whooshFilter.frequency.value = 1200;
+        const whooshGain = AC.createGain();
+        whooshGain.gain.value = 0.15;
+        whoosh.connect(whooshFilter);
+        whooshFilter.connect(whooshGain);
+        whooshGain.connect(AC.destination);
+        whoosh.start(now);
+        source = whoosh;
+        break;
+      }
+      case 'invincibility': {
+        // Continuous protective aura hum
+        const aura = AC.createOscillator();
+        const auraGain = AC.createGain();
+        aura.type = 'sine';
+        aura.frequency.value = 110;
+        auraGain.gain.value = 0.08;
+        const auraFilter = AC.createBiquadFilter();
+        auraFilter.type = 'lowpass';
+        auraFilter.frequency.value = 300;
+        aura.connect(auraFilter);
+        auraFilter.connect(auraGain);
+        auraGain.connect(AC.destination);
+        aura.start(now);
+        source = aura;
+        break;
+      }
+      case 'vikingShip': {
+        // Continuous wind whoosh + subtle oar rhythm
+        // Wind whoosh (continuous)
+        const wind = AC.createBufferSource();
+        wind.buffer = createNoiseBuffer(1.0);
+        wind.loop = true;
+        const windFilter = AC.createBiquadFilter();
+        windFilter.type = 'lowpass';
+        windFilter.frequency.value = 600;
+        const windGain = AC.createGain();
+        windGain.gain.value = 0.12;
+        wind.connect(windFilter);
+        windFilter.connect(windGain);
+        windGain.connect(AC.destination);
+        wind.start(now);
+        
+        // Subtle oar rhythm (low frequency pulse for texture)
+        const oarPulse = AC.createOscillator();
+        const oarGain = AC.createGain();
+        oarPulse.type = 'sine';
+        oarPulse.frequency.value = 2.5; // 2.5 Hz = oar rhythm
+        oarGain.gain.value = 0.06;
+        const oarFilter = AC.createBiquadFilter();
+        oarFilter.type = 'lowpass';
+        oarFilter.frequency.value = 200;
+        oarPulse.connect(oarFilter);
+        oarFilter.connect(oarGain);
+        oarGain.connect(AC.destination);
+        oarPulse.start(now);
+        
+        // Track wind as main source (oarPulse will auto-stop when wind stops)
+        source = wind;
+        break;
+      }
+      case 'scoreMultiplier': {
+        // Subtle continuous magical shimmer
+        const shimmer = AC.createOscillator();
+        const shimmerGain = AC.createGain();
+        shimmer.type = 'triangle';
+        shimmer.frequency.value = 880; // A5
+        shimmerGain.gain.value = 0.05;
+        const shimmerFilter = AC.createBiquadFilter();
+        shimmerFilter.type = 'bandpass';
+        shimmerFilter.frequency.value = 880;
+        shimmerFilter.Q.value = 5;
+        shimmer.connect(shimmerFilter);
+        shimmerFilter.connect(shimmerGain);
+        shimmerGain.connect(AC.destination);
+        shimmer.start(now);
+        source = shimmer;
+        break;
+      }
+    }
+    
+    if (source) {
+      powerupSounds[type] = source;
+    }
+  };
   
   // ===== AUTHENTIC VIKING SOUND EFFECTS =====
   // Inspired by Vikings TV series - using advanced synthesis techniques
@@ -1575,6 +1697,11 @@
 
   const resetWorld = () => {
     try {
+      // Stop all powerup sounds when resetting
+      for (const key in powerupSounds) {
+        stopPowerupSound(key);
+      }
+      
       resize(); // Always resize to ensure H is set
       if (!H || H === 0) {
         setTimeout(resetWorld, 10);
@@ -2204,13 +2331,20 @@
     
     if (type === "vikingShip") {
       p.timeLeft = rand(5, 10); // Random 5-10 seconds
-      playSFX('shipStart');
+      playSFX('shipStart'); // Initial activation sound
+      startPowerupSound('vikingShip'); // Start looping sound
     } else if (type === "speedBoost") {
       p.timeLeft = 10;
-      playSFX('speedBoost');
+      playSFX('speedBoost'); // Initial activation sound
+      startPowerupSound('speedBoost'); // Start looping sound
     } else if (type === "invincibility") {
       p.timeLeft = 10;
-      playSFX('invincibility');
+      playSFX('invincibility'); // Initial activation sound
+      startPowerupSound('invincibility'); // Start looping sound
+    } else if (type === "scoreMultiplier") {
+      p.timeLeft = 10;
+      playSFX('powerup'); // Initial activation sound
+      startPowerupSound('scoreMultiplier'); // Start looping sound
     } else {
       p.timeLeft = 10;
     }
@@ -2302,6 +2436,10 @@
                 updateHUD();
                 
                 if (world.lives <= 0) {
+                  // Stop all powerup sounds on game over
+                  for (const key in powerupSounds) {
+                    stopPowerupSound(key);
+                  }
                   world.over = true;
                   viking.faceplant = 1.5;
                   if (statePill) statePill.textContent = "Game Over";
@@ -2386,7 +2524,13 @@
         if (p.timeLeft <= 0) {
           p.active = false;
           if (key === "scoreMultiplier") p.multiplier = 1;
+          stopPowerupSound(key); // Stop looping sound when powerup expires
           updateHUD();
+        }
+      } else {
+        // Make sure sound is stopped if powerup is not active
+        if (powerupSounds[key]) {
+          stopPowerupSound(key);
         }
       }
     }
@@ -2521,6 +2665,10 @@
           updateHUD();
           
           if (world.lives <= 0) {
+            // Stop all powerup sounds on game over
+            for (const key in powerupSounds) {
+              stopPowerupSound(key);
+            }
         world.over = true;
         viking.faceplant = 1.5;
             statePill.textContent = "Game Over";
@@ -2600,6 +2748,10 @@
             updateHUD();
               
             if (world.lives <= 0) {
+              // Stop all powerup sounds on game over
+              for (const key in powerupSounds) {
+                stopPowerupSound(key);
+              }
               world.over = true;
               viking.faceplant = 1.5;
               if (statePill) statePill.textContent = "Game Over";
