@@ -8,22 +8,23 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js"></script>
   <style>
     :root{
-      /* Apple Design System Colors - HIGH CONTRAST & READABLE */
-      --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --bg-dark: #1a1a2e;
+      /* Apple Design System - Authentic */
+      --bg: #f5f5f7;
+      --bg-dark: #1d1d1f;
       --surface: #ffffff;
       --surface-elevated: #ffffff;
-      --surface-dark: rgba(30, 30, 46, 0.95);
-      --text: #000000;
-      --text-secondary: #333333;
-      --text-tertiary: #666666;
+      --surface-dark: rgba(29, 29, 31, 0.95);
+      --text: #1d1d1f;
+      --text-secondary: #86868b;
+      --text-tertiary: #86868b;
       --text-light: #ffffff;
-      --separator: rgba(0, 0, 0, 0.2);
-      --accent: #007aff;
-      --accent-hover: #0051d5;
-      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --shadow: rgba(0, 0, 0, 0.2);
-      --shadow-lg: rgba(0, 0, 0, 0.3);
+      --separator: rgba(0, 0, 0, 0.08);
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --accent-green: #34c759;
+      --accent-gradient: linear-gradient(180deg, #42a5f5 0%, #0071e3 100%);
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
     }
 
     * {
@@ -32,16 +33,20 @@
       box-sizing: border-box;
     }
 
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
     html, body {
       height: 100%;
       margin: 0;
       background: var(--bg);
       background-attachment: fixed;
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
       overflow: hidden;
       user-select: none;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
     }
 
     .wrap{ 
@@ -55,13 +60,12 @@
     .shell{
       width: min(1200px, calc(100vw - 48px));
       height: min(800px, calc(100vh - 48px));
-      border-radius: 24px;
+      border-radius: 18px;
       background: var(--surface);
       border: none;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      box-shadow: var(--shadow-lg);
       position: relative;
       overflow: hidden;
-      backdrop-filter: blur(40px);
     }
 
     .topbar{ 
@@ -92,8 +96,8 @@
     
     .title strong{ 
       font-weight: 600; 
-      font-size: 17px;
-      letter-spacing: -0.4px;
+      font-size: 21px;
+      letter-spacing: -0.5px;
       color: var(--text);
     }
     
@@ -133,35 +137,35 @@
     }
     
     .stat .v{ 
-      font-size: 22px; 
+      font-size: 24px; 
       font-weight: 700; 
       line-height: 1; 
-      color: #007aff;
+      color: var(--accent);
       letter-spacing: -0.5px;
     }
 
     .btn{ 
       border: none; 
-      background: var(--surface-elevated);
+      background: #f5f5f7;
       color: var(--accent); 
-      padding: 8px 16px; 
-      border-radius: 8px; 
+      padding: 12px 20px; 
+      border-radius: 12px; 
       cursor: pointer; 
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+      transition: all 0.15s ease; 
       font-weight: 500; 
-      font-size: 13px; 
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-      min-width: 80px;
+      font-size: 15px; 
+      font-family: inherit;
+      min-width: 100px;
       text-align: center;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 36px;
+      height: 44px;
+      letter-spacing: -0.01em;
     }
     
     .btn:hover{ 
-      background: var(--surface-elevated);
-      opacity: 0.8;
+      background: #e8e8ed;
     }
     
     .btn.primary{ 
@@ -172,6 +176,21 @@
     
     .btn.primary:hover {
       background: var(--accent-hover);
+    }
+    
+    .btn.eye-track {
+      background: transparent;
+      border: 2px solid var(--accent-green);
+      color: var(--accent-green);
+    }
+    
+    .btn.eye-track:hover {
+      background: rgba(52, 199, 89, 0.1);
+    }
+    
+    .btn.eye-track.active {
+      background: var(--accent-green);
+      color: #ffffff;
     }
 
     .hudline{ 
@@ -187,28 +206,29 @@
     
     .hint{ 
       max-width: 700px; 
-      padding: 14px 24px; 
-      border-radius: 12px; 
-      background: #ffffff;
-      border: 2px solid rgba(0, 0, 0, 0.2);
-      color: #000000; 
-      font-size: 13px; 
-      font-weight: 600;
+      padding: 16px 28px; 
+      border-radius: 14px; 
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--separator);
+      color: var(--text); 
+      font-size: 14px; 
+      font-weight: 500;
       text-align: center; 
       pointer-events: auto;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--shadow-lg);
     }
     
     kbd{ 
-      background: #000000; 
-      border-radius: 4px; 
-      padding: 3px 8px; 
+      background: var(--text); 
+      border-radius: 6px; 
+      padding: 4px 10px; 
       color: #ffffff; 
-      border: 1px solid #000000; 
-      margin: 0 3px; 
-      font-weight: 700;
+      border: none; 
+      margin: 0 4px; 
+      font-weight: 600;
       font-size: 12px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      font-family: 'SF Mono', 'Menlo', monospace;
     }
 
     .canvas{ 
@@ -227,36 +247,35 @@
       place-items: center; 
       pointer-events: none; 
       z-index: 200; 
-      background: rgba(0, 0, 0, 0.7); 
-      backdrop-filter: blur(20px);
+      background: rgba(245, 245, 247, 0.85); 
+      backdrop-filter: blur(30px);
       visibility: visible;
       opacity: 1;
     }
     
     .card{ 
       pointer-events: auto; 
-      width: min(480px, 90%); 
-      border-radius: 24px; 
-      padding: 40px; 
+      width: min(440px, 90%); 
+      border-radius: 18px; 
+      padding: 48px 40px; 
       background: #ffffff;
-      backdrop-filter: blur(40px);
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--separator);
+      box-shadow: var(--shadow-lg);
       text-align: center;
     }
     
     .card h1{ 
-      font-size: 36px; 
-      margin: 0 0 16px; 
-      font-weight: 800;
-      letter-spacing: -1px;
-      color: #000000;
+      font-size: 32px; 
+      margin: 0 0 12px; 
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
     }
     
     .card p{ 
-      margin: 0 0 28px; 
-      color: #333333; 
-      line-height: 1.5; 
+      margin: 0 0 32px; 
+      color: var(--text-secondary); 
+      line-height: 1.6; 
       font-size: 15px;
     }
     
@@ -264,16 +283,17 @@
       position: absolute;
       top: 70px;
       left: 20px;
-      padding: 8px 14px;
-      border-radius: 8px;
-      background: rgba(0, 122, 255, 0.9);
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: var(--accent-green);
       color: white;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       z-index: 150;
       display: none;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
     }
     
     .eye-tracking-indicator.active {
@@ -284,7 +304,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #4ade80;
+      background: #ffffff;
       animation: pulse 1s ease-in-out infinite;
     }
     
@@ -343,24 +363,24 @@
     
     .achievement-popup {
       position: fixed;
-      top: 20px;
-      right: -350px;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      border: 2px solid #ffd700;
-      border-radius: 16px;
-      padding: 16px 24px;
+      top: 24px;
+      right: -400px;
+      background: #ffffff;
+      border: 1px solid var(--separator);
+      border-radius: 14px;
+      padding: 18px 24px;
       display: flex;
       align-items: center;
       gap: 16px;
       z-index: 10000;
-      box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+      box-shadow: var(--shadow-lg);
       transition: right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      color: #fff;
+      color: var(--text);
     }
-    .achievement-popup.show { right: 20px; }
-    .achievement-popup .achievement-icon { font-size: 36px; }
-    .achievement-popup strong { color: #ffd700; font-size: 16px; }
-    .achievement-popup small { color: #aaa; font-size: 12px; }
+    .achievement-popup.show { right: 24px; }
+    .achievement-popup .achievement-icon { font-size: 32px; }
+    .achievement-popup strong { font-size: 15px; font-weight: 600; }
+    .achievement-popup small { color: var(--text-secondary); font-size: 13px; }
     
     .level-unlock-notification {
       position: fixed;
@@ -684,8 +704,8 @@
       position: fixed;
       inset: 0;
       z-index: 300;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(20px);
+      background: rgba(245, 245, 247, 0.9);
+      backdrop-filter: blur(30px);
       place-items: center;
     }
 
@@ -694,37 +714,44 @@
     }
 
     .highscore-card {
-      width: min(600px, 90%);
+      width: min(560px, 90%);
       max-height: 80vh;
       overflow-y: auto;
-      padding: 32px;
+      padding: 40px;
       border-radius: 18px;
       background: var(--surface);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--separator);
+      box-shadow: var(--shadow-lg);
     }
 
     .highscore-tabs {
       display: flex;
-      gap: 4px;
+      gap: 8px;
       margin-bottom: 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--separator);
     }
 
     .highscore-tab {
-      padding: 10px 16px;
+      padding: 8px 16px;
       background: transparent;
       border: none;
       color: var(--text-secondary);
       font-weight: 500;
       cursor: pointer;
-      border-bottom: 2px solid transparent;
+      border-radius: 8px;
       transition: all 0.15s;
-      font-size: 13px;
+      font-size: 14px;
+    }
+
+    .highscore-tab:hover {
+      background: #f5f5f7;
     }
 
     .highscore-tab.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
+      color: var(--text);
+      background: #f5f5f7;
+      font-weight: 600;
     }
 
     .highscore-list {
@@ -737,15 +764,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px;
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 14px 16px;
+      background: #f5f5f7;
+      border-radius: 12px;
+      border: none;
     }
 
     .highscore-item.rank-1 {
-      background: var(--accent-subtle);
-      border-color: rgba(255, 215, 0, 0.2);
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
     }
 
     .highscore-rank {
@@ -881,10 +907,19 @@
             </div>
           </div>
           
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 280px; margin: 20px auto 0;">
-            <button class="btn primary" id="startBtn" style="padding: 14px 32px; font-size: 15px; width: 100%; height: 48px;">Start Game</button>
-            <button class="btn" id="eyeTrackBtn" style="padding: 12px 24px; font-size: 14px; width: 100%; height: 44px;">👁️ Enable Eye Tracking</button>
-            <button class="btn" id="highscoreBtn" style="padding: 12px 24px; font-size: 14px; width: 100%; height: 44px;">High Scores</button>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 300px; margin: 24px auto 0;">
+            <button class="btn primary" id="startBtn" style="font-size: 17px; width: 100%; height: 50px; font-weight: 600;">Start Game</button>
+            
+            <div style="width: 100%; padding: 16px; background: rgba(52, 199, 89, 0.08); border: 2px solid var(--accent-green); border-radius: 14px; margin: 8px 0;">
+              <button class="btn eye-track" id="eyeTrackBtn" style="width: 100%; height: 48px; font-size: 15px; font-weight: 600;">
+                👁️ Enable Eye Tracking
+              </button>
+              <p style="margin: 10px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+                Control the game with your eyes. Look up to jump, down to duck. Requires camera access.
+              </p>
+            </div>
+            
+            <button class="btn" id="highscoreBtn" style="width: 100%; height: 44px;">High Scores</button>
           </div>
         </div>
       </div>
@@ -2143,13 +2178,36 @@
   // Achievement System
   const Achievements = {
     list: {
+      // Beginner achievements (instant gratification)
+      firstJump: { name: 'First Leap', desc: 'Make your first jump', icon: '🦘', rarity: 'bronze' },
+      firstDuck: { name: 'Head Down', desc: 'Duck for the first time', icon: '🦆', rarity: 'bronze' },
+      firstMead: { name: 'Thirsty Viking', desc: 'Collect your first mead', icon: '🍺', rarity: 'bronze' },
+      firstGold: { name: 'Shiny!', desc: 'Collect your first gold coin', icon: '🪙', rarity: 'bronze' },
+      firstPowerup: { name: 'Empowered', desc: 'Collect your first powerup', icon: '⚡', rarity: 'bronze' },
+      tenJumps: { name: 'Bouncy Viking', desc: 'Jump 10 times in one run', icon: '🏃', rarity: 'bronze' },
+      surviveMinute: { name: 'One Minute Man', desc: 'Survive for 60 seconds', icon: '⏱️', rarity: 'bronze' },
+      
+      // Score milestones (1k, 5k, 10k, 25k, 50k, 100k, 500k, 1M, 5M, 10M)
+      score1k: { name: 'Viking Initiate', desc: 'Reach 1,000 points', icon: '🌱', rarity: 'bronze' },
+      score5k: { name: 'Fjord Runner', desc: 'Reach 5,000 points', icon: '🏔️', rarity: 'bronze' },
+      score10k: { name: 'Shield Bearer', desc: 'Reach 10,000 points', icon: '🛡️', rarity: 'bronze' },
+      score25k: { name: 'Survivor', desc: 'Reach 25,000 points', icon: '⚔️', rarity: 'silver' },
+      score50k: { name: 'Veteran', desc: 'Reach 50,000 points', icon: '🗡️', rarity: 'silver' },
+      score100k: { name: 'Viking Legend', desc: 'Reach 100,000 points', icon: '👑', rarity: 'gold' },
+      score500k: { name: 'Score Legend', desc: 'Reach 500,000 points', icon: '🏆', rarity: 'gold' },
+      score1m: { name: 'Millionaire', desc: 'Reach 1,000,000 points', icon: '💎', rarity: 'platinum' },
+      score5m: { name: 'Legendary Viking', desc: 'Reach 5,000,000 points', icon: '🌟', rarity: 'platinum' },
+      score10m: { name: 'God of War', desc: 'Reach 10,000,000 points', icon: '⚡', rarity: 'platinum' },
+      
+      // Other bronze achievements
       firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️', rarity: 'bronze' },
       goldRush: { name: 'Gold Rush', desc: 'Collect 10 gold coins in one run', icon: '💰', rarity: 'bronze' },
       meadLover: { name: 'Mead Lover', desc: 'Collect 50 mead in one run', icon: '🍺', rarity: 'bronze' },
       closeCall: { name: 'Close Call', desc: 'Survive 10 near misses in one run', icon: '😰', rarity: 'bronze' },
       level2: { name: 'Raid Master', desc: 'Complete Level 2', icon: '🛡️', rarity: 'bronze' },
       level3: { name: 'Berserker', desc: 'Complete Level 3', icon: '⚔️', rarity: 'bronze' },
-      survivor: { name: 'Survivor', desc: 'Reach 25,000 points', icon: '🛡️', rarity: 'silver' },
+      
+      // Silver achievements
       comboMaster: { name: 'Combo Master', desc: 'Get a 10x combo streak', icon: '🔥', rarity: 'silver' },
       captain: { name: 'Ship Captain', desc: 'Destroy 5 enemies with Viking ship', icon: '⛵', rarity: 'silver' },
       level4: { name: 'Dragon Slayer', desc: 'Complete Level 4', icon: '🐉', rarity: 'silver' },
@@ -2157,24 +2215,27 @@
       goldCollector: { name: 'Gold Collector', desc: 'Collect 100 gold coins total', icon: '💎', rarity: 'silver' },
       meadMaster: { name: 'Mead Master', desc: 'Collect 500 mead total', icon: '🍻', rarity: 'silver' },
       hardMode: { name: 'Hard Mode', desc: 'Reach 50k points on Hard difficulty', icon: '💀', rarity: 'silver' },
-      legend: { name: 'Viking Legend', desc: 'Reach 100,000 points', icon: '👑', rarity: 'gold' },
+      
+      // Gold achievements
       level5: { name: 'Valhalla Bound', desc: 'Complete Level 5', icon: '⚡', rarity: 'gold' },
       combo50: { name: 'Combo God', desc: 'Get a 50x combo streak', icon: '🔥', rarity: 'gold' },
-      score200k: { name: 'Score Master', desc: 'Reach 200,000 points', icon: '🏆', rarity: 'gold' },
-      score500k: { name: 'Score Legend', desc: 'Reach 500,000 points', icon: '👑', rarity: 'gold' },
       level6: { name: 'Ragnarok', desc: 'Complete Level 6', icon: '🌋', rarity: 'gold' },
       streak5: { name: 'Dedicated', desc: '5-day login streak', icon: '📅', rarity: 'gold' },
       playtime1h: { name: 'Hour Warrior', desc: 'Play for 1 hour total', icon: '⏰', rarity: 'gold' },
       nearMissMaster: { name: 'Dodge Master', desc: 'Survive 50 near misses total', icon: '🎯', rarity: 'gold' },
+      
+      // Platinum achievements
       combo100: { name: 'Combo Deity', desc: 'Get a 100x combo streak', icon: '🔥', rarity: 'platinum' },
-      score1m: { name: 'Millionaire', desc: 'Reach 1,000,000 points', icon: '💎', rarity: 'platinum' },
       streak30: { name: 'Unstoppable', desc: '30-day login streak', icon: '🔥', rarity: 'platinum' },
       playtime10h: { name: 'Viking Veteran', desc: 'Play for 10 hours total', icon: '⚔️', rarity: 'platinum' },
       allLevels: { name: 'Level Master', desc: 'Complete all levels', icon: '🌟', rarity: 'platinum' },
       hardLegend: { name: 'Hard Legend', desc: 'Reach 100k points on Hard difficulty', icon: '💀', rarity: 'platinum' }
     },
     unlocked: JSON.parse(localStorage.getItem('achievements') || '{}'),
-    sessionStats: { stomps: 0, gold: 0, shipKills: 0, nearMisses: 0 },
+    sessionStats: { 
+      stomps: 0, gold: 0, shipKills: 0, nearMisses: 0,
+      jumps: 0, ducks: 0, powerupsCollected: 0, timeSurvived: 0, meadCollected: 0
+    },
     totalStats: {
       gold: parseInt(localStorage.getItem('totalGold') || '0'),
       mead: parseInt(localStorage.getItem('totalMead') || '0'),
@@ -2192,6 +2253,27 @@
       const s = this.sessionStats;
       const t = this.totalStats;
       
+      // Beginner achievements (instant gratification)
+      if (s.jumps >= 1) this.unlock('firstJump');
+      if (s.ducks >= 1) this.unlock('firstDuck');
+      if (s.meadCollected >= 1) this.unlock('firstMead');
+      if (s.gold >= 1) this.unlock('firstGold');
+      if (s.powerupsCollected >= 1) this.unlock('firstPowerup');
+      if (s.jumps >= 10) this.unlock('tenJumps');
+      if (s.timeSurvived >= 60) this.unlock('surviveMinute');
+      
+      // Score milestones (1k, 5k, 10k, 25k, 50k, 100k, 500k, 1M, 5M, 10M)
+      if (world.score >= 1000) this.unlock('score1k');
+      if (world.score >= 5000) this.unlock('score5k');
+      if (world.score >= 10000) this.unlock('score10k');
+      if (world.score >= 25000) this.unlock('score25k');
+      if (world.score >= 50000) this.unlock('score50k');
+      if (world.score >= 100000) this.unlock('score100k');
+      if (world.score >= 500000) this.unlock('score500k');
+      if (world.score >= 1000000) this.unlock('score1m');
+      if (world.score >= 5000000) this.unlock('score5m');
+      if (world.score >= 10000000) this.unlock('score10m');
+      
       // Bronze achievements
       if (s.stomps >= 1) this.unlock('firstBlood');
       if (s.gold >= 10) this.unlock('goldRush');
@@ -2201,21 +2283,17 @@
       if (LevelSystem.unlocked.includes(3)) this.unlock('level3');
       
       // Silver achievements
-      if (world.score >= 25000) this.unlock('survivor');
       if (engagement.combo.maxCombo >= 10) this.unlock('comboMaster');
       if (s.shipKills >= 5) this.unlock('captain');
       if (LevelSystem.unlocked.includes(4)) this.unlock('level4');
       if (engagement.combo.maxCombo >= 20) this.unlock('combo20');
       if (t.gold >= 100) this.unlock('goldCollector');
       if (t.mead >= 500) this.unlock('meadMaster');
-      if (LevelSystem.unlocked.includes(5) && world.difficulty === 'hard') this.unlock('hardMode');
+      if (world.score >= 50000 && world.difficulty === 'hard') this.unlock('hardMode');
       
       // Gold achievements
-      if (world.score >= 100000) this.unlock('legend');
       if (LevelSystem.unlocked.includes(5)) this.unlock('level5');
       if (engagement.combo.maxCombo >= 50) this.unlock('combo50');
-      if (world.score >= 200000) this.unlock('score200k');
-      if (world.score >= 500000) this.unlock('score500k');
       if (LevelSystem.unlocked.includes(6)) this.unlock('level6');
       const streak = parseInt(localStorage.getItem('loginStreak') || '0');
       if (streak >= 5) this.unlock('streak5');
@@ -2224,14 +2302,16 @@
       
       // Platinum achievements
       if (engagement.combo.maxCombo >= 100) this.unlock('combo100');
-      if (world.score >= 1000000) this.unlock('score1m');
       if (streak >= 30) this.unlock('streak30');
       if (t.playtime >= 36000) this.unlock('playtime10h');
       if (LevelSystem.unlocked.length >= LevelSystem.levels.length) this.unlock('allLevels');
       if (world.score >= 100000 && world.difficulty === 'hard') this.unlock('hardLegend');
     },
     reset() {
-      this.sessionStats = { stomps: 0, gold: 0, shipKills: 0, nearMisses: 0 };
+      this.sessionStats = { 
+        stomps: 0, gold: 0, shipKills: 0, nearMisses: 0,
+        jumps: 0, ducks: 0, powerupsCollected: 0, timeSurvived: 0, meadCollected: 0
+      };
     }
   };
   
@@ -3282,6 +3362,7 @@
     if (!H || H === 0) return; // Safety check
 
     world.t += dt;
+    Achievements.sessionStats.timeSurvived = world.t;
     
     // Progressive difficulty scaling
     const diff = DifficultyModes.getCurrent();
@@ -3405,6 +3486,7 @@
       viking.vy = -680;
       viking.onGround = false;
       viking.jumpsUsed++;
+      Achievements.sessionStats.jumps++;
       playSFX('jump');
       Input.jumpJustPressed = false;
     }
@@ -3427,7 +3509,11 @@
     }
 
     // Ducking works in air or on ground
+    const wasDucking = viking.ducking;
     viking.ducking = Input.duck;
+    if (!wasDucking && viking.ducking) {
+      Achievements.sessionStats.ducks++;
+    }
 
     // Spawn logic - REDUCED FREQUENCY
     if (viking.x > world.nextObstacleAt - W) {
@@ -3745,6 +3831,7 @@
       if (!m.taken && Math.hypot(viking.x - m.x, (viking.y-30) - m.y) < 45) {
         m.taken = true;
         world.mead++;
+        Achievements.sessionStats.meadCollected++;
         Achievements.totalStats.mead++;
         localStorage.setItem('totalMead', Achievements.totalStats.mead.toString());
         world.score += 75 * scoreMultiplier;
@@ -3762,6 +3849,7 @@
         activatePowerup(p.type);
         addParticle(p.x, p.y, getPowerupColor(p.type), 15);
         playSFX('powerup');
+        Achievements.sessionStats.powerupsCollected++;
       }
     }
 
@@ -4557,8 +4645,7 @@
       // Update button text
       if (eyeTrackBtn) {
         eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
-        eyeTrackBtn.style.background = "#4ade80";
-        eyeTrackBtn.style.color = "#000";
+        eyeTrackBtn.classList.add('active');
       }
       
       // Show gaze cursor
@@ -4599,8 +4686,7 @@
         if (bpmDisplay) bpmDisplay.classList.remove("active");
         if (eyeTrackBtn) {
           eyeTrackBtn.textContent = "👁️ Enable Eye Tracking";
-          eyeTrackBtn.style.background = "";
-          eyeTrackBtn.style.color = "";
+          eyeTrackBtn.classList.remove('active');
         }
         if (hint) {
           hint.innerHTML = '<kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Press <kbd>E</kbd> for Eye Tracking';
@@ -4612,8 +4698,7 @@
         if (bpmDisplay) bpmDisplay.classList.add("active");
         if (eyeTrackBtn) {
           eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
-          eyeTrackBtn.style.background = "#4ade80";
-          eyeTrackBtn.style.color = "#000";
+          eyeTrackBtn.classList.add('active');
         }
         if (hint) {
           hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
