@@ -8,39 +8,41 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js"></script>
   <style>
     :root{
-      /* iOS Design System - Vibrant */
-      --bg: linear-gradient(180deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-      --bg-solid: #f2f2f7;
-      --surface: rgba(255, 255, 255, 0.95);
-      --surface-elevated: rgba(255, 255, 255, 0.98);
+      /* iOS 17 Design System */
+      --bg: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      --bg-solid: #000000;
+      --surface: rgba(30, 30, 30, 0.7);
+      --surface-elevated: rgba(44, 44, 46, 0.8);
       --surface-dark: rgba(28, 28, 30, 0.95);
-      --text: #1c1c1e;
-      --text-secondary: #8e8e93;
-      --text-tertiary: #aeaeb2;
+      --text: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --text-tertiary: rgba(255, 255, 255, 0.4);
       --text-light: #ffffff;
-      --separator: rgba(60, 60, 67, 0.12);
+      --separator: rgba(255, 255, 255, 0.1);
       
       /* iOS Vibrant Colors */
-      --ios-blue: #007AFF;
-      --ios-green: #34C759;
-      --ios-orange: #FF9500;
-      --ios-red: #FF3B30;
-      --ios-purple: #AF52DE;
-      --ios-pink: #FF2D55;
-      --ios-teal: #5AC8FA;
-      --ios-indigo: #5856D6;
+      --ios-blue: #0A84FF;
+      --ios-green: #30D158;
+      --ios-orange: #FF9F0A;
+      --ios-red: #FF453A;
+      --ios-purple: #BF5AF2;
+      --ios-pink: #FF375F;
+      --ios-teal: #64D2FF;
+      --ios-indigo: #5E5CE6;
+      --ios-yellow: #FFD60A;
       
       --accent: var(--ios-blue);
-      --accent-hover: #0051a8;
+      --accent-hover: #409CFF;
       --accent-green: var(--ios-green);
-      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --accent-gradient: linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-purple) 100%);
       
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.25);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.5);
       
-      --card-bg: rgba(255, 255, 255, 0.85);
-      --blur: blur(40px);
+      --card-bg: rgba(30, 30, 30, 0.6);
+      --blur: blur(50px);
+      --card-border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     * {
@@ -156,19 +158,16 @@
     }
     
     .stat .v{ 
-      font-size: 26px; 
+      font-size: 24px; 
       font-weight: 700; 
       line-height: 1; 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: var(--ios-blue);
       letter-spacing: -0.5px;
     }
 
     .btn{ 
       border: none; 
-      background: rgba(120, 120, 128, 0.12);
+      background: rgba(255, 255, 255, 0.1);
       color: var(--ios-blue); 
       padding: 14px 24px; 
       border-radius: 14px; 
@@ -184,43 +183,44 @@
       justify-content: center;
       height: 50px;
       letter-spacing: -0.01em;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
     
     .btn:hover{ 
       transform: scale(1.02);
-      background: rgba(120, 120, 128, 0.2);
+      background: rgba(255, 255, 255, 0.15);
     }
     
     .btn:active {
-      transform: scale(0.98);
+      transform: scale(0.97);
+      opacity: 0.8;
     }
     
     .btn.primary{ 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--ios-blue);
       color: #ffffff;
       font-weight: 600;
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
     
     .btn.primary:hover {
-      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+      background: var(--accent-hover);
       transform: scale(1.02);
     }
     
     .btn.eye-track {
-      background: rgba(52, 199, 89, 0.15);
+      background: rgba(48, 209, 88, 0.2);
       border: none;
       color: var(--ios-green);
     }
     
     .btn.eye-track:hover {
-      background: rgba(52, 199, 89, 0.25);
+      background: rgba(48, 209, 88, 0.3);
     }
     
     .btn.eye-track.active {
-      background: linear-gradient(135deg, #34C759 0%, #30B350 100%);
+      background: var(--ios-green);
       color: #ffffff;
-      box-shadow: 0 4px 15px rgba(52, 199, 89, 0.4);
     }
 
     .hudline{ 
@@ -236,18 +236,18 @@
     
     .hint{ 
       max-width: 700px; 
-      padding: 14px 24px; 
-      border-radius: 20px; 
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.5);
+      padding: 12px 20px; 
+      border-radius: 16px; 
+      background: var(--card-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: var(--card-border);
       color: var(--text); 
-      font-size: 14px; 
+      font-size: 13px; 
       font-weight: 500;
       text-align: center; 
       pointer-events: auto;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      box-shadow: var(--shadow);
     }
     
     kbd{ 
@@ -278,42 +278,38 @@
       place-items: center; 
       pointer-events: none; 
       z-index: 200; 
-      background: linear-gradient(180deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 50%, rgba(240, 147, 251, 0.9) 100%);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
       visibility: visible;
       opacity: 1;
     }
     
     .card{ 
       pointer-events: auto; 
-      width: min(420px, 92%); 
+      width: min(400px, 92%); 
       max-height: 85vh;
       overflow-y: auto;
-      border-radius: 28px; 
-      padding: 36px 32px; 
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(40px);
-      -webkit-backdrop-filter: blur(40px);
-      border: 1px solid rgba(255, 255, 255, 0.5);
-      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      border-radius: 24px; 
+      padding: 32px 28px; 
+      background: var(--card-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: var(--card-border);
+      box-shadow: var(--shadow-lg);
       text-align: center;
     }
     
     .card h1{ 
-      font-size: 34px; 
+      font-size: 32px; 
       margin: 0 0 8px; 
       font-weight: 700;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
       color: var(--text);
+      letter-spacing: -0.5px;
     }
     
     .card p{ 
-      margin: 0 0 32px; 
+      margin: 0 0 24px; 
       color: var(--text-secondary); 
       line-height: 1.6; 
       font-size: 15px;
@@ -405,23 +401,23 @@
       position: fixed;
       top: 24px;
       right: -400px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border: 1px solid rgba(255, 255, 255, 0.5);
-      border-radius: 20px;
-      padding: 18px 24px;
+      background: var(--card-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: var(--card-border);
+      border-radius: 16px;
+      padding: 16px 20px;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       z-index: 10000;
-      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+      box-shadow: var(--shadow-lg);
       transition: right 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
       color: var(--text);
     }
     .achievement-popup.show { right: 24px; }
-    .achievement-popup .achievement-icon { font-size: 36px; }
-    .achievement-popup strong { font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .achievement-popup .achievement-icon { font-size: 32px; }
+    .achievement-popup strong { font-size: 15px; font-weight: 700; color: var(--ios-yellow); }
     .achievement-popup small { color: var(--text-secondary); font-size: 13px; }
     
     .level-unlock-notification {
@@ -470,51 +466,48 @@
       flex: 1;
       padding: 14px 16px;
       border: none;
-      border-radius: 14px;
-      background: rgba(120, 120, 128, 0.12);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       font-weight: 600;
       font-size: 15px;
-      color: var(--text);
+      color: var(--text-secondary);
     }
     .difficulty-btn[data-difficulty="easy"] { color: var(--ios-green); }
     .difficulty-btn[data-difficulty="normal"] { color: var(--ios-blue); }
     .difficulty-btn[data-difficulty="hard"] { color: var(--ios-red); }
     
     .difficulty-btn:hover {
-      transform: scale(1.02);
+      background: rgba(255, 255, 255, 0.12);
     }
     .difficulty-btn[data-difficulty="easy"].active {
-      background: linear-gradient(135deg, #34C759 0%, #30B350 100%);
+      background: var(--ios-green);
       color: #fff;
-      box-shadow: 0 4px 15px rgba(52, 199, 89, 0.4);
     }
     .difficulty-btn[data-difficulty="normal"].active {
-      background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+      background: var(--ios-blue);
       color: #fff;
-      box-shadow: 0 4px 15px rgba(0, 122, 255, 0.4);
     }
     .difficulty-btn[data-difficulty="hard"].active {
-      background: linear-gradient(135deg, #FF3B30 0%, #D70015 100%);
+      background: var(--ios-red);
       color: #fff;
-      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
     }
     
     .level-grid {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       margin: 12px 0;
       max-height: 180px;
       overflow-y: auto;
       padding: 4px;
     }
     .level-card {
-      background: rgba(120, 120, 128, 0.08);
+      background: rgba(255, 255, 255, 0.08);
       border: none;
-      border-radius: 14px;
-      padding: 14px 16px;
+      border-radius: 12px;
+      padding: 12px 14px;
       text-align: left;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -524,21 +517,19 @@
       gap: 12px;
     }
     .level-card:hover:not(.locked) {
-      background: rgba(120, 120, 128, 0.16);
-      transform: scale(1.01);
+      background: rgba(255, 255, 255, 0.12);
     }
     .level-card.locked {
-      opacity: 0.4;
+      opacity: 0.35;
       cursor: not-allowed;
     }
     .level-card.active {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--ios-blue);
       color: #fff;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
     .level-card .level-icon {
-      font-size: 28px;
-      width: 40px;
+      font-size: 24px;
+      width: 36px;
       text-align: center;
     }
     .level-card .level-info {
@@ -548,10 +539,14 @@
       font-weight: 600;
       font-size: 15px;
       margin-bottom: 2px;
+      color: var(--text);
+    }
+    .level-card.active .level-name {
+      color: #fff;
     }
     .level-card .level-score {
-      font-size: 13px;
-      color: var(--text-secondary);
+      font-size: 12px;
+      color: var(--text-tertiary);
     }
     .level-card.locked .level-score {
       color: var(--text-tertiary);
@@ -766,9 +761,9 @@
       position: fixed;
       inset: 0;
       z-index: 300;
-      background: linear-gradient(180deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 50%, rgba(240, 147, 251, 0.9) 100%);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
       place-items: center;
     }
 
@@ -777,16 +772,16 @@
     }
 
     .highscore-card {
-      width: min(480px, 92%);
+      width: min(420px, 92%);
       max-height: 80vh;
       overflow-y: auto;
-      padding: 36px;
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(40px);
-      -webkit-backdrop-filter: blur(40px);
-      border: 1px solid rgba(255, 255, 255, 0.5);
-      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      padding: 32px;
+      border-radius: 24px;
+      background: var(--card-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: var(--card-border);
+      box-shadow: var(--shadow-lg);
     }
 
     .highscore-tabs {
@@ -798,7 +793,7 @@
     }
 
     .highscore-tab {
-      padding: 8px 16px;
+      padding: 8px 14px;
       background: transparent;
       border: none;
       color: var(--text-secondary);
@@ -806,16 +801,16 @@
       cursor: pointer;
       border-radius: 8px;
       transition: all 0.15s;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .highscore-tab:hover {
-      background: #f5f5f7;
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .highscore-tab.active {
       color: var(--text);
-      background: #f5f5f7;
+      background: rgba(255, 255, 255, 0.15);
       font-weight: 600;
     }
 
@@ -829,14 +824,15 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 16px;
-      background: #f5f5f7;
-      border-radius: 12px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
       border: none;
     }
 
     .highscore-item.rank-1 {
-      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      background: rgba(255, 214, 10, 0.2);
+      border: 1px solid rgba(255, 214, 10, 0.3);
     }
 
     .highscore-rank {
@@ -977,11 +973,11 @@
               ⚔️ Start Game
             </button>
             
-            <div style="width: 100%; padding: 18px; background: linear-gradient(135deg, rgba(52, 199, 89, 0.15) 0%, rgba(48, 179, 80, 0.1) 100%); border-radius: 18px; margin: 4px 0;">
-              <button class="btn eye-track" id="eyeTrackBtn" style="width: 100%; height: 50px; font-size: 16px;">
+            <div style="width: 100%; padding: 16px; background: rgba(48, 209, 88, 0.15); border-radius: 14px; margin: 4px 0; border: 1px solid rgba(48, 209, 88, 0.3);">
+              <button class="btn eye-track" id="eyeTrackBtn" style="width: 100%; height: 48px; font-size: 16px;">
                 👁️ Eye Tracking
               </button>
-              <p style="margin: 12px 0 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; opacity: 0.9;">
+              <p style="margin: 10px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
                 Control with your eyes — look up to jump, down to duck
               </p>
             </div>
@@ -2049,6 +2045,7 @@
     sessionDeaths: 0,
     personalBest: parseInt(localStorage.getItem('personalBest') || '0'),
     notifiedApproaching: false,
+    newRecordShown: false,
     luckySpinAvailable: false,
     streakBonus: 1.0,
     totalSessionScore: 0,
@@ -2091,35 +2088,35 @@
     presets: {
       easy: {
         name: 'Easy',
-        baseSpeed: 200,
-        maxSpeed: 350,
-        enemySpawnMin: 700,
-        enemySpawnMax: 1200,
+        baseSpeed: 230,
+        maxSpeed: 400,
+        enemySpawnMin: 600,
+        enemySpawnMax: 1000,
         comboTimer: 5.0,
         startingLives: 4,
-        enemySpeedMultiplier: 0.35,
+        enemySpeedMultiplier: 0.4,
         icon: '🛡️'
       },
       normal: {
         name: 'Normal',
-        baseSpeed: 230,
-        maxSpeed: 400,
-        enemySpawnMin: 600,
-        enemySpawnMax: 1050,
+        baseSpeed: 265,
+        maxSpeed: 460,
+        enemySpawnMin: 500,
+        enemySpawnMax: 900,
         comboTimer: 4.0,
         startingLives: 3,
-        enemySpeedMultiplier: 0.4,
+        enemySpeedMultiplier: 0.5,
         icon: '⚔️'
       },
       hard: {
         name: 'Hard',
-        baseSpeed: 260,
-        maxSpeed: 450,
-        enemySpawnMin: 400,
-        enemySpawnMax: 750,
+        baseSpeed: 300,
+        maxSpeed: 520,
+        enemySpawnMin: 350,
+        enemySpawnMax: 650,
         comboTimer: 3.0,
         startingLives: 2,
-        enemySpeedMultiplier: 0.45,
+        enemySpeedMultiplier: 0.6,
         icon: '💀'
       }
     },
@@ -2181,6 +2178,10 @@
       }
       if (newUnlocks) {
         this.save();
+        // Update level grid UI if visible
+        if (typeof renderLevelGrid === 'function') {
+          renderLevelGrid();
+        }
       }
     },
     
@@ -2549,7 +2550,14 @@
       engagement.nearMiss = { count: 0, lastTime: 0 };
       engagement.milestones = { last: 0, nextAt: 10000 };
       engagement.notifiedApproaching = false;
+      engagement.newRecordShown = false;
       engagement.streakBonus = 1.0;
+      
+      // Hide personal best alert
+      const pbAlert = $("pbAlert");
+      if (pbAlert) {
+        pbAlert.style.display = 'none';
+      }
       engagement.totalSessionScore = 0;
       engagement.lastMilestoneTime = 0;
       engagement.gamesPlayed++;
@@ -2712,8 +2720,8 @@
       return JSON.parse(localStorage.getItem(key) || '[]');
     },
 
-    async getScores(period = 'alltime') {
-      return HighScoreManager.getScoresLocal(period, world.difficulty);
+    async getScores(period = 'alltime', difficulty = 'normal') {
+      return HighScoreManager.getScoresLocal(period, difficulty);
     },
 
     async displayScores(period = 'alltime', difficulty = 'normal') {
@@ -3519,13 +3527,18 @@
           pbAlert.style.animation = 'pulse 0.5s infinite';
         }
       }
-      if (world.score > engagement.personalBest && engagement.personalBest > 0) {
+      if (world.score > engagement.personalBest && engagement.personalBest > 0 && !engagement.newRecordShown) {
+        engagement.newRecordShown = true;
         pbAlert.textContent = '🏆 NEW PERSONAL BEST!';
         pbAlert.style.display = 'block';
         pbAlert.style.background = 'linear-gradient(135deg, #ffd700, #ff6b00)';
         pbAlert.style.animation = 'combo-legendary 0.3s infinite';
         engagement.personalBest = Math.floor(world.score);
         localStorage.setItem('personalBest', engagement.personalBest.toString());
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+          if (pbAlert) pbAlert.style.display = 'none';
+        }, 3000);
       }
     }
     
@@ -3587,12 +3600,12 @@
     // Spawn logic - REDUCED FREQUENCY
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      // Obstacle density increases with score
-      const baseMin = 425, baseMax = 675;
-      const scoreFactor = Math.min(world.score / 50000, 1.0);
-      const minSpawn = baseMin - (baseMin * 0.4 * scoreFactor);
-      const maxSpawn = baseMax - (baseMax * 0.4 * scoreFactor);
-      world.nextObstacleAt += rand(Math.max(250, minSpawn), Math.max(400, maxSpawn));
+      // Obstacle density increases with score - tighter spawns for more challenge
+      const baseMin = 375, baseMax = 600;
+      const scoreFactor = Math.min(world.score / 40000, 1.0);
+      const minSpawn = baseMin - (baseMin * 0.45 * scoreFactor);
+      const maxSpawn = baseMax - (baseMax * 0.45 * scoreFactor);
+      world.nextObstacleAt += rand(Math.max(200, minSpawn), Math.max(350, maxSpawn));
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
@@ -4292,21 +4305,61 @@
     smoothedBPM: 0
   };
   
-  // Check if MediaPipe is available
-  const mediapipeAvailable = typeof window.tasksVision !== 'undefined';
+  // Check if MediaPipe is available (with retry for slow loading)
+  let mediapipeAvailable = typeof window.tasksVision !== 'undefined';
   
-  if (!mediapipeAvailable) {
-    console.warn("MediaPipe not loaded - eye tracking disabled");
-    if (eyeTrackBtn) {
-      eyeTrackBtn.textContent = "👁️ Eye Tracking Unavailable";
-      eyeTrackBtn.disabled = true;
-      eyeTrackBtn.style.opacity = "0.5";
+  const checkMediaPipeAvailability = () => {
+    return new Promise((resolve) => {
+      if (typeof window.tasksVision !== 'undefined') {
+        mediapipeAvailable = true;
+        resolve(true);
+        return;
+      }
+      // Retry up to 10 times (5 seconds total)
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (typeof window.tasksVision !== 'undefined') {
+          mediapipeAvailable = true;
+          clearInterval(interval);
+          resolve(true);
+        } else if (attempts >= 10) {
+          clearInterval(interval);
+          resolve(false);
+        }
+      }, 500);
+    });
+  };
+  
+  // Initial check - don't disable immediately, wait for load
+  checkMediaPipeAvailability().then(available => {
+    if (!available) {
+      console.warn("MediaPipe not loaded - eye tracking disabled");
+      if (eyeTrackBtn) {
+        eyeTrackBtn.textContent = "👁️ Eye Tracking Unavailable";
+        eyeTrackBtn.disabled = true;
+        eyeTrackBtn.style.opacity = "0.5";
+      }
+    } else {
+      console.log("MediaPipe loaded successfully");
+      if (eyeTrackBtn) {
+        eyeTrackBtn.textContent = "👁️ Eye Tracking";
+        eyeTrackBtn.disabled = false;
+        eyeTrackBtn.style.opacity = "1";
+      }
     }
-  }
+  });
   
   // Initialize MediaPipe Face Landmarker
   const initFaceLandmarker = async () => {
     try {
+      // Ensure MediaPipe is available
+      if (typeof window.tasksVision === 'undefined') {
+        await checkMediaPipeAvailability();
+      }
+      if (typeof window.tasksVision === 'undefined') {
+        throw new Error("MediaPipe not available");
+      }
       const { FaceLandmarker, FilesetResolver } = window.tasksVision;
       
       const filesetResolver = await FilesetResolver.forVisionTasks(
@@ -4610,8 +4663,16 @@
   };
   
   // Eye tracking button click - start calibration
-  if (eyeTrackBtn && mediapipeAvailable) {
+  if (eyeTrackBtn) {
     eyeTrackBtn.onclick = async () => {
+      // Check if MediaPipe is available now
+      if (typeof window.tasksVision === 'undefined') {
+        const available = await checkMediaPipeAvailability();
+        if (!available) {
+          alert("Eye tracking is not available. Please ensure you have a stable internet connection and try refreshing the page.");
+          return;
+        }
+      }
       // Show calibration overlay
       if (calibrationOverlay) {
         calibrationOverlay.classList.add("active");
