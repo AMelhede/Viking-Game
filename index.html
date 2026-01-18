@@ -501,6 +501,12 @@
     .combo-display.x3 { color: #fbbf24; text-shadow: 0 0 20px #fbbf24, 0 4px 8px rgba(0,0,0,0.5); }
     .combo-display.x5 { color: #4ade80; text-shadow: 0 0 20px #4ade80, 0 4px 8px rgba(0,0,0,0.5); }
     .combo-display.x10 { color: #a855f7; text-shadow: 0 0 30px #a855f7, 0 4px 8px rgba(0,0,0,0.5); font-size: 64px; }
+    .combo-display.x15 { color: #ef4444; text-shadow: 0 0 40px #ef4444, 0 4px 12px rgba(0,0,0,0.6); font-size: 72px; animation: combo-fire 0.3s infinite; }
+    .combo-display.x20 { color: #ffd700; text-shadow: 0 0 50px #ffd700, 0 0 80px #ff6b00, 0 4px 16px rgba(0,0,0,0.7); font-size: 80px; animation: combo-legendary 0.2s infinite; }
+    .combo-display.x25 { color: #fff; text-shadow: 0 0 60px #fff, 0 0 100px #ffd700, 0 0 140px #ff0000, 0 4px 20px rgba(0,0,0,0.8); font-size: 88px; animation: combo-godlike 0.15s infinite; }
+    @keyframes combo-fire { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } }
+    @keyframes combo-legendary { 0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); } 50% { transform: translate(-50%, -50%) scale(1.08) rotate(2deg); } }
+    @keyframes combo-godlike { 0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(-3deg); filter: hue-rotate(0deg); } 50% { transform: translate(-50%, -50%) scale(1.1) rotate(3deg); filter: hue-rotate(30deg); } }
     
     .near-miss {
       position: absolute;
@@ -1938,7 +1944,13 @@
     milestones: { last: 0, nextAt: 10000 },
     sessionDeaths: 0,
     personalBest: parseInt(localStorage.getItem('personalBest') || '0'),
-    notifiedApproaching: false
+    notifiedApproaching: false,
+    luckySpinAvailable: false,
+    streakBonus: 1.0,
+    totalSessionScore: 0,
+    bestStreak: parseInt(localStorage.getItem('bestStreak') || '0'),
+    gamesPlayed: parseInt(localStorage.getItem('gamesPlayed') || '0'),
+    lastMilestoneTime: 0
   };
   
   // Daily Bonus System
@@ -2223,11 +2235,19 @@
     }
   };
   
-  // Show achievement popup
+  // Show achievement popup with rarity-based styling
   const showAchievement = (achievement) => {
+    const rarityColors = {
+      bronze: '#cd7f32',
+      silver: '#c0c0c0',
+      gold: '#ffd700',
+      platinum: '#e5e4e2'
+    };
+    const color = rarityColors[achievement.rarity] || '#ffd700';
     const popup = document.createElement('div');
     popup.className = 'achievement-popup';
-    popup.innerHTML = `<span class="achievement-icon">${achievement.icon}</span><div><strong>${achievement.name}</strong><br><small>${achievement.desc}</small></div>`;
+    popup.style.borderColor = color;
+    popup.innerHTML = `<span class="achievement-icon">${achievement.icon}</span><div><strong style="color:${color}">${achievement.name}</strong><br><small>${achievement.desc}</small></div>`;
     document.body.appendChild(popup);
     setTimeout(() => popup.classList.add('show'), 10);
     setTimeout(() => {
@@ -2275,8 +2295,15 @@
   };
 
   const spawnPowerup = (x) => {
-    const types = ["speedBoost", "invincibility", "scoreMultiplier", "vikingShip"];
-    const type = pick(types);
+    // Weighted powerup selection - vikingShip is rare, others balanced
+    const weights = { speedBoost: 30, invincibility: 25, scoreMultiplier: 30, vikingShip: 15 };
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    let roll = Math.random() * total;
+    let type = 'speedBoost';
+    for (const [key, weight] of Object.entries(weights)) {
+      roll -= weight;
+      if (roll <= 0) { type = key; break; }
+    }
     Powerups.push({ 
       x, 
       y: world.groundY - rand(60, 180), 
@@ -2373,6 +2400,11 @@
       engagement.nearMiss = { count: 0, lastTime: 0 };
       engagement.milestones = { last: 0, nextAt: 10000 };
       engagement.notifiedApproaching = false;
+      engagement.streakBonus = 1.0;
+      engagement.totalSessionScore = 0;
+      engagement.lastMilestoneTime = 0;
+      engagement.gamesPlayed++;
+      localStorage.setItem('gamesPlayed', engagement.gamesPlayed.toString());
       Achievements.reset();
     world.groundY = H * 0.8;
       world.camX = 0;
@@ -2400,12 +2432,12 @@
       
       // Comeback mechanic: extra life for struggling players (on top of difficulty base)
       let startingLives = diff.startingLives;
-      if (engagement.sessionDeaths >= 5) {
-        startingLives += 1;
-      } else if (engagement.sessionDeaths >= 10) {
+      if (engagement.sessionDeaths >= 10) {
         startingLives += 2;
+      } else if (engagement.sessionDeaths >= 5) {
+        startingLives += 1;
       }
-      world.lives = startingLives;
+      world.lives = Math.min(startingLives, 10); // Cap at 10 lives max
       
       world.powerups = {
         speedBoost: { active: false, timeLeft: 0 },
@@ -2471,10 +2503,6 @@
   };
 
   const HighScoreManager = {
-    apiUrl: 'https://api.jsonbin.io/v3/b', // Platform-wide leaderboard API
-    apiKey: '$2a$10$YourAPIKeyHere', // Replace with actual API key for production
-    useLocalStorage: true, // Fallback to localStorage if API fails
-    
     getPeriodKey: (period) => {
       const now = new Date();
       const year = now.getFullYear();
@@ -2528,16 +2556,6 @@
         localStorage.setItem(key, JSON.stringify(scores));
       }
       
-      try {
-        if (!HighScoreManager.useLocalStorage) {
-          // await fetch(`${HighScoreManager.apiUrl}/viking-game-leaderboard`, {
-          //   method: 'PUT',
-          //   headers: { 'Content-Type': 'application/json', 'X-API-Key': HighScoreManager.apiKey },
-          //   body: JSON.stringify({ scores: allScores })
-          // });
-        }
-      } catch (e) {
-      }
     },
 
     getScoresLocal(period = 'alltime', difficulty = 'normal') {
@@ -2546,15 +2564,6 @@
     },
 
     async getScores(period = 'alltime') {
-      // Try API first, fallback to localStorage
-      try {
-        if (!HighScoreManager.useLocalStorage) {
-          // const response = await fetch(`${HighScoreManager.apiUrl}/viking-game-leaderboard`);
-          // const data = await response.json();
-          // return data.scores || [];
-        }
-      } catch (e) {
-      }
       return HighScoreManager.getScoresLocal(period, world.difficulty);
     },
 
@@ -3299,7 +3308,8 @@
     const actualSpeed = world.speed * speedMultiplier;
     viking.x += actualSpeed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
-    world.score += world.speed * 0.015 * dt * scoreMultiplier;
+    const streakBonus = engagement.streakBonus || 1.0;
+    world.score += world.speed * 0.015 * dt * scoreMultiplier * streakBonus;
     
     // Combo timer decay
     if (engagement.combo.timer > 0) {
@@ -3319,6 +3329,12 @@
       world.goldenRunTimer -= dt;
       if (world.goldenRunTimer <= 0) world.goldenRun = false;
     }
+    
+    // Track total session score for addiction metrics
+    engagement.totalSessionScore = world.score;
+    
+    // Dynamic streak bonus (increases score multiplier the longer you survive without damage)
+    engagement.streakBonus = Math.min(2.0, 1.0 + (world.t / 120)); // Max 2x after 2 minutes
     
     // Check for level unlocks
     LevelSystem.checkUnlocks(world.score);
@@ -3342,16 +3358,22 @@
       setTimeout(() => flash.remove(), 800);
     }
     
-    // Personal best approaching
-    if (!engagement.notifiedApproaching && engagement.personalBest > 0 && world.score >= engagement.personalBest * 0.9 && world.score < engagement.personalBest) {
-      engagement.notifiedApproaching = true;
-      const pbAlert = $("pbAlert");
-      if (pbAlert) pbAlert.style.display = 'block';
-    }
-    if (world.score > engagement.personalBest) {
-      const pbAlert = $("pbAlert");
-      if (pbAlert) pbAlert.style.display = 'none';
-      if (engagement.personalBest > 0 && world.score > engagement.personalBest + 100) {
+    // Personal best approaching - multiple notification stages for max addiction
+    const pbAlert = $("pbAlert");
+    if (pbAlert) {
+      if (!engagement.notifiedApproaching && engagement.personalBest > 0) {
+        if (world.score >= engagement.personalBest * 0.9 && world.score < engagement.personalBest) {
+          engagement.notifiedApproaching = true;
+          pbAlert.textContent = '🔥 NEW RECORD INCOMING!';
+          pbAlert.style.display = 'block';
+          pbAlert.style.animation = 'pulse 0.5s infinite';
+        }
+      }
+      if (world.score > engagement.personalBest && engagement.personalBest > 0) {
+        pbAlert.textContent = '🏆 NEW PERSONAL BEST!';
+        pbAlert.style.display = 'block';
+        pbAlert.style.background = 'linear-gradient(135deg, #ffd700, #ff6b00)';
+        pbAlert.style.animation = 'combo-legendary 0.3s infinite';
         engagement.personalBest = Math.floor(world.score);
         localStorage.setItem('personalBest', engagement.personalBest.toString());
       }
@@ -3423,7 +3445,10 @@
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      world.nextPowerupAt += rand(6000, 10000); // MUCH RARER
+      // Variable reward schedule - sometimes close, sometimes far (addiction psychology)
+      const baseDelay = rand(4000, 8000);
+      const variability = Math.random() < 0.2 ? rand(1000, 2000) : rand(6000, 12000);
+      world.nextPowerupAt += Math.random() < 0.3 ? baseDelay * 0.5 : variability;
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
@@ -3631,11 +3656,20 @@
           engagement.combo.maxCombo = Math.max(engagement.combo.maxCombo, engagement.combo.count);
           Achievements.sessionStats.stomps++;
           
-          // Combo multiplier: 2x at 3, 3x at 5, 5x at 10
+          // Combo multiplier: exponential scaling for peak addiction
           let comboMult = 1;
-          if (engagement.combo.count >= 10) comboMult = 5;
+          if (engagement.combo.count >= 25) comboMult = 15;
+          else if (engagement.combo.count >= 20) comboMult = 10;
+          else if (engagement.combo.count >= 15) comboMult = 7;
+          else if (engagement.combo.count >= 10) comboMult = 5;
           else if (engagement.combo.count >= 5) comboMult = 3;
           else if (engagement.combo.count >= 3) comboMult = 2;
+          
+          // Track best streak for achievements
+          if (engagement.combo.count > engagement.bestStreak) {
+            engagement.bestStreak = engagement.combo.count;
+            localStorage.setItem('bestStreak', engagement.bestStreak.toString());
+          }
           
           world.score += 150 * comboMult;
           
@@ -3645,7 +3679,10 @@
             if (comboEl) {
               comboEl.textContent = `COMBO x${engagement.combo.count}!`;
               comboEl.className = 'combo-display show';
-              if (engagement.combo.count >= 10) comboEl.classList.add('x10');
+              if (engagement.combo.count >= 25) comboEl.classList.add('x25');
+              else if (engagement.combo.count >= 20) comboEl.classList.add('x20');
+              else if (engagement.combo.count >= 15) comboEl.classList.add('x15');
+              else if (engagement.combo.count >= 10) comboEl.classList.add('x10');
               else if (engagement.combo.count >= 5) comboEl.classList.add('x5');
               else if (engagement.combo.count >= 3) comboEl.classList.add('x3');
               setTimeout(() => comboEl.classList.remove('show'), 800);
@@ -3743,7 +3780,8 @@
     for (const g of Golds) {
       if (!g.taken && Math.hypot(viking.x - g.x, (viking.y-30) - g.y) < 45) {
         g.taken = true;
-        world.score += g.value * scoreMultiplier;
+        const streakBonus = engagement.streakBonus || 1.0;
+        world.score += g.value * scoreMultiplier * streakBonus;
         Achievements.sessionStats.gold++;
         Achievements.totalStats.gold++;
         localStorage.setItem('totalGold', Achievements.totalStats.gold.toString());
