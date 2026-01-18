@@ -362,6 +362,124 @@
     .achievement-popup strong { color: #ffd700; font-size: 16px; }
     .achievement-popup small { color: #aaa; font-size: 12px; }
     
+    .level-unlock-notification {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      z-index: 10001;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+    .level-unlock-notification.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .level-unlock-content {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 3px solid #ffd700;
+      border-radius: 20px;
+      padding: 32px 48px;
+      text-align: center;
+      box-shadow: 0 12px 48px rgba(255, 215, 0, 0.5);
+      color: #fff;
+    }
+    .level-unlock-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: bounce 0.6s ease-in-out;
+    }
+    .level-unlock-text strong {
+      display: block;
+      font-size: 24px;
+      color: #ffd700;
+      margin-bottom: 8px;
+    }
+    .level-unlock-text span {
+      font-size: 18px;
+      color: #fff;
+    }
+    
+    .difficulty-selector {
+      display: flex;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .difficulty-btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: 2px solid var(--separator);
+      border-radius: 12px;
+      background: var(--surface);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .difficulty-btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+    .difficulty-btn.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+    
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .level-card {
+      background: var(--surface);
+      border: 2px solid var(--separator);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .level-card:hover:not(.locked) {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    .level-card.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .level-card.active {
+      border-color: var(--accent);
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+    .level-card .level-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    .level-card .level-name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .level-card .level-score {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .level-card.locked .level-score {
+      color: var(--text-tertiary);
+    }
+    .level-card .unlock-req {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+    
     .combo-display {
       position: absolute;
       top: 50%;
@@ -740,6 +858,23 @@
         <div class="card">
           <h1 id="overlayTitle">Viking Run</h1>
           <p id="overlayText" style="white-space: pre-line;">Jump on platforms, avoid enemies, collect powerups, and survive.</p>
+          
+          <div style="width: 100%; max-width: 280px; margin: 20px auto 0;">
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Difficulty</label>
+              <div class="difficulty-selector" id="difficultySelector">
+                <button class="difficulty-btn" data-difficulty="easy">🛡️ Easy</button>
+                <button class="difficulty-btn active" data-difficulty="normal">⚔️ Normal</button>
+                <button class="difficulty-btn" data-difficulty="hard">💀 Hard</button>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Level</label>
+              <div class="level-grid" id="levelGrid" style="max-height: 200px;"></div>
+            </div>
+          </div>
+          
           <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 280px; margin: 20px auto 0;">
             <button class="btn primary" id="startBtn" style="padding: 14px 32px; font-size: 15px; width: 100%; height: 48px;">Start Game</button>
             <button class="btn" id="eyeTrackBtn" style="padding: 12px 24px; font-size: 14px; width: 100%; height: 44px;">👁️ Enable Eye Tracking</button>
@@ -1835,20 +1970,205 @@
     }
   };
   
+  // Difficulty Modes System
+  const DifficultyModes = {
+    presets: {
+      easy: {
+        name: 'Easy',
+        baseSpeed: 200,
+        maxSpeed: 350,
+        enemySpawnMin: 700,
+        enemySpawnMax: 1200,
+        comboTimer: 5.0,
+        startingLives: 4,
+        enemySpeedMultiplier: 0.35,
+        icon: '🛡️'
+      },
+      normal: {
+        name: 'Normal',
+        baseSpeed: 230,
+        maxSpeed: 400,
+        enemySpawnMin: 600,
+        enemySpawnMax: 1050,
+        comboTimer: 4.0,
+        startingLives: 3,
+        enemySpeedMultiplier: 0.4,
+        icon: '⚔️'
+      },
+      hard: {
+        name: 'Hard',
+        baseSpeed: 260,
+        maxSpeed: 450,
+        enemySpawnMin: 400,
+        enemySpawnMax: 750,
+        comboTimer: 3.0,
+        startingLives: 2,
+        enemySpeedMultiplier: 0.45,
+        icon: '💀'
+      }
+    },
+    getCurrent() {
+      return this.presets[world.difficulty] || this.presets.normal;
+    },
+    apply(difficulty) {
+      world.difficulty = difficulty;
+      localStorage.setItem('selectedDifficulty', difficulty);
+    },
+    loadSaved() {
+      const saved = localStorage.getItem('selectedDifficulty');
+      if (saved && this.presets[saved]) {
+        world.difficulty = saved;
+      }
+    }
+  };
+  
+  // Level System
+  const LevelSystem = {
+    levels: [
+      { id: 1, name: "Fjord Runner", unlockScore: 0, difficulty: "easy", description: "Begin your journey" },
+      { id: 2, name: "Raid Master", unlockScore: 10000, difficulty: "easy", description: "Prove your worth" },
+      { id: 3, name: "Berserker", unlockScore: 25000, difficulty: "normal", description: "Unleash your fury" },
+      { id: 4, name: "Dragon Slayer", unlockScore: 50000, difficulty: "normal", description: "Face the beasts" },
+      { id: 5, name: "Valhalla Bound", unlockScore: 100000, difficulty: "hard", description: "Ascend to glory" },
+      { id: 6, name: "Ragnarok", unlockScore: 200000, difficulty: "hard", description: "Face the end times" }
+    ],
+    unlocked: [],
+    currentLevel: 1,
+    
+    init() {
+      const saved = localStorage.getItem('unlockedLevels');
+      if (saved) {
+        this.unlocked = JSON.parse(saved);
+      } else {
+        this.unlocked = [1]; // Level 1 always unlocked
+        this.save();
+      }
+      const current = localStorage.getItem('currentLevel');
+      if (current) {
+        this.currentLevel = parseInt(current);
+      }
+    },
+    
+    save() {
+      localStorage.setItem('unlockedLevels', JSON.stringify(this.unlocked));
+      localStorage.setItem('currentLevel', this.currentLevel.toString());
+    },
+    
+    checkUnlocks(score) {
+      let newUnlocks = false;
+      for (const level of this.levels) {
+        if (!this.unlocked.includes(level.id) && score >= level.unlockScore) {
+          this.unlocked.push(level.id);
+          newUnlocks = true;
+          this.showUnlockNotification(level);
+        }
+      }
+      if (newUnlocks) {
+        this.save();
+      }
+    },
+    
+    showUnlockNotification(level) {
+      const notification = document.createElement('div');
+      notification.className = 'level-unlock-notification';
+      notification.innerHTML = `
+        <div class="level-unlock-content">
+          <div class="level-unlock-icon">🎉</div>
+          <div class="level-unlock-text">
+            <strong>Level Unlocked!</strong><br>
+            <span>${level.name}</span>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.classList.add('show'), 10);
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    },
+    
+    getLevel(id) {
+      return this.levels.find(l => l.id === id);
+    },
+    
+    getBestScore(levelId) {
+      const key = `level_${levelId}_best`;
+      return parseInt(localStorage.getItem(key) || '0');
+    },
+    
+    saveBestScore(levelId, score) {
+      const current = this.getBestScore(levelId);
+      if (score > current) {
+        localStorage.setItem(`level_${levelId}_best`, score.toString());
+        return true;
+      }
+      return false;
+    },
+    
+    async loadExternal() {
+      try {
+        const response = await fetch('levels.json');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.levels && Array.isArray(data.levels)) {
+            // Merge external levels with defaults
+            const existingIds = new Set(this.levels.map(l => l.id));
+            for (const extLevel of data.levels) {
+              if (!existingIds.has(extLevel.id)) {
+                this.levels.push(extLevel);
+              }
+            }
+            this.levels.sort((a, b) => a.unlockScore - b.unlockScore);
+          }
+        }
+      } catch (e) {
+        // External file not found, use defaults
+      }
+    }
+  };
+  
   // Achievement System
   const Achievements = {
     list: {
-      firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️' },
-      goldRush: { name: 'Gold Rush', desc: 'Collect 10 gold coins in one run', icon: '💰' },
-      survivor: { name: 'Survivor', desc: 'Reach 25,000 points', icon: '🛡️' },
-      legend: { name: 'Viking Legend', desc: 'Reach 100,000 points', icon: '👑' },
-      captain: { name: 'Ship Captain', desc: 'Destroy 5 enemies with Viking ship', icon: '⛵' },
-      comboMaster: { name: 'Combo Master', desc: 'Get a 10x combo streak', icon: '🔥' },
-      closeCall: { name: 'Close Call', desc: 'Survive 10 near misses in one run', icon: '😰' },
-      meadLover: { name: 'Mead Lover', desc: 'Collect 50 mead in one run', icon: '🍺' }
+      firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️', rarity: 'bronze' },
+      goldRush: { name: 'Gold Rush', desc: 'Collect 10 gold coins in one run', icon: '💰', rarity: 'bronze' },
+      meadLover: { name: 'Mead Lover', desc: 'Collect 50 mead in one run', icon: '🍺', rarity: 'bronze' },
+      closeCall: { name: 'Close Call', desc: 'Survive 10 near misses in one run', icon: '😰', rarity: 'bronze' },
+      level2: { name: 'Raid Master', desc: 'Complete Level 2', icon: '🛡️', rarity: 'bronze' },
+      level3: { name: 'Berserker', desc: 'Complete Level 3', icon: '⚔️', rarity: 'bronze' },
+      survivor: { name: 'Survivor', desc: 'Reach 25,000 points', icon: '🛡️', rarity: 'silver' },
+      comboMaster: { name: 'Combo Master', desc: 'Get a 10x combo streak', icon: '🔥', rarity: 'silver' },
+      captain: { name: 'Ship Captain', desc: 'Destroy 5 enemies with Viking ship', icon: '⛵', rarity: 'silver' },
+      level4: { name: 'Dragon Slayer', desc: 'Complete Level 4', icon: '🐉', rarity: 'silver' },
+      combo20: { name: 'Combo Fury', desc: 'Get a 20x combo streak', icon: '🔥', rarity: 'silver' },
+      goldCollector: { name: 'Gold Collector', desc: 'Collect 100 gold coins total', icon: '💎', rarity: 'silver' },
+      meadMaster: { name: 'Mead Master', desc: 'Collect 500 mead total', icon: '🍻', rarity: 'silver' },
+      hardMode: { name: 'Hard Mode', desc: 'Reach 50k points on Hard difficulty', icon: '💀', rarity: 'silver' },
+      legend: { name: 'Viking Legend', desc: 'Reach 100,000 points', icon: '👑', rarity: 'gold' },
+      level5: { name: 'Valhalla Bound', desc: 'Complete Level 5', icon: '⚡', rarity: 'gold' },
+      combo50: { name: 'Combo God', desc: 'Get a 50x combo streak', icon: '🔥', rarity: 'gold' },
+      score200k: { name: 'Score Master', desc: 'Reach 200,000 points', icon: '🏆', rarity: 'gold' },
+      score500k: { name: 'Score Legend', desc: 'Reach 500,000 points', icon: '👑', rarity: 'gold' },
+      level6: { name: 'Ragnarok', desc: 'Complete Level 6', icon: '🌋', rarity: 'gold' },
+      streak5: { name: 'Dedicated', desc: '5-day login streak', icon: '📅', rarity: 'gold' },
+      playtime1h: { name: 'Hour Warrior', desc: 'Play for 1 hour total', icon: '⏰', rarity: 'gold' },
+      nearMissMaster: { name: 'Dodge Master', desc: 'Survive 50 near misses total', icon: '🎯', rarity: 'gold' },
+      combo100: { name: 'Combo Deity', desc: 'Get a 100x combo streak', icon: '🔥', rarity: 'platinum' },
+      score1m: { name: 'Millionaire', desc: 'Reach 1,000,000 points', icon: '💎', rarity: 'platinum' },
+      streak30: { name: 'Unstoppable', desc: '30-day login streak', icon: '🔥', rarity: 'platinum' },
+      playtime10h: { name: 'Viking Veteran', desc: 'Play for 10 hours total', icon: '⚔️', rarity: 'platinum' },
+      allLevels: { name: 'Level Master', desc: 'Complete all levels', icon: '🌟', rarity: 'platinum' },
+      hardLegend: { name: 'Hard Legend', desc: 'Reach 100k points on Hard difficulty', icon: '💀', rarity: 'platinum' }
     },
     unlocked: JSON.parse(localStorage.getItem('achievements') || '{}'),
     sessionStats: { stomps: 0, gold: 0, shipKills: 0, nearMisses: 0 },
+    totalStats: {
+      gold: parseInt(localStorage.getItem('totalGold') || '0'),
+      mead: parseInt(localStorage.getItem('totalMead') || '0'),
+      nearMisses: parseInt(localStorage.getItem('totalNearMisses') || '0'),
+      playtime: parseInt(localStorage.getItem('totalPlaytime') || '0')
+    },
     unlock(id) {
       if (this.unlocked[id]) return false;
       this.unlocked[id] = Date.now();
@@ -1858,14 +2178,45 @@
     },
     check() {
       const s = this.sessionStats;
+      const t = this.totalStats;
+      
+      // Bronze achievements
       if (s.stomps >= 1) this.unlock('firstBlood');
       if (s.gold >= 10) this.unlock('goldRush');
-      if (world.score >= 25000) this.unlock('survivor');
-      if (world.score >= 100000) this.unlock('legend');
-      if (s.shipKills >= 5) this.unlock('captain');
-      if (engagement.combo.maxCombo >= 10) this.unlock('comboMaster');
-      if (s.nearMisses >= 10) this.unlock('closeCall');
       if (world.mead >= 50) this.unlock('meadLover');
+      if (s.nearMisses >= 10) this.unlock('closeCall');
+      if (LevelSystem.unlocked.includes(2)) this.unlock('level2');
+      if (LevelSystem.unlocked.includes(3)) this.unlock('level3');
+      
+      // Silver achievements
+      if (world.score >= 25000) this.unlock('survivor');
+      if (engagement.combo.maxCombo >= 10) this.unlock('comboMaster');
+      if (s.shipKills >= 5) this.unlock('captain');
+      if (LevelSystem.unlocked.includes(4)) this.unlock('level4');
+      if (engagement.combo.maxCombo >= 20) this.unlock('combo20');
+      if (t.gold >= 100) this.unlock('goldCollector');
+      if (t.mead >= 500) this.unlock('meadMaster');
+      if (LevelSystem.unlocked.includes(5) && world.difficulty === 'hard') this.unlock('hardMode');
+      
+      // Gold achievements
+      if (world.score >= 100000) this.unlock('legend');
+      if (LevelSystem.unlocked.includes(5)) this.unlock('level5');
+      if (engagement.combo.maxCombo >= 50) this.unlock('combo50');
+      if (world.score >= 200000) this.unlock('score200k');
+      if (world.score >= 500000) this.unlock('score500k');
+      if (LevelSystem.unlocked.includes(6)) this.unlock('level6');
+      const streak = parseInt(localStorage.getItem('loginStreak') || '0');
+      if (streak >= 5) this.unlock('streak5');
+      if (t.playtime >= 3600) this.unlock('playtime1h');
+      if (t.nearMisses >= 50) this.unlock('nearMissMaster');
+      
+      // Platinum achievements
+      if (engagement.combo.maxCombo >= 100) this.unlock('combo100');
+      if (world.score >= 1000000) this.unlock('score1m');
+      if (streak >= 30) this.unlock('streak30');
+      if (t.playtime >= 36000) this.unlock('playtime10h');
+      if (LevelSystem.unlocked.length >= LevelSystem.levels.length) this.unlock('allLevels');
+      if (world.score >= 100000 && world.difficulty === 'hard') this.unlock('hardLegend');
     },
     reset() {
       this.sessionStats = { stomps: 0, gold: 0, shipKills: 0, nearMisses: 0 };
@@ -1890,6 +2241,7 @@
     started: false, paused: false, over: false, 
     score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
     lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
+    difficulty: 'normal', currentLevel: 1,
     nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextHeartAt: 0, nextGoldAt: 0,
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
@@ -2006,8 +2358,11 @@
       world.paused = false;
       world.over = false;
       world.score = 0; 
-      world.mead = 0; 
-      world.speed = 230; 
+      world.mead = 0;
+      
+      // Apply difficulty preset
+      const diff = DifficultyModes.getCurrent();
+      world.speed = diff.baseSpeed;
       world.t = 0;
       world.screenShake = 0;
       world.goldenRun = false;
@@ -2043,12 +2398,12 @@
       world.nextHeartAt = viking.x + 1200;
       world.nextGoldAt = viking.x + 2000;
       
-      // Comeback mechanic: extra life for struggling players
-      let startingLives = 3;
+      // Comeback mechanic: extra life for struggling players (on top of difficulty base)
+      let startingLives = diff.startingLives;
       if (engagement.sessionDeaths >= 5) {
-        startingLives = 4;
+        startingLives += 1;
       } else if (engagement.sessionDeaths >= 10) {
-        startingLives = 5;
+        startingLives += 2;
       }
       world.lives = startingLives;
       
@@ -2073,6 +2428,7 @@
       const overlayTitle = $("overlayTitle");
       const overlayText = $("overlayText");
       if (overlayTitle) overlayTitle.textContent = "Viking Run";
+      renderLevelGrid();
       if (overlayText) overlayText.textContent = "Jump on platforms, avoid enemies, collect powerups, and survive.";
       if (startBtn) {
         startBtn.textContent = "Start Game";
@@ -2164,8 +2520,8 @@
       
       // Save to all periods
       for (const period of ['daily', 'weekly', 'monthly', 'yearly', 'alltime']) {
-        const key = HighScoreManager.getPeriodKey(period);
-        let scores = HighScoreManager.getScoresLocal(period);
+        const key = HighScoreManager.getPeriodKey(period) + `_${world.difficulty}`;
+        let scores = HighScoreManager.getScoresLocal(period, world.difficulty);
         scores.push(scoreEntry);
         scores.sort((a, b) => b.score - a.score);
         scores = scores.slice(0, 10);
@@ -2184,8 +2540,8 @@
       }
     },
 
-    getScoresLocal(period = 'alltime') {
-      const key = HighScoreManager.getPeriodKey(period);
+    getScoresLocal(period = 'alltime', difficulty = 'normal') {
+      const key = HighScoreManager.getPeriodKey(period) + `_${difficulty}`;
       return JSON.parse(localStorage.getItem(key) || '[]');
     },
 
@@ -2199,11 +2555,11 @@
         }
       } catch (e) {
       }
-      return HighScoreManager.getScoresLocal(period);
+      return HighScoreManager.getScoresLocal(period, world.difficulty);
     },
 
-    async displayScores(period = 'alltime') {
-      const scores = await HighScoreManager.getScores(period);
+    async displayScores(period = 'alltime', difficulty = 'normal') {
+      const scores = await HighScoreManager.getScores(period, difficulty);
       const list = $("highscoreList");
       if (!list) return;
       
@@ -2274,12 +2630,15 @@
     Input.jumpJustPressed = false;
   });
 
+  let sessionStartTime = 0;
+  
   const start = () => {
     if (world.started) return;
     try {
     world.started = true;
       world.over = false;
       world.paused = false;
+      sessionStartTime = Date.now();
       if (overlay) {
     overlay.style.display = "none";
         overlay.style.visibility = "hidden";
@@ -2296,123 +2655,221 @@
     }
   };
 
-  // Draw Viking longship (when ship powerup is active)
+  // Draw realistic Viking longship (when ship powerup is active)
   const drawVikingShip = (x, y) => {
     ctx.save();
-    ctx.translate(x, y + 20); // Offset to sit on water level
+    ctx.translate(x, y + 20);
     
-    const bob = Math.sin(world.t * 4) * 3; // Gentle rocking
+    const bob = Math.sin(world.t * 4) * 3;
     const oarPhase = Math.sin(world.t * 8);
+    const wind = Math.sin(world.t * 2) * 0.1;
     
-    // Water splash particles behind ship
-    if (Math.random() < 0.3) {
-      addParticle(x - 80, y + 10, "#4A90D9", 8);
+    // Enhanced water splash particles
+    if (Math.random() < 0.4) {
+      addParticle(x - 85, y + 8, "#4A90D9", 10);
+      addParticle(x - 90, y + 12, "#87CEEB", 6);
     }
     
-    // Ship hull - curved wooden longship
-    ctx.fillStyle = "#5D4E37";
+    // Realistic hull with proper proportions (7:1 length:width ratio)
+    const hullLength = 140;
+    const hullWidth = 20;
+    const hullDepth = 35;
+    
+    // Main hull - detailed wooden planks
+    ctx.fillStyle = "#6B5B47";
     ctx.beginPath();
-    ctx.moveTo(-70, bob);
-    ctx.quadraticCurveTo(-80, -20 + bob, -60, -35 + bob);
-    ctx.lineTo(60, -35 + bob);
-    ctx.quadraticCurveTo(85, -20 + bob, 70, bob + 5);
-    ctx.quadraticCurveTo(0, 15 + bob, -70, bob);
+    ctx.moveTo(-hullLength/2, bob);
+    ctx.quadraticCurveTo(-hullLength/2 - 5, -hullDepth/3 + bob, -hullLength/2 + 10, -hullDepth + bob);
+    ctx.lineTo(hullLength/2 - 10, -hullDepth + bob);
+    ctx.quadraticCurveTo(hullLength/2 + 5, -hullDepth/3 + bob, hullLength/2, bob + 3);
+    ctx.quadraticCurveTo(0, hullWidth/2 + bob, -hullLength/2, bob);
     ctx.fill();
     
-    // Hull stripes
-    ctx.strokeStyle = "#3D2E17";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-65, -10 + bob);
-    ctx.quadraticCurveTo(0, -5 + bob, 65, -10 + bob);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-60, -25 + bob);
-    ctx.quadraticCurveTo(0, -20 + bob, 60, -25 + bob);
-    ctx.stroke();
+    // Wood grain texture - horizontal planks
+    ctx.strokeStyle = "#5A4B37";
+    ctx.lineWidth = 1.5;
+    for (let i = -hullLength/2 + 15; i < hullLength/2 - 15; i += 12) {
+      ctx.beginPath();
+      ctx.moveTo(i, -hullDepth/2 + bob);
+      ctx.quadraticCurveTo(i + 2, -hullDepth/3 + bob, i + 4, -hullDepth/4 + bob);
+      ctx.stroke();
+    }
     
-    // Dragon head prow
-    ctx.fillStyle = "#8B4513";
+    // Rivets/plank joints
+    ctx.fillStyle = "#4A3C2A";
+    for (let i = -hullLength/2 + 20; i < hullLength/2 - 20; i += 25) {
+      ctx.beginPath();
+      ctx.arc(i, -hullDepth/2 + bob, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Detailed dragon head prow - more realistic carving
+    ctx.fillStyle = "#7A5B3A";
     ctx.beginPath();
-    ctx.moveTo(70, -35 + bob);
-    ctx.quadraticCurveTo(90, -50 + bob, 85, -70 + bob);
-    ctx.quadraticCurveTo(80, -65 + bob, 75, -70 + bob);
-    ctx.quadraticCurveTo(70, -55 + bob, 65, -40 + bob);
+    ctx.moveTo(hullLength/2, -hullDepth + bob);
+    ctx.bezierCurveTo(hullLength/2 + 15, -hullDepth - 10 + bob, hullLength/2 + 25, -hullDepth - 25 + bob, hullLength/2 + 20, -hullDepth - 45 + bob);
+    ctx.bezierCurveTo(hullLength/2 + 18, -hullDepth - 50 + bob, hullLength/2 + 15, -hullDepth - 48 + bob, hullLength/2 + 12, -hullDepth - 52 + bob);
+    ctx.bezierCurveTo(hullLength/2 + 10, -hullDepth - 50 + bob, hullLength/2 + 8, -hullDepth - 45 + bob, hullLength/2 + 5, -hullDepth - 40 + bob);
+    ctx.bezierCurveTo(hullLength/2 + 2, -hullDepth - 30 + bob, hullLength/2, -hullDepth - 15 + bob, hullLength/2 - 5, -hullDepth + bob);
     ctx.fill();
-    // Dragon eye
+    
+    // Dragon scales/details
+    ctx.strokeStyle = "#6A4B2A";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(hullLength/2 + 8 + i * 4, -hullDepth - 30 - i * 5 + bob);
+      ctx.lineTo(hullLength/2 + 12 + i * 4, -hullDepth - 35 - i * 5 + bob);
+      ctx.stroke();
+    }
+    
+    // Dragon eye - glowing
     ctx.fillStyle = "#FFD700";
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = "#FFD700";
     ctx.beginPath();
-    ctx.arc(78, -55 + bob, 4, 0, Math.PI * 2);
+    ctx.arc(hullLength/2 + 15, -hullDepth - 35 + bob, 5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.fillStyle = "#000";
     ctx.beginPath();
-    ctx.arc(79, -55 + bob, 2, 0, Math.PI * 2);
+    ctx.arc(hullLength/2 + 16, -hullDepth - 35 + bob, 2.5, 0, Math.PI * 2);
     ctx.fill();
     
-    // Tail curl at stern
-    ctx.fillStyle = "#8B4513";
+    // Dragon horns
+    ctx.strokeStyle = "#5A4B2A";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(-60, -35 + bob);
-    ctx.quadraticCurveTo(-75, -55 + bob, -65, -75 + bob);
-    ctx.quadraticCurveTo(-60, -65 + bob, -55, -45 + bob);
+    ctx.moveTo(hullLength/2 + 18, -hullDepth - 48 + bob);
+    ctx.lineTo(hullLength/2 + 22, -hullDepth - 55 + bob);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hullLength/2 + 14, -hullDepth - 50 + bob);
+    ctx.lineTo(hullLength/2 + 18, -hullDepth - 57 + bob);
+    ctx.stroke();
+    
+    // Tail curl at stern - more detailed
+    ctx.fillStyle = "#7A5B3A";
+    ctx.beginPath();
+    ctx.moveTo(-hullLength/2, -hullDepth + bob);
+    ctx.bezierCurveTo(-hullLength/2 - 12, -hullDepth - 15 + bob, -hullLength/2 - 18, -hullDepth - 35 + bob, -hullLength/2 - 15, -hullDepth - 50 + bob);
+    ctx.bezierCurveTo(-hullLength/2 - 13, -hullDepth - 48 + bob, -hullLength/2 - 10, -hullDepth - 45 + bob, -hullLength/2 - 8, -hullDepth - 40 + bob);
+    ctx.bezierCurveTo(-hullLength/2 - 5, -hullDepth - 25 + bob, -hullLength/2 - 2, -hullDepth - 10 + bob, -hullLength/2 + 5, -hullDepth + bob);
     ctx.fill();
     
-    // Mast
-    ctx.fillStyle = "#4A3C2A";
-    ctx.fillRect(-5, -100 + bob, 10, 70);
-    
-    // Sail - red and white stripes (classic Viking)
+    // Mast - tapered
+    ctx.fillStyle = "#3A2C1A";
     ctx.beginPath();
-    ctx.moveTo(0, -95 + bob);
-    ctx.lineTo(45, -80 + bob);
-    ctx.lineTo(45, -40 + bob);
-    ctx.lineTo(0, -35 + bob);
+    ctx.moveTo(-3, -hullDepth + bob);
+    ctx.lineTo(3, -hullDepth + bob);
+    ctx.lineTo(2, -hullDepth - 90 + bob);
+    ctx.lineTo(-2, -hullDepth - 90 + bob);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Sail - billowing with wind effect
+    const sailBillow = Math.sin(world.t * 3) * 8;
+    ctx.beginPath();
+    ctx.moveTo(0, -hullDepth - 15 + bob);
+    ctx.quadraticCurveTo(25 + sailBillow, -hullDepth - 30 + bob, 50 + sailBillow * 1.5, -hullDepth - 20 + bob);
+    ctx.lineTo(50 + sailBillow * 1.5, -hullDepth - 5 + bob);
+    ctx.quadraticCurveTo(25 + sailBillow, -hullDepth + 5 + bob, 0, -hullDepth - 5 + bob);
     ctx.closePath();
     ctx.fillStyle = "#C41E3A";
     ctx.fill();
-    // White stripe
-    ctx.fillStyle = "#FFF";
-    ctx.fillRect(15, -75 + bob, 25, 15);
     
-    // Oars (animated)
+    // Sail stripes
+    ctx.fillStyle = "#FFF";
+    ctx.fillRect(15 + sailBillow * 0.3, -hullDepth - 12 + bob, 25 + sailBillow * 0.5, 12);
+    
+    // Sail details - seams
+    ctx.strokeStyle = "#A01E2A";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(10 + sailBillow * 0.2, -hullDepth - 10 + bob);
+    ctx.lineTo(35 + sailBillow * 0.6, -hullDepth - 3 + bob);
+    ctx.stroke();
+    
+    // Oars - more realistic positioning and animation
     ctx.strokeStyle = "#5D4E37";
-    ctx.lineWidth = 3;
-    [-40, -20, 0, 20].forEach((ox, i) => {
-      const oarAngle = oarPhase * 0.3 + (i % 2 === 0 ? 0 : Math.PI);
+    ctx.lineWidth = 2.5;
+    const oarPositions = [-50, -30, -10, 10, 30, 50];
+    oarPositions.forEach((ox, i) => {
+      const oarAngle = Math.sin(world.t * 8 + i * 0.5) * 0.4;
+      const oarOut = Math.abs(Math.sin(world.t * 8 + i * 0.5)) > 0.5;
       ctx.save();
-      ctx.translate(ox, -5 + bob);
-      ctx.rotate(0.4 + Math.sin(world.t * 8 + i) * 0.2);
+      ctx.translate(ox, -hullDepth/2 + bob);
+      ctx.rotate(0.3 + oarAngle);
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(0, 40);
+      ctx.lineTo(0, oarOut ? 45 : 35);
       ctx.stroke();
-      // Oar blade
-      ctx.fillStyle = "#5D4E37";
-      ctx.fillRect(-5, 35, 10, 15);
+      // Oar blade - paddle shape
+      ctx.fillStyle = "#4A3C2A";
+      ctx.beginPath();
+      ctx.ellipse(-3, oarOut ? 42 : 32, 6, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     });
     
-    // Viking warrior on ship (small)
-    ctx.fillStyle = "#556677";
-    ctx.fillRect(-8, -50 + bob, 16, 20);
-    ctx.fillStyle = "#ffdbac";
-    ctx.beginPath();
-    ctx.arc(0, -55 + bob, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#7f8c8d";
-    ctx.beginPath();
-    ctx.arc(0, -58 + bob, 7, Math.PI, 0);
-    ctx.fill();
+    // Multiple Viking warriors on ship
+    const warriorPositions = [-40, -15, 15, 40];
+    warriorPositions.forEach((wx, i) => {
+      // Body/armor
+      ctx.fillStyle = "#4A5568";
+      ctx.fillRect(wx - 6, -hullDepth/2 - 15 + bob, 12, 18);
+      // Head
+      ctx.fillStyle = "#ffdbac";
+      ctx.beginPath();
+      ctx.arc(wx, -hullDepth/2 - 20 + bob, 5, 0, Math.PI * 2);
+      ctx.fill();
+      // Helmet
+      ctx.fillStyle = "#6B7280";
+      ctx.beginPath();
+      ctx.arc(wx, -hullDepth/2 - 22 + bob, 6, Math.PI, 0);
+      ctx.fill();
+      // Weapon (spear/axe visible)
+      if (i % 2 === 0) {
+        ctx.strokeStyle = "#8B7355";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(wx + 8, -hullDepth/2 - 18 + bob);
+        ctx.lineTo(wx + 15, -hullDepth/2 - 25 + bob);
+        ctx.stroke();
+      }
+    });
     
-    // Shield on side
-    ctx.fillStyle = "#C41E3A";
+    // Multiple shields along the side
+    const shieldPositions = [-55, -25, 25, 55];
+    shieldPositions.forEach((sx, i) => {
+      ctx.fillStyle = i % 2 === 0 ? "#C41E3A" : "#1E3A8A";
+      ctx.beginPath();
+      ctx.arc(sx, -hullDepth/2 + 5 + bob, 10, 0, Math.PI * 2);
+      ctx.fill();
+      // Shield boss (center)
+      ctx.fillStyle = "#FFD700";
+      ctx.beginPath();
+      ctx.arc(sx, -hullDepth/2 + 5 + bob, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // Shield cross pattern
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx, -hullDepth/2 - 5 + bob);
+      ctx.lineTo(sx, -hullDepth/2 + 15 + bob);
+      ctx.moveTo(sx - 8, -hullDepth/2 + 5 + bob);
+      ctx.lineTo(sx + 8, -hullDepth/2 + 5 + bob);
+      ctx.stroke();
+    });
+    
+    // Water wake trail
+    ctx.strokeStyle = "rgba(74, 144, 217, 0.4)";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(35, -20 + bob, 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#FFD700";
-    ctx.beginPath();
-    ctx.arc(35, -20 + bob, 5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(-hullLength/2 - 10, bob + 5);
+    ctx.quadraticCurveTo(-hullLength/4, bob + 8, 0, bob + 6);
+    ctx.quadraticCurveTo(hullLength/4, bob + 8, hullLength/2 + 10, bob + 5);
+    ctx.stroke();
     
     ctx.restore();
   };
@@ -2817,10 +3274,18 @@
 
     world.t += dt;
     
-    const baseSpeed = 230;
-    world.speed = Math.min(400, world.speed + 3 * dt);
+    // Progressive difficulty scaling
+    const diff = DifficultyModes.getCurrent();
+    const baseSpeed = diff.baseSpeed;
+    const maxSpeed = diff.maxSpeed;
+    
+    // Score-based acceleration multiplier
+    const scoreAccelMultiplier = 1.0 + (world.score / 100000) * 0.5;
+    const speedIncrease = 3 * dt * scoreAccelMultiplier;
+    
+    world.speed = Math.min(maxSpeed, world.speed + speedIncrease);
     if (world.speed > baseSpeed) {
-      world.speed = Math.max(baseSpeed, world.speed - 3 * dt);
+      world.speed = Math.max(baseSpeed, world.speed - speedIncrease);
     }
     
     // Speed boost: 1.5x movement speed when active
@@ -2853,6 +3318,14 @@
     if (world.goldenRun) {
       world.goldenRunTimer -= dt;
       if (world.goldenRunTimer <= 0) world.goldenRun = false;
+    }
+    
+    // Check for level unlocks
+    LevelSystem.checkUnlocks(world.score);
+    
+    // Save level best score
+    if (world.score > 0) {
+      LevelSystem.saveBestScore(world.currentLevel, world.score);
     }
     
     // Milestone check
@@ -2937,7 +3410,12 @@
     // Spawn logic - REDUCED FREQUENCY
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      world.nextObstacleAt += rand(425, 675);
+      // Obstacle density increases with score
+      const baseMin = 425, baseMax = 675;
+      const scoreFactor = Math.min(world.score / 50000, 1.0);
+      const minSpawn = baseMin - (baseMin * 0.4 * scoreFactor);
+      const maxSpawn = baseMax - (baseMax * 0.4 * scoreFactor);
+      world.nextObstacleAt += rand(Math.max(250, minSpawn), Math.max(400, maxSpawn));
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
@@ -2953,7 +3431,13 @@
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
-      world.nextEnemyAt += rand(600, 1050);
+      // Dynamic spawn rate scaling based on score and difficulty
+      const diff = DifficultyModes.getCurrent();
+      const baseMin = diff.enemySpawnMin, baseMax = diff.enemySpawnMax;
+      const scoreFactor = Math.min(world.score / 50000, 1.0); // Max scaling at 50k
+      const minSpawn = baseMin - (baseMin * 0.5 * scoreFactor); // Reduce by up to 50%
+      const maxSpawn = baseMax - (baseMax * 0.5 * scoreFactor);
+      world.nextEnemyAt += rand(Math.max(250, minSpawn), Math.max(500, maxSpawn));
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < 5) { // Only spawn hearts if lives < 5
@@ -2972,7 +3456,10 @@
     
     for (const e of Enemies) {
       if (!e.defeated) {
-        e.x -= world.speed * 0.4 * dt;
+        // Enemy speed scales with world speed and difficulty
+        const diff = DifficultyModes.getCurrent();
+        const scoreSpeedBoost = 1.0 + (world.score / 100000) * 0.3;
+        e.x -= world.speed * diff.enemySpeedMultiplier * scoreSpeedBoost * dt;
         if (e.x < viking.x - W - 200) e.defeated = true;
       }
     }
@@ -3031,6 +3518,8 @@
           o.nearMissTriggered = true;
           engagement.nearMiss.count++;
           Achievements.sessionStats.nearMisses++;
+          Achievements.totalStats.nearMisses++;
+          localStorage.setItem('totalNearMisses', Achievements.totalStats.nearMisses.toString());
           world.score += 25;
           
           const nearMissEl = document.createElement('div');
@@ -3133,9 +3622,12 @@
           e.hit = true;
           viking.vy = -750;
           
-          // Combo system
+          // Combo system - timer scales with score and difficulty
           engagement.combo.count++;
-          engagement.combo.timer = 2.0;
+          const diff = DifficultyModes.getCurrent();
+          const baseComboTimer = diff.comboTimer;
+          const scoreBonus = Math.min(world.score / 50000, 1.0) * 2.0; // Up to +2s at 50k score
+          engagement.combo.timer = baseComboTimer + scoreBonus;
           engagement.combo.maxCombo = Math.max(engagement.combo.maxCombo, engagement.combo.count);
           Achievements.sessionStats.stomps++;
           
@@ -3216,6 +3708,8 @@
       if (!m.taken && Math.hypot(viking.x - m.x, (viking.y-30) - m.y) < 45) {
         m.taken = true;
         world.mead++;
+        Achievements.totalStats.mead++;
+        localStorage.setItem('totalMead', Achievements.totalStats.mead.toString());
         world.score += 75 * scoreMultiplier;
         addParticle(m.x, m.y, "#FFD700", 8);
         playSFX('mead');
@@ -3251,6 +3745,8 @@
         g.taken = true;
         world.score += g.value * scoreMultiplier;
         Achievements.sessionStats.gold++;
+        Achievements.totalStats.gold++;
+        localStorage.setItem('totalGold', Achievements.totalStats.gold.toString());
         addParticle(g.x, g.y, "#ffd700", 25);
         playSFX('gold');
         updateHUD();
@@ -3417,6 +3913,46 @@
     requestAnimationFrame(tick);
   };
 
+  // Difficulty selector handlers
+  const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+  difficultyBtns.forEach(btn => {
+    btn.onclick = () => {
+      difficultyBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const difficulty = btn.dataset.difficulty;
+      DifficultyModes.apply(difficulty);
+    };
+  });
+  
+  // Level grid renderer
+  const renderLevelGrid = () => {
+    const grid = $("levelGrid");
+    if (!grid) return;
+    grid.innerHTML = '';
+    LevelSystem.levels.forEach(level => {
+      const card = document.createElement('div');
+      const isUnlocked = LevelSystem.unlocked.includes(level.id);
+      const isActive = world.currentLevel === level.id;
+      card.className = `level-card ${!isUnlocked ? 'locked' : ''} ${isActive ? 'active' : ''}`;
+      card.onclick = () => {
+        if (isUnlocked) {
+          world.currentLevel = level.id;
+          LevelSystem.currentLevel = level.id;
+          LevelSystem.save();
+          renderLevelGrid();
+        }
+      };
+      const bestScore = LevelSystem.getBestScore(level.id);
+      card.innerHTML = `
+        <div class="level-icon">${!isUnlocked ? '🔒' : level.difficulty === 'easy' ? '🛡️' : level.difficulty === 'normal' ? '⚔️' : '💀'}</div>
+        <div class="level-name">${level.name}</div>
+        ${bestScore > 0 ? `<div class="level-score">Best: ${bestScore.toLocaleString()}</div>` : ''}
+        ${!isUnlocked ? `<div class="unlock-req">Unlock at ${level.unlockScore.toLocaleString()} pts</div>` : ''}
+      `;
+      grid.appendChild(card);
+    });
+  };
+  
   startBtn.onclick = () => {
     try {
       // Save player name
@@ -4123,12 +4659,18 @@
   // Initialize after DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      LevelSystem.init();
+      LevelSystem.loadExternal();
+      DifficultyModes.loadSaved();
       resize();
   resetWorld();
   requestAnimationFrame(tick);
       setTimeout(showDailyBonus, 500);
     });
   } else {
+    LevelSystem.init();
+    LevelSystem.loadExternal();
+    DifficultyModes.loadSaved();
     resize();
     resetWorld();
     requestAnimationFrame(tick);
