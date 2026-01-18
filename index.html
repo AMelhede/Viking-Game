@@ -4,8 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Viking Run</title>
-  <!-- MediaPipe Face Landmarker for Eye/Gaze Tracking + rPPG -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js"></script>
+  <!-- MediaPipe Face Landmarker for Eye/Gaze Tracking + rPPG - Loaded dynamically -->
   <style>
     :root{
       /* iOS 17 Design System */
@@ -2083,6 +2082,121 @@
     }
   };
   
+  // Daily Challenges System
+  const DailyChallenges = {
+    challenges: [],
+    init() {
+      const today = new Date().toDateString();
+      const saved = localStorage.getItem(`dailyChallenges_${today}`);
+      if (saved) {
+        this.challenges = JSON.parse(saved);
+      } else {
+        this.generateChallenges();
+      }
+    },
+    generateChallenges() {
+      const levels = [1, 2, 3, 4, 5, 6, 7, 8];
+      const randomLevel = levels[Math.floor(Math.random() * levels.length)];
+      this.challenges = [
+        { id: 1, desc: `Defeat 10 enemies in Level ${randomLevel}`, type: 'enemyKills', target: 10, progress: 0, reward: 500, completed: false },
+        { id: 2, desc: `Reach ${rand(30000, 80000)} points without taking damage`, type: 'noDamage', target: rand(30000, 80000), progress: 0, reward: 1000, completed: false },
+        { id: 3, desc: `Collect 20 mead in one run`, type: 'meadCollect', target: 20, progress: 0, reward: 750, completed: false }
+      ];
+      const today = new Date().toDateString();
+      localStorage.setItem(`dailyChallenges_${today}`, JSON.stringify(this.challenges));
+    },
+    updateProgress(type, amount) {
+      this.challenges.forEach(challenge => {
+        if (challenge.type === type && !challenge.completed) {
+          challenge.progress += amount;
+          if (challenge.progress >= challenge.target) {
+            challenge.completed = true;
+            world.score += challenge.reward;
+            showAchievement({ name: 'Challenge Complete!', desc: challenge.desc, icon: '🎯', rarity: 'gold' });
+          }
+        }
+      });
+      const today = new Date().toDateString();
+      localStorage.setItem(`dailyChallenges_${today}`, JSON.stringify(this.challenges));
+    },
+    getProgress() {
+      return this.challenges.filter(c => !c.completed).length;
+    }
+  };
+  
+  // Level Mastery System
+  const LevelMastery = {
+    stars: JSON.parse(localStorage.getItem('levelMastery') || '{}'),
+    checkLevel(levelId, score, deaths) {
+      const key = `level_${levelId}`;
+      if (!this.stars[key]) this.stars[key] = 0;
+      
+      let newStars = 0;
+      if (score > 0) newStars = 1; // 1 star for completion
+      if (deaths === 0 && score > 0) newStars = 2; // 2 stars for no deaths
+      if (deaths === 0 && score >= LevelSystem.levels.find(l => l.id === levelId)?.unlockScore * 2) {
+        newStars = 3; // 3 stars for perfect score
+      }
+      
+      if (newStars > this.stars[key]) {
+        this.stars[key] = newStars;
+        localStorage.setItem('levelMastery', JSON.stringify(this.stars));
+        showAchievement({ 
+          name: `${newStars} Star Mastery!`, 
+          desc: `Level ${levelId} - ${newStars} stars`, 
+          icon: '⭐'.repeat(newStars), 
+          rarity: newStars === 3 ? 'platinum' : newStars === 2 ? 'gold' : 'silver' 
+        });
+      }
+    },
+    getStars(levelId) {
+      return this.stars[`level_${levelId}`] || 0;
+    }
+  };
+  
+  // Collectibles System
+  const Collectibles = {
+    runeStones: JSON.parse(localStorage.getItem('runeStones') || '[]'),
+    artifacts: JSON.parse(localStorage.getItem('artifacts') || '[]'),
+    spawnRuneStone(x, y, levelId) {
+      if (Math.random() < 0.02) { // 2% chance
+        const id = `rune_${levelId}_${Date.now()}`;
+        Golds.push({
+          x,
+          y: world.groundY - rand(60, 200),
+          taken: false,
+          rotation: 0,
+          value: 0,
+          isRuneStone: true,
+          runeId: id,
+          levelId: levelId
+        });
+      }
+    },
+    collectRuneStone(runeId, levelId) {
+      if (!this.runeStones.includes(runeId)) {
+        this.runeStones.push(runeId);
+        localStorage.setItem('runeStones', JSON.stringify(this.runeStones));
+        showAchievement({ name: 'Rune Stone Found!', desc: `Level ${levelId} rune collected`, icon: '🔮', rarity: 'bronze' });
+      }
+    },
+    collectArtifact(artifactId) {
+      if (!this.artifacts.includes(artifactId)) {
+        this.artifacts.push(artifactId);
+        localStorage.setItem('artifacts', JSON.stringify(this.artifacts));
+        showAchievement({ name: 'Mythical Artifact!', desc: 'Rare artifact collected', icon: '⚡', rarity: 'platinum' });
+      }
+    },
+    getProgress() {
+      return {
+        runeStones: this.runeStones.length,
+        artifacts: this.artifacts.length,
+        totalRunes: LevelSystem.levels.length * 3, // 3 runes per level
+        totalArtifacts: 8 // One per boss
+      };
+    }
+  };
+  
   // Difficulty Modes System
   const DifficultyModes = {
     presets: {
@@ -2143,7 +2257,9 @@
       { id: 3, name: "Berserker", unlockScore: 25000, difficulty: "normal", description: "Unleash your fury" },
       { id: 4, name: "Dragon Slayer", unlockScore: 50000, difficulty: "normal", description: "Face the beasts" },
       { id: 5, name: "Valhalla Bound", unlockScore: 100000, difficulty: "hard", description: "Ascend to glory" },
-      { id: 6, name: "Ragnarok", unlockScore: 200000, difficulty: "hard", description: "Face the end times" }
+      { id: 6, name: "Ragnarok", unlockScore: 200000, difficulty: "hard", description: "Face the end times" },
+      { id: 7, name: "Odin's Trial", unlockScore: 500000, difficulty: "hard", description: "Face the Allfather" },
+      { id: 8, name: "Viking God", unlockScore: 1000000, difficulty: "hard", description: "Become a legend" }
     ],
     unlocked: [],
     currentLevel: 1,
@@ -2243,6 +2359,303 @@
         // External file not found, use defaults
       }
     }
+  };
+  
+  // Level Themes System - Unique visuals, enemies, obstacles per level
+  const LevelThemes = {
+    1: {
+      name: 'Fjord Runner',
+      bgGradient: ['#87CEEB', '#228B22'],
+      groundColor: '#2d5016',
+      weather: 'rain',
+      parallaxLayers: [
+        { speed: 0.2, color: '#B0C4DE' },
+        { speed: 0.4, color: '#87CEEB' },
+        { speed: 0.6, color: '#90EE90' }
+      ],
+      enemies: ['bandit', 'boar', 'archer'],
+      obstacles: ['tree', 'log', 'rock', 'branch'],
+      duckObstacles: ['raven', 'lowBranch'],
+      powerups: ['speed', 'invincibility', 'scoreMultiplier'],
+      boss: 'troll',
+      bossSpawnScore: 5000
+    },
+    2: {
+      name: 'Raid Master',
+      bgGradient: ['#FF6B35', '#2E2E2E'],
+      groundColor: '#3d2914',
+      weather: 'smoke',
+      parallaxLayers: [
+        { speed: 0.3, color: '#8B0000' },
+        { speed: 0.5, color: '#FF6B35' },
+        { speed: 0.7, color: '#2E2E2E' }
+      ],
+      enemies: ['warrior', 'fireThrower', 'shieldBearer'],
+      obstacles: ['debris', 'building', 'firePit'],
+      duckObstacles: ['axe', 'lowFire'],
+      powerups: ['fireResistance', 'doubleJump'],
+      boss: 'chief',
+      bossSpawnScore: 15000
+    },
+    3: {
+      name: 'Berserker',
+      bgGradient: ['#B0E0E6', '#FFFFFF'],
+      groundColor: '#E0E0E0',
+      weather: 'snow',
+      parallaxLayers: [
+        { speed: 0.2, color: '#B0E0E6' },
+        { speed: 0.4, color: '#E0F6FF' },
+        { speed: 0.6, color: '#FFFFFF' }
+      ],
+      enemies: ['iceWarrior', 'snowWolf', 'frostArcher'],
+      obstacles: ['iceBlock', 'snowDrift', 'icicle'],
+      duckObstacles: ['icicle', 'snowball'],
+      powerups: ['iceResistance', 'slideBoost'],
+      boss: 'iceGiant',
+      bossSpawnScore: 30000
+    },
+    4: {
+      name: 'Dragon Slayer',
+      bgGradient: ['#8B0000', '#FF4500'],
+      groundColor: '#1a1a1a',
+      weather: 'fire',
+      parallaxLayers: [
+        { speed: 0.3, color: '#4B0000' },
+        { speed: 0.5, color: '#8B0000' },
+        { speed: 0.7, color: '#FF4500' }
+      ],
+      enemies: ['lavaGolem', 'fireImp', 'magmaWarrior'],
+      obstacles: ['lavaPool', 'fireGeyser', 'volcanicRock'],
+      duckObstacles: ['fireball', 'lavaStream'],
+      powerups: ['lavaWalk', 'fireImmunity'],
+      boss: 'fireDragon',
+      bossSpawnScore: 60000
+    },
+    5: {
+      name: 'Valhalla Bound',
+      bgGradient: ['#FFD700', '#4B0082'],
+      groundColor: '#FFD700',
+      weather: 'lightning',
+      parallaxLayers: [
+        { speed: 0.2, color: '#4B0082' },
+        { speed: 0.4, color: '#9370DB' },
+        { speed: 0.6, color: '#FFD700' }
+      ],
+      enemies: ['valhallaWarrior', 'lightningSpirit', 'goldenGuardian'],
+      obstacles: ['lightning', 'goldenBarrier', 'pillar'],
+      duckObstacles: ['lowLightning', 'goldenSpear'],
+      powerups: ['lightningDash', 'goldenShield'],
+      boss: 'valkyrie',
+      bossSpawnScore: 120000
+    },
+    6: {
+      name: 'Ragnarok',
+      bgGradient: ['#FF0000', '#0000FF', '#000000'],
+      groundColor: '#2a2a2a',
+      weather: 'chaos',
+      parallaxLayers: [
+        { speed: 0.3, color: '#FF0000' },
+        { speed: 0.5, color: '#0000FF' },
+        { speed: 0.7, color: '#000000' }
+      ],
+      enemies: ['chaosWarrior', 'fireIceHybrid', 'ragnarokBeast'],
+      obstacles: ['fireIce', 'chaosPortal', 'destruction'],
+      duckObstacles: ['chaosProjectile', 'lowDestruction'],
+      powerups: ['chaosMode', 'elementMastery'],
+      boss: 'fenrir',
+      bossSpawnScore: 200000
+    },
+    7: {
+      name: "Odin's Trial",
+      bgGradient: ['#4B0082', '#000000'],
+      groundColor: '#1a0033',
+      weather: 'cosmic',
+      parallaxLayers: [
+        { speed: 0.2, color: '#000000' },
+        { speed: 0.4, color: '#1a0033' },
+        { speed: 0.6, color: '#4B0082' }
+      ],
+      enemies: ['starWarrior', 'voidCreature', 'celestialGuardian'],
+      obstacles: ['starBarrier', 'blackHole', 'cosmicStorm'],
+      duckObstacles: ['lowStar', 'cosmicRay'],
+      powerups: ['cosmicDash', 'starShield', 'timeSlow'],
+      boss: 'odin',
+      bossSpawnScore: 600000
+    },
+    8: {
+      name: 'Viking God',
+      bgGradient: ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'],
+      groundColor: '#FFD700',
+      weather: 'rainbow',
+      parallaxLayers: [
+        { speed: 0.2, color: '#9400D3' },
+        { speed: 0.4, color: '#4B0082' },
+        { speed: 0.6, color: '#FFD700' }
+      ],
+      enemies: ['godWarrior', 'divineSpirit', 'asgardGuardian'],
+      obstacles: ['divineBarrier', 'rainbowPortal', 'godlyObstacle'],
+      duckObstacles: ['lowDivineRay', 'rainbowProjectile'],
+      powerups: ['all', 'godMode', 'infiniteDash'],
+      boss: 'ragnarokFinal',
+      bossSpawnScore: 1200000
+    },
+    getCurrent() {
+      return this[world.currentLevel] || this[1];
+    }
+  };
+  
+  // Boss System - 8 Unique Bosses
+  const BossData = {
+    troll: {
+      name: 'Forest Troll',
+      level: 1,
+      spawnScore: 5000,
+      health: 3,
+      maxHealth: 3,
+      speed: 0.3,
+      size: { width: 80, height: 120 },
+      color: '#654321',
+      attacks: [
+        { type: 'rockThrow', cooldown: 2000, damage: 1 },
+        { type: 'groundSlam', cooldown: 3000, damage: 1 }
+      ],
+      rewards: { score: 500, mead: 5 }
+    },
+    chief: {
+      name: 'Village Chief',
+      level: 2,
+      spawnScore: 15000,
+      health: 5,
+      maxHealth: 5,
+      speed: 0.5,
+      size: { width: 70, height: 110 },
+      color: '#A0522D',
+      attacks: [
+        { type: 'axeThrow', cooldown: 1500, damage: 1 },
+        { type: 'charge', cooldown: 4000, damage: 1 },
+        { type: 'summon', cooldown: 5000, damage: 0 }
+      ],
+      rewards: { score: 1000, mead: 10 }
+    },
+    iceGiant: {
+      name: 'Ice Giant',
+      level: 3,
+      spawnScore: 30000,
+      health: 7,
+      maxHealth: 7,
+      speed: 0.4,
+      size: { width: 90, height: 140 },
+      color: '#B0E0E6',
+      attacks: [
+        { type: 'iceBreath', cooldown: 2000, damage: 1 },
+        { type: 'groundFreeze', cooldown: 3500, damage: 1 },
+        { type: 'iceSpikes', cooldown: 4000, damage: 1 }
+      ],
+      rewards: { score: 2000, mead: 15 }
+    },
+    fireDragon: {
+      name: 'Fire Dragon',
+      level: 4,
+      spawnScore: 60000,
+      health: 10,
+      maxHealth: 10,
+      speed: 0.6,
+      size: { width: 120, height: 100 },
+      color: '#FF4500',
+      attacks: [
+        { type: 'fireBreath', cooldown: 2000, damage: 1 },
+        { type: 'flyDive', cooldown: 4000, damage: 1 },
+        { type: 'lavaEruption', cooldown: 5000, damage: 1 }
+      ],
+      rewards: { score: 5000, mead: 20 }
+    },
+    valkyrie: {
+      name: 'Valkyrie',
+      level: 5,
+      spawnScore: 120000,
+      health: 12,
+      maxHealth: 12,
+      speed: 0.7,
+      size: { width: 75, height: 130 },
+      color: '#FFD700',
+      attacks: [
+        { type: 'lightningStrike', cooldown: 1500, damage: 1 },
+        { type: 'teleport', cooldown: 3000, damage: 0 },
+        { type: 'swordBarrage', cooldown: 4000, damage: 1 }
+      ],
+      rewards: { score: 10000, mead: 25 }
+    },
+    fenrir: {
+      name: 'Fenrir the Wolf',
+      level: 6,
+      spawnScore: 200000,
+      health: 15,
+      maxHealth: 15,
+      speed: 0.8,
+      size: { width: 100, height: 80 },
+      color: '#4B0082',
+      attacks: [
+        { type: 'bite', cooldown: 1000, damage: 1 },
+        { type: 'howl', cooldown: 3000, damage: 0 },
+        { type: 'packSummon', cooldown: 5000, damage: 0 },
+        { type: 'chaosBurst', cooldown: 6000, damage: 1 }
+      ],
+      rewards: { score: 20000, mead: 30 }
+    },
+    odin: {
+      name: 'Odin',
+      level: 7,
+      spawnScore: 600000,
+      health: 20,
+      maxHealth: 20,
+      speed: 0.9,
+      size: { width: 85, height: 150 },
+      color: '#FFFFFF',
+      attacks: [
+        { type: 'gungnirThrow', cooldown: 2000, damage: 1 },
+        { type: 'teleport', cooldown: 2500, damage: 0 },
+        { type: 'lightningStorm', cooldown: 4000, damage: 1 },
+        { type: 'timeFreeze', cooldown: 6000, damage: 0 },
+        { type: 'summonRavens', cooldown: 5000, damage: 0 }
+      ],
+      rewards: { score: 50000, mead: 50 }
+    },
+    ragnarokFinal: {
+      name: 'Ragnarok Final',
+      level: 8,
+      spawnScore: 1200000,
+      health: 30,
+      maxHealth: 30,
+      speed: 1.0,
+      size: { width: 150, height: 180 },
+      color: '#FF1493',
+      attacks: [
+        { type: 'allAttacks', cooldown: 1000, damage: 1 },
+        { type: 'ultimateChaos', cooldown: 5000, damage: 2 },
+        { type: 'screenWide', cooldown: 8000, damage: 1 }
+      ],
+      rewards: { score: 100000, mead: 100 }
+    }
+  };
+  
+  const spawnBoss = (bossKey) => {
+    const bossData = BossData[bossKey];
+    if (!bossData) return;
+    
+    Bosses.push({
+      ...bossData,
+      x: viking.x + W + 100,
+      y: world.groundY,
+      currentHealth: bossData.health,
+      lastAttack: 0,
+      attackIndex: 0,
+      phase: 1, // 1 = normal, 2 = enraged (50% health), 3 = final (25% health)
+      active: true
+    });
+    
+    // Screen shake on boss spawn
+    world.screenShake = 1.0;
+    playSFX('warhorn');
   };
   
   // Achievement System
@@ -2427,6 +2840,7 @@
   };
 
   const Obstacles = [];
+  const DuckObstacles = []; // Flying obstacles that require ducking
   const Meads = [];
   const Powerups = [];
   const Particles = [];
@@ -2434,10 +2848,59 @@
   const Enemies = [];
   const Hearts = [];
   const Golds = [];
+  const Bosses = []; // Active bosses
 
   const spawnObstacle = (x) => {
-    const type = Math.random() > 0.4 ? "shield" : "rock";
-    Obstacles.push({ x, type, w: 45, h: 45, hit: false });
+    const theme = LevelThemes.getCurrent();
+    const availableObstacles = theme.obstacles || ['tree', 'rock'];
+    
+    // Map obstacle names to types
+    const obstacleTypes = {
+      'tree': 'tree',
+      'log': 'log',
+      'rock': 'rock',
+      'branch': 'branch',
+      'debris': 'rock',
+      'building': 'shield',
+      'firePit': 'rock',
+      'iceBlock': 'rock',
+      'snowDrift': 'rock',
+      'icicle': 'rock',
+      'lavaPool': 'rock',
+      'fireGeyser': 'rock',
+      'volcanicRock': 'rock',
+      'lightning': 'rock',
+      'goldenBarrier': 'shield',
+      'pillar': 'shield',
+      'fireIce': 'rock',
+      'chaosPortal': 'shield',
+      'destruction': 'rock',
+      'starBarrier': 'shield',
+      'blackHole': 'shield',
+      'cosmicStorm': 'rock',
+      'divineBarrier': 'shield',
+      'rainbowPortal': 'shield',
+      'godlyObstacle': 'shield'
+    };
+    
+    const obstacleType = availableObstacles[Math.floor(Math.random() * availableObstacles.length)];
+    const type = obstacleTypes[obstacleType] || 'rock';
+    Obstacles.push({ x, type, themeType: obstacleType, w: 45, h: 45, hit: false });
+  };
+  
+  const spawnDuckObstacle = (x) => {
+    const types = ['raven', 'arrow', 'branch', 'axe', 'spear', 'fireball'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const y = world.groundY - rand(60, 100); // Head height - requires ducking
+    DuckObstacles.push({ 
+      x, 
+      y, 
+      type, 
+      w: type === 'arrow' ? 30 : type === 'spear' ? 50 : 40, 
+      h: type === 'branch' ? 25 : 20,
+      vx: -world.speed * 0.8, // Slightly slower than ground obstacles
+      hit: false 
+    });
   };
 
   const spawnMead = (x) => {
@@ -2445,8 +2908,42 @@
   };
 
   const spawnPowerup = (x) => {
-    // Weighted powerup selection - vikingShip is rare, others balanced
-    const weights = { speedBoost: 30, invincibility: 25, scoreMultiplier: 30, vikingShip: 15 };
+    const theme = LevelThemes.getCurrent();
+    const availablePowerups = theme.powerups || ['speed', 'invincibility', 'scoreMultiplier'];
+    
+    // Map theme powerup names to actual powerup types
+    const powerupMap = {
+      'speed': 'speedBoost',
+      'invincibility': 'invincibility',
+      'scoreMultiplier': 'scoreMultiplier',
+      'fireResistance': 'speedBoost', // Use speedBoost as placeholder
+      'doubleJump': 'invincibility',
+      'iceResistance': 'speedBoost',
+      'slideBoost': 'speedBoost',
+      'lavaWalk': 'speedBoost',
+      'fireImmunity': 'invincibility',
+      'lightningDash': 'speedBoost',
+      'goldenShield': 'invincibility',
+      'chaosMode': 'scoreMultiplier',
+      'elementMastery': 'scoreMultiplier',
+      'cosmicDash': 'speedBoost',
+      'starShield': 'invincibility',
+      'timeSlow': 'scoreMultiplier',
+      'all': 'vikingShip',
+      'godMode': 'vikingShip',
+      'infiniteDash': 'speedBoost'
+    };
+    
+    // Weighted selection from available powerups
+    const weights = {};
+    availablePowerups.forEach(p => {
+      const mappedType = powerupMap[p] || 'speedBoost';
+      weights[mappedType] = (weights[mappedType] || 0) + 1;
+    });
+    
+    // Always include vikingShip as rare option
+    weights.vikingShip = (weights.vikingShip || 0) + 5;
+    
     const total = Object.values(weights).reduce((a, b) => a + b, 0);
     let roll = Math.random() * total;
     let type = 'speedBoost';
@@ -2454,6 +2951,7 @@
       roll -= weight;
       if (roll <= 0) { type = key; break; }
     }
+    
     Powerups.push({ 
       x, 
       y: world.groundY - rand(60, 180), 
@@ -2474,11 +2972,49 @@
   };
 
   const spawnEnemy = (x) => {
+    const theme = LevelThemes.getCurrent();
+    // Select enemy type from level theme
+    const enemyTypes = theme.enemies || ['bandit'];
+    const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+    
+    // Enemy properties based on type
+    const enemyProps = {
+      bandit: { w: 50, h: 60, speed: 1.0, color: '#8B4513' },
+      boar: { w: 60, h: 40, speed: 1.3, color: '#654321' },
+      archer: { w: 45, h: 65, speed: 0.8, color: '#696969' },
+      warrior: { w: 55, h: 70, speed: 1.1, color: '#A0522D' },
+      fireThrower: { w: 50, h: 60, speed: 0.9, color: '#FF4500' },
+      shieldBearer: { w: 60, h: 65, speed: 0.7, color: '#C0C0C0' },
+      iceWarrior: { w: 55, h: 70, speed: 1.0, color: '#B0E0E6' },
+      snowWolf: { w: 50, h: 45, speed: 1.5, color: '#F0F8FF' },
+      frostArcher: { w: 45, h: 65, speed: 0.8, color: '#E0F6FF' },
+      lavaGolem: { w: 70, h: 80, speed: 0.6, color: '#8B0000' },
+      fireImp: { w: 40, h: 50, speed: 1.4, color: '#FF6347' },
+      magmaWarrior: { w: 60, h: 70, speed: 1.0, color: '#FF4500' },
+      valhallaWarrior: { w: 60, h: 75, speed: 1.2, color: '#FFD700' },
+      lightningSpirit: { w: 50, h: 60, speed: 1.3, color: '#FFFF00' },
+      goldenGuardian: { w: 70, h: 80, speed: 0.8, color: '#FFD700' },
+      chaosWarrior: { w: 60, h: 70, speed: 1.1, color: '#800080' },
+      fireIceHybrid: { w: 65, h: 75, speed: 1.0, color: '#FF1493' },
+      ragnarokBeast: { w: 80, h: 90, speed: 0.9, color: '#4B0082' },
+      starWarrior: { w: 55, h: 70, speed: 1.2, color: '#FFFFFF' },
+      voidCreature: { w: 60, h: 65, speed: 1.4, color: '#000000' },
+      celestialGuardian: { w: 75, h: 85, speed: 0.9, color: '#9370DB' },
+      godWarrior: { w: 70, h: 80, speed: 1.3, color: '#FFD700' },
+      divineSpirit: { w: 50, h: 60, speed: 1.5, color: '#FF69B4' },
+      asgardGuardian: { w: 85, h: 95, speed: 0.8, color: '#FF1493' }
+    };
+    
+    const props = enemyProps[enemyType] || enemyProps.bandit;
+    
     Enemies.push({
       x,
       y: world.groundY,
-      w: 50,
-      h: 60,
+      w: props.w,
+      h: props.h,
+      type: enemyType,
+      speed: props.speed,
+      color: props.color,
       defeated: false,
       hit: false
     });
@@ -2571,7 +3107,8 @@
       viking.faceplant = 0;
       viking.ducking = false;
       viking.onGround = true;
-      Obstacles.length = 0; 
+      Obstacles.length = 0;
+      DuckObstacles.length = 0;
       Meads.length = 0; 
       Powerups.length = 0;
       Particles.length = 0;
@@ -2579,7 +3116,9 @@
       Enemies.length = 0;
       Hearts.length = 0;
       Golds.length = 0;
+      Bosses.length = 0;
     world.nextObstacleAt = viking.x + 600;
+      world.nextDuckObstacleAt = viking.x + 800;
       world.nextMeadAt = viking.x + 400;
       world.nextPowerupAt = viking.x + 6000;
       world.nextPlatformAt = viking.x + 500;
@@ -3093,13 +3632,34 @@
     ctx.save();
     ctx.translate(e.x, e.y);
     
-    // Saxon/British warrior - enemy of Vikings
-    // Body - blue tunic (British colors)
-    ctx.fillStyle = "#1e3a5f";
+    // Use enemy color from type, or default
+    const baseColor = e.color || "#1e3a5f";
+    
+    // Body
+    ctx.fillStyle = baseColor;
     ctx.fillRect(-e.w/2 + 5, -e.h + 15, e.w - 10, e.h - 15);
     
-    // Chainmail armor overlay
-    ctx.fillStyle = "#6b7280";
+    // Special effects based on type
+    if (e.type === 'fireImp' || e.type === 'fireThrower' || e.type === 'magmaWarrior') {
+      // Fire glow
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#FF4500';
+    } else if (e.type === 'iceWarrior' || e.type === 'snowWolf' || e.type === 'frostArcher') {
+      // Ice glow
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#B0E0E6';
+    } else if (e.type === 'lightningSpirit' || e.type === 'valhallaWarrior') {
+      // Lightning glow
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#FFD700';
+    } else if (e.type === 'starWarrior' || e.type === 'celestialGuardian') {
+      // Cosmic glow
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = '#FFFFFF';
+    }
+    
+    // Chainmail/armor overlay
+    ctx.fillStyle = e.type && e.type.includes('Guardian') ? "#FFD700" : "#6b7280";
     ctx.fillRect(-e.w/2 + 8, -e.h + 15, e.w - 16, 25);
     
     // Head
@@ -3108,13 +3668,28 @@
     ctx.arc(0, -e.h - 5, 14, 0, Math.PI * 2);
     ctx.fill();
     
-    // Saxon helmet (round with nose guard)
-    ctx.fillStyle = "#71717a";
-    ctx.beginPath();
-    ctx.arc(0, -e.h - 8, 16, Math.PI, 0);
-    ctx.fill();
-    // Nose guard
-    ctx.fillRect(-2, -e.h - 10, 4, 15);
+    // Helmet/headgear based on type
+    if (e.type === 'boar') {
+      // Boar head
+      ctx.fillStyle = "#654321";
+      ctx.beginPath();
+      ctx.ellipse(0, -e.h - 3, 18, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (e.type === 'snowWolf') {
+      // Wolf head
+      ctx.fillStyle = "#F0F8FF";
+      ctx.beginPath();
+      ctx.ellipse(0, -e.h - 3, 16, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Standard helmet
+      ctx.fillStyle = "#71717a";
+      ctx.beginPath();
+      ctx.arc(0, -e.h - 8, 16, Math.PI, 0);
+      ctx.fill();
+      // Nose guard
+      ctx.fillRect(-2, -e.h - 10, 4, 15);
+    }
     
     // Eyes (angry)
     ctx.fillStyle = "#000";
@@ -3497,6 +4072,16 @@
     // Check for level unlocks
     LevelSystem.checkUnlocks(world.score);
     
+    // Check for boss spawn
+    const theme = LevelThemes.getCurrent();
+    if (theme.boss && theme.bossSpawnScore) {
+      const bossKey = theme.boss;
+      const hasBoss = Bosses.some(b => b.active && !b.defeated);
+      if (!hasBoss && world.score >= theme.bossSpawnScore && world.score < theme.bossSpawnScore + 100) {
+        spawnBoss(bossKey);
+      }
+    }
+    
     // Save level best score
     if (world.score > 0) {
       LevelSystem.saveBestScore(world.currentLevel, world.score);
@@ -3607,6 +4192,13 @@
       const maxSpawn = baseMax - (baseMax * 0.45 * scoreFactor);
       world.nextObstacleAt += rand(Math.max(200, minSpawn), Math.max(350, maxSpawn));
     }
+    // Spawn duck obstacles (flying obstacles that require ducking)
+    if (viking.x > world.nextDuckObstacleAt - W) {
+      if (Math.random() < 0.4) { // 40% chance to spawn duck obstacle
+        spawnDuckObstacle(world.nextDuckObstacleAt);
+      }
+      world.nextDuckObstacleAt += rand(400, 800);
+    }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
       world.nextMeadAt += rand(400, 600);
@@ -3640,19 +4232,30 @@
     }
     if (viking.x > world.nextGoldAt - W) {
       spawnGold(world.nextGoldAt);
+      // Also spawn rune stones occasionally
+      Collectibles.spawnRuneStone(world.nextGoldAt + rand(100, 300), world.groundY - rand(60, 200), world.currentLevel);
       world.nextGoldAt += rand(2000, 4000); // Rare gold spawns
     }
     
     // Update all objects
     for (const o of Obstacles) o.x -= world.speed * dt;
+    // Update duck obstacles (flying obstacles)
+    for (const duckObst of DuckObstacles) {
+      if (!duckObst.hit) {
+        duckObst.x += duckObst.vx * dt;
+        // Remove if off screen
+        if (duckObst.x < viking.x - W - 200) duckObst.hit = true;
+      }
+    }
     for (const p of Platforms) p.x -= world.speed * dt;
     
     for (const e of Enemies) {
       if (!e.defeated) {
-        // Enemy speed scales with world speed and difficulty
+        // Enemy speed scales with world speed, difficulty, and enemy type speed
         const diff = DifficultyModes.getCurrent();
         const scoreSpeedBoost = 1.0 + (world.score / 100000) * 0.3;
-        e.x -= world.speed * diff.enemySpeedMultiplier * scoreSpeedBoost * dt;
+        const enemySpeed = (e.speed || 1.0) * diff.enemySpeedMultiplier * scoreSpeedBoost;
+        e.x -= world.speed * enemySpeed * dt;
         if (e.x < viking.x - W - 200) e.defeated = true;
       }
     }
@@ -3670,6 +4273,30 @@
       if (!g.taken) {
         g.rotation += dt * 3;
         g.x -= world.speed * dt;
+      }
+    }
+    
+    // Update bosses
+    for (const boss of Bosses) {
+      if (boss.active && !boss.defeated) {
+        // Boss moves towards player slowly
+        if (boss.x > viking.x + 150) {
+          boss.x -= world.speed * boss.speed * dt;
+        }
+        // Boss attacks
+        const now = Date.now();
+        if (now - boss.lastAttack > boss.attacks[boss.attackIndex % boss.attacks.length].cooldown) {
+          boss.lastAttack = now;
+          boss.attackIndex++;
+          // Attack logic would go here (spawn projectiles, etc.)
+        }
+        // Check phase changes
+        const healthPercent = boss.currentHealth / boss.maxHealth;
+        if (healthPercent <= 0.5 && boss.phase === 1) {
+          boss.phase = 2; // Enraged
+        } else if (healthPercent <= 0.25 && boss.phase === 2) {
+          boss.phase = 3; // Final phase
+        }
       }
     }
     
@@ -3776,6 +4403,67 @@
         }
       }
     }
+    
+    // Collisions - Duck Obstacles (flying obstacles that require ducking)
+    for (const duckObst of DuckObstacles) {
+      if (!duckObst.hit) {
+        const distX = Math.abs(viking.x - duckObst.x);
+        const distY = Math.abs((viking.y - 30) - duckObst.y); // Head height
+        // Collision if player is at head height and NOT ducking
+        if (distX < (duckObst.w/2 + 20) && distY < (duckObst.h/2 + 15) && !viking.ducking) {
+          if (world.powerups.vikingShip.active) {
+            duckObst.hit = true;
+            addParticle(duckObst.x, duckObst.y, "#4A90D9", 15);
+            playSFX('shipDestroy');
+            world.score += 100;
+          } else if (!world.powerups.invincibility.active) {
+            duckObst.hit = true;
+            world.lives--;
+            addParticle(duckObst.x, duckObst.y, "#ef4444", 15);
+            playSFX('damage');
+            updateHUD();
+            
+            if (world.lives <= 0) {
+              for (const key in powerupSounds) {
+                stopPowerupSound(key);
+              }
+              world.over = true;
+              viking.faceplant = 1.5;
+              statePill.textContent = "Game Over";
+              engagement.sessionDeaths++;
+              if (world.score > engagement.personalBest) {
+                engagement.personalBest = Math.floor(world.score);
+                localStorage.setItem('personalBest', engagement.personalBest.toString());
+              }
+              HighScoreManager.saveScore(world.score);
+              
+              // Update level mastery
+              LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
+              
+              playSFX('gameover');
+              setTimeout(() => { 
+                if (overlay) {
+                  overlay.style.display = "grid";
+                  overlay.style.visibility = "visible";
+                  overlay.style.opacity = "1";
+                  const overlayTitle = $("overlayTitle");
+                  const overlayText = $("overlayText");
+                  if (overlayTitle) overlayTitle.textContent = "Game Over";
+                  if (overlayText) overlayText.textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                  if (startBtn) startBtn.textContent = "Play Again";
+                }
+              }, 1200);
+            } else {
+              world.powerups.invincibility.active = true;
+              world.powerups.invincibility.timeLeft = 2;
+            }
+          } else {
+            addParticle(duckObst.x, duckObst.y, "#4ECDC4", 12);
+            beep("sine", 400, 0.15);
+          }
+        }
+      }
+    }
 
     // Collisions - Enemies - MARIO STYLE: Jump on them to kill!
     for (const e of Enemies) {
@@ -3813,6 +4501,8 @@
         if (horizontalOverlap && comingFromAbove) {
           e.defeated = true;
           e.hit = true;
+          // Update daily challenge progress
+          DailyChallenges.updateProgress('enemyKills', 1);
           viking.vy = -750;
           
           // Combo system - timer scales with score and difficulty
@@ -3907,6 +4597,102 @@
         }
       }
     }
+    
+    // Collisions - Bosses
+    for (const boss of Bosses) {
+      if (boss.active && !boss.defeated) {
+        const distX = Math.abs(viking.x - boss.x);
+        const vikingHeight = viking.ducking ? 42 : 70;
+        const vikingTop = viking.y - vikingHeight;
+        const vikingBottom = viking.y;
+        const bossTop = boss.y - boss.size.height;
+        const bossBottom = boss.y;
+        
+        const horizontalOverlap = distX < (boss.size.width/2 + 45);
+        const verticalOverlap = vikingBottom > bossTop && vikingTop < bossBottom;
+        
+        // Viking ship destroys boss instantly
+        if (world.powerups.vikingShip.active && horizontalOverlap) {
+          boss.defeated = true;
+          boss.active = false;
+          world.score += boss.rewards.score * 10; // Bonus for ship kill
+          addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 50);
+          playSFX('shipDestroyEnemy');
+          continue;
+        }
+        
+        // Jump on boss from above = damage boss
+        const comingFromAbove = viking.vy > 0 && 
+                               vikingBottom <= bossTop + 30 &&
+                               vikingBottom >= bossTop - 10;
+        
+        if (horizontalOverlap && comingFromAbove) {
+          boss.currentHealth--;
+          viking.vy = -400; // Bounce off
+          addParticle(boss.x, boss.y - boss.size.height/2, boss.color, 30);
+          playSFX('jump');
+          
+          if (boss.currentHealth <= 0) {
+            boss.defeated = true;
+            boss.active = false;
+            world.score += boss.rewards.score;
+            world.mead += boss.rewards.mead;
+            addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 60);
+            playSFX('powerup');
+            
+            // Collect artifact from boss
+            const artifactId = `artifact_${boss.level}_${boss.name}`;
+            Collectibles.collectArtifact(artifactId);
+            
+            // Show boss defeat notification
+            const notification = document.createElement('div');
+            notification.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#FFD700;padding:20px 40px;border-radius:12px;font-size:24px;font-weight:700;z-index:10000;';
+            notification.textContent = `BOSS DEFEATED! +${boss.rewards.score.toLocaleString()} pts`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+          }
+        } else if (horizontalOverlap && verticalOverlap && !comingFromAbove) {
+          // Side collision = player takes damage
+          if (!world.powerups.invincibility.active) {
+            world.lives--;
+            addParticle(viking.x, viking.y, "#ef4444", 25);
+            playSFX('damage');
+            updateHUD();
+            
+            if (world.lives <= 0) {
+              for (const key in powerupSounds) {
+                stopPowerupSound(key);
+              }
+              world.over = true;
+              viking.faceplant = 1.5;
+              if (statePill) statePill.textContent = "Game Over";
+              engagement.sessionDeaths++;
+              if (world.score > engagement.personalBest) {
+                engagement.personalBest = Math.floor(world.score);
+                localStorage.setItem('personalBest', engagement.personalBest.toString());
+              }
+              HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+              playSFX('gameover');
+              setTimeout(() => { 
+                if (overlay) {
+                  overlay.style.display = "grid";
+                  overlay.style.visibility = "visible";
+                  overlay.style.opacity = "1";
+                }
+                const overlayTitle = $("overlayTitle");
+                const overlayText = $("overlayText");
+                if (overlayTitle) overlayTitle.textContent = "Game Over";
+                if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                if (startBtn) startBtn.textContent = "Play Again";
+              }, 1200);
+            } else {
+              world.powerups.invincibility.active = true;
+              world.powerups.invincibility.timeLeft = 1.5;
+            }
+          }
+        }
+      }
+    }
 
     // Collisions - Meads
     for (const m of Meads) {
@@ -3916,6 +4702,8 @@
         Achievements.sessionStats.meadCollected++;
         Achievements.totalStats.mead++;
         localStorage.setItem('totalMead', Achievements.totalStats.mead.toString());
+        // Update daily challenge
+        DailyChallenges.updateProgress('meadCollect', 1);
         world.score += 75 * scoreMultiplier;
         addParticle(m.x, m.y, "#FFD700", 8);
         playSFX('mead');
@@ -3950,13 +4738,21 @@
     for (const g of Golds) {
       if (!g.taken && Math.hypot(viking.x - g.x, (viking.y-30) - g.y) < 45) {
         g.taken = true;
-        const streakBonus = engagement.streakBonus || 1.0;
-        world.score += g.value * scoreMultiplier * streakBonus;
-        Achievements.sessionStats.gold++;
-        Achievements.totalStats.gold++;
-        localStorage.setItem('totalGold', Achievements.totalStats.gold.toString());
-        addParticle(g.x, g.y, "#ffd700", 25);
-        playSFX('gold');
+        if (g.isRuneStone) {
+          // Collect rune stone
+          Collectibles.collectRuneStone(g.runeId, g.levelId);
+          world.score += 1000; // Bonus for rune stone
+          addParticle(g.x, g.y, "#9370DB", 30);
+          playSFX('powerup');
+        } else {
+          const streakBonus = engagement.streakBonus || 1.0;
+          world.score += g.value * scoreMultiplier * streakBonus;
+          Achievements.sessionStats.gold++;
+          Achievements.totalStats.gold++;
+          localStorage.setItem('totalGold', Achievements.totalStats.gold.toString());
+          addParticle(g.x, g.y, "#ffd700", 25);
+          playSFX('gold');
+        }
         updateHUD();
       }
     }
@@ -3975,11 +4771,34 @@
       ctx.translate(shakeX, shakeY);
     }
     
+    // Apply level theme background
+    const theme = LevelThemes.getCurrent();
     const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-    bgGradient.addColorStop(0, "#0a0a0a");
-    bgGradient.addColorStop(1, "#1a1a1a");
+    if (theme.bgGradient.length === 2) {
+      bgGradient.addColorStop(0, theme.bgGradient[0]);
+      bgGradient.addColorStop(1, theme.bgGradient[1]);
+    } else {
+      // Rainbow gradient for level 8
+      const stops = theme.bgGradient.length;
+      theme.bgGradient.forEach((color, i) => {
+        bgGradient.addColorStop(i / (stops - 1), color);
+      });
+    }
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, W, H);
+    
+    // Parallax background layers
+    if (theme.parallaxLayers) {
+      ctx.save();
+      theme.parallaxLayers.forEach((layer, i) => {
+        const offsetX = (world.camX * layer.speed) % W;
+        ctx.fillStyle = layer.color;
+        ctx.globalAlpha = 0.3 - (i * 0.1);
+        ctx.fillRect(-offsetX, 0, W, H);
+        if (offsetX > 0) ctx.fillRect(W - offsetX, 0, W, H);
+      });
+      ctx.restore();
+    }
     
     ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
     ctx.lineWidth = 2;
@@ -3991,13 +4810,87 @@
       ctx.stroke();
     }
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"; 
+    // Ground with theme color
+    ctx.strokeStyle = theme.groundColor || "rgba(255, 255, 255, 0.15)"; 
     ctx.lineWidth = 3; 
     ctx.beginPath(); 
     ctx.moveTo(0, world.groundY); 
     ctx.lineTo(W, world.groundY); 
     ctx.stroke();
-
+    
+    // Draw ground fill
+    ctx.fillStyle = theme.groundColor || "#1a1a1a";
+    ctx.fillRect(0, world.groundY, W, H - world.groundY);
+    
+    // Weather effects based on level theme
+    if (theme.weather === 'rain') {
+      ctx.save();
+      ctx.strokeStyle = "rgba(173, 216, 230, 0.6)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 30; i++) {
+        const x = (world.camX * 0.5 + i * 60) % W;
+        const y = (world.t * 300 + i * 20) % H;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 2, y + 10);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (theme.weather === 'snow') {
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      for (let i = 0; i < 50; i++) {
+        const x = (world.camX * 0.3 + i * 40) % W;
+        const y = (world.t * 100 + i * 15) % H;
+        ctx.beginPath();
+        ctx.arc(x, y, 2 + Math.sin(world.t + i) * 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (theme.weather === 'fire') {
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 69, 0, 0.6)";
+      for (let i = 0; i < 20; i++) {
+        const x = (world.camX * 0.4 + i * 80) % W;
+        const y = world.groundY - 20 + Math.sin(world.t * 3 + i) * 5;
+        ctx.beginPath();
+        ctx.arc(x, y, 3 + Math.random() * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (theme.weather === 'lightning') {
+      if (Math.random() < 0.01) {
+        ctx.save();
+        ctx.fillStyle = "rgba(255, 255, 0, 0.5)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+    } else if (theme.weather === 'cosmic') {
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      for (let i = 0; i < 100; i++) {
+        const x = (world.camX * 0.1 + i * 20) % W;
+        const y = (i * 15) % H;
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (theme.weather === 'rainbow') {
+      ctx.save();
+      const colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'];
+      for (let i = 0; i < 30; i++) {
+        const x = (world.camX * 0.2 + i * 50) % W;
+        const y = (world.t * 50 + i * 20) % H;
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    
     // Speed lines effect at high speeds
     if (world.speed > 320 || world.powerups.speedBoost.active) {
       const intensity = world.powerups.speedBoost.active ? 0.4 : (world.speed - 320) / 100;
@@ -4051,6 +4944,67 @@
       else drawRock(o.x, o.y);
       }
     }
+    
+    // Draw duck obstacles (flying obstacles)
+    for (const duckObst of DuckObstacles) {
+      if (!duckObst.hit && duckObst.x > viking.x - W - 100 && duckObst.x < viking.x + W + 100) {
+        ctx.save();
+        ctx.translate(duckObst.x, duckObst.y);
+        ctx.fillStyle = duckObst.type === 'raven' ? '#1a1a1a' : 
+                       duckObst.type === 'arrow' ? '#8B4513' :
+                       duckObst.type === 'branch' ? '#654321' :
+                       duckObst.type === 'axe' ? '#C0C0C0' :
+                       duckObst.type === 'spear' ? '#696969' : '#FF4500';
+        if (duckObst.type === 'raven') {
+          // Draw raven
+          ctx.beginPath();
+          ctx.arc(0, 0, 15, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.arc(-5, -3, 3, 0, Math.PI * 2);
+          ctx.fill(); // Eye
+        } else if (duckObst.type === 'arrow') {
+          // Draw arrow
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(duckObst.w, 0);
+          ctx.lineTo(duckObst.w - 5, -3);
+          ctx.lineTo(duckObst.w, 0);
+          ctx.lineTo(duckObst.w - 5, 3);
+          ctx.closePath();
+          ctx.fill();
+        } else if (duckObst.type === 'branch') {
+          // Draw branch
+          ctx.fillRect(0, -duckObst.h/2, duckObst.w, duckObst.h);
+        } else if (duckObst.type === 'axe') {
+          // Draw axe
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillRect(0, -duckObst.h/2, 3, duckObst.h);
+        } else if (duckObst.type === 'spear') {
+          // Draw spear
+          ctx.fillRect(0, -duckObst.h/2, duckObst.w, 3);
+          ctx.beginPath();
+          ctx.moveTo(duckObst.w, 0);
+          ctx.lineTo(duckObst.w - 5, -3);
+          ctx.lineTo(duckObst.w - 5, 3);
+          ctx.closePath();
+          ctx.fill();
+        } else if (duckObst.type === 'fireball') {
+          // Draw fireball
+          ctx.beginPath();
+          ctx.arc(0, 0, 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#FFD700';
+          ctx.beginPath();
+          ctx.arc(0, 0, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
 
     if (world.powerups.invincibility.active) {
       ctx.save();
@@ -4083,6 +5037,65 @@
       ctx.quadraticCurveTo(viking.x - 130, viking.y + 35, viking.x - 180, viking.y + 25);
       ctx.stroke();
       ctx.restore();
+    }
+
+    // Draw bosses
+    for (const boss of Bosses) {
+      if (boss.active && !boss.defeated && boss.x > viking.x - W - 100 && boss.x < viking.x + W + 100) {
+        ctx.save();
+        ctx.translate(boss.x, boss.y);
+        
+        // Boss body
+        ctx.fillStyle = boss.color;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = boss.color;
+        ctx.fillRect(-boss.size.width/2, -boss.size.height, boss.size.width, boss.size.height);
+        
+        // Boss head
+        ctx.fillStyle = "#d4a574";
+        ctx.beginPath();
+        ctx.arc(0, -boss.size.height - 20, 25, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Boss glow effect
+        if (boss.phase >= 2) {
+          ctx.strokeStyle = boss.phase === 3 ? "#FF0000" : "#FFD700";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(-boss.size.width/2 - 5, -boss.size.height - 5, boss.size.width + 10, boss.size.height + 10);
+        }
+        
+        ctx.restore();
+      }
+    }
+    
+    // Boss health bar
+    for (const boss of Bosses) {
+      if (boss.active && !boss.defeated) {
+        const barWidth = 300;
+        const barHeight = 20;
+        const barX = W / 2 - barWidth / 2;
+        const barY = 30;
+        const healthPercent = boss.currentHealth / boss.maxHealth;
+        
+        // Background
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
+        
+        // Health bar
+        ctx.fillStyle = healthPercent > 0.5 ? "#34C759" : healthPercent > 0.25 ? "#FF9500" : "#FF3B30";
+        ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+        
+        // Border
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        
+        // Boss name
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "700 18px -apple-system";
+        ctx.textAlign = "center";
+        ctx.fillText(`${boss.name} - ${boss.currentHealth}/${boss.maxHealth}`, W / 2, barY - 10);
+      }
     }
 
     drawViking(viking.x, viking.y);
@@ -4305,8 +5318,52 @@
     smoothedBPM: 0
   };
   
-  // Check if MediaPipe is available (with retry for slow loading)
-  let mediapipeAvailable = typeof window.tasksVision !== 'undefined';
+  // Dynamic MediaPipe Loader with Fallback CDNs
+  let mediapipeAvailable = false;
+  
+  const loadMediaPipe = async () => {
+    // If already loaded, return immediately
+    if (typeof window.tasksVision !== 'undefined') {
+      mediapipeAvailable = true;
+      return true;
+    }
+    
+    const sources = [
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js',
+      'https://unpkg.com/@mediapipe/tasks-vision@0.10.0/vision_bundle.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/mediapipe/0.10.0/vision_bundle.js'
+    ];
+    
+    for (const src of sources) {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => {
+            // Wait a bit for global to be available
+            setTimeout(() => {
+              if (typeof window.tasksVision !== 'undefined') {
+                mediapipeAvailable = true;
+                console.log(`MediaPipe loaded from ${src}`);
+                resolve(true);
+              } else {
+                reject(new Error('MediaPipe not available after load'));
+              }
+            }, 100);
+          };
+          script.onerror = () => reject(new Error(`Failed to load from ${src}`));
+          document.head.appendChild(script);
+        });
+        return true;
+      } catch (e) {
+        console.warn(`Failed to load MediaPipe from ${src}:`, e);
+        continue;
+      }
+    }
+    
+    console.error('All MediaPipe CDN sources failed');
+    return false;
+  };
   
   const checkMediaPipeAvailability = () => {
     return new Promise((resolve) => {
@@ -4331,9 +5388,9 @@
     });
   };
   
-  // Initial check - don't disable immediately, wait for load
-  checkMediaPipeAvailability().then(available => {
-    if (!available) {
+  // Load MediaPipe on page load
+  loadMediaPipe().then(loaded => {
+    if (!loaded) {
       console.warn("MediaPipe not loaded - eye tracking disabled");
       if (eyeTrackBtn) {
         eyeTrackBtn.textContent = "👁️ Eye Tracking Unavailable";
@@ -4353,12 +5410,12 @@
   // Initialize MediaPipe Face Landmarker
   const initFaceLandmarker = async () => {
     try {
-      // Ensure MediaPipe is available
+      // Ensure MediaPipe is loaded
       if (typeof window.tasksVision === 'undefined') {
-        await checkMediaPipeAvailability();
-      }
-      if (typeof window.tasksVision === 'undefined') {
-        throw new Error("MediaPipe not available");
+        const loaded = await loadMediaPipe();
+        if (!loaded) {
+          throw new Error("MediaPipe not available");
+        }
       }
       const { FaceLandmarker, FilesetResolver } = window.tasksVision;
       
@@ -4665,10 +5722,10 @@
   // Eye tracking button click - start calibration
   if (eyeTrackBtn) {
     eyeTrackBtn.onclick = async () => {
-      // Check if MediaPipe is available now
+      // Ensure MediaPipe is loaded
       if (typeof window.tasksVision === 'undefined') {
-        const available = await checkMediaPipeAvailability();
-        if (!available) {
+        const loaded = await loadMediaPipe();
+        if (!loaded) {
           alert("Eye tracking is not available. Please ensure you have a stable internet connection and try refreshing the page.");
           return;
         }
@@ -4917,6 +5974,7 @@
       LevelSystem.init();
       LevelSystem.loadExternal();
       DifficultyModes.loadSaved();
+      DailyChallenges.init();
       resize();
   resetWorld();
   requestAnimationFrame(tick);
@@ -4926,6 +5984,7 @@
     LevelSystem.init();
     LevelSystem.loadExternal();
     DifficultyModes.loadSaved();
+    DailyChallenges.init();
     resize();
     resetWorld();
     requestAnimationFrame(tick);
