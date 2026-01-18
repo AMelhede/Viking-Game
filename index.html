@@ -341,6 +341,127 @@
       60% { transform: scale(1); }
     }
     
+    .achievement-popup {
+      position: fixed;
+      top: 20px;
+      right: -350px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 10000;
+      box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+      transition: right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      color: #fff;
+    }
+    .achievement-popup.show { right: 20px; }
+    .achievement-popup .achievement-icon { font-size: 36px; }
+    .achievement-popup strong { color: #ffd700; font-size: 16px; }
+    .achievement-popup small { color: #aaa; font-size: 12px; }
+    
+    .combo-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      font-size: 48px;
+      font-weight: 900;
+      color: #ff6b6b;
+      text-shadow: 0 0 20px #ff6b6b, 0 4px 8px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 200;
+      transition: transform 0.15s ease-out, opacity 0.3s;
+      opacity: 0;
+    }
+    .combo-display.show {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    .combo-display.x3 { color: #fbbf24; text-shadow: 0 0 20px #fbbf24, 0 4px 8px rgba(0,0,0,0.5); }
+    .combo-display.x5 { color: #4ade80; text-shadow: 0 0 20px #4ade80, 0 4px 8px rgba(0,0,0,0.5); }
+    .combo-display.x10 { color: #a855f7; text-shadow: 0 0 30px #a855f7, 0 4px 8px rgba(0,0,0,0.5); font-size: 64px; }
+    
+    .near-miss {
+      position: absolute;
+      font-size: 24px;
+      font-weight: 800;
+      color: #22d3ee;
+      text-shadow: 0 0 15px #22d3ee;
+      pointer-events: none;
+      animation: nearMissFloat 1s ease-out forwards;
+    }
+    @keyframes nearMissFloat {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
+    }
+    
+    .milestone-flash {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, transparent 70%);
+      pointer-events: none;
+      animation: milestoneFlash 0.8s ease-out forwards;
+    }
+    @keyframes milestoneFlash {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    
+    .personal-best-alert {
+      position: absolute;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #ffd700, #ff8c00);
+      color: #000;
+      padding: 8px 24px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 14px;
+      animation: pbPulse 0.5s ease-in-out infinite alternate;
+      z-index: 150;
+    }
+    @keyframes pbPulse {
+      0% { transform: translateX(-50%) scale(1); }
+      100% { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+    }
+    
+    .daily-bonus-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .daily-bonus-modal.show { display: flex; }
+    .daily-bonus-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 3px solid #ffd700;
+      border-radius: 24px;
+      padding: 32px;
+      text-align: center;
+      color: #fff;
+      max-width: 400px;
+    }
+    .daily-bonus-card h2 { color: #ffd700; margin-bottom: 8px; }
+    .daily-bonus-card .streak { font-size: 64px; margin: 16px 0; }
+    .daily-bonus-card .reward { font-size: 24px; color: #4ade80; margin: 16px 0; }
+    .daily-bonus-card button {
+      background: linear-gradient(135deg, #ffd700, #ff8c00);
+      border: none;
+      padding: 12px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+    
     .calibration-overlay {
       position: absolute;
       inset: 0;
@@ -530,6 +651,12 @@
   <div class="wrap">
     <div class="shell" id="shell">
       <canvas class="canvas" id="c"></canvas>
+      
+      <!-- Combo Display -->
+      <div class="combo-display" id="comboDisplay">COMBO x2</div>
+      
+      <!-- Personal Best Alert -->
+      <div class="personal-best-alert" id="pbAlert" style="display:none;">🔥 NEW RECORD INCOMING!</div>
       
       <!-- Eye Tracking Indicator -->
       <div class="eye-tracking-indicator" id="eyeTrackingIndicator">
@@ -803,10 +930,9 @@
     }
   };
   
-  // ===== AUTHENTIC VIKING SOUND EFFECTS =====
-  // Inspired by Vikings TV series - using advanced synthesis techniques
+  // Sound Effects System
   
-  // Helper: Create white noise buffer
+  // White noise buffer
   const createNoiseBuffer = (duration) => {
     const bufferSize = AC.sampleRate * duration;
     const buffer = AC.createBuffer(1, bufferSize, AC.sampleRate);
@@ -817,7 +943,7 @@
     return buffer;
   };
   
-  // Helper: Create formant filter for voice sounds
+  // Formant filter
   const createFormant = (freq, q, gain) => {
     const filter = AC.createBiquadFilter();
     filter.type = 'bandpass';
@@ -829,8 +955,54 @@
     return { filter, gain: gn };
   };
   
+  // Audio file loader with synthesis fallback
+  const AudioLoader = {
+    files: {},
+    loaded: false,
+    supported: ['warhorn', 'mead', 'gameover', 'stomp', 'gold', 'shipStart', 'shipDestroy', 'jump', 'damage', 'heart', 'powerup'],
+    
+    async init() {
+      for (const name of this.supported) {
+        try {
+          const audio = new Audio();
+          audio.src = `sounds/${name}.mp3`;
+          await new Promise((resolve, reject) => {
+            audio.oncanplaythrough = resolve;
+            audio.onerror = reject;
+            setTimeout(reject, 2000);
+          });
+          this.files[name] = audio.src;
+        } catch (e) {
+          // File not found, will use synthesis
+        }
+      }
+      this.loaded = true;
+    },
+    
+    play(name, volume = 1.0, rate = 1.0) {
+      if (!OPT.sound || !this.files[name]) return false;
+      try {
+        const audio = new Audio(this.files[name]);
+        audio.volume = Math.min(1, Math.max(0, volume * (0.9 + Math.random() * 0.2)));
+        audio.playbackRate = rate * (0.95 + Math.random() * 0.1);
+        audio.play().catch(() => {});
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+  };
+  
+  // Try to load audio files (non-blocking)
+  AudioLoader.init().catch(() => {});
+  
   const playSFX = (sfxType) => {
     if (!OPT.sound) return;
+    
+    // Try audio file first
+    if (AudioLoader.play(sfxType)) return;
+    
+    // Fall back to synthesis
     if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
     
     const now = AC.currentTime;
@@ -1409,9 +1581,7 @@
     }
   };
 
-  // ==========================================
-  // VIKING BACKGROUND MUSIC SYSTEM
-  // ==========================================
+  // Background Music
   let musicContext = null;
   let musicPlaying = false;
   let musicNodes = [];
@@ -1580,6 +1750,39 @@
     }
   };
   
+  // Dynamic music intensity based on gameplay
+  const updateMusicIntensity = () => {
+    if (!musicGain || !musicPlaying || !world.started) return;
+    
+    // Base volume + intensity scaling
+    let intensity = 0.15;
+    
+    // Higher speed = more intense music
+    const speedFactor = Math.min((world.speed - 230) / 170, 1); // 0-1 based on speed
+    intensity += speedFactor * 0.1;
+    
+    // Low lives = more intense
+    if (world.lives <= 2) intensity += 0.05;
+    if (world.lives === 1) intensity += 0.08;
+    
+    // Powerups = more intense
+    if (world.powerups.vikingShip.active) intensity += 0.1;
+    if (world.powerups.speedBoost.active) intensity += 0.05;
+    if (world.powerups.invincibility.active) intensity += 0.03;
+    
+    // Combo = more intense
+    if (engagement.combo.count >= 5) intensity += 0.05;
+    if (engagement.combo.count >= 10) intensity += 0.05;
+    
+    // Approaching personal best = intense
+    if (engagement.personalBest > 0 && world.score >= engagement.personalBest * 0.9) {
+      intensity += 0.08;
+    }
+    
+    const clampedIntensity = Math.min(intensity, 0.4);
+    musicGain.gain.linearRampToValueAtTime(clampedIntensity, musicContext.currentTime + 0.1);
+  };
+  
   // Start music on first user interaction
   const startMusicOnInteraction = () => {
     if (!musicPlaying && OPT.sound) {
@@ -1591,11 +1794,102 @@
   document.addEventListener('click', startMusicOnInteraction);
   document.addEventListener('keydown', startMusicOnInteraction);
 
-  const OPT = { sound: true }; // Sound ON by default
+  const OPT = { sound: true };
+  
+  // Engagement & Addiction Systems
+  const engagement = {
+    combo: { count: 0, timer: 0, maxCombo: 0 },
+    nearMiss: { count: 0, lastTime: 0 },
+    milestones: { last: 0, nextAt: 10000 },
+    sessionDeaths: 0,
+    personalBest: parseInt(localStorage.getItem('personalBest') || '0'),
+    notifiedApproaching: false
+  };
+  
+  // Daily Bonus System
+  const DailyBonus = {
+    rewards: [
+      { day: 1, type: 'life', value: 1, label: '+1 Life' },
+      { day: 2, type: 'gold', value: 500, label: '+500 Gold' },
+      { day: 3, type: 'powerup', value: 'speedBoost', label: 'Speed Boost' },
+      { day: 4, type: 'life', value: 2, label: '+2 Lives' },
+      { day: 5, type: 'gold', value: 1000, label: '+1000 Gold' },
+      { day: 6, type: 'powerup', value: 'invincibility', label: 'Invincibility' },
+      { day: 7, type: 'mega', value: null, label: 'MEGA BONUS!' }
+    ],
+    getStreak() {
+      const lastLogin = localStorage.getItem('lastLoginDate');
+      const streak = parseInt(localStorage.getItem('loginStreak') || '0');
+      const today = new Date().toDateString();
+      if (lastLogin === today) return { streak, claimed: true };
+      const yesterday = new Date(Date.now() - 86400000).toDateString();
+      if (lastLogin === yesterday) return { streak: streak + 1, claimed: false };
+      return { streak: 1, claimed: false };
+    },
+    claim() {
+      const { streak, claimed } = this.getStreak();
+      if (claimed) return null;
+      localStorage.setItem('lastLoginDate', new Date().toDateString());
+      localStorage.setItem('loginStreak', Math.min(streak, 7).toString());
+      return this.rewards[(streak - 1) % 7];
+    }
+  };
+  
+  // Achievement System
+  const Achievements = {
+    list: {
+      firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️' },
+      goldRush: { name: 'Gold Rush', desc: 'Collect 10 gold coins in one run', icon: '💰' },
+      survivor: { name: 'Survivor', desc: 'Reach 25,000 points', icon: '🛡️' },
+      legend: { name: 'Viking Legend', desc: 'Reach 100,000 points', icon: '👑' },
+      captain: { name: 'Ship Captain', desc: 'Destroy 5 enemies with Viking ship', icon: '⛵' },
+      comboMaster: { name: 'Combo Master', desc: 'Get a 10x combo streak', icon: '🔥' },
+      closeCall: { name: 'Close Call', desc: 'Survive 10 near misses in one run', icon: '😰' },
+      meadLover: { name: 'Mead Lover', desc: 'Collect 50 mead in one run', icon: '🍺' }
+    },
+    unlocked: JSON.parse(localStorage.getItem('achievements') || '{}'),
+    sessionStats: { stomps: 0, gold: 0, shipKills: 0, nearMisses: 0 },
+    unlock(id) {
+      if (this.unlocked[id]) return false;
+      this.unlocked[id] = Date.now();
+      localStorage.setItem('achievements', JSON.stringify(this.unlocked));
+      showAchievement(this.list[id]);
+      return true;
+    },
+    check() {
+      const s = this.sessionStats;
+      if (s.stomps >= 1) this.unlock('firstBlood');
+      if (s.gold >= 10) this.unlock('goldRush');
+      if (world.score >= 25000) this.unlock('survivor');
+      if (world.score >= 100000) this.unlock('legend');
+      if (s.shipKills >= 5) this.unlock('captain');
+      if (engagement.combo.maxCombo >= 10) this.unlock('comboMaster');
+      if (s.nearMisses >= 10) this.unlock('closeCall');
+      if (world.mead >= 50) this.unlock('meadLover');
+    },
+    reset() {
+      this.sessionStats = { stomps: 0, gold: 0, shipKills: 0, nearMisses: 0 };
+    }
+  };
+  
+  // Show achievement popup
+  const showAchievement = (achievement) => {
+    const popup = document.createElement('div');
+    popup.className = 'achievement-popup';
+    popup.innerHTML = `<span class="achievement-icon">${achievement.icon}</span><div><strong>${achievement.name}</strong><br><small>${achievement.desc}</small></div>`;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.classList.add('show'), 10);
+    setTimeout(() => {
+      popup.classList.remove('show');
+      setTimeout(() => popup.remove(), 300);
+    }, 3000);
+    playSFX('powerup');
+  };
+  
   const world = { 
     started: false, paused: false, over: false, 
     score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
-    lives: 3,
+    lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
     nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextHeartAt: 0, nextGoldAt: 0,
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
@@ -1715,6 +2009,16 @@
       world.mead = 0; 
       world.speed = 230; 
       world.t = 0;
+      world.screenShake = 0;
+      world.goldenRun = false;
+      world.goldenRunTimer = 0;
+      
+      // Reset engagement systems
+      engagement.combo = { count: 0, timer: 0, maxCombo: 0 };
+      engagement.nearMiss = { count: 0, lastTime: 0 };
+      engagement.milestones = { last: 0, nextAt: 10000 };
+      engagement.notifiedApproaching = false;
+      Achievements.reset();
     world.groundY = H * 0.8;
       world.camX = 0;
       viking.x = 100;
@@ -1738,7 +2042,16 @@
       world.nextEnemyAt = viking.x + 800;
       world.nextHeartAt = viking.x + 1200;
       world.nextGoldAt = viking.x + 2000;
-      world.lives = 3;
+      
+      // Comeback mechanic: extra life for struggling players
+      let startingLives = 3;
+      if (engagement.sessionDeaths >= 5) {
+        startingLives = 4;
+      } else if (engagement.sessionDeaths >= 10) {
+        startingLives = 5;
+      }
+      world.lives = startingLives;
+      
       world.powerups = {
         speedBoost: { active: false, timeLeft: 0 },
         invincibility: { active: false, timeLeft: 0 },
@@ -1859,10 +2172,7 @@
         localStorage.setItem(key, JSON.stringify(scores));
       }
       
-      // Try to sync to platform-wide API (if configured)
       try {
-        // This would sync to a backend API for platform-wide leaderboards
-        // For now, uses localStorage but structured for easy API integration
         if (!HighScoreManager.useLocalStorage) {
           // await fetch(`${HighScoreManager.apiUrl}/viking-game-leaderboard`, {
           //   method: 'PUT',
@@ -1976,7 +2286,11 @@
       }
       if (statePill) statePill.textContent = "Playing";
       if (pauseBtn) pauseBtn.textContent = "Pause";
-      playSFX('warhorn'); // Viking war horn!
+      
+      // Apply any pending daily bonus reward
+      applyPendingReward();
+      
+      playSFX('warhorn');
     } catch (e) {
       console.error("Error in start:", e);
     }
@@ -2443,6 +2757,11 @@
                   world.over = true;
                   viking.faceplant = 1.5;
                   if (statePill) statePill.textContent = "Game Over";
+                  engagement.sessionDeaths++;
+                  if (world.score > engagement.personalBest) {
+                    engagement.personalBest = Math.floor(world.score);
+                    localStorage.setItem('personalBest', engagement.personalBest.toString());
+                  }
                   HighScoreManager.saveScore(world.score);
                   playSFX('gameover');
                   setTimeout(() => { 
@@ -2516,6 +2835,57 @@
     viking.x += actualSpeed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
     world.score += world.speed * 0.015 * dt * scoreMultiplier;
+    
+    // Combo timer decay
+    if (engagement.combo.timer > 0) {
+      engagement.combo.timer -= dt;
+      if (engagement.combo.timer <= 0) {
+        engagement.combo.count = 0;
+      }
+    }
+    
+    // Screen shake decay
+    if (world.screenShake > 0) {
+      world.screenShake -= dt * 2;
+    }
+    
+    // Golden run timer
+    if (world.goldenRun) {
+      world.goldenRunTimer -= dt;
+      if (world.goldenRunTimer <= 0) world.goldenRun = false;
+    }
+    
+    // Milestone check
+    if (world.score >= engagement.milestones.nextAt) {
+      engagement.milestones.last = engagement.milestones.nextAt;
+      engagement.milestones.nextAt += 10000;
+      world.score += 500;
+      world.powerups.invincibility.active = true;
+      world.powerups.invincibility.timeLeft = 2;
+      playSFX('powerup');
+      const flash = document.createElement('div');
+      flash.className = 'milestone-flash';
+      shell.appendChild(flash);
+      setTimeout(() => flash.remove(), 800);
+    }
+    
+    // Personal best approaching
+    if (!engagement.notifiedApproaching && engagement.personalBest > 0 && world.score >= engagement.personalBest * 0.9 && world.score < engagement.personalBest) {
+      engagement.notifiedApproaching = true;
+      const pbAlert = $("pbAlert");
+      if (pbAlert) pbAlert.style.display = 'block';
+    }
+    if (world.score > engagement.personalBest) {
+      const pbAlert = $("pbAlert");
+      if (pbAlert) pbAlert.style.display = 'none';
+      if (engagement.personalBest > 0 && world.score > engagement.personalBest + 100) {
+        engagement.personalBest = Math.floor(world.score);
+        localStorage.setItem('personalBest', engagement.personalBest.toString());
+      }
+    }
+    
+    // Achievement check
+    Achievements.check();
     
     for (const key in world.powerups) {
       const p = world.powerups[key];
@@ -2649,8 +3019,31 @@
 
     // Collisions - Obstacles
     for (const o of Obstacles) {
+      // Near-miss detection
+      if (!o.nearMissTriggered && !o.hit) {
+        const distX = Math.abs(viking.x - o.x);
+        const distY = viking.y - (world.groundY - 45);
+        const justPassed = viking.x > o.x + 25 && viking.x < o.x + 50;
+        const wasDucking = viking.ducking && distX < 40;
+        const wasJumping = viking.y < world.groundY - 50 && distX < 40;
+        
+        if (justPassed && !wasDucking && !wasJumping && distY < 20 && distY > -20) {
+          o.nearMissTriggered = true;
+          engagement.nearMiss.count++;
+          Achievements.sessionStats.nearMisses++;
+          world.score += 25;
+          
+          const nearMissEl = document.createElement('div');
+          nearMissEl.className = 'near-miss';
+          nearMissEl.textContent = 'CLOSE CALL! +25';
+          nearMissEl.style.left = (o.x - world.camX) + 'px';
+          nearMissEl.style.top = (world.groundY - 80) + 'px';
+          shell.appendChild(nearMissEl);
+          setTimeout(() => nearMissEl.remove(), 1000);
+        }
+      }
+      
       if (!o.hit && viking.x > o.x - 25 && viking.x < o.x + 25 && viking.y > world.groundY - 45 && !viking.ducking) {
-        // Viking ship destroys everything!
         if (world.powerups.vikingShip.active) {
           o.hit = true;
           addParticle(o.x, world.groundY - 20, "#8B4513", 20);
@@ -2672,6 +3065,11 @@
         world.over = true;
         viking.faceplant = 1.5;
             statePill.textContent = "Game Over";
+            engagement.sessionDeaths++;
+            if (world.score > engagement.personalBest) {
+              engagement.personalBest = Math.floor(world.score);
+              localStorage.setItem('personalBest', engagement.personalBest.toString());
+            }
             HighScoreManager.saveScore(world.score);
         playSFX('gameover');
             setTimeout(() => { 
@@ -2717,7 +3115,8 @@
         if (world.powerups.vikingShip.active && horizontalOverlap) {
           e.defeated = true;
           e.hit = true;
-          world.score += 200; // Bonus for destroying enemies
+          world.score += 200;
+          Achievements.sessionStats.shipKills++;
           addParticle(e.x, e.y - e.h/2, "#8B4513", 25);
           addParticle(e.x, e.y - e.h/2, "#4A90D9", 15);
           playSFX('shipDestroyEnemy');
@@ -2730,12 +3129,39 @@
                                vikingBottom >= enemyTop - 15;
         
         if (horizontalOverlap && comingFromAbove) {
-          // STOMP! Kill the enemy Mario-style
           e.defeated = true;
           e.hit = true;
-          viking.vy = -750; // High bounce after stomp - higher than normal jump!
-          world.score += 150;
-          addParticle(e.x, e.y - e.h/2, "#fbbf24", 20);
+          viking.vy = -750;
+          
+          // Combo system
+          engagement.combo.count++;
+          engagement.combo.timer = 2.0;
+          engagement.combo.maxCombo = Math.max(engagement.combo.maxCombo, engagement.combo.count);
+          Achievements.sessionStats.stomps++;
+          
+          // Combo multiplier: 2x at 3, 3x at 5, 5x at 10
+          let comboMult = 1;
+          if (engagement.combo.count >= 10) comboMult = 5;
+          else if (engagement.combo.count >= 5) comboMult = 3;
+          else if (engagement.combo.count >= 3) comboMult = 2;
+          
+          world.score += 150 * comboMult;
+          
+          // Show combo display
+          if (engagement.combo.count >= 2) {
+            const comboEl = $("comboDisplay");
+            if (comboEl) {
+              comboEl.textContent = `COMBO x${engagement.combo.count}!`;
+              comboEl.className = 'combo-display show';
+              if (engagement.combo.count >= 10) comboEl.classList.add('x10');
+              else if (engagement.combo.count >= 5) comboEl.classList.add('x5');
+              else if (engagement.combo.count >= 3) comboEl.classList.add('x3');
+              setTimeout(() => comboEl.classList.remove('show'), 800);
+            }
+            world.screenShake = 0.15;
+          }
+          
+          addParticle(e.x, e.y - e.h/2, "#fbbf24", 20 + engagement.combo.count * 3);
           playSFX('stomp');
           updateHUD();
         } else if (horizontalOverlap && verticalOverlap) {
@@ -2755,6 +3181,11 @@
               world.over = true;
               viking.faceplant = 1.5;
               if (statePill) statePill.textContent = "Game Over";
+              engagement.sessionDeaths++;
+              if (world.score > engagement.personalBest) {
+                engagement.personalBest = Math.floor(world.score);
+                localStorage.setItem('personalBest', engagement.personalBest.toString());
+              }
               HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
               playSFX('gameover');
               setTimeout(() => { 
@@ -2819,6 +3250,7 @@
       if (!g.taken && Math.hypot(viking.x - g.x, (viking.y-30) - g.y) < 45) {
         g.taken = true;
         world.score += g.value * scoreMultiplier;
+        Achievements.sessionStats.gold++;
         addParticle(g.x, g.y, "#ffd700", 25);
         playSFX('gold');
         updateHUD();
@@ -2831,6 +3263,13 @@
 
   const draw = () => {
     ctx.clearRect(0, 0, W, H);
+    
+    // Screen shake effect
+    if (world.screenShake > 0) {
+      const shakeX = (Math.random() - 0.5) * world.screenShake * 20;
+      const shakeY = (Math.random() - 0.5) * world.screenShake * 20;
+      ctx.translate(shakeX, shakeY);
+    }
     
     const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
     bgGradient.addColorStop(0, "#0a0a0a");
@@ -2855,6 +3294,23 @@
     ctx.lineTo(W, world.groundY); 
     ctx.stroke();
 
+    // Speed lines effect at high speeds
+    if (world.speed > 320 || world.powerups.speedBoost.active) {
+      const intensity = world.powerups.speedBoost.active ? 0.4 : (world.speed - 320) / 100;
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${intensity * 0.3})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) {
+        const y = 50 + (i * H / 8);
+        const offsetX = (world.t * 500 + i * 100) % W;
+        ctx.beginPath();
+        ctx.moveTo(W - offsetX, y);
+        ctx.lineTo(W - offsetX + 60 + Math.random() * 40, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    
     ctx.save();
     ctx.translate(-world.camX, 0);
 
@@ -3064,9 +3520,7 @@
     }
   };
 
-  // ==========================================
-  // EYE TRACKING WITH MEDIAPIPE FACE LANDMARKER + rPPG
-  // ==========================================
+  // Eye Tracking System
   
   const eyeTrackBtn = $("eyeTrackBtn");
   const calibrationOverlay = $("calibrationOverlay");
@@ -3137,7 +3591,6 @@
         numFaces: 1
       });
       
-      console.log("MediaPipe Face Landmarker initialized");
       return true;
     } catch (e) {
       console.error("Error initializing Face Landmarker:", e);
@@ -3174,7 +3627,6 @@
       videoElement.srcObject = videoStream;
       await videoElement.play();
       
-      console.log("Camera started");
       return true;
     } catch (e) {
       console.error("Error starting camera:", e);
@@ -3596,19 +4048,105 @@
     }
   });
 
+  // Daily Bonus System Initialization
+  const showDailyBonus = () => {
+    const { streak, claimed } = DailyBonus.getStreak();
+    if (claimed) return;
+    
+    const modal = document.getElementById('dailyBonusModal');
+    const streakDisplay = document.getElementById('streakDisplay');
+    const rewardDisplay = document.getElementById('rewardDisplay');
+    const claimBtn = document.getElementById('claimBonusBtn');
+    
+    if (!modal || !streakDisplay || !rewardDisplay || !claimBtn) return;
+    
+    const reward = DailyBonus.rewards[(streak - 1) % 7];
+    streakDisplay.textContent = `🔥 ${streak}`;
+    rewardDisplay.textContent = reward.label;
+    modal.classList.add('show');
+    
+    claimBtn.onclick = () => {
+      const claimed = DailyBonus.claim();
+      if (claimed) {
+        playSFX('powerup');
+        modal.classList.remove('show');
+        
+        // Apply reward on next game start
+        const applyReward = () => {
+          if (claimed.type === 'life') {
+            world.lives += claimed.value;
+            updateHUD();
+          } else if (claimed.type === 'gold') {
+            world.score += claimed.value;
+            updateHUD();
+          } else if (claimed.type === 'powerup') {
+            world.powerups[claimed.value].active = true;
+            world.powerups[claimed.value].timeLeft = 10;
+          } else if (claimed.type === 'mega') {
+            world.lives += 3;
+            world.score += 2000;
+            world.powerups.invincibility.active = true;
+            world.powerups.invincibility.timeLeft = 15;
+            updateHUD();
+          }
+        };
+        
+        // Store for next game
+        localStorage.setItem('pendingReward', JSON.stringify(claimed));
+      }
+    };
+  };
+  
+  // Apply pending reward when game starts
+  const applyPendingReward = () => {
+    const pending = localStorage.getItem('pendingReward');
+    if (pending) {
+      const reward = JSON.parse(pending);
+      if (reward.type === 'life') {
+        world.lives += reward.value;
+      } else if (reward.type === 'gold') {
+        world.score += reward.value;
+      } else if (reward.type === 'powerup') {
+        world.powerups[reward.value].active = true;
+        world.powerups[reward.value].timeLeft = 10;
+      } else if (reward.type === 'mega') {
+        world.lives += 3;
+        world.score += 2000;
+        world.powerups.invincibility.active = true;
+        world.powerups.invincibility.timeLeft = 15;
+      }
+      localStorage.removeItem('pendingReward');
+      updateHUD();
+    }
+  };
+
   // Initialize after DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       resize();
   resetWorld();
   requestAnimationFrame(tick);
+      setTimeout(showDailyBonus, 500);
     });
   } else {
     resize();
     resetWorld();
     requestAnimationFrame(tick);
+    setTimeout(showDailyBonus, 500);
   }
 })();
 </script>
+
+<!-- Daily Bonus Modal -->
+<div class="daily-bonus-modal" id="dailyBonusModal">
+  <div class="daily-bonus-card">
+    <h2>⚔️ DAILY BONUS ⚔️</h2>
+    <p>Welcome back, Viking!</p>
+    <div class="streak" id="streakDisplay">🔥 1</div>
+    <p>Day Streak</p>
+    <div class="reward" id="rewardDisplay">+1 Life</div>
+    <button id="claimBonusBtn">CLAIM REWARD</button>
+  </div>
+</div>
 </body>
 </html>
