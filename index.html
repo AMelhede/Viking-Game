@@ -8012,7 +8012,12 @@
       }
     }
     
-    // Boss health bar - only show if boss is active and not defeated
+    // Draw Viking player character INSIDE the camera transform (before restore)
+    drawViking(viking.x, viking.y);
+    
+    ctx.restore();
+    
+    // Boss health bar - only show if boss is active and not defeated (drawn in screen space, not world space)
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated && boss.currentHealth > 0) {
         const barWidth = 300;
@@ -8041,9 +8046,6 @@
         ctx.fillText(`${boss.name} - ${Math.ceil(boss.currentHealth)}/${boss.maxHealth}`, W / 2, barY - 10);
       }
     }
-
-    drawViking(viking.x, viking.y);
-    ctx.restore();
     
     ctx.save();
     ctx.translate(-world.camX, 0);
