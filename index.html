@@ -610,6 +610,17 @@
       100% { opacity: 0; }
     }
     
+    @keyframes respawnPulse {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    
     .personal-best-alert {
       position: absolute;
       top: 120px;
@@ -1201,6 +1212,10 @@
             <span style="font-size: 20px;">❤️</span>
             <span id="livesCount" style="font-size: 18px; font-weight: 700; color: #ef4444;">3</span>
           </div>
+          <div class="lives-display" id="respawnDisplay" style="display: none;">
+            <span style="font-size: 20px;">🔄</span>
+            <span id="respawnCount" style="font-size: 18px; font-weight: 700; color: #9B59B6;">0</span>
+          </div>
           <button class="btn" id="pauseBtn">Pause</button>
           <button class="btn" id="soundBtn">Sound: On</button>
           <button class="btn primary" id="restartBtn">Restart</button>
@@ -1390,6 +1405,10 @@
     scoreMultiplier: null
   };
   
+  const powerupIntervals = {
+    vikingShip: null
+  };
+  
   const stopPowerupSound = (type) => {
     if (powerupSounds[type]) {
       try {
@@ -1397,6 +1416,11 @@
         powerupSounds[type].disconnect();
       } catch (e) {}
       powerupSounds[type] = null;
+    }
+    // Clear intervals
+    if (powerupIntervals[type]) {
+      clearInterval(powerupIntervals[type]);
+      powerupIntervals[type] = null;
     }
   };
   
@@ -1446,36 +1470,72 @@
         break;
       }
       case 'vikingShip': {
-        // Continuous wind whoosh + subtle oar rhythm
+        // Enhanced viking ship sounds - wind, water, oars, and ship creaking
         // Wind whoosh (continuous)
         const wind = AC.createBufferSource();
         wind.buffer = createNoiseBuffer(1.0);
         wind.loop = true;
         const windFilter = AC.createBiquadFilter();
         windFilter.type = 'lowpass';
-        windFilter.frequency.value = 600;
+        windFilter.frequency.value = 800; // Slightly higher for more presence
         const windGain = AC.createGain();
-        windGain.gain.value = 0.12;
+        windGain.gain.value = 0.15; // Slightly louder
         wind.connect(windFilter);
         windFilter.connect(windGain);
         windGain.connect(AC.destination);
         wind.start(now);
         
-        // Subtle oar rhythm (low frequency pulse for texture)
+        // Water splashing rhythm (matching oar strokes) - use interval
+        powerupIntervals['vikingShip'] = setInterval(() => {
+          if (!powerupSounds['vikingShip']) {
+            clearInterval(powerupIntervals['vikingShip']);
+            powerupIntervals['vikingShip'] = null;
+            return;
+          }
+          const splash = AC.createBufferSource();
+          splash.buffer = createNoiseBuffer(0.15);
+          const splashFilter = AC.createBiquadFilter();
+          splashFilter.type = 'bandpass';
+          splashFilter.frequency.value = 400;
+          splashFilter.Q.value = 3;
+          const splashGain = AC.createGain();
+          splashGain.gain.value = 0.08;
+          splash.connect(splashFilter);
+          splashFilter.connect(splashGain);
+          splashGain.connect(AC.destination);
+          splash.start(AC.currentTime);
+        }, 400); // Every 400ms = oar rhythm
+        
+        // Oar rhythm (low frequency pulse)
         const oarPulse = AC.createOscillator();
         const oarGain = AC.createGain();
         oarPulse.type = 'sine';
         oarPulse.frequency.value = 2.5; // 2.5 Hz = oar rhythm
-        oarGain.gain.value = 0.06;
+        oarGain.gain.value = 0.08; // Slightly louder
         const oarFilter = AC.createBiquadFilter();
         oarFilter.type = 'lowpass';
-        oarFilter.frequency.value = 200;
+        oarFilter.frequency.value = 250;
         oarPulse.connect(oarFilter);
         oarFilter.connect(oarGain);
         oarGain.connect(AC.destination);
         oarPulse.start(now);
         
-        // Track wind as main source (oarPulse will auto-stop when wind stops)
+        // Ship creaking (wooden ship sounds)
+        const creak = AC.createOscillator();
+        const creakGain = AC.createGain();
+        creak.type = 'triangle';
+        creak.frequency.value = 3; // Slow creaking
+        creakGain.gain.value = 0.05;
+        const creakFilter = AC.createBiquadFilter();
+        creakFilter.type = 'bandpass';
+        creakFilter.frequency.value = 150;
+        creakFilter.Q.value = 2;
+        creak.connect(creakFilter);
+        creakFilter.connect(creakGain);
+        creakGain.connect(AC.destination);
+        creak.start(now);
+        
+        // Track wind as main source
         source = wind;
         break;
       }
@@ -2895,7 +2955,7 @@
         { speed: 0.4, color: '#87CEEB' },
         { speed: 0.6, color: '#90EE90' }
       ],
-      enemies: ['nordicRaider', 'wildBoar', 'nordicArcher'],
+      enemies: ['nordicRaider', 'wildBoar', 'nordicArcher', 'raven'],
       obstacles: ['tree', 'log', 'rock', 'branch'],
       duckObstacles: ['raven', 'lowBranch'],
       powerups: ['speed', 'invincibility', 'scoreMultiplier'],
@@ -2946,7 +3006,7 @@
         { speed: 0.5, color: '#8B0000' },
         { speed: 0.7, color: '#FF4500' }
       ],
-      enemies: ['lavaGolem', 'fireImp', 'magmaWarrior'],
+      enemies: ['lavaGolem', 'magmaWarrior', 'vikingBerserker'],
       obstacles: ['lavaPool', 'fireGeyser', 'volcanicRock'],
       duckObstacles: ['fireball', 'lavaStream'],
       powerups: ['lavaWalk', 'fireImmunity'],
@@ -2963,7 +3023,7 @@
         { speed: 0.4, color: '#9370DB' },
         { speed: 0.6, color: '#FFD700' }
       ],
-      enemies: ['valhallaWarrior', 'lightningSpirit', 'goldenGuardian'],
+      enemies: ['valhallaWarrior', 'goldenGuardian', 'vikingShieldMaiden'],
       obstacles: ['lightning', 'goldenBarrier', 'pillar'],
       duckObstacles: ['lowLightning', 'goldenSpear'],
       powerups: ['lightningDash', 'goldenShield'],
@@ -2997,7 +3057,7 @@
         { speed: 0.4, color: '#1a0033' },
         { speed: 0.6, color: '#4B0082' }
       ],
-      enemies: ['starWarrior', 'voidCreature', 'celestialGuardian'],
+      enemies: ['celestialGuardian', 'vikingDualWielder', 'vikingRaider'],
       obstacles: ['starBarrier', 'blackHole', 'cosmicStorm'],
       duckObstacles: ['lowStar', 'cosmicRay'],
       powerups: ['cosmicDash', 'starShield', 'timeSlow'],
@@ -3014,7 +3074,7 @@
         { speed: 0.4, color: '#4B0082' },
         { speed: 0.6, color: '#FFD700' }
       ],
-      enemies: ['godWarrior', 'divineSpirit', 'asgardGuardian'],
+      enemies: ['godWarrior', 'asgardGuardian', 'vikingBerserker', 'vikingShieldMaiden'],
       obstacles: ['divineBarrier', 'rainbowPortal', 'godlyObstacle'],
       duckObstacles: ['lowDivineRay', 'rainbowProjectile'],
       powerups: ['all', 'godMode', 'infiniteDash'],
@@ -3530,27 +3590,34 @@
       snowWolf: { w: 85, h: 80, speed: 1.5, color: '#F0F8FF' },
       frostArcher: { w: 80, h: 100, speed: 0.8, color: '#E0F6FF' },
       lavaGolem: { w: 100, h: 110, speed: 0.6, color: '#8B0000' },
-      fireImp: { w: 80, h: 85, speed: 1.4, color: '#FF6347' },
       magmaWarrior: { w: 90, h: 100, speed: 1.0, color: '#FF4500' },
       valhallaWarrior: { w: 90, h: 105, speed: 1.2, color: '#FFD700' },
-      lightningSpirit: { w: 85, h: 95, speed: 1.3, color: '#FFFF00' },
       goldenGuardian: { w: 100, h: 110, speed: 0.8, color: '#FFD700' },
       chaosWarrior: { w: 90, h: 100, speed: 1.1, color: '#800080' },
       fireIceHybrid: { w: 95, h: 105, speed: 1.0, color: '#FF1493' },
       ragnarokBeast: { w: 110, h: 120, speed: 0.9, color: '#4B0082' },
-      starWarrior: { w: 85, h: 100, speed: 1.2, color: '#FFFFFF' },
-      voidCreature: { w: 90, h: 95, speed: 1.4, color: '#000000' },
       celestialGuardian: { w: 105, h: 115, speed: 0.9, color: '#9370DB' },
       godWarrior: { w: 100, h: 110, speed: 1.3, color: '#FFD700' },
-      divineSpirit: { w: 85, h: 95, speed: 1.5, color: '#FF69B4' },
-      asgardGuardian: { w: 115, h: 125, speed: 0.8, color: '#FF1493' }
+      asgardGuardian: { w: 115, h: 125, speed: 0.8, color: '#FF1493' },
+      // New viking-themed enemies
+      vikingBerserker: { w: 90, h: 100, speed: 1.4, color: '#8B4513' },
+      vikingShieldMaiden: { w: 85, h: 95, speed: 1.0, color: '#A0522D' },
+      vikingRaider: { w: 85, h: 100, speed: 1.1, color: '#654321' },
+      vikingDualWielder: { w: 90, h: 105, speed: 1.3, color: '#6B4423' },
+      raven: { w: 60, h: 50, speed: 1.5, color: '#000000', flying: true }
     };
     
     const props = enemyProps[enemyType] || enemyProps.nordicRaider;
     
+    // Ravens fly at head height (requires ducking) or higher (requires jumping)
+    // Other enemies spawn at ground level
+    const spawnY = props.flying 
+      ? world.groundY - rand(60, 150) // Flying enemies at various heights
+      : world.groundY; // Ground enemies at ground level
+    
     Enemies.push({
       x,
-      y: world.groundY,
+      y: spawnY,
       w: props.w,
       h: props.h,
       type: enemyType,
@@ -3740,6 +3807,19 @@
       if (livesCount) {
         livesCount.textContent = world.lives;
       }
+      
+      // Respawn counter
+      const respawnDisplay = $("respawnDisplay");
+      const respawnCount = $("respawnCount");
+      if (respawnDisplay && respawnCount) {
+        if (world.powerups.respawn.active) {
+          respawnDisplay.style.display = "flex";
+          respawnCount.textContent = "1";
+        } else {
+          respawnDisplay.style.display = "none";
+          respawnCount.textContent = "0";
+        }
+      }
     } catch (e) {
       console.error("Error in updateHUD:", e);
     }
@@ -3830,6 +3910,68 @@
     } catch (e) {
       console.error("Error in updatePowerupCountdowns:", e);
     }
+  };
+
+  // Respawn activation helper
+  const activateRespawn = () => {
+    world.powerups.respawn.active = false;
+    world.lives = 1;
+    world.over = false;
+    viking.faceplant = 0;
+    viking.vy = 0;
+    viking.y = world.groundY;
+    viking.onGround = true;
+    
+    // Large, visible respawn notification
+    const respawnNotification = document.createElement('div');
+    respawnNotification.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10001;
+      background: linear-gradient(135deg, #9B59B6, #8E44AD);
+      color: white;
+      font-size: 48px;
+      font-weight: 900;
+      padding: 40px 60px;
+      border-radius: 20px;
+      box-shadow: 0 0 50px rgba(155, 89, 182, 0.8), 0 0 100px rgba(155, 89, 182, 0.5);
+      text-align: center;
+      animation: respawnPulse 0.3s ease-out;
+      pointer-events: none;
+    `;
+    respawnNotification.textContent = '🔄 RESPAWN ACTIVATED!';
+    document.body.appendChild(respawnNotification);
+    
+    // Screen shake and flash
+    world.screenShake = 0.5;
+    const flash = document.createElement('div');
+    flash.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle, rgba(155, 89, 182, 0.4) 0%, transparent 70%);
+      z-index: 10000;
+      pointer-events: none;
+      animation: fadeOut 1s ease-out forwards;
+    `;
+    document.body.appendChild(flash);
+    
+    // Particle effects
+    for (let i = 0; i < 30; i++) {
+      addParticle(viking.x, viking.y, "#9B59B6", 20);
+    }
+    
+    playSFX('warhorn'); // Viking horn sound
+    updateHUD();
+    if (statePill) statePill.textContent = "Playing";
+    
+    // Remove notification after 6 seconds
+    setTimeout(() => {
+      respawnNotification.style.animation = 'fadeOut 0.5s ease-out forwards';
+      setTimeout(() => respawnNotification.remove(), 500);
+    }, 6000);
+    setTimeout(() => flash.remove(), 1000);
   };
 
   // Stickiness notifications
@@ -4126,21 +4268,18 @@
     }
   };
 
-  // Draw realistic Viking longship (when ship powerup is active)
+  // Draw realistic Viking longship (when ship powerup is active) - optimized for performance
   const drawVikingShip = (x, y) => {
     ctx.save();
     ctx.translate(x, y + 20);
     
     const bob = Math.sin(world.t * 4) * 3;
     const oarPhase = Math.sin(world.t * 8);
-    const wind = Math.sin(world.t * 2) * 0.1;
     
-    // Enhanced water splash particles - more realistic wake
-    if (Math.random() < 0.5) {
-      for (let i = 0; i < 3; i++) {
-        addParticle(x - 85 + Math.random() * 20, y + 8 + Math.random() * 5, "#4A90D9", 8 + Math.random() * 5);
-        addParticle(x - 90 + Math.random() * 20, y + 12 + Math.random() * 5, "#87CEEB", 5 + Math.random() * 4);
-      }
+    // Reduced particle generation - only 20% chance, 1-2 particles max (was 50%, 3 each)
+    if (Math.random() < 0.2 && Math.floor(world.t * 10) % 3 === 0) {
+      addParticle(x - 85, y + 8, "#4A90D9", 8);
+      if (Math.random() < 0.5) addParticle(x - 90, y + 12, "#87CEEB", 5);
     }
     
     // Realistic hull with proper proportions (7:1 length:width ratio)
@@ -4163,25 +4302,17 @@
     ctx.quadraticCurveTo(0, hullWidth/2 + bob, -hullLength/2, bob);
     ctx.fill();
     
-    // Detailed wood grain texture - individual planks with grain lines
+    // Simplified wood grain texture - fewer planks, no nested loops
     ctx.strokeStyle = "#4A3B27";
     ctx.lineWidth = 1;
-    for (let i = -hullLength/2 + 15; i < hullLength/2 - 15; i += 12) {
-      // Plank outline
+    for (let i = -hullLength/2 + 20; i < hullLength/2 - 20; i += 20) { // Reduced from 12 to 20 spacing
+      // Plank outline only (removed grain lines loop)
       ctx.beginPath();
       ctx.moveTo(i, -hullDepth/2 + bob);
       ctx.quadraticCurveTo(i + 2, -hullDepth/3 + bob, i + 4, -hullDepth/4 + bob);
-      ctx.lineTo(i + 12, -hullDepth/4 + bob);
-      ctx.quadraticCurveTo(i + 14, -hullDepth/3 + bob, i + 12, -hullDepth/2 + bob);
+      ctx.lineTo(i + 20, -hullDepth/4 + bob);
+      ctx.quadraticCurveTo(i + 22, -hullDepth/3 + bob, i + 20, -hullDepth/2 + bob);
       ctx.stroke();
-      
-      // Wood grain lines within plank
-      for (let g = 0; g < 3; g++) {
-        ctx.beginPath();
-        ctx.moveTo(i + 2 + g * 3, -hullDepth/2 + bob);
-        ctx.quadraticCurveTo(i + 3 + g * 3, -hullDepth/3 + bob, i + 4 + g * 3, -hullDepth/4 + bob);
-        ctx.stroke();
-      }
     }
     
     // Rivets/plank joints - more realistic metal
@@ -4232,18 +4363,16 @@
     ctx.ellipse(hullLength/2 + 18, -hullDepth - 40 + bob, 6, 4, 0.3, 0, Math.PI * 2);
     ctx.fill();
     
-    // Dragon scales/details - more intricate
+    // Simplified dragon scales - single loop (removed nested loop)
     ctx.strokeStyle = "#5A3B1A";
     ctx.lineWidth = 1;
     for (let i = 0; i < 5; i++) {
-      for (let j = 0; j < 2; j++) {
-        ctx.beginPath();
-        ctx.moveTo(hullLength/2 + 8 + i * 3.5, -hullDepth - 28 - i * 4.5 + bob - j * 2);
-        ctx.lineTo(hullLength/2 + 10 + i * 3.5, -hullDepth - 32 - i * 4.5 + bob - j * 2);
-        ctx.lineTo(hullLength/2 + 12 + i * 3.5, -hullDepth - 30 - i * 4.5 + bob - j * 2);
-        ctx.closePath();
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.moveTo(hullLength/2 + 8 + i * 3.5, -hullDepth - 28 - i * 4.5 + bob);
+      ctx.lineTo(hullLength/2 + 10 + i * 3.5, -hullDepth - 32 - i * 4.5 + bob);
+      ctx.lineTo(hullLength/2 + 12 + i * 3.5, -hullDepth - 30 - i * 4.5 + bob);
+      ctx.closePath();
+      ctx.stroke();
     }
     
     // Dragon eye - realistic glowing with depth
@@ -4407,165 +4536,88 @@
     ctx.closePath();
     ctx.fill();
     
-    // Oars - highly realistic with proper rowing animation
+    // Simplified oars - fewer oars, simpler drawing
     ctx.strokeStyle = "#5D4E37";
     ctx.lineWidth = 2.5;
-    const oarPositions = [-50, -30, -10, 10, 30, 50];
+    const oarPositions = [-40, -15, 15, 40]; // Reduced from 6 to 4 oars
     oarPositions.forEach((ox, i) => {
       const oarPhase = world.t * 8 + i * 0.5;
-      const oarAngle = Math.sin(oarPhase) * 0.5;
+      const oarAngle = Math.sin(oarPhase) * 0.4;
       const oarOut = Math.abs(Math.sin(oarPhase)) > 0.5;
-      const oarDepth = oarOut ? 50 : 30;
+      const oarDepth = oarOut ? 45 : 25;
       
       ctx.save();
       ctx.translate(ox, -hullDepth/2 + bob);
       ctx.rotate(0.3 + oarAngle);
       
-      // Oar shaft - wooden with grain
-      const oarGradient = ctx.createLinearGradient(0, 0, 0, oarDepth);
-      oarGradient.addColorStop(0, "#6D5E47");
-      oarGradient.addColorStop(1, "#4A3C2A");
-      ctx.strokeStyle = oarGradient;
+      // Oar shaft - simple line (removed gradient)
+      ctx.strokeStyle = "#5D4E37";
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(0, oarDepth);
       ctx.stroke();
       
-      // Oar blade - realistic paddle shape with water effect
+      // Oar blade - simple ellipse
       ctx.fillStyle = "#3A2C1A";
       ctx.beginPath();
-      ctx.ellipse(-3, oarDepth - 2, 7, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(-3, oarDepth - 2, 6, 12, 0, 0, Math.PI * 2);
       ctx.fill();
-      
-      // Water splash on oar blade when out
-      if (oarOut) {
-        ctx.fillStyle = "rgba(74, 144, 217, 0.3)";
-        ctx.beginPath();
-        ctx.ellipse(-3, oarDepth - 2, 5, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
       
       ctx.restore();
     });
     
-    // Multiple Viking warriors on ship - highly detailed
-    const warriorPositions = [-40, -15, 15, 40];
+    // Simplified Viking warriors on ship - fewer details, no nested loops
+    const warriorPositions = [-30, 0, 30]; // Reduced from 4 to 3 warriors
     warriorPositions.forEach((wx, i) => {
       const warriorBob = bob + Math.sin(world.t * 4 + i) * 1;
       
-      // Body/armor with chainmail texture
-      const armorGradient = ctx.createLinearGradient(wx - 6, -hullDepth/2 - 15 + bob, wx + 6, -hullDepth/2 + 3 + bob);
-      armorGradient.addColorStop(0, "#3A4558");
-      armorGradient.addColorStop(0.5, "#4A5568");
-      armorGradient.addColorStop(1, "#5A6578");
-      ctx.fillStyle = armorGradient;
-      ctx.fillRect(wx - 7, -hullDepth/2 - 16 + warriorBob, 14, 20);
-      
-      // Chainmail pattern
+      // Body/armor - simple rectangle (removed gradient and chainmail pattern)
+      ctx.fillStyle = "#4A5568";
+      ctx.fillRect(wx - 6, -hullDepth/2 - 15 + warriorBob, 12, 18);
       ctx.strokeStyle = "#2A3548";
-      ctx.lineWidth = 0.5;
-      for (let cy = 0; cy < 3; cy++) {
-        for (let cx = 0; cx < 4; cx++) {
-          ctx.strokeRect(wx - 6 + cx * 3, -hullDepth/2 - 15 + warriorBob + cy * 5, 2, 2);
-        }
-      }
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wx - 6, -hullDepth/2 - 15 + warriorBob, 12, 18);
       
-      // Leather belt
-      ctx.fillStyle = "#3A2C1A";
-      ctx.fillRect(wx - 6, -hullDepth/2 - 5 + warriorBob, 12, 2);
-      
-      // Head with realistic skin tone
-      const headGradient = ctx.createRadialGradient(wx, -hullDepth/2 - 20 + warriorBob, 0, wx, -hullDepth/2 - 20 + warriorBob, 6);
-      headGradient.addColorStop(0, "#ffdbac");
-      headGradient.addColorStop(1, "#e6c89a");
-      ctx.fillStyle = headGradient;
+      // Head - simple circle
+      ctx.fillStyle = "#ffdbac";
       ctx.beginPath();
-      ctx.arc(wx, -hullDepth/2 - 20 + warriorBob, 6, 0, Math.PI * 2);
+      ctx.arc(wx, -hullDepth/2 - 20 + warriorBob, 5, 0, Math.PI * 2);
       ctx.fill();
       
-      // Beard
-      ctx.fillStyle = "#4A3C2A";
+      // Helmet - simple arc
+      ctx.fillStyle = "#6B6270";
       ctx.beginPath();
-      ctx.ellipse(wx, -hullDepth/2 - 16 + warriorBob, 4, 3, 0, 0, Math.PI * 2);
+      ctx.arc(wx, -hullDepth/2 - 22 + warriorBob, 6, Math.PI, 0);
       ctx.fill();
       
-      // Helmet - detailed with nose guard
-      const helmetGradient = ctx.createLinearGradient(wx, -hullDepth/2 - 25 + warriorBob, wx, -hullDepth/2 - 18 + warriorBob);
-      helmetGradient.addColorStop(0, "#5B6270");
-      helmetGradient.addColorStop(1, "#7B8290");
-      ctx.fillStyle = helmetGradient;
+      // Weapon - simple line
+      ctx.strokeStyle = "#6B6355";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(wx, -hullDepth/2 - 22 + warriorBob, 7, Math.PI, 0);
-      ctx.fill();
-      
-      // Nose guard
-      ctx.fillStyle = "#4B5260";
-      ctx.fillRect(wx - 1, -hullDepth/2 - 20 + warriorBob, 2, 4);
-      
-      // Helmet rim
-      ctx.strokeStyle = "#3B4250";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(wx, -hullDepth/2 - 18 + warriorBob, 7, Math.PI, 0);
+      ctx.moveTo(wx + 8, -hullDepth/2 - 18 + warriorBob);
+      ctx.lineTo(wx + 15, -hullDepth/2 - 26 + warriorBob);
       ctx.stroke();
-      
-      // Weapon (spear/axe visible) - more detailed
-      if (i % 2 === 0) {
-        // Spear
-        ctx.strokeStyle = "#6B6355";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(wx + 9, -hullDepth/2 - 18 + warriorBob);
-        ctx.lineTo(wx + 18, -hullDepth/2 - 28 + warriorBob);
-        ctx.stroke();
-        // Spear tip
-        ctx.fillStyle = "#C0C0C0";
-        ctx.beginPath();
-        ctx.moveTo(wx + 18, -hullDepth/2 - 28 + warriorBob);
-        ctx.lineTo(wx + 20, -hullDepth/2 - 30 + warriorBob);
-        ctx.lineTo(wx + 16, -hullDepth/2 - 30 + warriorBob);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        // Axe
-        ctx.strokeStyle = "#5B5345";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(wx - 9, -hullDepth/2 - 18 + warriorBob);
-        ctx.lineTo(wx - 18, -hullDepth/2 - 25 + warriorBob);
-        ctx.stroke();
-        // Axe head
-        ctx.fillStyle = "#A0A0A0";
-        ctx.beginPath();
-        ctx.moveTo(wx - 18, -hullDepth/2 - 25 + warriorBob);
-        ctx.lineTo(wx - 20, -hullDepth/2 - 27 + warriorBob);
-        ctx.lineTo(wx - 16, -hullDepth/2 - 27 + warriorBob);
-        ctx.closePath();
-        ctx.fill();
-      }
+      // Weapon tip - simple triangle
+      ctx.beginPath();
+      ctx.moveTo(wx + 15, -hullDepth/2 - 26 + warriorBob);
+      ctx.lineTo(wx + 18, -hullDepth/2 - 28 + warriorBob);
+      ctx.lineTo(wx + 12, -hullDepth/2 - 28 + warriorBob);
+      ctx.closePath();
+      ctx.fill();
     });
     
-    // Multiple shields along the side
-    const shieldPositions = [-55, -25, 25, 55];
+    // Simplified shields - fewer, simpler
+    const shieldPositions = [-40, 0, 40]; // Reduced from 4 to 3
     shieldPositions.forEach((sx, i) => {
       ctx.fillStyle = i % 2 === 0 ? "#C41E3A" : "#1E3A8A";
       ctx.beginPath();
-      ctx.arc(sx, -hullDepth/2 + 5 + bob, 10, 0, Math.PI * 2);
+      ctx.arc(sx, -hullDepth/2 + 5 + bob, 8, 0, Math.PI * 2);
       ctx.fill();
-      // Shield boss (center)
+      // Shield boss only (removed cross pattern)
       ctx.fillStyle = "#FFD700";
       ctx.beginPath();
-      ctx.arc(sx, -hullDepth/2 + 5 + bob, 4, 0, Math.PI * 2);
+      ctx.arc(sx, -hullDepth/2 + 5 + bob, 3, 0, Math.PI * 2);
       ctx.fill();
-      // Shield cross pattern
-      ctx.strokeStyle = "#FFD700";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(sx, -hullDepth/2 - 5 + bob);
-      ctx.lineTo(sx, -hullDepth/2 + 15 + bob);
-      ctx.moveTo(sx - 8, -hullDepth/2 + 5 + bob);
-      ctx.lineTo(sx + 8, -hullDepth/2 + 5 + bob);
-      ctx.stroke();
     });
     
     // Realistic water wake trail - multiple layers
@@ -4668,156 +4720,259 @@
     ctx.restore();
   };
 
+  // Draw proper viking warrior enemy
   const drawEnemy = (e) => {
     if (e.defeated) return;
+    
+    // Special handling for raven - use separate function
+    if (e.type === 'raven') {
+      drawRavenEnemy(e);
+      return;
+    }
+    
     ctx.save();
     ctx.translate(e.x, e.y);
     
-    // Use enemy color from type, or default - make it more vibrant
-    const baseColor = e.color || "#1e3a5f";
+    // Ensure enemy is aligned at ground level (y = 0 means ground)
+    const groundOffset = 0; // e.y should already be world.groundY
     
-    // Strong outline for visibility - enemies are angular, distinct from circular powerups
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 4;
-    ctx.shadowBlur = 0;
+    // Body - viking warrior torso with tunic/armor
+    const bodyHeight = e.h * 0.6;
+    const bodyWidth = e.w * 0.7;
     
-    // Body - larger, more angular shape
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(-e.w/2, -e.h, e.w, e.h);
+    // Tunic/body - brown leather or fur
+    const tunicColor = e.type && (e.type.includes('saxon') || e.type.includes('fire')) ? "#8B4513" : "#654321";
+    ctx.fillStyle = tunicColor;
+    ctx.beginPath();
+    ctx.moveTo(-bodyWidth/2, groundOffset);
+    ctx.lineTo(-bodyWidth/2 + 5, -bodyHeight * 0.2);
+    ctx.lineTo(bodyWidth/2 - 5, -bodyHeight * 0.2);
+    ctx.lineTo(bodyWidth/2, groundOffset);
+    ctx.lineTo(bodyWidth/2 - 8, -bodyHeight * 0.4);
+    ctx.lineTo(-bodyWidth/2 + 8, -bodyHeight * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    
     // Strong black outline
-    ctx.strokeRect(-e.w/2, -e.h, e.w, e.h);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
     
-    // Special effects based on type - enhanced glow
-    if (e.type === 'fireImp' || e.type === 'saxonFireThrower' || e.type === 'magmaWarrior') {
-      // Fire glow - stronger
-      ctx.shadowBlur = 25;
-      ctx.shadowColor = '#FF4500';
-      ctx.strokeStyle = '#FF4500';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
-    } else if (e.type === 'iceWarrior' || e.type === 'snowWolf' || e.type === 'frostArcher') {
-      // Ice glow - stronger
-      ctx.shadowBlur = 25;
-      ctx.shadowColor = '#B0E0E6';
-      ctx.strokeStyle = '#B0E0E6';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
-    } else if (e.type === 'lightningSpirit' || e.type === 'valhallaWarrior') {
-      // Lightning glow - stronger
-      ctx.shadowBlur = 30;
-      ctx.shadowColor = '#FFD700';
-      ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
-    } else if (e.type === 'starWarrior' || e.type === 'celestialGuardian') {
-      // Cosmic glow - stronger
-      ctx.shadowBlur = 35;
-      ctx.shadowColor = '#FFFFFF';
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
-    } else {
-      // Default strong outline for all enemies
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(-e.w/2, -e.h, e.w, e.h);
-    }
-    
-    // Chainmail/armor overlay - more visible
+    // Chainmail/armor overlay
     ctx.fillStyle = e.type && e.type.includes('Guardian') ? "#FFD700" : "#8b8b9a";
-    ctx.fillRect(-e.w/2 + 6, -e.h + 12, e.w - 12, 30);
+    ctx.fillRect(-bodyWidth/2 + 8, -bodyHeight * 0.35, bodyWidth - 16, bodyHeight * 0.25);
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2;
-    ctx.strokeRect(-e.w/2 + 6, -e.h + 12, e.w - 12, 30);
+    ctx.strokeRect(-bodyWidth/2 + 8, -bodyHeight * 0.35, bodyWidth - 16, bodyHeight * 0.25);
     
-    // Head - larger and more visible
+    // Belt
+    ctx.fillStyle = "#3A2C1A";
+    ctx.fillRect(-bodyWidth/2 + 5, -bodyHeight * 0.15, bodyWidth - 10, 6);
+    ctx.strokeRect(-bodyWidth/2 + 5, -bodyHeight * 0.15, bodyWidth - 10, 6);
+    
+    // Head - viking face
     ctx.fillStyle = "#d4a574";
     ctx.beginPath();
-    ctx.arc(0, -e.h - 8, 18, 0, Math.PI * 2);
+    ctx.arc(0, -bodyHeight - 8, 18, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
     ctx.stroke();
     
-    // Helmet/headgear based on type - larger
-    if (e.type === 'wildBoar') {
-      // Boar head
-      ctx.fillStyle = "#654321";
+    // Helmet - proper viking spangenhelm or horned helmet
+    if (e.type && (e.type.includes('Berserker') || e.type.includes('Raider'))) {
+      // Horned helmet
+      ctx.fillStyle = "#71717a";
       ctx.beginPath();
-      ctx.ellipse(0, -e.h - 5, 22, 15, 0, 0, Math.PI * 2);
+      ctx.arc(0, -bodyHeight - 10, 20, Math.PI, 0);
       ctx.fill();
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 2;
       ctx.stroke();
-    } else if (e.type === 'snowWolf') {
-      // Wolf head
-      ctx.fillStyle = "#F0F8FF";
+      // Horns
+      ctx.strokeStyle = "#4A3B1A";
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.ellipse(0, -e.h - 5, 20, 13, 0, 0, Math.PI * 2);
+      ctx.moveTo(-12, -bodyHeight - 25);
+      ctx.quadraticCurveTo(-15, -bodyHeight - 35, -12, -bodyHeight - 40);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(12, -bodyHeight - 25);
+      ctx.quadraticCurveTo(15, -bodyHeight - 35, 12, -bodyHeight - 40);
+      ctx.stroke();
+    } else {
+      // Spangenhelm style helmet
+      ctx.fillStyle = "#71717a";
+      ctx.beginPath();
+      ctx.arc(0, -bodyHeight - 10, 20, Math.PI, 0);
+      ctx.fill();
+      ctx.stroke();
+      // Nose guard
+      ctx.fillRect(-3, -bodyHeight - 12, 6, 20);
+      ctx.strokeRect(-3, -bodyHeight - 12, 6, 20);
+      // Helmet bands
+      ctx.strokeStyle = "#4A3B1A";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-18, -bodyHeight - 5);
+      ctx.lineTo(18, -bodyHeight - 5);
+      ctx.stroke();
+    }
+    
+    // Eyes (angry) - red
+    ctx.fillStyle = "#FF0000";
+    ctx.fillRect(-10, -bodyHeight - 8, 6, 5);
+    ctx.fillRect(4, -bodyHeight - 8, 6, 5);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-10, -bodyHeight - 8, 6, 5);
+    ctx.strokeRect(4, -bodyHeight - 8, 6, 5);
+    
+    // Beard
+    ctx.fillStyle = "#2A1C0A";
+    ctx.beginPath();
+    ctx.moveTo(-12, -bodyHeight + 5);
+    ctx.quadraticCurveTo(0, -bodyHeight + 15, 12, -bodyHeight + 5);
+    ctx.lineTo(10, -bodyHeight + 2);
+    ctx.quadraticCurveTo(0, -bodyHeight + 8, -10, -bodyHeight + 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Shield - round viking shield
+    ctx.fillStyle = e.type && e.type.includes('saxon') ? "#dc2626" : "#8B4513";
+    ctx.beginPath();
+    ctx.arc(-bodyWidth/2 - 12, -bodyHeight * 0.3, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Shield boss (center metal)
+    ctx.fillStyle = "#C0C0C0";
+    ctx.beginPath();
+    ctx.arc(-bodyWidth/2 - 12, -bodyHeight * 0.3, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Weapon - axe or sword (not just spear)
+    const hasAxe = e.type && (e.type.includes('Berserker') || e.type.includes('Raider') || Math.random() > 0.5);
+    if (hasAxe) {
+      // Viking axe
+      ctx.fillStyle = "#78350f";
+      ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 6, 50);
+      ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 6, 50);
+      // Axe head
+      ctx.fillStyle = "#a1a1aa";
+      ctx.beginPath();
+      ctx.moveTo(bodyWidth/2 + 3, -bodyHeight * 0.2);
+      ctx.lineTo(bodyWidth/2 + 15, -bodyHeight * 0.2 - 8);
+      ctx.lineTo(bodyWidth/2 + 20, -bodyHeight * 0.2 - 5);
+      ctx.lineTo(bodyWidth/2 + 12, -bodyHeight * 0.2 + 3);
+      ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 2;
       ctx.stroke();
     } else {
-      // Standard helmet - larger
-      ctx.fillStyle = "#71717a";
+      // Sword
+      ctx.fillStyle = "#78350f";
+      ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 4, 55);
+      ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 4, 55);
+      // Sword blade
+      ctx.fillStyle = "#C0C0C0";
       ctx.beginPath();
-      ctx.arc(0, -e.h - 10, 20, Math.PI, 0);
+      ctx.moveTo(bodyWidth/2 + 2, -bodyHeight * 0.2);
+      ctx.lineTo(bodyWidth/2 + 8, -bodyHeight * 0.2 - 12);
+      ctx.lineTo(bodyWidth/2 - 2, -bodyHeight * 0.2 - 12);
+      ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 3;
       ctx.stroke();
-      // Nose guard - larger
-      ctx.fillRect(-3, -e.h - 12, 6, 18);
-      ctx.strokeRect(-3, -e.h - 12, 6, 18);
     }
     
-    // Eyes (angry) - larger and more visible
-    ctx.fillStyle = "#FF0000"; // Red angry eyes
-    ctx.fillRect(-10, -e.h - 8, 6, 5);
-    ctx.fillRect(4, -e.h - 8, 6, 5);
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-10, -e.h - 8, 6, 5);
-    ctx.strokeRect(4, -e.h - 8, 6, 5);
+    // Legs
+    ctx.fillStyle = "#4A3B1A";
+    ctx.fillRect(-bodyWidth/2 + 5, groundOffset, 8, 20);
+    ctx.fillRect(bodyWidth/2 - 13, groundOffset, 8, 20);
+    ctx.strokeRect(-bodyWidth/2 + 5, groundOffset, 8, 20);
+    ctx.strokeRect(bodyWidth/2 - 13, groundOffset, 8, 20);
     
-    // Shield (round Saxon shield with cross) - larger
-    ctx.fillStyle = "#dc2626";
+    // Special effects based on type
+    if (e.type && (e.type.includes('fire') || e.type.includes('magma'))) {
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#FF4500';
+      ctx.strokeStyle = '#FF4500';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else if (e.type && (e.type.includes('ice') || e.type.includes('frost'))) {
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#B0E0E6';
+      ctx.strokeStyle = '#B0E0E6';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+  };
+  
+  // Draw raven enemy (flying bird)
+  const drawRavenEnemy = (e) => {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    
+    const wingFlap = Math.sin(world.t * 10) * 0.3;
+    
+    // Body - black oval
+    ctx.fillStyle = "#000000";
     ctx.beginPath();
-    ctx.arc(-e.w/2 - 10, -e.h/2, 22, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 12, 18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    // Cross on shield - thicker
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(-e.w/2 - 10, -e.h/2 - 15);
-    ctx.lineTo(-e.w/2 - 10, -e.h/2 + 15);
-    ctx.moveTo(-e.w/2 - 25, -e.h/2);
-    ctx.lineTo(-e.w/2 + 5, -e.h/2);
+    ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Spear - larger
-    ctx.fillStyle = "#78350f";
-    ctx.fillRect(e.w/2, -e.h + 8, 5, 60);
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(e.w/2, -e.h + 8, 5, 60);
-    // Spear tip - larger
-    ctx.fillStyle = "#a1a1aa";
+    // Wings - animated flapping
+    ctx.fillStyle = "#000000";
     ctx.beginPath();
-    ctx.moveTo(e.w/2 + 2.5, -e.h + 8);
-    ctx.lineTo(e.w/2 - 4, -e.h - 15);
-    ctx.lineTo(e.w/2 + 9, -e.h - 15);
+    ctx.ellipse(-15, 0, 20, 8, -0.5 + wingFlap, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(15, 0, 20, 8, 0.5 - wingFlap, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Head
+    ctx.beginPath();
+    ctx.arc(0, -15, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Beak
+    ctx.fillStyle = "#FFA500";
+    ctx.beginPath();
+    ctx.moveTo(0, -20);
+    ctx.lineTo(-4, -25);
+    ctx.lineTo(4, -25);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Eye
+    ctx.fillStyle = "#FF0000";
+    ctx.beginPath();
+    ctx.arc(-3, -18, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Tail
+    ctx.fillStyle = "#000000";
+    ctx.beginPath();
+    ctx.moveTo(0, 15);
+    ctx.quadraticCurveTo(-8, 25, -12, 30);
+    ctx.quadraticCurveTo(-5, 28, 0, 20);
+    ctx.quadraticCurveTo(5, 28, 12, 30);
+    ctx.quadraticCurveTo(8, 25, 0, 15);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
     
     ctx.restore();
@@ -5198,7 +5353,32 @@
       // Show level change notification
       if (scoreBasedLevel.id > oldLevel) {
         showStickinessNotification(`🎯 LEVEL ${scoreBasedLevel.id}: ${scoreBasedLevel.name}`, 'info');
-        playSFX('powerup');
+        // Play level-up sound (war horn fanfare)
+        if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+        const now = AC.currentTime;
+        const fanfareNotes = [196, 247, 294, 349, 440]; // G3, B3, D4, F4, A4 - viking horn progression
+        fanfareNotes.forEach((freq, i) => {
+          const osc = AC.createOscillator();
+          const gain = AC.createGain();
+          osc.type = 'sawtooth'; // Warmer, more horn-like
+          osc.frequency.setValueAtTime(freq, now + i * 0.1);
+          // Add vibrato for horn effect
+          const vibrato = AC.createOscillator();
+          const vibGain = AC.createGain();
+          vibrato.frequency.value = 5;
+          vibGain.gain.value = 3;
+          vibrato.connect(vibGain);
+          vibGain.connect(osc.frequency);
+          vibrato.start(now);
+          vibrato.stop(now + 1);
+          gain.gain.setValueAtTime(0, now + i * 0.1);
+          gain.gain.linearRampToValueAtTime(0.3, now + i * 0.1 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.4);
+          osc.connect(gain);
+          gain.connect(AC.destination);
+          osc.start(now + i * 0.1);
+          osc.stop(now + i * 0.1 + 0.5);
+        });
       }
     }
     
@@ -5217,8 +5397,8 @@
         const levelRange = levelEnd - levelStart;
         
         // Calculate spawns per level based on level number
-        // Level 1-2: 1 spawn, Level 3-4: 2 spawns, Level 5-6: 3 spawns, Level 7-8: 4 spawns
-        const spawnsPerLevel = Math.min(4, Math.max(1, Math.floor((currentLevel.id - 1) / 2) + 1));
+        // Level 1-3: 1 boss each, Level 4: 2, Level 5: 3, Level 6: 4, Level 7: 5, Level 8: 6
+        const spawnsPerLevel = currentLevel.id <= 3 ? 1 : currentLevel.id - 2;
         const spawnInterval = levelRange / (spawnsPerLevel + 1);
         
         // Check each spawn point
@@ -5347,12 +5527,12 @@
     // Spawn logic - Reduced difficulty
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      // Obstacle density increases with score - much more forgiving
-      const baseMin = 600, baseMax = 900; // Increased spacing (was 450-700)
-      const scoreFactor = Math.min(world.score / 70000, 1.0); // Slower scaling (was 50000)
-      const minSpawn = baseMin - (baseMin * 0.25 * scoreFactor); // Less aggressive (was 0.3)
-      const maxSpawn = baseMax - (baseMax * 0.25 * scoreFactor);
-      world.nextObstacleAt += rand(Math.max(400, minSpawn), Math.max(600, maxSpawn)); // More spacing (was 300-450)
+      // Obstacle density - even more forgiving, fewer obstacles
+      const baseMin = 800, baseMax = 1200; // Further increased spacing
+      const scoreFactor = Math.min(world.score / 100000, 1.0); // Even slower scaling
+      const minSpawn = baseMin - (baseMin * 0.2 * scoreFactor); // Less aggressive
+      const maxSpawn = baseMax - (baseMax * 0.2 * scoreFactor);
+      world.nextObstacleAt += rand(Math.max(600, minSpawn), Math.max(800, maxSpawn)); // More spacing
     }
     // Spawn duck obstacles (flying obstacles that require ducking) - Reduced frequency
     if (viking.x > world.nextDuckObstacleAt - W) {
@@ -5367,10 +5547,10 @@
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      // Variable reward schedule - sometimes close, sometimes far (addiction psychology)
-      const baseDelay = rand(4000, 8000);
-      const variability = Math.random() < 0.2 ? rand(1000, 2000) : rand(6000, 12000);
-      world.nextPowerupAt += Math.random() < 0.3 ? baseDelay * 0.5 : variability;
+      // More frequent powerups - reduced from 4000-8000 to 2500-5000
+      const baseDelay = rand(2500, 5000);
+      const variability = Math.random() < 0.3 ? rand(800, 1500) : rand(3000, 6000);
+      world.nextPowerupAt += Math.random() < 0.4 ? baseDelay * 0.6 : variability;
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
@@ -5577,7 +5757,24 @@
           }
         } else {
           addParticle(o.x, world.groundY - 20, "#4ECDC4", 12);
-          beep("sine", 400, 0.15);
+          // Viking drum beat sound
+          if (OPT.sound) {
+            if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+            const now = AC.currentTime;
+            const drum = AC.createBufferSource();
+            drum.buffer = createNoiseBuffer(0.1);
+            const drumFilter = AC.createBiquadFilter();
+            drumFilter.type = 'lowpass';
+            drumFilter.frequency.value = 200; // Low, bassy drum
+            drumFilter.Q.value = 2;
+            const drumGain = AC.createGain();
+            drumGain.gain.setValueAtTime(0.3, now);
+            drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            drum.connect(drumFilter);
+            drumFilter.connect(drumGain);
+            drumGain.connect(AC.destination);
+            drum.start(now);
+          }
         }
       }
     }
@@ -5604,18 +5801,7 @@
             if (world.lives <= 0) {
               // Check for respawn powerup
               if (world.powerups.respawn.active) {
-                // Respawn activated!
-                world.powerups.respawn.active = false;
-                world.lives = 1;
-                world.over = false;
-                viking.faceplant = 0;
-                viking.vy = 0;
-                viking.y = world.groundY;
-                viking.onGround = true;
-                showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
-                playSFX('powerup');
-                updateHUD();
-                if (statePill) statePill.textContent = "Playing";
+                activateRespawn();
               } else {
                 for (const key in powerupSounds) {
                   stopPowerupSound(key);
@@ -5653,7 +5839,24 @@
             }
           } else {
             addParticle(duckObst.x, duckObst.y, "#4ECDC4", 12);
-            beep("sine", 400, 0.15);
+            // Viking drum beat sound
+          if (OPT.sound) {
+            if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+            const now = AC.currentTime;
+            const drum = AC.createBufferSource();
+            drum.buffer = createNoiseBuffer(0.1);
+            const drumFilter = AC.createBiquadFilter();
+            drumFilter.type = 'lowpass';
+            drumFilter.frequency.value = 200; // Low, bassy drum
+            drumFilter.Q.value = 2;
+            const drumGain = AC.createGain();
+            drumGain.gain.setValueAtTime(0.3, now);
+            drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            drum.connect(drumFilter);
+            drumFilter.connect(drumGain);
+            drumGain.connect(AC.destination);
+            drum.start(now);
+          }
           }
         }
       }
@@ -5723,7 +5926,12 @@
             localStorage.setItem('bestStreak', engagement.bestStreak.toString());
           }
           
-          world.score += 150 * comboMult;
+          // Base points that scale with score and level
+          const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+          const basePoints = 50 + Math.floor(world.score / 1000) + (currentLevel.id * 25);
+          
+          // Apply combo multiplier on top of base points
+          world.score += basePoints * comboMult;
           
           // Show combo display
           if (engagement.combo.count >= 2) {
@@ -5757,18 +5965,7 @@
             if (world.lives <= 0) {
               // Check for respawn powerup
               if (world.powerups.respawn.active) {
-                // Respawn activated!
-                world.powerups.respawn.active = false;
-                world.lives = 1;
-                world.over = false;
-                viking.faceplant = 0;
-                viking.vy = 0;
-                viking.y = world.groundY;
-                viking.onGround = true;
-                showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
-                playSFX('powerup');
-                updateHUD();
-                if (statePill) statePill.textContent = "Playing";
+                activateRespawn();
               } else {
                 // Stop all powerup sounds on game over
                 for (const key in powerupSounds) {
@@ -5825,7 +6022,10 @@
         if (world.powerups.vikingShip.active && horizontalOverlap) {
           boss.defeated = true;
           boss.active = false;
-          world.score += boss.rewards.score * 10; // Bonus for ship kill
+          // Boss points scale with level, bonus for ship kill
+          const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+          const bossPoints = 1000 + (currentLevel.id * 500);
+          world.score += bossPoints * 10; // Bonus for ship kill
           addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 50);
           playSFX('shipDestroyEnemy');
           continue;
@@ -5845,7 +6045,10 @@
           if (boss.currentHealth <= 0) {
             boss.defeated = true;
             boss.active = false;
-            world.score += boss.rewards.score;
+            // Boss points scale with level
+            const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+            const bossPoints = 1000 + (currentLevel.id * 500);
+            world.score += bossPoints;
             world.mead += boss.rewards.mead;
             addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 60);
             playSFX('powerup');
