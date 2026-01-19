@@ -463,6 +463,9 @@
     }
     .difficulty-btn {
       flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 14px 16px;
       border: none;
       border-radius: 12px;
@@ -1340,6 +1343,10 @@
             
             <button class="btn" id="highscoreBtn" style="width: 100%; height: 50px;">
               🏆 High Scores
+            </button>
+            
+            <button class="btn" id="shareBtn" style="width: 100%; height: 50px; margin-top: 8px;">
+              📤 Share Achievement
             </button>
           </div>
         </div>
@@ -2930,7 +2937,14 @@
     totalSessionScore: 0,
     bestStreak: parseInt(localStorage.getItem('bestStreak') || '0'),
     gamesPlayed: parseInt(localStorage.getItem('gamesPlayed') || '0'),
-    lastMilestoneTime: 0
+    lastMilestoneTime: 0,
+    // Enhanced progression tracking
+    totalPlayTime: parseFloat(localStorage.getItem('totalPlayTime') || '0'),
+    levelCompletions: JSON.parse(localStorage.getItem('levelCompletions') || '{}'),
+    difficultyCompletions: JSON.parse(localStorage.getItem('difficultyCompletions') || '{}'),
+    perfectRuns: parseInt(localStorage.getItem('perfectRuns') || '0'),
+    maxComboPerLevel: JSON.parse(localStorage.getItem('maxComboPerLevel') || '{}'),
+    sessionStartTime: Date.now()
   };
   
   // Daily Bonus System
@@ -3004,6 +3018,264 @@
     }
   };
   
+  // Weekly Challenges System - Maximum Addiction Potential
+  const WeeklyChallenges = {
+    challenges: [],
+    weekStart: null,
+    
+    getWeekStart() {
+      const now = new Date();
+      const day = now.getDay();
+      const diff = now.getDate() - day; // Sunday = 0
+      const weekStart = new Date(now.setDate(diff));
+      weekStart.setHours(0, 0, 0, 0);
+      return weekStart.toDateString();
+    },
+    
+    init() {
+      const weekStart = this.getWeekStart();
+      const saved = localStorage.getItem(`weeklyChallenges_${weekStart}`);
+      if (saved) {
+        this.challenges = JSON.parse(saved);
+        this.weekStart = weekStart;
+      } else {
+        this.generateChallenges();
+      }
+    },
+    
+    generateChallenges() {
+      const weekStart = this.getWeekStart();
+      this.weekStart = weekStart;
+      
+      // More challenging weekly objectives
+      this.challenges = [
+        { 
+          id: 1, 
+          desc: 'Reach 500k points in Extreme mode', 
+          type: 'extremeScore', 
+          target: 500000, 
+          progress: 0, 
+          reward: 5000, 
+          prestigeReward: 50,
+          completed: false 
+        },
+        { 
+          id: 2, 
+          desc: 'Defeat 5 bosses in one run', 
+          type: 'bossKills', 
+          target: 5, 
+          progress: 0, 
+          reward: 3000,
+          prestigeReward: 30,
+          completed: false 
+        },
+        { 
+          id: 3, 
+          desc: 'Complete a perfect run (no deaths) with 100k+ score', 
+          type: 'perfectRun', 
+          target: 100000, 
+          progress: 0, 
+          reward: 4000,
+          prestigeReward: 40,
+          completed: false 
+        },
+        { 
+          id: 4, 
+          desc: 'Reach Prestige level', 
+          type: 'prestige', 
+          target: 1, 
+          progress: 0, 
+          reward: 6000,
+          prestigeReward: 100,
+          completed: false 
+        },
+        { 
+          id: 5, 
+          desc: 'Collect 50 mead in one session', 
+          type: 'meadCollect', 
+          target: 50, 
+          progress: 0, 
+          reward: 2000,
+          prestigeReward: 20,
+          completed: false 
+        }
+      ];
+      
+      localStorage.setItem(`weeklyChallenges_${weekStart}`, JSON.stringify(this.challenges));
+    },
+    
+    updateProgress(type, amount, score = 0) {
+      const weekStart = this.getWeekStart();
+      if (weekStart !== this.weekStart) {
+        // New week, reset challenges
+        this.generateChallenges();
+        return;
+      }
+      
+      this.challenges.forEach(challenge => {
+        if (challenge.type === type && !challenge.completed) {
+          if (type === 'extremeScore' || type === 'perfectRun') {
+            // For score-based challenges, update if current score exceeds progress
+            if (score > challenge.progress) {
+              challenge.progress = score;
+            }
+          } else {
+            challenge.progress += amount;
+          }
+          
+          if (challenge.progress >= challenge.target) {
+            challenge.completed = true;
+            world.score += challenge.reward;
+            PrestigeSystem.points += challenge.prestigeReward || 0;
+            localStorage.setItem('prestigePoints', PrestigeSystem.points.toString());
+            showAchievement({ 
+              name: 'Weekly Challenge Complete!', 
+              desc: challenge.desc, 
+              icon: '🏆', 
+              rarity: 'platinum' 
+            });
+            showStickinessNotification(`⭐ Weekly Challenge: +${challenge.reward.toLocaleString()} pts, +${challenge.prestigeReward} prestige!`, 'info');
+          }
+        }
+      });
+      
+      localStorage.setItem(`weeklyChallenges_${weekStart}`, JSON.stringify(this.challenges));
+    },
+    
+    getProgress() {
+      const weekStart = this.getWeekStart();
+      if (weekStart !== this.weekStart) {
+        this.generateChallenges();
+      }
+      return this.challenges.filter(c => !c.completed).length;
+    },
+    
+    getTimeRemaining() {
+      const now = new Date();
+      const day = now.getDay();
+      const daysUntilSunday = 7 - day;
+      const nextSunday = new Date(now);
+      nextSunday.setDate(now.getDate() + daysUntilSunday);
+      nextSunday.setHours(0, 0, 0, 0);
+      const msRemaining = nextSunday - now;
+      const hours = Math.floor(msRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      return { hours, minutes, total: msRemaining };
+    }
+  };
+  
+  // Time-Limited Events System - Maximum Addiction Potential
+  const EventSystem = {
+    currentEvent: null,
+    events: [],
+    
+    init() {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const hour = now.getHours();
+      
+      // Weekend events (Friday 6 PM - Sunday 11:59 PM)
+      if ((dayOfWeek === 5 && hour >= 18) || dayOfWeek === 6 || (dayOfWeek === 0 && hour < 24)) {
+        this.currentEvent = {
+          type: 'weekend',
+          name: 'Weekend Warrior',
+          description: '2x Score Multiplier + Rare Powerups!',
+          scoreMultiplier: 2.0,
+          powerupFrequency: 0.5, // 2x more frequent
+          endTime: this.getWeekendEndTime(),
+          icon: '🔥'
+        };
+      }
+      
+      // Monthly boss rush (first weekend of month)
+      const firstWeekend = this.getFirstWeekendOfMonth();
+      if (now >= firstWeekend && now <= new Date(firstWeekend.getTime() + 2 * 24 * 60 * 60 * 1000)) {
+        this.currentEvent = {
+          type: 'bossRush',
+          name: 'Boss Rush',
+          description: 'Bosses spawn 3x more frequently!',
+          bossSpawnMultiplier: 3.0,
+          endTime: new Date(firstWeekend.getTime() + 2 * 24 * 60 * 60 * 1000),
+          icon: '👹'
+        };
+      }
+      
+      // Seasonal events (placeholder - can be expanded)
+      const month = now.getMonth();
+      if (month === 11) { // December
+        this.currentEvent = {
+          type: 'seasonal',
+          name: 'Yule Festival',
+          description: 'Holiday-themed powerups and bonuses!',
+          scoreMultiplier: 1.5,
+          endTime: new Date(now.getFullYear(), 11, 31, 23, 59, 59),
+          icon: '🎄'
+        };
+      }
+      
+      if (this.currentEvent) {
+        localStorage.setItem('currentEvent', JSON.stringify(this.currentEvent));
+        showStickinessNotification(`🎉 ${this.currentEvent.icon} ${this.currentEvent.name} Event Active! ${this.currentEvent.description}`, 'info');
+      }
+    },
+    
+    getWeekendEndTime() {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const daysUntilSunday = 7 - dayOfWeek;
+      const nextSunday = new Date(now);
+      nextSunday.setDate(now.getDate() + daysUntilSunday);
+      nextSunday.setHours(23, 59, 59, 999);
+      return nextSunday;
+    },
+    
+    getFirstWeekendOfMonth() {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const firstDayOfWeek = firstDay.getDay();
+      // Find first Friday
+      const daysUntilFriday = firstDayOfWeek <= 5 ? (5 - firstDayOfWeek) : (12 - firstDayOfWeek);
+      const firstFriday = new Date(firstDay);
+      firstFriday.setDate(firstDay.getDate() + daysUntilFriday);
+      firstFriday.setHours(18, 0, 0, 0);
+      return firstFriday;
+    },
+    
+    isActive() {
+      if (!this.currentEvent) return false;
+      return new Date() < new Date(this.currentEvent.endTime);
+    },
+    
+    getScoreMultiplier() {
+      if (this.isActive() && this.currentEvent.scoreMultiplier) {
+        return this.currentEvent.scoreMultiplier;
+      }
+      return 1.0;
+    },
+    
+    getPowerupFrequencyMultiplier() {
+      if (this.isActive() && this.currentEvent.powerupFrequency) {
+        return this.currentEvent.powerupFrequency;
+      }
+      return 1.0;
+    },
+    
+    getBossSpawnMultiplier() {
+      if (this.isActive() && this.currentEvent.bossSpawnMultiplier) {
+        return this.currentEvent.bossSpawnMultiplier;
+      }
+      return 1.0;
+    },
+    
+    getTimeRemaining() {
+      if (!this.isActive()) return null;
+      const msRemaining = new Date(this.currentEvent.endTime) - new Date();
+      const hours = Math.floor(msRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      return { hours, minutes, total: msRemaining };
+    }
+  };
+  
   // Level Mastery System
   const LevelMastery = {
     stars: JSON.parse(localStorage.getItem('levelMastery') || '{}'),
@@ -3031,6 +3303,184 @@
     },
     getStars(levelId) {
       return this.stars[`level_${levelId}`] || 0;
+    }
+  };
+  
+  // Prestige System - Maximum Addiction Potential
+  const PrestigeSystem = {
+    level: parseInt(localStorage.getItem('prestigeLevel') || '0'),
+    points: parseInt(localStorage.getItem('prestigePoints') || '0'),
+    upgrades: JSON.parse(localStorage.getItem('prestigeUpgrades') || '{}'),
+    
+    // Prestige milestones (score thresholds to prestige)
+    milestones: [
+      50000,    // Prestige 1
+      150000,   // Prestige 2
+      300000,   // Prestige 3
+      600000,   // Prestige 4
+      1000000,  // Prestige 5
+      2000000,  // Prestige 6
+      4000000,  // Prestige 7
+      8000000,  // Prestige 8
+      15000000, // Prestige 9
+      30000000  // Prestige 10+
+    ],
+    
+    getCurrentMilestone() {
+      if (this.level >= this.milestones.length) {
+        // After prestige 10, each level requires 2x the previous
+        const base = this.milestones[this.milestones.length - 1];
+        return base * Math.pow(2, this.level - this.milestones.length + 1);
+      }
+      return this.milestones[this.level];
+    },
+    
+    canPrestige(score) {
+      return score >= this.getCurrentMilestone();
+    },
+    
+    calculatePoints(score) {
+      // Points = score / 10000, with bonus for difficulty
+      const diff = DifficultyModes.getCurrent();
+      const basePoints = Math.floor(score / 10000);
+      const difficultyMultiplier = {
+        easy: 0.5,
+        normal: 1.0,
+        hard: 2.0,
+        extreme: 4.0
+      };
+      return Math.floor(basePoints * (difficultyMultiplier[diff.name.toLowerCase()] || 1.0));
+    },
+    
+    prestige(score) {
+      if (!this.canPrestige(score)) return false;
+      
+      const pointsEarned = this.calculatePoints(score);
+      this.level++;
+      this.points += pointsEarned;
+      
+      localStorage.setItem('prestigeLevel', this.level.toString());
+      localStorage.setItem('prestigePoints', this.points.toString());
+      
+      // Show prestige notification
+      showStickinessNotification(`⭐ PRESTIGE ${this.level} UNLOCKED! +${pointsEarned.toLocaleString()} Prestige Points`, 'info');
+      playSFX('powerup');
+      
+      return true;
+    },
+    
+    getUpgradeCost(upgradeId) {
+      const costs = {
+        scoreMultiplier: 100 + (this.upgrades.scoreMultiplier || 0) * 50,
+        startingLives: 150 + (this.upgrades.startingLives || 0) * 75,
+        powerupFrequency: 200 + (this.upgrades.powerupFrequency || 0) * 100,
+        enemySpeedReduction: 250 + (this.upgrades.enemySpeedReduction || 0) * 125
+      };
+      return costs[upgradeId] || 999999;
+    },
+    
+    buyUpgrade(upgradeId) {
+      const cost = this.getUpgradeCost(upgradeId);
+      if (this.points < cost) return false;
+      
+      this.points -= cost;
+      this.upgrades[upgradeId] = (this.upgrades[upgradeId] || 0) + 1;
+      
+      localStorage.setItem('prestigePoints', this.points.toString());
+      localStorage.setItem('prestigeUpgrades', JSON.stringify(this.upgrades));
+      
+      showStickinessNotification(`✨ Upgrade Purchased: ${upgradeId}`, 'info');
+      return true;
+    },
+    
+    getScoreMultiplier() {
+      return 1.0 + (this.upgrades.scoreMultiplier || 0) * 0.1; // +10% per level
+    },
+    
+    getStartingLivesBonus() {
+      return this.upgrades.startingLives || 0; // +1 life per level
+    },
+    
+    getPowerupFrequencyBonus() {
+      return 1.0 - (this.upgrades.powerupFrequency || 0) * 0.05; // -5% delay per level
+    },
+    
+    getEnemySpeedReduction() {
+      return 1.0 - (this.upgrades.enemySpeedReduction || 0) * 0.03; // -3% enemy speed per level
+    }
+  };
+  
+  // Unlockables System - Maximum Addiction Potential
+  const Unlockables = {
+    unlocked: JSON.parse(localStorage.getItem('unlockables') || '[]'),
+    
+    // Unlock definitions
+    definitions: {
+      // Character skins
+      skin_viking_warrior: { type: 'skin', name: 'Viking Warrior', unlockAt: 50000, icon: '⚔️' },
+      skin_berserker: { type: 'skin', name: 'Berserker', unlockAt: 150000, icon: '🔥' },
+      skin_jarl: { type: 'skin', name: 'Jarl', unlockAt: 500000, icon: '👑' },
+      skin_odin_chosen: { type: 'skin', name: "Odin's Chosen", unlockAt: 2000000, icon: '⚡' },
+      
+      // Titles
+      title_novice: { type: 'title', name: 'Viking Novice', unlockAt: 10000, icon: '🛡️' },
+      title_raider: { type: 'title', name: 'Raider', unlockAt: 50000, icon: '⚔️' },
+      title_berserker: { type: 'title', name: 'Berserker', unlockAt: 150000, icon: '🔥' },
+      title_dragon_slayer: { type: 'title', name: 'Dragon Slayer', unlockAt: 500000, icon: '🐉' },
+      title_valhalla_bound: { type: 'title', name: 'Valhalla Bound', unlockAt: 1000000, icon: '⭐' },
+      title_ragnarok_slayer: { type: 'title', name: 'Ragnarok Slayer', unlockAt: 5000000, icon: '💀' },
+      
+      // Background themes
+      theme_fire_realm: { type: 'theme', name: 'Fire Realm', unlockAt: 300000, icon: '🔥' },
+      theme_ice_realm: { type: 'theme', name: 'Ice Realm', unlockAt: 600000, icon: '❄️' },
+      theme_valhalla: { type: 'theme', name: 'Valhalla', unlockAt: 2000000, icon: '⭐' },
+      
+      // Powerup variants (visual only)
+      powerup_golden_speed: { type: 'powerupVariant', name: 'Golden Speed Boost', unlockAt: 200000, icon: '⚡' },
+      powerup_legendary_ship: { type: 'powerupVariant', name: 'Legendary Ship', unlockAt: 1000000, icon: '🚢' }
+    },
+    
+    checkUnlocks(score, levelId = null) {
+      let newUnlocks = [];
+      
+      Object.keys(this.definitions).forEach(key => {
+        const unlock = this.definitions[key];
+        if (!this.unlocked.includes(key)) {
+          if (unlock.unlockAt && score >= unlock.unlockAt) {
+            this.unlocked.push(key);
+            newUnlocks.push(unlock);
+          } else if (unlock.unlockLevel && levelId && levelId >= unlock.unlockLevel) {
+            this.unlocked.push(key);
+            newUnlocks.push(unlock);
+          }
+        }
+      });
+      
+      if (newUnlocks.length > 0) {
+        this.save();
+        newUnlocks.forEach(unlock => {
+          showAchievement({
+            name: 'UNLOCKED!',
+            desc: unlock.name,
+            icon: unlock.icon,
+            rarity: 'platinum'
+          });
+          showStickinessNotification(`🎉 ${unlock.icon} ${unlock.name} Unlocked!`, 'info');
+          playSFX('powerup');
+        });
+      }
+    },
+    
+    isUnlocked(key) {
+      return this.unlocked.includes(key);
+    },
+    
+    save() {
+      localStorage.setItem('unlockables', JSON.stringify(this.unlocked));
+    },
+    
+    getUnlockedByType(type) {
+      return this.unlocked.filter(key => this.definitions[key]?.type === type);
     }
   };
   
@@ -4140,6 +4590,8 @@
       engagement.totalSessionScore = 0;
       engagement.lastMilestoneTime = 0;
       engagement.gamesPlayed++;
+      engagement.sessionStartTime = Date.now();
+      engagement.combo.maxCombo = 0; // Reset for this session
       localStorage.setItem('gamesPlayed', engagement.gamesPlayed.toString());
       Achievements.reset();
       
@@ -4181,6 +4633,8 @@
       } else if (engagement.sessionDeaths >= 5) {
         startingLives += 1;
       }
+      // Add prestige bonus
+      startingLives += PrestigeSystem.getStartingLivesBonus();
       world.lives = Math.min(startingLives, 10); // Cap at 10 lives max
       
       world.powerups = {
@@ -4464,20 +4918,46 @@
   };
 
 
-  // Stickiness notifications
+  // Enhanced Stickiness Notifications - Maximum Addiction Potential
   let lastStickinessNotification = 0;
-  const showStickinessNotification = (message, type = 'info') => {
+  const notificationLog = [];
+  
+  const showStickinessNotification = (message, type = 'info', soundType = null) => {
     const now = Date.now();
-    if (now - lastStickinessNotification < 3000) return; // Throttle notifications
+    if (now - lastStickinessNotification < 2000) return; // Throttle notifications
     lastStickinessNotification = now;
     
+    // Play sound based on type
+    if (soundType) {
+      playSFX(soundType);
+    } else {
+      switch(type) {
+        case 'achievement': playSFX('powerup'); break;
+        case 'milestone': playSFX('warhorn'); break;
+        case 'unlock': playSFX('powerup'); break;
+        case 'event': playSFX('powerup'); break;
+        case 'warning': playSFX('powerup'); break;
+        default: playSFX('powerup'); break;
+      }
+    }
+    
     const notification = document.createElement('div');
+    const colors = {
+      info: 'rgba(59, 130, 246, 0.95)',
+      warning: 'rgba(251, 191, 36, 0.95)',
+      danger: 'rgba(239, 68, 68, 0.95)',
+      achievement: 'rgba(168, 85, 247, 0.95)',
+      milestone: 'rgba(34, 197, 94, 0.95)',
+      unlock: 'rgba(251, 191, 36, 0.95)',
+      event: 'rgba(236, 72, 153, 0.95)'
+    };
+    
     notification.style.cssText = `
       position: fixed;
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: ${type === 'warning' ? 'rgba(251, 191, 36, 0.95)' : type === 'danger' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(59, 130, 246, 0.95)'};
+      background: ${colors[type] || colors.info};
       color: white;
       padding: 14px 24px;
       border-radius: 12px;
@@ -4486,14 +4966,56 @@
       z-index: 10001;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       animation: slideDown 0.3s ease;
+      text-align: center;
+      max-width: 90%;
+      word-wrap: break-word;
     `;
     notification.textContent = message;
     document.body.appendChild(notification);
     
+    // Add to notification log
+    notificationLog.push({ message, type, timestamp: new Date().toISOString() });
+    if (notificationLog.length > 50) notificationLog.shift(); // Keep last 50
+    
     setTimeout(() => {
       notification.style.animation = 'slideUp 0.3s ease';
       setTimeout(() => notification.remove(), 300);
-    }, 2500);
+    }, type === 'event' ? 4000 : 2500); // Events show longer
+  };
+  
+  // "Almost there" notifications
+  const checkAlmostThereNotifications = () => {
+    if (!world.started || world.paused || world.over) return;
+    
+    const score = world.score;
+    
+    // "50 points until next level!"
+    const nextLevel = LevelSystem.levels.find(l => l.unlockScore > score);
+    if (nextLevel) {
+      const remaining = nextLevel.unlockScore - score;
+      if (remaining > 0 && remaining <= 50 && Math.random() < 0.1) {
+        showStickinessNotification(`⚡ Only ${remaining} points until ${nextLevel.name}!`, 'warning');
+      }
+    }
+    
+    // "One more enemy for daily challenge!"
+    if (DailyChallenges && DailyChallenges.challenges) {
+      const activeChallenge = DailyChallenges.challenges.find(c => !c.completed && c.type === 'enemyKills');
+      if (activeChallenge) {
+        const remaining = activeChallenge.target - activeChallenge.progress;
+        if (remaining === 1 && Math.random() < 0.3) {
+          showStickinessNotification(`🎯 One more enemy for daily challenge!`, 'warning');
+        }
+      }
+    }
+    
+    // "10 seconds until powerup expires!"
+    for (const key in world.powerups) {
+      const powerup = world.powerups[key];
+      if (powerup.active && powerup.timeLeft <= 10 && powerup.timeLeft > 9 && Math.random() < 0.2) {
+        showStickinessNotification(`⏰ ${key} expires in ${Math.ceil(powerup.timeLeft)}s!`, 'warning');
+      }
+    }
   };
 
   const updateProgressVisualization = () => {
@@ -5917,6 +6439,19 @@
                       engagement.personalBest = Math.floor(world.score);
                       localStorage.setItem('personalBest', engagement.personalBest.toString());
                     }
+                    
+                    // Check for prestige opportunity
+                    if (PrestigeSystem.canPrestige(world.score)) {
+                      setTimeout(() => {
+                        const prestige = confirm(`⭐ You've reached Prestige ${PrestigeSystem.level + 1} threshold!\n\nPrestige to gain ${PrestigeSystem.calculatePoints(world.score).toLocaleString()} Prestige Points and permanent bonuses!\n\n(You'll keep your prestige level and points, but reset your current run)`);
+                        if (prestige) {
+                          PrestigeSystem.prestige(world.score);
+                          // Track weekly challenge: prestige
+                          WeeklyChallenges.updateProgress('prestige', 1);
+                        }
+                      }, 1500);
+                    }
+                    
                     HighScoreManager.saveScore(world.score);
                     playSFX('gameover');
                     setTimeout(() => { 
@@ -6000,7 +6535,9 @@
     viking.x += actualSpeed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
     const streakBonus = engagement.streakBonus || 1.0;
-    world.score += world.speed * 0.015 * dt * scoreMultiplier * streakBonus;
+    const prestigeMultiplier = PrestigeSystem.getScoreMultiplier();
+    const eventMultiplier = EventSystem.getScoreMultiplier();
+    world.score += world.speed * 0.015 * dt * scoreMultiplier * streakBonus * prestigeMultiplier * eventMultiplier;
     
     // Combo timer decay
     if (engagement.combo.timer > 0) {
@@ -6029,6 +6566,23 @@
     
     // Check for level unlocks
     LevelSystem.checkUnlocks(world.score);
+    
+    // Check for unlockables
+    Unlockables.checkUnlocks(world.score, world.currentLevel);
+    
+    // Check "almost there" notifications (throttled)
+    if (Math.random() < 0.01) { // 1% chance per frame to check
+      checkAlmostThereNotifications();
+    }
+    
+    // Check for active events and apply multipliers
+    if (EventSystem.isActive()) {
+      const eventMultiplier = EventSystem.getScoreMultiplier();
+      if (eventMultiplier > 1.0) {
+        // Event score multiplier is already applied in score calculation above
+        // This is just for checking if event is active
+      }
+    }
     
     // Update world.currentLevel based on score (for level progression)
     const scoreBasedLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
@@ -6086,7 +6640,9 @@
         // Calculate spawns per level based on level number
         // Level 1-3: 1 boss each, Level 4: 2, Level 5: 3, Level 6: 4, Level 7: 5, Level 8: 6
         const spawnsPerLevel = currentLevel.id <= 3 ? 1 : currentLevel.id - 2;
-        const spawnInterval = levelRange / (spawnsPerLevel + 1);
+        // Apply event multiplier to boss spawn frequency
+        const bossSpawnMultiplier = EventSystem.getBossSpawnMultiplier();
+        const spawnInterval = (levelRange / (spawnsPerLevel + 1)) / bossSpawnMultiplier;
         
         // Check each spawn point
         for (let i = 1; i <= spawnsPerLevel; i++) {
@@ -6256,6 +6812,11 @@
       } else {
         minDelay = 2000; maxDelay = 5000; // Very frequent powerups (level 6+)
       }
+      // Apply event multiplier to powerup frequency
+      const eventPowerupMultiplier = EventSystem.getPowerupFrequencyMultiplier();
+      const prestigePowerupMultiplier = PrestigeSystem.getPowerupFrequencyBonus();
+      minDelay = Math.floor(minDelay * eventPowerupMultiplier * prestigePowerupMultiplier);
+      maxDelay = Math.floor(maxDelay * eventPowerupMultiplier * prestigePowerupMultiplier);
       world.nextPowerupAt += rand(minDelay, maxDelay);
     }
     if (viking.x > world.nextPlatformAt - W) {
@@ -6264,13 +6825,14 @@
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
-      // Dynamic spawn rate scaling - much more forgiving
+      // Use difficulty settings directly for spawn rates
       const diff = DifficultyModes.getCurrent();
-      const baseMin = diff.enemySpawnMin * 2.0, baseMax = diff.enemySpawnMax * 2.0; // 100% less frequent (was 1.5)
-      const scoreFactor = Math.min(world.score / 120000, 1.0); // Much slower scaling (was 80000)
-      const minSpawn = baseMin - (baseMin * 0.2 * scoreFactor); // Less aggressive (was 0.3)
-      const maxSpawn = baseMax - (baseMax * 0.2 * scoreFactor);
-      world.nextEnemyAt += rand(Math.max(700, minSpawn), Math.max(1000, maxSpawn)); // More spacing (was 500-800)
+      // Score-based scaling: enemies spawn slightly more frequently as score increases
+      const scoreFactor = Math.min(world.score / 200000, 0.5); // Max 50% increase in frequency
+      const minSpawn = diff.enemySpawnMin * (1.0 - scoreFactor * 0.3); // Slightly more frequent at high scores
+      const maxSpawn = diff.enemySpawnMax * (1.0 - scoreFactor * 0.3);
+      // Ensure minimum spacing for playability
+      world.nextEnemyAt += rand(Math.max(diff.enemySpawnMin * 0.5, minSpawn), Math.max(diff.enemySpawnMax * 0.5, maxSpawn));
     }
     // Spawn bird enemies - level-specific
     if (viking.x > world.nextBirdAt - W) {
@@ -6289,7 +6851,11 @@
       spawnGold(world.nextGoldAt);
       // Also spawn rune stones occasionally
       Collectibles.spawnRuneStone(world.nextGoldAt + rand(100, 300), world.groundY - rand(60, 200), world.currentLevel);
-      world.nextGoldAt += rand(2000, 4000); // Rare gold spawns
+      // Apply event multiplier to gold spawn frequency (if goldenRush event is active)
+      const goldSpawnDelay = EventSystem.isActive() && EventSystem.currentEvent?.type === 'goldenRush' 
+        ? rand(1000, 2000) // More frequent during golden rush
+        : rand(2000, 4000); // Normal rare gold spawns
+      world.nextGoldAt += goldSpawnDelay;
     }
     
     // Update all objects
@@ -6309,7 +6875,8 @@
         // Enemy speed scales with world speed, difficulty, and enemy type speed
         const diff = DifficultyModes.getCurrent();
         const scoreSpeedBoost = 1.0 + (world.score / 100000) * 0.3;
-        const enemySpeed = (e.speed || 1.0) * diff.enemySpeedMultiplier * scoreSpeedBoost;
+        const prestigeReduction = PrestigeSystem.getEnemySpeedReduction();
+        const enemySpeed = (e.speed || 1.0) * diff.enemySpeedMultiplier * scoreSpeedBoost * prestigeReduction;
         e.x -= world.speed * enemySpeed * dt;
         // Birds can move slightly faster and have slight vertical movement
         if (e.isBird) {
@@ -6375,6 +6942,8 @@
     
     for (const m of Meads) {
       if (!m.taken) {
+        // Track mead collection for weekly challenges
+        WeeklyChallenges.updateProgress('meadCollect', 1);
         m.rotation += dt * 2;
         m.x -= world.speed * dt;
       }
@@ -6535,6 +7104,15 @@
                 
                 // Update level mastery
                 LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
+                
+                // Update weekly challenges
+                const diff = DifficultyModes.getCurrent();
+                if (diff.name.toLowerCase() === 'extreme') {
+                  WeeklyChallenges.updateProgress('extremeScore', 0, world.score);
+                }
+                if (engagement.sessionDeaths === 0 && world.score >= 100000) {
+                  WeeklyChallenges.updateProgress('perfectRun', 0, world.score);
+                }
                 
                 // Stop gameplay music and resume menu music
                 stopVikingMusic();
@@ -6767,6 +7345,8 @@
           world.score += bossPoints * 10; // Bonus for ship kill
           addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 50);
           playSFX('shipDestroyEnemy');
+          // Track weekly challenge: boss kills
+          WeeklyChallenges.updateProgress('bossKills', 1);
           continue;
         }
         
@@ -6818,6 +7398,9 @@
                 const artifactId = `artifact_${boss.level}_${boss.name}`;
                 Collectibles.collectArtifact(artifactId);
               }
+              
+              // Track weekly challenge: boss kills
+              WeeklyChallenges.updateProgress('bossKills', 1);
               
               // Show boss defeat notification
               const notification = document.createElement('div');
@@ -7495,17 +8078,6 @@
     requestAnimationFrame(tick);
   };
 
-  // Difficulty selector handlers
-  const difficultyBtns = document.querySelectorAll('.difficulty-btn');
-  difficultyBtns.forEach(btn => {
-    btn.onclick = () => {
-      difficultyBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const difficulty = btn.dataset.difficulty;
-      DifficultyModes.apply(difficulty);
-    };
-  });
-  
   // Level grid renderer
   const renderLevelGrid = () => {
     const grid = $("levelGrid");
@@ -7676,11 +8248,66 @@
     };
   }
   
-  highscoreModal.onclick = (e) => {
-    if (e.target === highscoreModal) {
-      highscoreModal.classList.remove("active");
+  // Social/Sharing Features
+  const shareBtn = $("shareBtn");
+  const shareAchievement = () => {
+    const score = world.score || engagement.personalBest || 0;
+    const level = world.currentLevel || LevelSystem.currentLevel || 1;
+    const diff = DifficultyModes.getCurrent();
+    const prestige = PrestigeSystem.level;
+    const titles = Unlockables.getUnlockedByType('title');
+    const titleName = titles.length > 0 ? Unlockables.definitions[titles[titles.length - 1]]?.name : 'Viking Warrior';
+    
+    const shareText = `⚔️ Viking Run Achievement! ⚔️\n\n` +
+      `Score: ${Math.floor(score).toLocaleString()}\n` +
+      `Level: ${level}\n` +
+      `Difficulty: ${diff.name}\n` +
+      `Prestige: ${prestige}\n` +
+      `Title: ${titleName}\n\n` +
+      `Can you beat my score? 🏆`;
+    
+    // Try Web Share API first
+    if (navigator.share) {
+      navigator.share({
+        title: 'Viking Run Achievement',
+        text: shareText,
+        url: window.location.href
+      }).catch(() => {
+        // Fallback to clipboard
+        copyToClipboard(shareText);
+      });
+    } else {
+      // Fallback to clipboard
+      copyToClipboard(shareText);
     }
   };
+  
+  const copyToClipboard = (text) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        showStickinessNotification('📋 Copied to clipboard!', 'info');
+      }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          showStickinessNotification('📋 Copied to clipboard!', 'info');
+        } catch (e) {
+          showStickinessNotification('❌ Could not copy to clipboard', 'warning');
+        }
+        document.body.removeChild(textarea);
+      });
+    }
+  };
+  
+  if (shareBtn) {
+    shareBtn.onclick = shareAchievement;
+  }
 
   // Eye Tracking System
   
@@ -8488,12 +9115,40 @@
       LevelSystem.loadExternal();
       DifficultyModes.loadSaved();
       DailyChallenges.init();
+      WeeklyChallenges.init();
+      EventSystem.init();
       resize();
       resetWorld();
       // Ensure level grid is rendered after initialization
       if (typeof renderLevelGrid === 'function') {
         renderLevelGrid();
       }
+      
+      // Difficulty selector handlers - must be after DOM is ready
+      const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+      difficultyBtns.forEach(btn => {
+        btn.onclick = () => {
+          difficultyBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const difficulty = btn.dataset.difficulty;
+          DifficultyModes.apply(difficulty);
+          // Re-render level grid to reflect any difficulty changes
+          if (typeof renderLevelGrid === 'function') {
+            renderLevelGrid();
+          }
+        };
+      });
+      
+      // Set initial active state based on saved difficulty
+      const savedDifficulty = world.difficulty || 'normal';
+      difficultyBtns.forEach(btn => {
+        if (btn.dataset.difficulty === savedDifficulty) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      
       requestAnimationFrame(tick);
       setTimeout(showDailyBonus, 500);
     });
@@ -8508,6 +9163,32 @@
     if (typeof renderLevelGrid === 'function') {
       renderLevelGrid();
     }
+    
+    // Difficulty selector handlers - must be after DOM is ready
+    const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+    difficultyBtns.forEach(btn => {
+      btn.onclick = () => {
+        difficultyBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const difficulty = btn.dataset.difficulty;
+        DifficultyModes.apply(difficulty);
+        // Re-render level grid to reflect any difficulty changes
+        if (typeof renderLevelGrid === 'function') {
+          renderLevelGrid();
+        }
+      };
+    });
+    
+    // Set initial active state based on saved difficulty
+    const savedDifficulty = world.difficulty || 'normal';
+    difficultyBtns.forEach(btn => {
+      if (btn.dataset.difficulty === savedDifficulty) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    
     requestAnimationFrame(tick);
     setTimeout(showDailyBonus, 500);
   }
