@@ -5311,16 +5311,23 @@
   const start = () => {
     if (world.started) return;
     try {
-    world.started = true;
+      console.log("Game starting...");
+      world.started = true;
       world.over = false;
       world.paused = false;
       sessionStartTime = Date.now();
       
       // Sync world.currentLevel with LevelSystem.currentLevel
       world.currentLevel = LevelSystem.currentLevel || 1;
+      console.log("Current level:", world.currentLevel);
+      
+      // Apply difficulty settings
+      const diff = DifficultyModes.getCurrent();
+      world.speed = diff.baseSpeed;
+      console.log("Difficulty:", diff.name, "Speed:", world.speed);
       
       if (overlay) {
-    overlay.style.display = "none";
+        overlay.style.display = "none";
         overlay.style.visibility = "hidden";
       }
       if (statePill) statePill.textContent = "Playing";
@@ -5333,8 +5340,11 @@
       applyPendingReward();
       
       playSFX('warhorn');
+      console.log("Game started successfully");
     } catch (e) {
       console.error("Error in start:", e);
+      // Reset on error
+      world.started = false;
     }
   };
 
@@ -6504,7 +6514,10 @@
       Input.jumpJustPressed = false;
       return;
     }
-    if (!H || H === 0) return; // Safety check
+    if (!H || H === 0) {
+      console.warn("H is not set, cannot update");
+      return;
+    }
 
     world.t += dt;
     Achievements.sessionStats.timeSurvived = world.t;
