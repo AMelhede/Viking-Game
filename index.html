@@ -4426,7 +4426,10 @@
     // Sometimes spawn low platforms that require ducking (at ground level or slightly above)
     const isLowPlatform = Math.random() < 0.5; // 50% chance - more duck scenarios
     const y = isLowPlatform ? world.groundY - rand(30, 50) : world.groundY - rand(100, 250);
-    Platforms.push({ x, y, width, height, isLow: isLowPlatform });
+    // Randomly select Viking-themed platform type
+    const platformTypes = ['shield', 'log', 'barrel', 'stone'];
+    const type = platformTypes[Math.floor(Math.random() * platformTypes.length)];
+    Platforms.push({ x, y, width, height, isLow: isLowPlatform, type });
   };
 
   // Viking enemy properties - unique Viking warriors per level
@@ -5841,23 +5844,100 @@
     ctx.restore();
   };
 
+  // Draw Viking-themed platforms (shields, logs, barrels, stone blocks)
   const drawPlatform = (p) => {
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    ctx.fillRect(0, p.height, p.width, 5);
-    const gradient = ctx.createLinearGradient(0, 0, 0, p.height);
-    gradient.addColorStop(0, "#64748b");
-    gradient.addColorStop(1, "#475569");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, p.width, p.height);
-    ctx.strokeStyle = "#334155";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, p.width, p.height);
+    
+    // Randomly select platform type if not specified
+    const platformType = p.type || (Math.random() < 0.25 ? 'shield' : Math.random() < 0.5 ? 'log' : Math.random() < 0.75 ? 'barrel' : 'stone');
+    
+    if (platformType === 'shield') {
+      // Viking round shield platform
+      const shieldRadius = Math.min(p.width / 2, p.height);
+      ctx.fillStyle = "#DC2626"; // Red shield
+      ctx.beginPath();
+      ctx.arc(p.width / 2, 0, shieldRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // Shield boss (center metal)
+      ctx.fillStyle = "#C0C0C0";
+      ctx.beginPath();
+      ctx.arc(p.width / 2, 0, shieldRadius * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Viking rune pattern
+      ctx.strokeStyle = "#FFD700";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.width / 2 - shieldRadius * 0.4, 0 - shieldRadius * 0.4);
+      ctx.lineTo(p.width / 2 + shieldRadius * 0.4, 0 + shieldRadius * 0.4);
+      ctx.moveTo(p.width / 2 + shieldRadius * 0.4, 0 - shieldRadius * 0.4);
+      ctx.lineTo(p.width / 2 - shieldRadius * 0.4, 0 + shieldRadius * 0.4);
+      ctx.stroke();
+    } else if (platformType === 'log') {
+      // Wooden log platform
+      const logGradient = ctx.createLinearGradient(0, 0, 0, p.height);
+      logGradient.addColorStop(0, "#8B4513");
+      logGradient.addColorStop(0.5, "#654321");
+      logGradient.addColorStop(1, "#5D4037");
+      ctx.fillStyle = logGradient;
+      ctx.fillRect(0, 0, p.width, p.height);
+      ctx.strokeStyle = "#3E2723";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, p.width, p.height);
+      // Wood grain lines
+      ctx.strokeStyle = "#5D4037";
+      ctx.lineWidth = 1;
+      for (let i = 5; i < p.width; i += 8) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + 2, p.height);
+        ctx.stroke();
+      }
+    } else if (platformType === 'barrel') {
+      // Wooden barrel platform
+      const barrelGradient = ctx.createRadialGradient(p.width / 2, p.height / 2, 0, p.width / 2, p.height / 2, p.width / 2);
+      barrelGradient.addColorStop(0, "#8B4513");
+      barrelGradient.addColorStop(1, "#654321");
+      ctx.fillStyle = barrelGradient;
+      ctx.fillRect(0, 0, p.width, p.height);
+      ctx.strokeStyle = "#3E2723";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(0, 0, p.width, p.height);
+      // Barrel hoops
+      ctx.strokeStyle = "#1A1A1A";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, p.height * 0.3);
+      ctx.lineTo(p.width, p.height * 0.3);
+      ctx.moveTo(0, p.height * 0.7);
+      ctx.lineTo(p.width, p.height * 0.7);
+      ctx.stroke();
+    } else {
+      // Stone block with runes
+      const stoneGradient = ctx.createLinearGradient(0, 0, 0, p.height);
+      stoneGradient.addColorStop(0, "#708090");
+      stoneGradient.addColorStop(1, "#2F4F4F");
+      ctx.fillStyle = stoneGradient;
+      ctx.fillRect(0, 0, p.width, p.height);
+      ctx.strokeStyle = "#1C1C1C";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, p.width, p.height);
+      // Carved rune symbols
+      ctx.fillStyle = "#FFD700";
+      ctx.font = `bold ${p.height * 0.4}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("ᚠ", p.width / 2, p.height / 2); // Fehu rune
+    }
+    
     ctx.restore();
   };
 
-  // Draw proper Viking warrior enemy
+  // Draw proper Viking warrior enemy - Enhanced for clarity
   const drawEnemy = (e) => {
     if (e.defeated) return;
     
@@ -5870,10 +5950,17 @@
     ctx.save();
     ctx.translate(e.x, e.y);
     
+    // Ensure enemy has valid properties
+    if (!e.type || !enemyProps[e.type]) {
+      console.warn('Enemy missing type or props:', e);
+      ctx.restore();
+      return;
+    }
+    
     const groundOffset = 0;
     const bodyHeight = e.h * 0.6;
     const bodyWidth = e.w * 0.7;
-    const props = enemyProps[e.type] || { weapon: 'axe', color: '#8B4513' };
+    const props = enemyProps[e.type] || { weapon: 'axe', color: '#8B4513', w: 75, h: 90 };
     
     // Fur cloak (Viking style) - behind body
     ctx.fillStyle = props.color || "#654321";
@@ -6165,11 +6252,14 @@
   };
 
 
+  // Draw Viking-themed health item (mead horn, not abstract heart)
   const drawHeart = (x, y, pulse, rotation) => {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
     const size = 20 * pulse;
+    
+    // Glow effect
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     gradient.addColorStop(0, "#ef4444AA");
     gradient.addColorStop(0.5, "#ef444460");
@@ -6178,23 +6268,57 @@
     ctx.beginPath();
     ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#ef4444";
-    ctx.shadowBlur = 20;
+    
+    // Viking drinking horn (mead horn) - healing item
+    ctx.shadowBlur = 15;
     ctx.shadowColor = "#ef4444";
+    
+    // Horn body (curved shape)
+    ctx.fillStyle = "#8B4513"; // Brown leather/horn color
     ctx.beginPath();
-    ctx.moveTo(0, size * 0.3);
-    ctx.bezierCurveTo(-size * 0.5, -size * 0.2, -size, size * 0.1, 0, size * 0.8);
-    ctx.bezierCurveTo(size, size * 0.1, size * 0.5, -size * 0.2, 0, size * 0.3);
+    ctx.moveTo(-size * 0.3, size * 0.4);
+    ctx.quadraticCurveTo(-size * 0.6, -size * 0.2, -size * 0.2, -size * 0.6);
+    ctx.quadraticCurveTo(0, -size * 0.8, size * 0.2, -size * 0.6);
+    ctx.quadraticCurveTo(size * 0.6, -size * 0.2, size * 0.3, size * 0.4);
+    ctx.lineTo(size * 0.1, size * 0.5);
+    ctx.quadraticCurveTo(0, size * 0.6, -size * 0.1, size * 0.5);
+    ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = "#654321";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Mead/health liquid inside (red/gold)
+    ctx.fillStyle = "#f1c40f"; // Golden mead
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.2, size * 0.2);
+    ctx.quadraticCurveTo(-size * 0.4, -size * 0.1, -size * 0.15, -size * 0.4);
+    ctx.quadraticCurveTo(0, -size * 0.5, size * 0.15, -size * 0.4);
+    ctx.quadraticCurveTo(size * 0.4, -size * 0.1, size * 0.2, size * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Metal rim at top
+    ctx.fillStyle = "#C0C0C0";
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.6, size * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    ctx.shadowBlur = 0;
     ctx.restore();
   };
 
+  // Draw Viking coin/treasure (not abstract ball)
   const drawGold = (g) => {
     ctx.save();
     ctx.translate(g.x, g.y);
     ctx.rotate(g.rotation);
     const size = 18;
-    // Glow effect
+    
+    // Glow effect (golden treasure glow)
     const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     glow.addColorStop(0, "#ffd70080");
     glow.addColorStop(0.5, "#ffd70040");
@@ -6203,41 +6327,104 @@
     ctx.beginPath();
     ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
     ctx.fill();
-    // Gold coin
+    
+    // Viking coin - round with decorative border
     ctx.fillStyle = "#ffd700";
     ctx.shadowBlur = 15;
     ctx.shadowColor = "#ffd700";
     ctx.beginPath();
     ctx.arc(0, 0, size, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Decorative border (Viking style)
+    ctx.strokeStyle = "#b8860b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, size - 2, 0, Math.PI * 2);
+    ctx.stroke();
+    
     // Inner shine
     ctx.fillStyle = "#fff8dc";
     ctx.beginPath();
     ctx.arc(-size * 0.3, -size * 0.3, size * 0.4, 0, Math.PI * 2);
     ctx.fill();
-    // $ symbol
+    
+    // Viking rune symbol instead of $ (Fehu rune for wealth)
     ctx.fillStyle = "#b8860b";
-    ctx.font = `bold ${size}px Arial`;
+    ctx.font = `bold ${size * 0.8}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("$", 0, 2);
+    ctx.fillText("ᚠ", 0, 2); // Fehu rune (wealth/treasure)
+    
+    ctx.shadowBlur = 0;
     ctx.restore();
   };
 
+  // Draw Viking shield obstacle (proper round shield, not abstract)
   const drawShield = (x, y) => {
     ctx.save();
     ctx.translate(x, world.groundY);
-    ctx.fillStyle = "#5d4037";
-    ctx.beginPath(); ctx.arc(0, -22, 22, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = "#7f8c8d";
-    ctx.beginPath(); ctx.arc(0, -22, 6, 0, Math.PI * 2); ctx.fill();
+    
+    // Round Viking shield
+    ctx.fillStyle = "#DC2626"; // Red shield background
+    ctx.beginPath();
+    ctx.arc(0, -22, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Shield boss (center metal)
+    ctx.fillStyle = "#C0C0C0";
+    ctx.beginPath();
+    ctx.arc(0, -22, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Viking rune pattern (not cross)
+    ctx.strokeStyle = "#FFD700";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-10, -22 - 10);
+    ctx.lineTo(10, -22 + 10);
+    ctx.moveTo(10, -22 - 10);
+    ctx.lineTo(-10, -22 + 10);
+    ctx.stroke();
+    
     ctx.restore();
   };
 
+  // Draw Viking stone/rock obstacle (carved stone, not abstract triangle)
   const drawRock = (x, y) => {
-    ctx.fillStyle = "#2c3e50";
-    ctx.beginPath(); ctx.moveTo(x-25, world.groundY); ctx.lineTo(x, world.groundY-45); ctx.lineTo(x+25, world.groundY); ctx.fill();
+    ctx.save();
+    ctx.translate(x, world.groundY);
+    
+    // Stone block shape (more realistic than triangle)
+    const stoneWidth = 50;
+    const stoneHeight = 45;
+    const stoneGradient = ctx.createLinearGradient(-stoneWidth/2, -stoneHeight, -stoneWidth/2, 0);
+    stoneGradient.addColorStop(0, "#708090");
+    stoneGradient.addColorStop(1, "#2F4F4F");
+    ctx.fillStyle = stoneGradient;
+    ctx.beginPath();
+    ctx.moveTo(-stoneWidth/2, 0);
+    ctx.lineTo(-stoneWidth/2 + 5, -stoneHeight);
+    ctx.lineTo(stoneWidth/2 - 5, -stoneHeight);
+    ctx.lineTo(stoneWidth/2, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#1C1C1C";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Carved rune on stone
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "bold 16px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("ᚠ", 0, -stoneHeight/2); // Fehu rune
+    
+    ctx.restore();
   };
 
   const drawMead = (x, y) => {
