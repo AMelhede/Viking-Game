@@ -476,6 +476,7 @@
     .difficulty-btn[data-difficulty="easy"] { color: var(--ios-green); }
     .difficulty-btn[data-difficulty="normal"] { color: var(--ios-blue); }
     .difficulty-btn[data-difficulty="hard"] { color: var(--ios-red); }
+    .difficulty-btn[data-difficulty="extreme"] { color: #FF4500; }
     
     .difficulty-btn:hover {
       background: rgba(255, 255, 255, 0.12);
@@ -491,6 +492,11 @@
     .difficulty-btn[data-difficulty="hard"].active {
       background: var(--ios-red);
       color: #fff;
+    }
+    .difficulty-btn[data-difficulty="extreme"].active {
+      background: #FF4500;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
     }
     
     .level-grid {
@@ -1308,6 +1314,7 @@
                 <button class="difficulty-btn" data-difficulty="easy">🛡️ Easy</button>
                 <button class="difficulty-btn active" data-difficulty="normal">⚔️ Normal</button>
                 <button class="difficulty-btn" data-difficulty="hard">💀 Hard</button>
+                <button class="difficulty-btn" data-difficulty="extreme">🔥 Extreme</button>
               </div>
             </div>
             
@@ -3070,36 +3077,47 @@
     presets: {
       easy: {
         name: 'Easy',
-        baseSpeed: 200, // Reduced from 230 (13% slower)
-        maxSpeed: 350, // Reduced from 400 (12.5% slower)
-        enemySpawnMin: 750, // Increased from 600 (25% more spacing)
-        enemySpawnMax: 1250, // Increased from 1000 (25% more spacing)
-        comboTimer: 5.0,
-        startingLives: 4,
-        enemySpeedMultiplier: 0.35, // Reduced from 0.4
+        baseSpeed: 150, // Much slower - very forgiving
+        maxSpeed: 250, // Much slower
+        enemySpawnMin: 1200, // Much fewer enemies
+        enemySpawnMax: 2000, // Much fewer enemies
+        comboTimer: 6.0, // Longer combo window
+        startingLives: 5, // More lives
+        enemySpeedMultiplier: 0.25, // Enemies move much slower
         icon: '🛡️'
       },
       normal: {
         name: 'Normal',
-        baseSpeed: 230, // Reduced from 265 (13% slower)
-        maxSpeed: 400, // Reduced from 460 (13% slower)
-        enemySpawnMin: 650, // Increased from 500 (30% more spacing)
-        enemySpawnMax: 1150, // Increased from 900 (28% more spacing)
-        comboTimer: 4.0,
-        startingLives: 3,
-        enemySpeedMultiplier: 0.45, // Reduced from 0.5
+        baseSpeed: 220, // Moderate speed
+        maxSpeed: 380, // Moderate speed
+        enemySpawnMin: 800, // Moderate enemies
+        enemySpawnMax: 1400, // Moderate enemies
+        comboTimer: 4.0, // Standard combo window
+        startingLives: 3, // Standard lives
+        enemySpeedMultiplier: 0.45, // Moderate enemy speed
         icon: '⚔️'
       },
       hard: {
         name: 'Hard',
-        baseSpeed: 260, // Reduced from 300 (13% slower)
-        maxSpeed: 450, // Reduced from 520 (13% slower)
-        enemySpawnMin: 450, // Increased from 350 (29% more spacing)
-        enemySpawnMax: 850, // Increased from 650 (31% more spacing)
-        comboTimer: 3.0,
-        startingLives: 2,
-        enemySpeedMultiplier: 0.55, // Reduced from 0.6
+        baseSpeed: 300, // Much faster
+        maxSpeed: 500, // Much faster
+        enemySpawnMin: 400, // Many enemies
+        enemySpawnMax: 700, // Many enemies
+        comboTimer: 2.5, // Shorter combo window
+        startingLives: 2, // Fewer lives
+        enemySpeedMultiplier: 0.75, // Enemies move much faster
         icon: '💀'
+      },
+      extreme: {
+        name: 'Extreme',
+        baseSpeed: 400, // Extremely fast
+        maxSpeed: 650, // Extremely fast
+        enemySpawnMin: 250, // Very many enemies
+        enemySpawnMax: 500, // Very many enemies
+        comboTimer: 1.5, // Very short combo window
+        startingLives: 1, // Minimal lives - true challenge
+        enemySpeedMultiplier: 1.0, // Enemies move at full speed
+        icon: '🔥'
       }
     },
     getCurrent() {
@@ -3245,7 +3263,7 @@
         { speed: 0.4, color: '#87CEEB' },
         { speed: 0.6, color: '#90EE90' }
       ],
-      enemies: ['saxonPeasant', 'britishFarmer', 'wildBoar'],
+      enemies: ['vikingScout', 'vikingRaider', 'vikingBerserker'],
       birdEnemies: ['crow'],
       obstacles: ['tree', 'log', 'rock', 'branch'],
       duckObstacles: ['lowBranch'],
@@ -3263,7 +3281,7 @@
         { speed: 0.5, color: '#FF6B35' },
         { speed: 0.7, color: '#2E2E2E' }
       ],
-      enemies: ['saxonWarrior', 'britishFootSoldier', 'saxonArcher'],
+      enemies: ['vikingWarrior', 'vikingAxeman', 'vikingSpearman'],
       birdEnemies: ['raven'],
       obstacles: ['debris', 'building', 'firePit'],
       duckObstacles: ['axe', 'lowFire'],
@@ -3281,7 +3299,7 @@
         { speed: 0.4, color: '#E0F6FF' },
         { speed: 0.6, color: '#FFFFFF' }
       ],
-      enemies: ['saxonShieldBearer', 'britishKnight', 'celticWarrior'],
+      enemies: ['vikingShieldMaiden', 'vikingVeteran', 'vikingChampion'],
       birdEnemies: ['seagull'],
       obstacles: ['iceBlock', 'snowDrift', 'icicle'],
       duckObstacles: ['icicle', 'snowball'],
@@ -3299,7 +3317,7 @@
         { speed: 0.5, color: '#8B0000' },
         { speed: 0.7, color: '#FF4500' }
       ],
-      enemies: ['britishHeavyKnight', 'saxonEliteWarrior', 'celticChampion'],
+      enemies: ['vikingEliteWarrior', 'vikingJarl', 'vikingBerserkerElite'],
       birdEnemies: ['eagle'],
       obstacles: ['lavaPool', 'fireGeyser', 'volcanicRock'],
       duckObstacles: ['fireball', 'lavaStream'],
@@ -3317,7 +3335,7 @@
         { speed: 0.4, color: '#9370DB' },
         { speed: 0.6, color: '#FFD700' }
       ],
-      enemies: ['britishRoyalGuard', 'saxonWarlord', 'celticChieftain'],
+      enemies: ['vikingRoyalGuard', 'vikingWarlord', 'vikingLegend'],
       birdEnemies: ['hawk'],
       obstacles: ['lightning', 'goldenBarrier', 'pillar'],
       duckObstacles: ['lowLightning', 'goldenSpear'],
@@ -3335,7 +3353,7 @@
         { speed: 0.5, color: '#0000FF' },
         { speed: 0.7, color: '#000000' }
       ],
-      enemies: ['britishEliteKnight', 'saxonEliteGuard', 'celticEliteWarrior'],
+      enemies: ['vikingMythicalWarrior', 'vikingGodWarrior', 'vikingRagnarok'],
       birdEnemies: ['mythicalRaven', 'phoenix'],
       obstacles: ['fireIce', 'chaosPortal', 'destruction'],
       duckObstacles: ['chaosProjectile', 'lowDestruction'],
@@ -3353,7 +3371,7 @@
         { speed: 0.4, color: '#1a0033' },
         { speed: 0.6, color: '#4B0082' }
       ],
-      enemies: ['britishEliteKnight', 'saxonEliteGuard', 'celticEliteWarrior'],
+      enemies: ['vikingMythicalWarrior', 'vikingGodWarrior', 'vikingRagnarok'],
       birdEnemies: ['mythicalRaven', 'phoenix'],
       obstacles: ['starBarrier', 'blackHole', 'cosmicStorm'],
       duckObstacles: ['lowStar', 'cosmicRay'],
@@ -3371,7 +3389,7 @@
         { speed: 0.4, color: '#4B0082' },
         { speed: 0.6, color: '#FFD700' }
       ],
-      enemies: ['britishEliteKnight', 'saxonEliteGuard', 'celticEliteWarrior'],
+      enemies: ['vikingMythicalWarrior', 'vikingGodWarrior', 'vikingRagnarok'],
       birdEnemies: ['mythicalRaven', 'phoenix'],
       obstacles: ['divineBarrier', 'rainbowPortal', 'godlyObstacle'],
       duckObstacles: ['lowDivineRay', 'rainbowProjectile'],
@@ -3928,37 +3946,37 @@
     
     const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
     
-    // Historical enemy properties - based on what Vikings actually fought
+    // Viking enemy properties - unique Viking warriors per level
     const enemyProps = {
-      // Level 1: Peasants and basic enemies
-      saxonPeasant: { w: 75, h: 90, speed: 0.8, color: '#8B4513', tier: 1 },
-      britishFarmer: { w: 75, h: 90, speed: 0.7, color: '#654321', tier: 1 },
-      wildBoar: { w: 90, h: 80, speed: 1.2, color: '#654321', tier: 1 },
+      // Level 1: Basic Viking raiders
+      vikingScout: { w: 75, h: 90, speed: 0.8, color: '#8B4513', tier: 1, weapon: 'axe' },
+      vikingRaider: { w: 75, h: 90, speed: 0.9, color: '#654321', tier: 1, weapon: 'sword' },
+      vikingBerserker: { w: 85, h: 95, speed: 1.1, color: '#8B0000', tier: 1, weapon: 'axe' },
       
-      // Level 2: Warriors and foot soldiers
-      saxonWarrior: { w: 85, h: 100, speed: 1.0, color: '#A0522D', tier: 2 },
-      britishFootSoldier: { w: 85, h: 100, speed: 0.9, color: '#8B4513', tier: 2 },
-      saxonArcher: { w: 80, h: 100, speed: 0.8, color: '#696969', tier: 2 },
+      // Level 2: Viking warriors
+      vikingWarrior: { w: 85, h: 100, speed: 1.0, color: '#4A5568', tier: 2, weapon: 'sword' },
+      vikingAxeman: { w: 85, h: 100, speed: 0.9, color: '#2D3748', tier: 2, weapon: 'axe' },
+      vikingSpearman: { w: 80, h: 100, speed: 1.0, color: '#1A202C', tier: 2, weapon: 'spear' },
       
-      // Level 3: Shield bearers and knights
-      saxonShieldBearer: { w: 90, h: 105, speed: 0.7, color: '#C0C0C0', tier: 3 },
-      britishKnight: { w: 90, h: 110, speed: 0.8, color: '#71717a', tier: 3 },
-      celticWarrior: { w: 85, h: 100, speed: 1.1, color: '#654321', tier: 3 },
+      // Level 3: Experienced Vikings
+      vikingShieldMaiden: { w: 80, h: 100, speed: 1.1, color: '#553C9A', tier: 3, weapon: 'sword' },
+      vikingVeteran: { w: 90, h: 105, speed: 0.8, color: '#4A5568', tier: 3, weapon: 'axe' },
+      vikingChampion: { w: 90, h: 110, speed: 1.0, color: '#2D3748', tier: 3, weapon: 'sword' },
       
-      // Level 4: Elite warriors
-      britishHeavyKnight: { w: 95, h: 115, speed: 0.6, color: '#8b8b9a', tier: 4 },
-      saxonEliteWarrior: { w: 90, h: 105, speed: 1.0, color: '#A0522D', tier: 4 },
-      celticChampion: { w: 90, h: 105, speed: 1.2, color: '#654321', tier: 4 },
+      // Level 4: Elite Vikings
+      vikingEliteWarrior: { w: 95, h: 115, speed: 0.9, color: '#1A202C', tier: 4, weapon: 'sword' },
+      vikingJarl: { w: 95, h: 115, speed: 0.8, color: '#FFD700', tier: 4, weapon: 'axe' },
+      vikingBerserkerElite: { w: 95, h: 110, speed: 1.2, color: '#DC2626', tier: 4, weapon: 'axe' },
       
-      // Level 5: Royal guards and warlords
-      britishRoyalGuard: { w: 95, h: 115, speed: 0.7, color: '#C0C0C0', tier: 5 },
-      saxonWarlord: { w: 95, h: 110, speed: 0.9, color: '#8B4513', tier: 5 },
-      celticChieftain: { w: 90, h: 110, speed: 1.1, color: '#654321', tier: 5 },
+      // Level 5: Legendary Vikings
+      vikingRoyalGuard: { w: 95, h: 115, speed: 0.9, color: '#4A5568', tier: 5, weapon: 'sword' },
+      vikingWarlord: { w: 100, h: 120, speed: 0.8, color: '#2D3748', tier: 5, weapon: 'axe' },
+      vikingLegend: { w: 100, h: 120, speed: 1.0, color: '#FFD700', tier: 5, weapon: 'sword' },
       
-      // Level 6+: Elite versions
-      britishEliteKnight: { w: 100, h: 120, speed: 0.8, color: '#8b8b9a', tier: 6 },
-      saxonEliteGuard: { w: 95, h: 115, speed: 1.0, color: '#A0522D', tier: 6 },
-      celticEliteWarrior: { w: 95, h: 110, speed: 1.2, color: '#654321', tier: 6 }
+      // Level 6+: Mythical Vikings
+      vikingMythicalWarrior: { w: 100, h: 120, speed: 1.0, color: '#4B0082', tier: 6, weapon: 'sword' },
+      vikingGodWarrior: { w: 105, h: 125, speed: 1.1, color: '#FFD700', tier: 6, weapon: 'axe' },
+      vikingRagnarok: { w: 110, h: 130, speed: 1.2, color: '#DC2626', tier: 6, weapon: 'axe' }
     };
     
     const props = enemyProps[enemyType];
@@ -3977,6 +3995,7 @@
       speed: props.speed,
       color: props.color,
       tier: props.tier,
+      weapon: props.weapon || 'axe', // Viking weapon type
       defeated: false,
       hit: false,
       isBird: false // Ground enemies are not birds
@@ -4686,8 +4705,17 @@
       
       list.innerHTML = '';
       
+      // Show difficulty in header
+      const modalTitle = document.querySelector('#highscoreModal h2');
+      if (modalTitle) {
+        const diffPreset = DifficultyModes.presets[difficulty];
+        const diffName = diffPreset?.name || difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+        const diffIcon = diffPreset?.icon || '⚔️';
+        modalTitle.textContent = `🏆 High Scores - ${diffIcon} ${diffName}`;
+      }
+      
       if (scores.length === 0) {
-        list.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No scores yet</div>';
+        list.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No scores yet for this difficulty</div>';
         return;
       }
       
@@ -5251,7 +5279,7 @@
     ctx.restore();
   };
 
-  // Draw proper viking warrior enemy
+  // Draw proper Viking warrior enemy
   const drawEnemy = (e) => {
     if (e.defeated) return;
     
@@ -5264,16 +5292,26 @@
     ctx.save();
     ctx.translate(e.x, e.y);
     
-    // Ensure enemy is aligned at ground level (y = 0 means ground)
-    const groundOffset = 0; // e.y should already be world.groundY
-    
-    // Body - viking warrior torso with tunic/armor
+    const groundOffset = 0;
     const bodyHeight = e.h * 0.6;
     const bodyWidth = e.w * 0.7;
+    const props = enemyProps[e.type] || { weapon: 'axe', color: '#8B4513' };
     
-    // Tunic/body - British/Saxon colors (all enemies are British/Saxon)
-    const tunicColor = e.type && (e.type.includes('british') || e.type.includes('knight')) ? "#696969" : 
-                      e.type && e.type.includes('celtic') ? "#654321" : "#8B4513";
+    // Fur cloak (Viking style) - behind body
+    ctx.fillStyle = props.color || "#654321";
+    ctx.beginPath();
+    ctx.moveTo(-bodyWidth/2 - 5, groundOffset);
+    ctx.lineTo(-bodyWidth/2 - 8, -bodyHeight * 0.3);
+    ctx.lineTo(bodyWidth/2 + 8, -bodyHeight * 0.3);
+    ctx.lineTo(bodyWidth/2 + 5, groundOffset);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#3A2C1A";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Body/tunic - Viking colors
+    const tunicColor = props.color || "#4A5568";
     ctx.fillStyle = tunicColor;
     ctx.beginPath();
     ctx.moveTo(-bodyWidth/2, groundOffset);
@@ -5290,19 +5328,23 @@
     ctx.lineWidth = 3;
     ctx.stroke();
     
-    // Chainmail/armor overlay - all British/Saxon enemies have chainmail
-    ctx.fillStyle = "#8b8b9a"; // Standard chainmail gray for all
+    // Leather armor/chainmail overlay
+    ctx.fillStyle = "#2D3748";
     ctx.fillRect(-bodyWidth/2 + 8, -bodyHeight * 0.35, bodyWidth - 16, bodyHeight * 0.25);
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2;
     ctx.strokeRect(-bodyWidth/2 + 8, -bodyHeight * 0.35, bodyWidth - 16, bodyHeight * 0.25);
     
-    // Belt
-    ctx.fillStyle = "#3A2C1A";
+    // Leather belt with metal buckle
+    ctx.fillStyle = "#1A202C";
     ctx.fillRect(-bodyWidth/2 + 5, -bodyHeight * 0.15, bodyWidth - 10, 6);
     ctx.strokeRect(-bodyWidth/2 + 5, -bodyHeight * 0.15, bodyWidth - 10, 6);
+    // Buckle
+    ctx.fillStyle = "#FFD700";
+    ctx.fillRect(-4, -bodyHeight * 0.15, 8, 6);
+    ctx.strokeRect(-4, -bodyHeight * 0.15, 8, 6);
     
-    // Head - viking face
+    // Head - Viking face
     ctx.fillStyle = "#d4a574";
     ctx.beginPath();
     ctx.arc(0, -bodyHeight - 8, 18, 0, Math.PI * 2);
@@ -5311,8 +5353,8 @@
     ctx.lineWidth = 3;
     ctx.stroke();
     
-    // Helmet - British/Saxon spangenhelm style (no horns - Vikings fought British/Saxons)
-    ctx.fillStyle = "#71717a";
+    // Horned helmet (Viking style!)
+    ctx.fillStyle = "#4A5568";
     ctx.beginPath();
     ctx.arc(0, -bodyHeight - 10, 20, Math.PI, 0);
     ctx.fill();
@@ -5320,21 +5362,25 @@
     // Nose guard
     ctx.fillRect(-3, -bodyHeight - 12, 6, 20);
     ctx.strokeRect(-3, -bodyHeight - 12, 6, 20);
-    // Helmet bands (spangenhelm style)
-    ctx.strokeStyle = "#4A3B1A";
-    ctx.lineWidth = 2;
+    // Left horn
     ctx.beginPath();
-    ctx.moveTo(-18, -bodyHeight - 5);
-    ctx.lineTo(18, -bodyHeight - 5);
+    ctx.moveTo(-18, -bodyHeight - 8);
+    ctx.lineTo(-22, -bodyHeight - 20);
+    ctx.lineTo(-18, -bodyHeight - 18);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
-    // Cross band (British/Saxon style)
+    // Right horn
     ctx.beginPath();
-    ctx.moveTo(0, -bodyHeight - 15);
-    ctx.lineTo(0, -bodyHeight - 5);
+    ctx.moveTo(18, -bodyHeight - 8);
+    ctx.lineTo(22, -bodyHeight - 20);
+    ctx.lineTo(18, -bodyHeight - 18);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
     
-    // Eyes (angry) - red
-    ctx.fillStyle = "#FF0000";
+    // Eyes (fierce) - blue/gray
+    ctx.fillStyle = "#1E40AF";
     ctx.fillRect(-10, -bodyHeight - 8, 6, 5);
     ctx.fillRect(4, -bodyHeight - 8, 6, 5);
     ctx.strokeStyle = "#000000";
@@ -5342,19 +5388,28 @@
     ctx.strokeRect(-10, -bodyHeight - 8, 6, 5);
     ctx.strokeRect(4, -bodyHeight - 8, 6, 5);
     
-    // Beard
+    // Beard (Viking style - long and braided)
     ctx.fillStyle = "#2A1C0A";
     ctx.beginPath();
     ctx.moveTo(-12, -bodyHeight + 5);
-    ctx.quadraticCurveTo(0, -bodyHeight + 15, 12, -bodyHeight + 5);
+    ctx.quadraticCurveTo(0, -bodyHeight + 20, 12, -bodyHeight + 5);
     ctx.lineTo(10, -bodyHeight + 2);
-    ctx.quadraticCurveTo(0, -bodyHeight + 8, -10, -bodyHeight + 2);
+    ctx.quadraticCurveTo(0, -bodyHeight + 12, -10, -bodyHeight + 2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
+    // Braid details
+    ctx.strokeStyle = "#1A0C0A";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-8 + i * 4, -bodyHeight + 8);
+      ctx.lineTo(-6 + i * 4, -bodyHeight + 15);
+      ctx.stroke();
+    }
     
-    // Shield - round British/Saxon shield with cross (historical design)
-    ctx.fillStyle = e.type && (e.type.includes('british') || e.type.includes('knight')) ? "#dc2626" : "#dc2626"; // Red for British/Saxon
+    // Viking shield - round with Viking symbols (not cross!)
+    ctx.fillStyle = "#DC2626"; // Red background
     ctx.beginPath();
     ctx.arc(-bodyWidth/2 - 12, -bodyHeight * 0.3, 24, 0, Math.PI * 2);
     ctx.fill();
@@ -5367,22 +5422,22 @@
     ctx.arc(-bodyWidth/2 - 12, -bodyHeight * 0.3, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    // Cross on shield (British/Saxon design)
-    ctx.strokeStyle = "#fbbf24"; // Gold cross
+    // Viking symbol (rune or geometric pattern, not cross)
+    ctx.strokeStyle = "#FFD700";
     ctx.lineWidth = 3;
+    // Draw a simple Viking rune pattern (X-like)
     ctx.beginPath();
-    ctx.moveTo(-bodyWidth/2 - 12, -bodyHeight * 0.3 - 15);
-    ctx.lineTo(-bodyWidth/2 - 12, -bodyHeight * 0.3 + 15);
-    ctx.moveTo(-bodyWidth/2 - 27, -bodyHeight * 0.3);
-    ctx.lineTo(-bodyWidth/2 + 3, -bodyHeight * 0.3);
+    ctx.moveTo(-bodyWidth/2 - 12 - 10, -bodyHeight * 0.3 - 10);
+    ctx.lineTo(-bodyWidth/2 - 12 + 10, -bodyHeight * 0.3 + 10);
+    ctx.moveTo(-bodyWidth/2 - 12 + 10, -bodyHeight * 0.3 - 10);
+    ctx.lineTo(-bodyWidth/2 - 12 - 10, -bodyHeight * 0.3 + 10);
     ctx.stroke();
     
-    // Weapon - British/Saxon weapons (sword, spear, or axe based on type)
-    const hasSpear = e.type && (e.type.includes('Spearman') || e.type.includes('Archer'));
-    const hasAxe = e.type && e.type.includes('celtic');
+    // Weapon - Viking weapons (axe, sword, or spear)
+    const weapon = props.weapon || 'axe';
     
-    if (hasSpear) {
-      // Spear (British/Saxon style)
+    if (weapon === 'spear') {
+      // Viking spear
       ctx.fillStyle = "#78350f";
       ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 4, 60);
       ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 4, 60);
@@ -5397,47 +5452,45 @@
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 2;
       ctx.stroke();
-    } else if (hasAxe) {
-      // Axe (Celtic style)
+    } else if (weapon === 'axe') {
+      // Viking axe (most common)
       ctx.fillStyle = "#78350f";
       ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 6, 50);
       ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 6, 50);
-      // Axe head
+      // Axe head - Viking style (larger, curved)
       ctx.fillStyle = "#a1a1aa";
       ctx.beginPath();
       ctx.moveTo(bodyWidth/2 + 3, -bodyHeight * 0.2);
-      ctx.lineTo(bodyWidth/2 + 15, -bodyHeight * 0.2 - 8);
-      ctx.lineTo(bodyWidth/2 + 20, -bodyHeight * 0.2 - 5);
-      ctx.lineTo(bodyWidth/2 + 12, -bodyHeight * 0.2 + 3);
+      ctx.lineTo(bodyWidth/2 + 18, -bodyHeight * 0.2 - 10);
+      ctx.lineTo(bodyWidth/2 + 22, -bodyHeight * 0.2 - 6);
+      ctx.lineTo(bodyWidth/2 + 15, -bodyHeight * 0.2 + 4);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = "#000000";
       ctx.lineWidth = 2;
       ctx.stroke();
     } else {
-      // Sword (British/Saxon style - most common)
+      // Viking sword
       ctx.fillStyle = "#78350f";
       ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 4, 55);
       ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 4, 55);
-      // Sword blade
+      // Sword blade - Viking style (slightly curved)
       ctx.fillStyle = "#C0C0C0";
       ctx.beginPath();
       ctx.moveTo(bodyWidth/2 + 2, -bodyHeight * 0.2);
-      ctx.lineTo(bodyWidth/2 + 8, -bodyHeight * 0.2 - 12);
-      ctx.lineTo(bodyWidth/2 - 2, -bodyHeight * 0.2 - 12);
+      ctx.lineTo(bodyWidth/2 + 10, -bodyHeight * 0.2 - 14);
+      ctx.lineTo(bodyWidth/2 - 2, -bodyHeight * 0.2 - 14);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
     }
     
-    // Legs
-    ctx.fillStyle = "#4A3B1A";
+    // Legs - Viking style (leather boots)
+    ctx.fillStyle = "#1A202C";
     ctx.fillRect(-bodyWidth/2 + 5, groundOffset, 8, 20);
     ctx.fillRect(bodyWidth/2 - 13, groundOffset, 8, 20);
     ctx.strokeRect(-bodyWidth/2 + 5, groundOffset, 8, 20);
     ctx.strokeRect(bodyWidth/2 - 13, groundOffset, 8, 20);
-    
-    // No special effects - all enemies are British/Saxon soldiers
     
     ctx.restore();
   };
@@ -6718,39 +6771,62 @@
                                vikingBottom >= bossTop - 10;
         
         if (horizontalOverlap && comingFromAbove) {
-          boss.currentHealth--;
-          viking.vy = -400; // Bounce off
-          addParticle(boss.x, boss.y - boss.size.height/2, boss.color, 30);
-          playSFX('jump');
-          
-          if (boss.currentHealth <= 0) {
-            boss.defeated = true;
-            boss.active = false;
-            // Boss points scale with level
-            const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
-            const bossPoints = 1000 + (currentLevel.id * 500);
-            world.score += bossPoints;
-            world.mead += boss.rewards.mead;
-            addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 60);
-            playSFX('powerup');
-            playVictoryFanfare(); // Victory fanfare when boss defeated
-            
-            // Unlock boss achievement
-            const bossAchievementKey = `boss${boss.level}`;
-            if (Achievements.achievements[bossAchievementKey]) {
-              Achievements.unlock(bossAchievementKey);
+          try {
+            // Decrement health first, then check
+            if (boss.currentHealth !== undefined && boss.currentHealth > 0) {
+              boss.currentHealth--;
             }
             
-            // Collect artifact from boss
-            const artifactId = `artifact_${boss.level}_${boss.name}`;
-            Collectibles.collectArtifact(artifactId);
+            viking.vy = -400; // Bounce off
+            addParticle(boss.x, boss.y - boss.size.height/2, boss.color || "#FFD700", 30);
+            playSFX('jump');
             
-            // Show boss defeat notification
-            const notification = document.createElement('div');
-            notification.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#FFD700;padding:20px 40px;border-radius:12px;font-size:24px;font-weight:700;z-index:10000;';
-            notification.textContent = `BOSS DEFEATED! +${boss.rewards.score.toLocaleString()} pts`;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 3000);
+            // Check if boss is defeated after health decrement
+            if (boss.currentHealth !== undefined && boss.currentHealth <= 0) {
+              boss.defeated = true;
+              boss.active = false;
+              
+              // Boss points scale with level
+              const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+              const bossPoints = 1000 + ((currentLevel?.id || 1) * 500);
+              world.score += bossPoints;
+              
+              // Add mead reward if available
+              if (boss.rewards && boss.rewards.mead) {
+                world.mead += boss.rewards.mead;
+              }
+              
+              addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 60);
+              playSFX('powerup');
+              playVictoryFanfare(); // Victory fanfare when boss defeated
+              
+              // Unlock boss achievement if boss.level exists
+              if (boss.level !== undefined) {
+                const bossAchievementKey = `boss${boss.level}`;
+                if (Achievements.achievements && Achievements.achievements[bossAchievementKey]) {
+                  Achievements.unlock(bossAchievementKey);
+                }
+              }
+              
+              // Collect artifact from boss if name exists
+              if (boss.level !== undefined && boss.name) {
+                const artifactId = `artifact_${boss.level}_${boss.name}`;
+                Collectibles.collectArtifact(artifactId);
+              }
+              
+              // Show boss defeat notification
+              const notification = document.createElement('div');
+              notification.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#FFD700;padding:20px 40px;border-radius:12px;font-size:24px;font-weight:700;z-index:10000;';
+              const rewardScore = (boss.rewards && boss.rewards.score) ? boss.rewards.score : bossPoints;
+              notification.textContent = `BOSS DEFEATED! +${rewardScore.toLocaleString()} pts`;
+              document.body.appendChild(notification);
+              setTimeout(() => notification.remove(), 3000);
+            }
+          } catch (e) {
+            console.error("Error in boss defeat logic:", e);
+            // Fallback: just mark boss as defeated
+            boss.defeated = true;
+            boss.active = false;
           }
         } else if (horizontalOverlap && verticalOverlap && !comingFromAbove) {
           // Side collision = player takes damage (boss takes 2 lives)
@@ -7554,19 +7630,40 @@
   const highscoreTabs = document.querySelectorAll(".highscore-tab");
   const closeHighscoreBtn = $("closeHighscoreBtn");
   
-  highscoreBtn.onclick = () => {
-    highscoreModal.classList.add("active");
-    HighScoreManager.displayScores('alltime');
-  };
-  
-  highscoreTabs.forEach(tab => {
-    tab.onclick = () => {
-      highscoreTabs.forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      const period = tab.dataset.period;
-      HighScoreManager.displayScores(period);
+  if (highscoreBtn && highscoreModal) {
+    highscoreBtn.onclick = () => {
+      highscoreModal.classList.add("active");
+      // Display scores for current difficulty
+      const currentDifficulty = world.difficulty || 'normal';
+      HighScoreManager.displayScores('alltime', currentDifficulty);
     };
-  });
+  }
+  
+  if (highscoreTabs && highscoreTabs.length > 0) {
+    highscoreTabs.forEach(tab => {
+      tab.onclick = () => {
+        highscoreTabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const period = tab.dataset.period || 'alltime';
+        const currentDifficulty = world.difficulty || 'normal';
+        HighScoreManager.displayScores(period, currentDifficulty);
+      };
+    });
+  }
+  
+  if (closeHighscoreBtn && highscoreModal) {
+    closeHighscoreBtn.onclick = () => {
+      highscoreModal.classList.remove("active");
+    };
+  }
+  
+  if (highscoreModal) {
+    highscoreModal.onclick = (e) => {
+      if (e.target === highscoreModal) {
+        highscoreModal.classList.remove("active");
+      }
+    };
+  }
   
   if (closeHighscoreBtn) {
     closeHighscoreBtn.onclick = () => {
