@@ -4343,7 +4343,8 @@
   };
   
   const spawnDuckObstacle = (x) => {
-    const types = ['raven', 'arrow', 'branch', 'axe', 'spear', 'fireball'];
+    // Only Viking-themed weapons - removed fireball (not Viking-themed)
+    const types = ['raven', 'arrow', 'branch', 'axe', 'spear'];
     const type = types[Math.floor(Math.random() * types.length)];
     const y = world.groundY - 70; // Fixed head height - requires ducking
     DuckObstacles.push({ 
