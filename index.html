@@ -5009,12 +5009,28 @@
       ctx.stroke();
     }
     
-    // Sail - realistic billowing with wind effect and shading
+    // Sail - level-specific colors and effects
+    const theme = LevelThemes.getCurrent();
+    const levelId = world.currentLevel || 1;
     const sailBillow = Math.sin(world.t * 3) * 10;
+    
+    // Level-specific sail colors
+    const sailColors = {
+      1: { start: "#2D5016", mid: "#3A6B1F", end: "#4A7B2F" }, // Forest green
+      2: { start: "#B41E2A", mid: "#C41E3A", end: "#D41E4A" }, // Fire red
+      3: { start: "#B0E0E6", mid: "#C0F0F6", end: "#D0FFFF" }, // Ice blue
+      4: { start: "#FF4500", mid: "#FF5500", end: "#FF6500" }, // Fire orange
+      5: { start: "#FFD700", mid: "#FFE700", end: "#FFF700" }, // Valhalla gold
+      6: { start: "#4B0082", mid: "#5B0092", end: "#6B00A2" }, // Ragnarok purple
+      7: { start: "#1E3A8A", mid: "#2E4A9A", end: "#3E5AAA" }, // Odin blue
+      8: { start: "#FF0000", mid: "#00FF00", end: "#0000FF" }  // Rainbow
+    };
+    
+    const sailColor = sailColors[levelId] || sailColors[1];
     const sailGradient = ctx.createLinearGradient(0, -hullDepth - 15 + bob, 50 + sailBillow * 1.5, -hullDepth - 5 + bob);
-    sailGradient.addColorStop(0, "#B41E2A");
-    sailGradient.addColorStop(0.5, "#C41E3A");
-    sailGradient.addColorStop(1, "#D41E4A");
+    sailGradient.addColorStop(0, sailColor.start);
+    sailGradient.addColorStop(0.5, sailColor.mid);
+    sailGradient.addColorStop(1, sailColor.end);
     
     ctx.fillStyle = sailGradient;
     ctx.beginPath();
