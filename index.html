@@ -1212,12 +1212,13 @@
             <span style="font-size: 20px;">❤️</span>
             <span id="livesCount" style="font-size: 18px; font-weight: 700; color: #ef4444;">3</span>
           </div>
-          <div class="lives-display" id="respawnDisplay" style="display: none;">
+          <div class="lives-display" id="respawnDisplay" style="display: flex;">
             <span style="font-size: 20px;">🔄</span>
             <span id="respawnCount" style="font-size: 18px; font-weight: 700; color: #9B59B6;">0</span>
           </div>
           <button class="btn" id="pauseBtn">Pause</button>
           <button class="btn" id="soundBtn">Sound: On</button>
+          <button class="btn" id="musicBtn">🎵 Music: On</button>
           <button class="btn primary" id="restartBtn">Restart</button>
         </div>
       </div>
@@ -1372,6 +1373,7 @@
   const pauseBtn = $("pauseBtn");
   const restartBtn = $("restartBtn");
   const soundBtn = $("soundBtn");
+  const musicBtn = $("musicBtn");
 
   let W, H, DPR, ctx;
   const resize = () => {
@@ -2221,6 +2223,13 @@
   let musicNodes = [];
   let musicGain = null;
   
+  // Menu Music (separate from gameplay music)
+  let menuMusicContext = null;
+  let menuMusicPlaying = false;
+  let menuMusicNodes = [];
+  let menuMusicGain = null;
+  let menuMusicMuted = localStorage.getItem('menuMusicMuted') === 'true';
+  
   // Level-specific music themes
   const LevelMusicThemes = {
     1: { // Forest - Nature sounds, birds, wind
@@ -2601,7 +2610,288 @@
     musicGain.gain.linearRampToValueAtTime(clampedIntensity, musicContext.currentTime + 0.1);
   };
   
-  // Start music on first user interaction
+  // Epic Viking Menu Music
+  const startMenuMusic = () => {
+    if (menuMusicPlaying || menuMusicMuted) return;
+    
+    try {
+      if (!menuMusicContext) {
+        menuMusicContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      if (menuMusicContext.state === 'suspended') {
+        menuMusicContext.resume();
+      }
+      
+      // Master gain for menu music volume
+      menuMusicGain = menuMusicContext.createGain();
+      menuMusicGain.gain.setValueAtTime(0.13, menuMusicContext.currentTime);
+      menuMusicGain.connect(menuMusicContext.destination);
+      
+      const now = menuMusicContext.currentTime;
+      
+      // Deep Nordic war drums - powerful taiko-style
+      const createWarDrum = () => {
+        let beatCount = 0;
+        const playBeat = () => {
+          if (!menuMusicPlaying || !menuMusicContext) return;
+          
+          const beatTime = menuMusicContext.currentTime;
+          beatCount++;
+          
+          // Main drum - deep and powerful
+          const drum = menuMusicContext.createOscillator();
+          const drumGain = menuMusicContext.createGain();
+          const drumFilter = menuMusicContext.createBiquadFilter();
+          drumFilter.type = 'lowpass';
+          drumFilter.frequency.setValueAtTime(80, beatTime);
+          drumFilter.Q.setValueAtTime(2, beatTime);
+          
+          drum.type = 'sine';
+          drum.frequency.setValueAtTime(45, beatTime);
+          drum.frequency.exponentialRampToValueAtTime(30, beatTime + 0.3);
+          
+          drumGain.gain.setValueAtTime(0, beatTime);
+          drumGain.gain.linearRampToValueAtTime(0.6, beatTime + 0.05);
+          drumGain.gain.exponentialRampToValueAtTime(0.01, beatTime + 0.5);
+          
+          drum.connect(drumFilter);
+          drumFilter.connect(drumGain);
+          drumGain.connect(menuMusicGain);
+          drum.start(beatTime);
+          drum.stop(beatTime + 0.6);
+          
+          // Accent on every 4th beat (stronger)
+          if (beatCount % 4 === 1) {
+            const accent = menuMusicContext.createOscillator();
+            const accentGain = menuMusicContext.createGain();
+            const accentFilter = menuMusicContext.createBiquadFilter();
+            accentFilter.type = 'lowpass';
+            accentFilter.frequency.setValueAtTime(100, beatTime);
+            
+            accent.type = 'triangle';
+            accent.frequency.setValueAtTime(50, beatTime);
+            accent.frequency.exponentialRampToValueAtTime(35, beatTime + 0.4);
+            
+            accentGain.gain.setValueAtTime(0, beatTime);
+            accentGain.gain.linearRampToValueAtTime(0.8, beatTime + 0.05);
+            accentGain.gain.exponentialRampToValueAtTime(0.01, beatTime + 0.7);
+            
+            accent.connect(accentFilter);
+            accentFilter.connect(accentGain);
+            accentGain.connect(menuMusicGain);
+            accent.start(beatTime);
+            accent.stop(beatTime + 0.8);
+          }
+          
+          // Secondary drum on off-beats
+          if (beatCount % 2 === 0) {
+            const secondary = menuMusicContext.createOscillator();
+            const secondaryGain = menuMusicContext.createGain();
+            secondary.type = 'sine';
+            secondary.frequency.setValueAtTime(55, beatTime);
+            secondary.frequency.exponentialRampToValueAtTime(40, beatTime + 0.2);
+            secondaryGain.gain.setValueAtTime(0, beatTime);
+            secondaryGain.gain.linearRampToValueAtTime(0.3, beatTime + 0.03);
+            secondaryGain.gain.exponentialRampToValueAtTime(0.01, beatTime + 0.3);
+            secondary.connect(secondaryGain);
+            secondaryGain.connect(menuMusicGain);
+            secondary.start(beatTime);
+            secondary.stop(beatTime + 0.4);
+          }
+          
+          // Steady rhythm - not too fast, not too slow
+          const nextBeat = beatCount % 4 === 0 ? 900 : 700;
+          if (menuMusicPlaying) {
+            setTimeout(playBeat, nextBeat);
+          }
+        };
+        playBeat();
+      };
+      
+      // Start with a drum roll
+      setTimeout(() => {
+        if (menuMusicPlaying) {
+          createWarDrum();
+        }
+      }, 500);
+      
+      // Epic Viking horn melody - D minor (viking key)
+      const vikingScale = [146.8, 174.6, 196, 220, 261.6, 293.7]; // D minor pentatonic + 6th
+      let melodyPhase = 0;
+      
+      const playHornMelody = () => {
+        if (!menuMusicPlaying || !menuMusicContext) return;
+        
+        const noteTime = menuMusicContext.currentTime;
+        melodyPhase++;
+        
+        // Create proper musical phrases (not random)
+        let notes = [];
+        if (melodyPhase % 4 === 1) {
+          // Opening phrase
+          notes = [vikingScale[0], vikingScale[2], vikingScale[4], vikingScale[3]];
+        } else if (melodyPhase % 4 === 2) {
+          // Rising phrase
+          notes = [vikingScale[1], vikingScale[3], vikingScale[5], vikingScale[4]];
+        } else if (melodyPhase % 4 === 3) {
+          // Descending phrase
+          notes = [vikingScale[5], vikingScale[4], vikingScale[2], vikingScale[0]];
+        } else {
+          // Resolution phrase
+          notes = [vikingScale[4], vikingScale[2], vikingScale[0], vikingScale[0]];
+        }
+        
+        notes.forEach((note, i) => {
+          const playTime = noteTime + (i * 0.6);
+          
+          // Create horn sound with formant filter (like warhorn SFX)
+          const hornOsc = menuMusicContext.createOscillator();
+          const hornGain = menuMusicContext.createGain();
+          
+          // Use formant filters for authentic horn sound
+          const formant1 = menuMusicContext.createBiquadFilter();
+          const formant2 = menuMusicContext.createBiquadFilter();
+          const formant3 = menuMusicContext.createBiquadFilter();
+          
+          formant1.type = 'bandpass';
+          formant1.frequency.setValueAtTime(600, playTime);
+          formant1.Q.setValueAtTime(8, playTime);
+          
+          formant2.type = 'bandpass';
+          formant2.frequency.setValueAtTime(1200, playTime);
+          formant2.Q.setValueAtTime(6, playTime);
+          
+          formant3.type = 'bandpass';
+          formant3.frequency.setValueAtTime(2400, playTime);
+          formant3.Q.setValueAtTime(4, playTime);
+          
+          hornOsc.type = 'sawtooth';
+          hornOsc.frequency.setValueAtTime(note, playTime);
+          
+          // Smooth attack and decay
+          hornGain.gain.setValueAtTime(0, playTime);
+          hornGain.gain.linearRampToValueAtTime(0.12, playTime + 0.2);
+          hornGain.gain.setValueAtTime(0.1, playTime + 0.4);
+          hornGain.gain.exponentialRampToValueAtTime(0.01, playTime + 0.6);
+          
+          hornOsc.connect(formant1);
+          formant1.connect(formant2);
+          formant2.connect(formant3);
+          formant3.connect(hornGain);
+          hornGain.connect(menuMusicGain);
+          
+          hornOsc.start(playTime);
+          hornOsc.stop(playTime + 0.65);
+        });
+        
+        // Next melody phrase
+        const melodyDelay = melodyPhase % 4 === 0 ? 3500 : 2800;
+        if (menuMusicPlaying) {
+          setTimeout(playHornMelody, melodyDelay);
+        }
+      };
+      
+      // Start melody after initial drum roll
+      setTimeout(() => {
+        if (menuMusicPlaying) {
+          playHornMelody();
+        }
+      }, 2000);
+      
+      // Deep bass drone - foundation
+      const createDrone = (freq, type = 'sine') => {
+        const osc = menuMusicContext.createOscillator();
+        const gain = menuMusicContext.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.25, now);
+        osc.connect(gain);
+        gain.connect(menuMusicGain);
+        osc.start();
+        menuMusicNodes.push({ osc, gain });
+      };
+      
+      // D minor drone layers
+      createDrone(73.4, 'sine'); // D
+      createDrone(146.8, 'triangle'); // D octave
+      createDrone(110, 'sine'); // A (fifth)
+      
+      // Subtle ambient layer (wind-like)
+      const ambientOsc = menuMusicContext.createOscillator();
+      const ambientGain = menuMusicContext.createGain();
+      const ambientFilter = menuMusicContext.createBiquadFilter();
+      ambientFilter.type = 'lowpass';
+      ambientFilter.frequency.setValueAtTime(200, now);
+      ambientFilter.Q.setValueAtTime(1, now);
+      
+      ambientOsc.type = 'sawtooth';
+      ambientOsc.frequency.setValueAtTime(65, now);
+      
+      // Slow LFO for wind effect
+      const windLFO = menuMusicContext.createOscillator();
+      const windLFOGain = menuMusicContext.createGain();
+      windLFO.frequency.setValueAtTime(0.05, now);
+      windLFOGain.gain.setValueAtTime(5, now);
+      windLFO.connect(windLFOGain);
+      windLFOGain.connect(ambientOsc.frequency);
+      
+      ambientGain.gain.setValueAtTime(0.08, now);
+      
+      ambientOsc.connect(ambientFilter);
+      ambientFilter.connect(ambientGain);
+      ambientGain.connect(menuMusicGain);
+      
+      ambientOsc.start();
+      windLFO.start();
+      menuMusicNodes.push({ osc: ambientOsc, gain: ambientGain });
+      menuMusicNodes.push({ osc: windLFO, gain: windLFOGain });
+      
+      menuMusicPlaying = true;
+    } catch (e) {
+      console.error("Error starting menu music:", e);
+    }
+  };
+  
+  const stopMenuMusic = () => {
+    menuMusicPlaying = false;
+    menuMusicNodes.forEach(node => {
+      try {
+        if (node.osc) node.osc.stop();
+      } catch (e) {}
+    });
+    menuMusicNodes = [];
+    if (menuMusicGain) {
+      menuMusicGain.disconnect();
+      menuMusicGain = null;
+    }
+  };
+  
+  const setMenuMusicVolume = (muted) => {
+    menuMusicMuted = muted;
+    localStorage.setItem('menuMusicMuted', muted ? 'true' : 'false');
+    if (menuMusicGain) {
+      menuMusicGain.gain.setValueAtTime(muted ? 0 : 0.13, menuMusicContext.currentTime);
+    }
+    if (muted && menuMusicPlaying) {
+      stopMenuMusic();
+    } else if (!muted && !menuMusicPlaying && !world.started) {
+      startMenuMusic();
+    }
+  };
+  
+  // Start menu music on first user interaction
+  const startMenuMusicOnInteraction = () => {
+    if (!menuMusicPlaying && !menuMusicMuted && !world.started) {
+      startMenuMusic();
+    }
+    document.removeEventListener('click', startMenuMusicOnInteraction);
+    document.removeEventListener('keydown', startMenuMusicOnInteraction);
+  };
+  document.addEventListener('click', startMenuMusicOnInteraction);
+  document.addEventListener('keydown', startMenuMusicOnInteraction);
+  
+  // Start music on first user interaction (for gameplay)
   const startMusicOnInteraction = () => {
     if (!musicPlaying && OPT.sound) {
       startVikingMusic();
@@ -2955,9 +3245,10 @@
         { speed: 0.4, color: '#87CEEB' },
         { speed: 0.6, color: '#90EE90' }
       ],
-      enemies: ['nordicRaider', 'wildBoar', 'nordicArcher', 'raven'],
+      enemies: ['saxonPeasant', 'britishFarmer', 'wildBoar'],
+      birdEnemies: ['crow'],
       obstacles: ['tree', 'log', 'rock', 'branch'],
-      duckObstacles: ['raven', 'lowBranch'],
+      duckObstacles: ['lowBranch'],
       powerups: ['speed', 'invincibility', 'scoreMultiplier'],
       boss: 'troll',
       bossSpawnScore: 5000
@@ -2972,7 +3263,8 @@
         { speed: 0.5, color: '#FF6B35' },
         { speed: 0.7, color: '#2E2E2E' }
       ],
-      enemies: ['saxonWarrior', 'saxonFireThrower', 'saxonShieldBearer'],
+      enemies: ['saxonWarrior', 'britishFootSoldier', 'saxonArcher'],
+      birdEnemies: ['raven'],
       obstacles: ['debris', 'building', 'firePit'],
       duckObstacles: ['axe', 'lowFire'],
       powerups: ['fireResistance', 'doubleJump'],
@@ -2989,7 +3281,8 @@
         { speed: 0.4, color: '#E0F6FF' },
         { speed: 0.6, color: '#FFFFFF' }
       ],
-      enemies: ['iceWarrior', 'snowWolf', 'frostArcher'],
+      enemies: ['saxonShieldBearer', 'britishKnight', 'celticWarrior'],
+      birdEnemies: ['seagull'],
       obstacles: ['iceBlock', 'snowDrift', 'icicle'],
       duckObstacles: ['icicle', 'snowball'],
       powerups: ['iceResistance', 'slideBoost'],
@@ -3006,7 +3299,8 @@
         { speed: 0.5, color: '#8B0000' },
         { speed: 0.7, color: '#FF4500' }
       ],
-      enemies: ['lavaGolem', 'magmaWarrior', 'vikingBerserker'],
+      enemies: ['britishHeavyKnight', 'saxonEliteWarrior', 'celticChampion'],
+      birdEnemies: ['eagle'],
       obstacles: ['lavaPool', 'fireGeyser', 'volcanicRock'],
       duckObstacles: ['fireball', 'lavaStream'],
       powerups: ['lavaWalk', 'fireImmunity'],
@@ -3023,7 +3317,8 @@
         { speed: 0.4, color: '#9370DB' },
         { speed: 0.6, color: '#FFD700' }
       ],
-      enemies: ['valhallaWarrior', 'goldenGuardian', 'vikingShieldMaiden'],
+      enemies: ['britishRoyalGuard', 'saxonWarlord', 'celticChieftain'],
+      birdEnemies: ['hawk'],
       obstacles: ['lightning', 'goldenBarrier', 'pillar'],
       duckObstacles: ['lowLightning', 'goldenSpear'],
       powerups: ['lightningDash', 'goldenShield'],
@@ -3040,7 +3335,8 @@
         { speed: 0.5, color: '#0000FF' },
         { speed: 0.7, color: '#000000' }
       ],
-      enemies: ['chaosWarrior', 'fireIceHybrid', 'ragnarokBeast'],
+      enemies: ['britishEliteKnight', 'saxonEliteGuard', 'celticEliteWarrior'],
+      birdEnemies: ['mythicalRaven', 'phoenix'],
       obstacles: ['fireIce', 'chaosPortal', 'destruction'],
       duckObstacles: ['chaosProjectile', 'lowDestruction'],
       powerups: ['chaosMode', 'elementMastery'],
@@ -3057,7 +3353,8 @@
         { speed: 0.4, color: '#1a0033' },
         { speed: 0.6, color: '#4B0082' }
       ],
-      enemies: ['celestialGuardian', 'vikingDualWielder', 'vikingRaider'],
+      enemies: ['britishEliteKnight', 'saxonEliteGuard', 'celticEliteWarrior'],
+      birdEnemies: ['mythicalRaven', 'phoenix'],
       obstacles: ['starBarrier', 'blackHole', 'cosmicStorm'],
       duckObstacles: ['lowStar', 'cosmicRay'],
       powerups: ['cosmicDash', 'starShield', 'timeSlow'],
@@ -3074,7 +3371,8 @@
         { speed: 0.4, color: '#4B0082' },
         { speed: 0.6, color: '#FFD700' }
       ],
-      enemies: ['godWarrior', 'asgardGuardian', 'vikingBerserker', 'vikingShieldMaiden'],
+      enemies: ['britishEliteKnight', 'saxonEliteGuard', 'celticEliteWarrior'],
+      birdEnemies: ['mythicalRaven', 'phoenix'],
       obstacles: ['divineBarrier', 'rainbowPortal', 'godlyObstacle'],
       duckObstacles: ['lowDivineRay', 'rainbowProjectile'],
       powerups: ['all', 'godMode', 'infiniteDash'],
@@ -3242,6 +3540,49 @@
     // Screen shake on boss spawn
     world.screenShake = 1.0;
     playSFX('warhorn');
+    startBossMusic();
+    
+    // Prominent "BOSS IS HERE" notification
+    const bossNotification = document.createElement('div');
+    bossNotification.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #dc2626, #991b1b);
+      color: #ffffff;
+      padding: 40px 60px;
+      border-radius: 20px;
+      font-size: 48px;
+      font-weight: 900;
+      text-align: center;
+      z-index: 10000;
+      box-shadow: 0 20px 60px rgba(220, 38, 38, 0.6);
+      border: 4px solid #fbbf24;
+      animation: bossPulse 0.5s ease-in-out;
+      pointer-events: none;
+    `;
+    bossNotification.textContent = `👹 BOSS IS HERE: ${bossData.name} 👹`;
+    document.body.appendChild(bossNotification);
+    
+    // Add pulse animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes bossPulse {
+        0%, 100% { transform: translate(-50%, -50%) scale(1); }
+        50% { transform: translate(-50%, -50%) scale(1.1); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    setTimeout(() => {
+      bossNotification.style.transition = 'opacity 0.5s';
+      bossNotification.style.opacity = '0';
+      setTimeout(() => {
+        bossNotification.remove();
+        style.remove();
+      }, 500);
+    }, 3000); // Show for 3 seconds
   };
   
   // Achievement System
@@ -3421,14 +3762,15 @@
     score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
     lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
     difficulty: 'normal', currentLevel: 1,
-    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextHeartAt: 0, nextGoldAt: 0,
+    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0,
     bossSpawnsThisLevel: {}, // Track which bosses have spawned this level
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
       scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
       vikingShip: { active: false, timeLeft: 0 },
-      respawn: { active: false, timeLeft: 0 }
+      respawn: { count: 0 }, // Count of respawns collected (each gives 1 life)
+      respawnPlus: { count: 0 } // Rare respawn that gives 3 lives
     }
   };
 
@@ -3544,6 +3886,8 @@
     weights.vikingShip = (weights.vikingShip || 0) + 5;
     // Always include respawn as rare option
     weights.respawn = (weights.respawn || 0) + 3;
+    // Very rare respawnPlus (gives 3 lives)
+    weights.respawnPlus = (weights.respawnPlus || 0) + 1;
     
     const total = Object.values(weights).reduce((a, b) => a + b, 0);
     let roll = Math.random() * total;
@@ -3572,57 +3916,114 @@
     Platforms.push({ x, y, width, height, isLow: isLowPlatform });
   };
 
+  // Historical enemies Vikings fought - unique per level
   const spawnEnemy = (x) => {
     const theme = LevelThemes.getCurrent();
-    // Select enemy type from level theme
-    const enemyTypes = theme.enemies || ['nordicRaider'];
+    const currentLevel = world.currentLevel || 1;
+    const enemyTypes = theme.enemies || [];
+    if (enemyTypes.length === 0) return; // No enemies if array is empty
+    
     const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
     
-    // Enemy properties based on type - All enemies minimum 80x80 for maximum visibility
+    // Historical enemy properties - based on what Vikings actually fought
     const enemyProps = {
-      nordicRaider: { w: 85, h: 95, speed: 1.0, color: '#8B4513' },
-      wildBoar: { w: 90, h: 80, speed: 1.3, color: '#654321' },
-      nordicArcher: { w: 80, h: 100, speed: 0.8, color: '#696969' },
-      saxonWarrior: { w: 85, h: 100, speed: 1.1, color: '#A0522D' },
-      saxonFireThrower: { w: 85, h: 95, speed: 0.9, color: '#FF4500' },
-      saxonShieldBearer: { w: 90, h: 95, speed: 0.7, color: '#C0C0C0' },
-      iceWarrior: { w: 85, h: 100, speed: 1.0, color: '#B0E0E6' },
-      snowWolf: { w: 85, h: 80, speed: 1.5, color: '#F0F8FF' },
-      frostArcher: { w: 80, h: 100, speed: 0.8, color: '#E0F6FF' },
-      lavaGolem: { w: 100, h: 110, speed: 0.6, color: '#8B0000' },
-      magmaWarrior: { w: 90, h: 100, speed: 1.0, color: '#FF4500' },
-      valhallaWarrior: { w: 90, h: 105, speed: 1.2, color: '#FFD700' },
-      goldenGuardian: { w: 100, h: 110, speed: 0.8, color: '#FFD700' },
-      chaosWarrior: { w: 90, h: 100, speed: 1.1, color: '#800080' },
-      fireIceHybrid: { w: 95, h: 105, speed: 1.0, color: '#FF1493' },
-      ragnarokBeast: { w: 110, h: 120, speed: 0.9, color: '#4B0082' },
-      celestialGuardian: { w: 105, h: 115, speed: 0.9, color: '#9370DB' },
-      godWarrior: { w: 100, h: 110, speed: 1.3, color: '#FFD700' },
-      asgardGuardian: { w: 115, h: 125, speed: 0.8, color: '#FF1493' },
-      // New viking-themed enemies
-      vikingBerserker: { w: 90, h: 100, speed: 1.4, color: '#8B4513' },
-      vikingShieldMaiden: { w: 85, h: 95, speed: 1.0, color: '#A0522D' },
-      vikingRaider: { w: 85, h: 100, speed: 1.1, color: '#654321' },
-      vikingDualWielder: { w: 90, h: 105, speed: 1.3, color: '#6B4423' },
-      raven: { w: 60, h: 50, speed: 1.5, color: '#000000', flying: true }
+      // Level 1: Peasants and basic enemies
+      saxonPeasant: { w: 75, h: 90, speed: 0.8, color: '#8B4513', tier: 1 },
+      britishFarmer: { w: 75, h: 90, speed: 0.7, color: '#654321', tier: 1 },
+      wildBoar: { w: 90, h: 80, speed: 1.2, color: '#654321', tier: 1 },
+      
+      // Level 2: Warriors and foot soldiers
+      saxonWarrior: { w: 85, h: 100, speed: 1.0, color: '#A0522D', tier: 2 },
+      britishFootSoldier: { w: 85, h: 100, speed: 0.9, color: '#8B4513', tier: 2 },
+      saxonArcher: { w: 80, h: 100, speed: 0.8, color: '#696969', tier: 2 },
+      
+      // Level 3: Shield bearers and knights
+      saxonShieldBearer: { w: 90, h: 105, speed: 0.7, color: '#C0C0C0', tier: 3 },
+      britishKnight: { w: 90, h: 110, speed: 0.8, color: '#71717a', tier: 3 },
+      celticWarrior: { w: 85, h: 100, speed: 1.1, color: '#654321', tier: 3 },
+      
+      // Level 4: Elite warriors
+      britishHeavyKnight: { w: 95, h: 115, speed: 0.6, color: '#8b8b9a', tier: 4 },
+      saxonEliteWarrior: { w: 90, h: 105, speed: 1.0, color: '#A0522D', tier: 4 },
+      celticChampion: { w: 90, h: 105, speed: 1.2, color: '#654321', tier: 4 },
+      
+      // Level 5: Royal guards and warlords
+      britishRoyalGuard: { w: 95, h: 115, speed: 0.7, color: '#C0C0C0', tier: 5 },
+      saxonWarlord: { w: 95, h: 110, speed: 0.9, color: '#8B4513', tier: 5 },
+      celticChieftain: { w: 90, h: 110, speed: 1.1, color: '#654321', tier: 5 },
+      
+      // Level 6+: Elite versions
+      britishEliteKnight: { w: 100, h: 120, speed: 0.8, color: '#8b8b9a', tier: 6 },
+      saxonEliteGuard: { w: 95, h: 115, speed: 1.0, color: '#A0522D', tier: 6 },
+      celticEliteWarrior: { w: 95, h: 110, speed: 1.2, color: '#654321', tier: 6 }
     };
     
-    const props = enemyProps[enemyType] || enemyProps.nordicRaider;
+    const props = enemyProps[enemyType];
+    if (!props) return; // Skip if enemy type not found
     
-    // Ravens fly at head height (requires ducking) or higher (requires jumping)
-    // Other enemies spawn at ground level
-    const spawnY = props.flying 
-      ? world.groundY - rand(60, 150) // Flying enemies at various heights
-      : world.groundY; // Ground enemies at ground level
+    // All ground enemies spawn at ground level
+    Enemies.push({
+      x,
+      y: world.groundY,
+      w: props.w,
+      h: props.h,
+      type: enemyType,
+      speed: props.speed,
+      color: props.color,
+      tier: props.tier,
+      defeated: false,
+      hit: false
+    });
+  };
+  
+  // Bird enemies - level-specific, can duck under, jump over, or kill
+  const spawnBirdEnemy = (x) => {
+    const currentLevel = world.currentLevel || 1;
+    const theme = LevelThemes.getCurrent();
+    const birdTypes = theme.birdEnemies || [];
+    if (birdTypes.length === 0) return;
+    
+    const birdType = birdTypes[Math.floor(Math.random() * birdTypes.length)];
+    
+    // Bird properties per level
+    const birdProps = {
+      // Level 1: Crows (small, slow)
+      crow: { w: 50, h: 40, speed: 1.2, color: '#000000', height: 'low', level: 1 },
+      // Level 2: Ravens (medium, medium speed)
+      raven: { w: 60, h: 50, speed: 1.5, color: '#000000', height: 'medium', level: 2 },
+      // Level 3: Seagulls (medium, fast)
+      seagull: { w: 55, h: 45, speed: 1.8, color: '#FFFFFF', height: 'medium', level: 3 },
+      // Level 4: Eagles (large, very fast)
+      eagle: { w: 80, h: 70, speed: 2.0, color: '#8B4513', height: 'high', level: 4 },
+      // Level 5: Hawks (medium, very fast, aggressive)
+      hawk: { w: 65, h: 55, speed: 2.2, color: '#654321', height: 'high', level: 5 },
+      // Level 6+: Mythical birds
+      mythicalRaven: { w: 90, h: 80, speed: 2.5, color: '#4B0082', height: 'high', level: 6 },
+      phoenix: { w: 100, h: 90, speed: 2.3, color: '#FF4500', height: 'medium', level: 6 }
+    };
+    
+    const props = birdProps[birdType];
+    if (!props) return;
+    
+    // Determine spawn height based on bird type
+    let spawnY;
+    if (props.height === 'low') {
+      spawnY = world.groundY - rand(40, 60); // Duck under
+    } else if (props.height === 'medium') {
+      spawnY = world.groundY - rand(80, 120); // Jump over or duck
+    } else {
+      spawnY = world.groundY - rand(140, 180); // Must jump over
+    }
     
     Enemies.push({
       x,
       y: spawnY,
       w: props.w,
       h: props.h,
-      type: enemyType,
+      type: birdType,
       speed: props.speed,
       color: props.color,
+      isBird: true,
       defeated: false,
       hit: false
     });
@@ -3735,6 +4136,7 @@
       world.nextPowerupAt = viking.x + 6000;
       world.nextPlatformAt = viking.x + 500;
       world.nextEnemyAt = viking.x + 800;
+      world.nextBirdAt = viking.x + 1200;
       world.nextHeartAt = viking.x + 1200;
       world.nextGoldAt = viking.x + 2000;
       
@@ -3752,7 +4154,8 @@
         invincibility: { active: false, timeLeft: 0 },
         scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
         vikingShip: { active: false, timeLeft: 0 },
-        respawn: { active: false, timeLeft: 0 }
+        respawn: { count: 0 }, // Count of respawns collected (each gives 1 life)
+      respawnPlus: { count: 0 } // Rare respawn that gives 3 lives
       };
       world.bossSpawnsThisLevel = {}; // Reset boss spawn tracking on reset
       viking.jumpsUsed = 0;
@@ -3787,6 +4190,85 @@
     }
   };
 
+  // Activate respawn on death
+  const activateRespawn = () => {
+    let livesToGive = 0;
+    let isRare = false;
+    
+    // Check for rare respawn+ first (gives 3 lives)
+    if (world.powerups.respawnPlus.count > 0) {
+      world.powerups.respawnPlus.count--;
+      livesToGive = 3;
+      isRare = true;
+    } else if (world.powerups.respawn.count > 0) {
+      // Check for regular respawn (gives 1 life)
+      world.powerups.respawn.count--;
+      livesToGive = 1;
+    } else {
+      return false; // No respawns available
+    }
+    
+    world.lives = livesToGive;
+    world.over = false;
+    viking.faceplant = 0;
+    viking.vy = 0;
+    viking.y = world.groundY;
+    viking.onGround = true;
+    
+    // Large, visible respawn notification
+    const respawnNotification = document.createElement('div');
+    const bgGradient = isRare ? 'linear-gradient(135deg, #FFD700, #FFA500)' : 'linear-gradient(135deg, #9B59B6, #8E44AD)';
+    const flashColor = isRare ? 'rgba(255, 215, 0, 0.4)' : 'rgba(155, 89, 182, 0.4)';
+    respawnNotification.style.cssText = 
+      'position: fixed;' +
+      'top: 50%;' +
+      'left: 50%;' +
+      'transform: translate(-50%, -50%);' +
+      'z-index: 10001;' +
+      'background: ' + bgGradient + ';' +
+      'color: white;' +
+      'font-size: 48px;' +
+      'font-weight: 900;' +
+      'padding: 40px 60px;' +
+      'border-radius: 20px;' +
+      'box-shadow: 0 0 50px rgba(155, 89, 182, 0.8), 0 0 100px rgba(155, 89, 182, 0.5);' +
+      'text-align: center;' +
+      'animation: respawnPulse 0.3s ease-out;' +
+      'pointer-events: none;';
+    respawnNotification.textContent = isRare ? '⭐ RARE RESPAWN+ ACTIVATED! 3 Lives!' : '🔄 RESPAWN ACTIVATED! 1 Life!';
+    document.body.appendChild(respawnNotification);
+    
+    // Screen shake and flash
+    world.screenShake = 0.5;
+    const flash = document.createElement('div');
+    flash.style.cssText = 
+      'position: fixed;' +
+      'inset: 0;' +
+      'background: radial-gradient(circle, ' + flashColor + ' 0%, transparent 70%);' +
+      'z-index: 10000;' +
+      'pointer-events: none;' +
+      'animation: fadeOut 1s ease-out forwards;';
+    document.body.appendChild(flash);
+    
+    // Particle effects
+    for (let i = 0; i < 30; i++) {
+      addParticle(viking.x, viking.y, isRare ? "#FFD700" : "#9B59B6", 20);
+    }
+    
+    playSFX('warhorn');
+    updateHUD();
+    if (statePill) statePill.textContent = "Playing";
+    
+    // Remove notification after 3 seconds
+    setTimeout(() => {
+      respawnNotification.style.animation = 'fadeOut 0.5s ease-out forwards';
+      setTimeout(() => respawnNotification.remove(), 500);
+    }, 3000);
+    setTimeout(() => flash.remove(), 1000);
+    
+    return true;
+  };
+
   const updateHUD = () => {
     try {
       if (scoreV) scoreV.textContent = Math.floor(world.score).toLocaleString();
@@ -3808,17 +4290,13 @@
         livesCount.textContent = world.lives;
       }
       
-      // Respawn counter
+      // Respawn counter - always visible, shows count of respawns collected
       const respawnDisplay = $("respawnDisplay");
       const respawnCount = $("respawnCount");
       if (respawnDisplay && respawnCount) {
-        if (world.powerups.respawn.active) {
-          respawnDisplay.style.display = "flex";
-          respawnCount.textContent = "1";
-        } else {
-          respawnDisplay.style.display = "none";
-          respawnCount.textContent = "0";
-        }
+        respawnDisplay.style.display = "flex"; // Always visible
+        const totalRespawns = (world.powerups.respawn.count || 0) + (world.powerups.respawnPlus.count || 0);
+        respawnCount.textContent = totalRespawns.toString();
       }
     } catch (e) {
       console.error("Error in updateHUD:", e);
@@ -3840,32 +4318,53 @@
         invincibility: { name: "Invincibility", icon: "🛡️", color: "#00FF00" },
         scoreMultiplier: { name: "Score Multiplier", icon: "⭐", color: "#FF69B4" },
         vikingShip: { name: "Viking Ship", icon: "⛵", color: "#4A90D9" },
-        respawn: { name: "Respawn", icon: "🔄", color: "#9B59B6" }
+        respawn: { name: "Respawn", icon: "🔄", color: "#9B59B6" },
+        respawnPlus: { name: "Rare Respawn+", icon: "⭐", color: "#FFD700" }
       };
 
       container.innerHTML = "";
 
       for (const [key, powerup] of Object.entries(world.powerups)) {
+        // Show respawn counts if available
+        if (key === "respawn" && powerup.count > 0) {
+          const config = powerupConfigs[key];
+          if (!config) continue;
+          
+          const indicator = document.createElement("div");
+          indicator.className = "powerup-indicator";
+          indicator.innerHTML = `
+            <div class="powerup-icon" style="background: ${config.color}20; border: 1px solid ${config.color}40;">
+              ${config.icon}
+            </div>
+            <div class="powerup-info">
+              <div class="powerup-name">${config.name}</div>
+              <div class="powerup-timer" style="color: #00FF00;">${powerup.count}x (1 life each)</div>
+            </div>
+          `;
+          container.appendChild(indicator);
+          continue;
+        }
+        
+        // Show respawnPlus counts if available
+        if (key === "respawnPlus" && powerup.count > 0) {
+          const config = powerupConfigs[key] || { name: "Rare Respawn+", icon: "⭐", color: "#FFD700" };
+          
+          const indicator = document.createElement("div");
+          indicator.className = "powerup-indicator";
+          indicator.innerHTML = `
+            <div class="powerup-icon" style="background: ${config.color}30; border: 2px solid ${config.color}; box-shadow: 0 0 10px ${config.color}80;">
+              ${config.icon}
+            </div>
+            <div class="powerup-info">
+              <div class="powerup-name" style="color: ${config.color};">${config.name}</div>
+              <div class="powerup-timer" style="color: #FFD700; font-weight: 700;">${powerup.count}x (3 lives each!)</div>
+            </div>
+          `;
+          container.appendChild(indicator);
+          continue;
+        }
+        
         if (powerup.active) {
-          // Respawn has no timer, show as "READY" instead
-          if (key === "respawn" && powerup.timeLeft === 0) {
-            const config = powerupConfigs[key];
-            if (!config) continue;
-            
-            const indicator = document.createElement("div");
-            indicator.className = "powerup-indicator";
-            indicator.innerHTML = `
-              <div class="powerup-icon" style="background: ${config.color}20; border: 1px solid ${config.color}40;">
-                ${config.icon}
-              </div>
-              <div class="powerup-info">
-                <div class="powerup-name">${config.name}</div>
-                <div class="powerup-timer" style="color: #00FF00;">READY</div>
-              </div>
-            `;
-            container.appendChild(indicator);
-            continue;
-          }
           
           if (powerup.timeLeft > 0) {
           const config = powerupConfigs[key];
@@ -3912,67 +4411,6 @@
     }
   };
 
-  // Respawn activation helper
-  const activateRespawn = () => {
-    world.powerups.respawn.active = false;
-    world.lives = 1;
-    world.over = false;
-    viking.faceplant = 0;
-    viking.vy = 0;
-    viking.y = world.groundY;
-    viking.onGround = true;
-    
-    // Large, visible respawn notification
-    const respawnNotification = document.createElement('div');
-    respawnNotification.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10001;
-      background: linear-gradient(135deg, #9B59B6, #8E44AD);
-      color: white;
-      font-size: 48px;
-      font-weight: 900;
-      padding: 40px 60px;
-      border-radius: 20px;
-      box-shadow: 0 0 50px rgba(155, 89, 182, 0.8), 0 0 100px rgba(155, 89, 182, 0.5);
-      text-align: center;
-      animation: respawnPulse 0.3s ease-out;
-      pointer-events: none;
-    `;
-    respawnNotification.textContent = '🔄 RESPAWN ACTIVATED!';
-    document.body.appendChild(respawnNotification);
-    
-    // Screen shake and flash
-    world.screenShake = 0.5;
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle, rgba(155, 89, 182, 0.4) 0%, transparent 70%);
-      z-index: 10000;
-      pointer-events: none;
-      animation: fadeOut 1s ease-out forwards;
-    `;
-    document.body.appendChild(flash);
-    
-    // Particle effects
-    for (let i = 0; i < 30; i++) {
-      addParticle(viking.x, viking.y, "#9B59B6", 20);
-    }
-    
-    playSFX('warhorn'); // Viking horn sound
-    updateHUD();
-    if (statePill) statePill.textContent = "Playing";
-    
-    // Remove notification after 6 seconds
-    setTimeout(() => {
-      respawnNotification.style.animation = 'fadeOut 0.5s ease-out forwards';
-      setTimeout(() => respawnNotification.remove(), 500);
-    }, 6000);
-    setTimeout(() => flash.remove(), 1000);
-  };
 
   // Stickiness notifications
   let lastStickinessNotification = 0;
@@ -4068,7 +4506,53 @@
         }
       }
 
-      // Progress bars removed - notifications shown on screen when events happen
+      // Boss countdown display
+      const bossTheme = LevelThemes.getCurrent();
+      if (bossTheme && bossTheme.boss) {
+        const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+        const nextLevel = LevelSystem.levels.find(l => l.unlockScore > world.score);
+        const levelStart = currentLevel.unlockScore;
+        const levelEnd = nextLevel ? nextLevel.unlockScore : Infinity;
+        const levelRange = levelEnd - levelStart;
+        const spawnsPerLevel = currentLevel.id <= 3 ? 1 : currentLevel.id - 2;
+        const spawnInterval = levelRange / (spawnsPerLevel + 1);
+        
+        // Find next boss spawn point
+        let nextBossScore = null;
+        for (let i = 1; i <= spawnsPerLevel; i++) {
+          const spawnScore = levelStart + (spawnInterval * i);
+          const spawnKey = `${currentLevel.id}_${i}`;
+          if (world.score < spawnScore && !world.bossSpawnsThisLevel[spawnKey]) {
+            nextBossScore = spawnScore;
+            break;
+          }
+        }
+        
+        const bossProgressText = $("bossProgressText");
+        const bossProgressFill = $("bossProgressFill");
+        const bossProgressBar = $("bossProgressBar");
+        
+        if (nextBossScore !== null && nextBossScore > world.score) {
+          const remaining = Math.max(0, nextBossScore - world.score);
+          const progress = Math.max(0, Math.min(100, ((world.score - levelStart) / (nextBossScore - levelStart)) * 100));
+          
+          if (bossProgressBar) bossProgressBar.style.display = "block";
+          if (bossProgressText) {
+            bossProgressText.textContent = `${remaining.toLocaleString()} points`;
+          }
+          if (bossProgressFill) {
+            bossProgressFill.style.width = progress + "%";
+          }
+        } else {
+          if (bossProgressBar) bossProgressBar.style.display = "none";
+          if (bossProgressText) {
+            bossProgressText.textContent = "--";
+          }
+        }
+      } else {
+        const bossProgressBar = $("bossProgressBar");
+        if (bossProgressBar) bossProgressBar.style.display = "none";
+      }
 
       // Achievement Progress - REMOVED (only show until bosses)
 
@@ -4258,6 +4742,9 @@
       }
       if (statePill) statePill.textContent = "Playing";
       if (pauseBtn) pauseBtn.textContent = "Pause";
+      
+      // Stop menu music when game starts
+      stopMenuMusic();
       
       // Apply any pending daily bonus reward
       applyPendingReward();
@@ -4724,9 +5211,9 @@
   const drawEnemy = (e) => {
     if (e.defeated) return;
     
-    // Special handling for raven - use separate function
-    if (e.type === 'raven') {
-      drawRavenEnemy(e);
+    // Special handling for birds - use bird drawing function
+    if (e.isBird) {
+      drawBirdEnemy(e);
       return;
     }
     
@@ -4740,8 +5227,9 @@
     const bodyHeight = e.h * 0.6;
     const bodyWidth = e.w * 0.7;
     
-    // Tunic/body - brown leather or fur
-    const tunicColor = e.type && (e.type.includes('saxon') || e.type.includes('fire')) ? "#8B4513" : "#654321";
+    // Tunic/body - British/Saxon colors (all enemies are British/Saxon)
+    const tunicColor = e.type && (e.type.includes('british') || e.type.includes('knight')) ? "#696969" : 
+                      e.type && e.type.includes('celtic') ? "#654321" : "#8B4513";
     ctx.fillStyle = tunicColor;
     ctx.beginPath();
     ctx.moveTo(-bodyWidth/2, groundOffset);
@@ -4758,8 +5246,8 @@
     ctx.lineWidth = 3;
     ctx.stroke();
     
-    // Chainmail/armor overlay
-    ctx.fillStyle = e.type && e.type.includes('Guardian') ? "#FFD700" : "#8b8b9a";
+    // Chainmail/armor overlay - all British/Saxon enemies have chainmail
+    ctx.fillStyle = "#8b8b9a"; // Standard chainmail gray for all
     ctx.fillRect(-bodyWidth/2 + 8, -bodyHeight * 0.35, bodyWidth - 16, bodyHeight * 0.25);
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2;
@@ -4779,43 +5267,27 @@
     ctx.lineWidth = 3;
     ctx.stroke();
     
-    // Helmet - proper viking spangenhelm or horned helmet
-    if (e.type && (e.type.includes('Berserker') || e.type.includes('Raider'))) {
-      // Horned helmet
-      ctx.fillStyle = "#71717a";
-      ctx.beginPath();
-      ctx.arc(0, -bodyHeight - 10, 20, Math.PI, 0);
-      ctx.fill();
-      ctx.stroke();
-      // Horns
-      ctx.strokeStyle = "#4A3B1A";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-12, -bodyHeight - 25);
-      ctx.quadraticCurveTo(-15, -bodyHeight - 35, -12, -bodyHeight - 40);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(12, -bodyHeight - 25);
-      ctx.quadraticCurveTo(15, -bodyHeight - 35, 12, -bodyHeight - 40);
-      ctx.stroke();
-    } else {
-      // Spangenhelm style helmet
-      ctx.fillStyle = "#71717a";
-      ctx.beginPath();
-      ctx.arc(0, -bodyHeight - 10, 20, Math.PI, 0);
-      ctx.fill();
-      ctx.stroke();
-      // Nose guard
-      ctx.fillRect(-3, -bodyHeight - 12, 6, 20);
-      ctx.strokeRect(-3, -bodyHeight - 12, 6, 20);
-      // Helmet bands
-      ctx.strokeStyle = "#4A3B1A";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-18, -bodyHeight - 5);
-      ctx.lineTo(18, -bodyHeight - 5);
-      ctx.stroke();
-    }
+    // Helmet - British/Saxon spangenhelm style (no horns - Vikings fought British/Saxons)
+    ctx.fillStyle = "#71717a";
+    ctx.beginPath();
+    ctx.arc(0, -bodyHeight - 10, 20, Math.PI, 0);
+    ctx.fill();
+    ctx.stroke();
+    // Nose guard
+    ctx.fillRect(-3, -bodyHeight - 12, 6, 20);
+    ctx.strokeRect(-3, -bodyHeight - 12, 6, 20);
+    // Helmet bands (spangenhelm style)
+    ctx.strokeStyle = "#4A3B1A";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-18, -bodyHeight - 5);
+    ctx.lineTo(18, -bodyHeight - 5);
+    ctx.stroke();
+    // Cross band (British/Saxon style)
+    ctx.beginPath();
+    ctx.moveTo(0, -bodyHeight - 15);
+    ctx.lineTo(0, -bodyHeight - 5);
+    ctx.stroke();
     
     // Eyes (angry) - red
     ctx.fillStyle = "#FF0000";
@@ -4837,8 +5309,8 @@
     ctx.fill();
     ctx.stroke();
     
-    // Shield - round viking shield
-    ctx.fillStyle = e.type && e.type.includes('saxon') ? "#dc2626" : "#8B4513";
+    // Shield - round British/Saxon shield with cross (historical design)
+    ctx.fillStyle = e.type && (e.type.includes('british') || e.type.includes('knight')) ? "#dc2626" : "#dc2626"; // Red for British/Saxon
     ctx.beginPath();
     ctx.arc(-bodyWidth/2 - 12, -bodyHeight * 0.3, 24, 0, Math.PI * 2);
     ctx.fill();
@@ -4851,11 +5323,38 @@
     ctx.arc(-bodyWidth/2 - 12, -bodyHeight * 0.3, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // Cross on shield (British/Saxon design)
+    ctx.strokeStyle = "#fbbf24"; // Gold cross
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-bodyWidth/2 - 12, -bodyHeight * 0.3 - 15);
+    ctx.lineTo(-bodyWidth/2 - 12, -bodyHeight * 0.3 + 15);
+    ctx.moveTo(-bodyWidth/2 - 27, -bodyHeight * 0.3);
+    ctx.lineTo(-bodyWidth/2 + 3, -bodyHeight * 0.3);
+    ctx.stroke();
     
-    // Weapon - axe or sword (not just spear)
-    const hasAxe = e.type && (e.type.includes('Berserker') || e.type.includes('Raider') || Math.random() > 0.5);
-    if (hasAxe) {
-      // Viking axe
+    // Weapon - British/Saxon weapons (sword, spear, or axe based on type)
+    const hasSpear = e.type && (e.type.includes('Spearman') || e.type.includes('Archer'));
+    const hasAxe = e.type && e.type.includes('celtic');
+    
+    if (hasSpear) {
+      // Spear (British/Saxon style)
+      ctx.fillStyle = "#78350f";
+      ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 4, 60);
+      ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 4, 60);
+      // Spear tip
+      ctx.fillStyle = "#a1a1aa";
+      ctx.beginPath();
+      ctx.moveTo(bodyWidth/2 + 2, -bodyHeight * 0.2);
+      ctx.lineTo(bodyWidth/2 - 4, -bodyHeight * 0.2 - 15);
+      ctx.lineTo(bodyWidth/2 + 8, -bodyHeight * 0.2 - 15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else if (hasAxe) {
+      // Axe (Celtic style)
       ctx.fillStyle = "#78350f";
       ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 6, 50);
       ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 6, 50);
@@ -4872,7 +5371,7 @@
       ctx.lineWidth = 2;
       ctx.stroke();
     } else {
-      // Sword
+      // Sword (British/Saxon style - most common)
       ctx.fillStyle = "#78350f";
       ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 4, 55);
       ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 4, 55);
@@ -4894,63 +5393,74 @@
     ctx.strokeRect(-bodyWidth/2 + 5, groundOffset, 8, 20);
     ctx.strokeRect(bodyWidth/2 - 13, groundOffset, 8, 20);
     
-    // Special effects based on type
-    if (e.type && (e.type.includes('fire') || e.type.includes('magma'))) {
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = '#FF4500';
-      ctx.strokeStyle = '#FF4500';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    } else if (e.type && (e.type.includes('ice') || e.type.includes('frost'))) {
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = '#B0E0E6';
-      ctx.strokeStyle = '#B0E0E6';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
+    // No special effects - all enemies are British/Saxon soldiers
     
     ctx.restore();
   };
   
-  // Draw raven enemy (flying bird)
-  const drawRavenEnemy = (e) => {
+  // Draw bird enemy (flying bird - level-specific)
+  const drawBirdEnemy = (e) => {
     ctx.save();
     ctx.translate(e.x, e.y);
     
     const wingFlap = Math.sin(world.t * 10) * 0.3;
+    const birdType = e.type || 'crow';
     
-    // Body - black oval
-    ctx.fillStyle = "#000000";
+    // Bird-specific properties
+    const birdStyles = {
+      crow: { bodyColor: '#000000', beakColor: '#FFA500', size: 1.0, wingSize: 1.0 },
+      raven: { bodyColor: '#000000', beakColor: '#FFA500', size: 1.2, wingSize: 1.2 },
+      seagull: { bodyColor: '#FFFFFF', beakColor: '#FFD700', size: 1.1, wingSize: 1.3 },
+      eagle: { bodyColor: '#8B4513', beakColor: '#FFA500', size: 1.6, wingSize: 1.8 },
+      hawk: { bodyColor: '#654321', beakColor: '#FF8C00', size: 1.3, wingSize: 1.4 },
+      mythicalRaven: { bodyColor: '#4B0082', beakColor: '#FFD700', size: 1.8, wingSize: 2.0, glow: true },
+      phoenix: { bodyColor: '#FF4500', beakColor: '#FFD700', size: 2.0, wingSize: 2.2, glow: true }
+    };
+    
+    const style = birdStyles[birdType] || birdStyles.crow;
+    const bodySize = e.w * 0.5 * style.size;
+    const headSize = bodySize * 0.6;
+    const wingWidth = e.w * 0.4 * style.wingSize;
+    const wingHeight = e.h * 0.3;
+    
+    // Glow effect for mythical birds
+    if (style.glow) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = style.bodyColor;
+    }
+    
+    // Body - oval
+    ctx.fillStyle = style.bodyColor;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 12, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, bodySize, bodySize * 1.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2;
     ctx.stroke();
     
     // Wings - animated flapping
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = style.bodyColor;
     ctx.beginPath();
-    ctx.ellipse(-15, 0, 20, 8, -0.5 + wingFlap, 0, Math.PI * 2);
+    ctx.ellipse(-wingWidth, 0, wingWidth, wingHeight, -0.5 + wingFlap, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(15, 0, 20, 8, 0.5 - wingFlap, 0, Math.PI * 2);
+    ctx.ellipse(wingWidth, 0, wingWidth, wingHeight, 0.5 - wingFlap, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     
     // Head
     ctx.beginPath();
-    ctx.arc(0, -15, 10, 0, Math.PI * 2);
+    ctx.arc(0, -bodySize - 5, headSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     
     // Beak
-    ctx.fillStyle = "#FFA500";
+    ctx.fillStyle = style.beakColor;
     ctx.beginPath();
-    ctx.moveTo(0, -20);
-    ctx.lineTo(-4, -25);
-    ctx.lineTo(4, -25);
+    ctx.moveTo(0, -bodySize - headSize);
+    ctx.lineTo(-headSize * 0.4, -bodySize - headSize * 1.5);
+    ctx.lineTo(headSize * 0.4, -bodySize - headSize * 1.5);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = "#000000";
@@ -4960,21 +5470,22 @@
     // Eye
     ctx.fillStyle = "#FF0000";
     ctx.beginPath();
-    ctx.arc(-3, -18, 2, 0, Math.PI * 2);
+    ctx.arc(-headSize * 0.3, -bodySize - headSize * 0.7, headSize * 0.2, 0, Math.PI * 2);
     ctx.fill();
     
     // Tail
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = style.bodyColor;
     ctx.beginPath();
-    ctx.moveTo(0, 15);
-    ctx.quadraticCurveTo(-8, 25, -12, 30);
-    ctx.quadraticCurveTo(-5, 28, 0, 20);
-    ctx.quadraticCurveTo(5, 28, 12, 30);
-    ctx.quadraticCurveTo(8, 25, 0, 15);
+    ctx.moveTo(0, bodySize);
+    ctx.quadraticCurveTo(-wingWidth * 0.5, bodySize * 1.5, -wingWidth, bodySize * 2);
+    ctx.quadraticCurveTo(-wingWidth * 0.3, bodySize * 1.8, 0, bodySize * 1.3);
+    ctx.quadraticCurveTo(wingWidth * 0.3, bodySize * 1.8, wingWidth, bodySize * 2);
+    ctx.quadraticCurveTo(wingWidth * 0.5, bodySize * 1.5, 0, bodySize);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
     
+    ctx.shadowBlur = 0;
     ctx.restore();
   };
 
@@ -5072,7 +5583,8 @@
       invincibility: "#4ECDC4",
       scoreMultiplier: "#FFD93D",
       vikingShip: "#8B4513",
-      respawn: "#9B59B6"
+      respawn: "#9B59B6",
+      respawnPlus: "#FFD700" // Gold color for rare respawn
     };
     return colors[type] || "#FFF";
   };
@@ -5083,7 +5595,8 @@
       invincibility: "🛡",
       scoreMultiplier: "⭐",
       vikingShip: "⛵",
-      respawn: "🔄"
+      respawn: "🔄",
+      respawnPlus: "⭐" // Star for rare respawn (different from scoreMultiplier due to gold color)
     };
     return symbols[type] || "?";
   };
@@ -5109,9 +5622,17 @@
       playSFX('powerup'); // Initial activation sound
       startPowerupSound('scoreMultiplier'); // Start looping sound
     } else if (type === "respawn") {
-      p.timeLeft = 0; // Permanent until used (one-time use)
+      // Increment respawn count (each gives 1 life when used)
+      world.powerups.respawn.count = (world.powerups.respawn.count || 0) + 1;
       playSFX('powerup');
-      showStickinessNotification('🔄 RESPAWN POWERUP ACTIVATED!', 'info');
+      showStickinessNotification(`🔄 RESPAWN COLLECTED! (${world.powerups.respawn.count} total)`, 'info');
+      updateHUD();
+    } else if (type === "respawnPlus") {
+      // Rare respawn that gives 3 lives (very rare)
+      world.powerups.respawnPlus.count = (world.powerups.respawnPlus.count || 0) + 1;
+      playSFX('powerup');
+      showStickinessNotification(`⭐ RARE RESPAWN+ COLLECTED! (${world.powerups.respawnPlus.count} total - gives 3 lives!)`, 'info');
+      updateHUD();
     } else {
       p.timeLeft = 10;
     }
@@ -5126,8 +5647,25 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
-    const size = 22 * pulse;
+    const isRare = type === "respawnPlus";
+    const size = isRare ? 28 * pulse : 22 * pulse; // Larger for rare respawn
     const color = getPowerupColor(type);
+    
+    // Special glow for rare respawn
+    if (isRare) {
+      const rareGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 3);
+      rareGlow.addColorStop(0, color + "FF");
+      rareGlow.addColorStop(0.3, color + "AA");
+      rareGlow.addColorStop(0.6, color + "60");
+      rareGlow.addColorStop(1, color + "00");
+      ctx.fillStyle = rareGlow;
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = color;
+    }
+    
     const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
     gradient.addColorStop(0, color + "AA");
     gradient.addColorStop(0.5, color + "60");
@@ -5140,9 +5678,10 @@
     ctx.beginPath();
     ctx.arc(0, 0, size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#FFF";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = isRare ? "#FFD700" : "#FFF";
+    ctx.lineWidth = isRare ? 4 : 3;
     ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.fillStyle = "#FFF";
     ctx.font = `bold ${size * 0.9}px Arial`;
     ctx.textAlign = "center";
@@ -5204,16 +5743,7 @@
                 
                 if (world.lives <= 0) {
                   // Check for respawn powerup
-                  if (world.powerups.respawn.active) {
-                    // Respawn activated!
-                    world.powerups.respawn.active = false;
-                    world.lives = 1;
-                    world.over = false;
-                    viking.faceplant = 0;
-                    viking.vy = 0;
-                    viking.y = world.groundY;
-                    viking.onGround = true;
-                    showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
+                  if (activateRespawn()) {
                     playSFX('powerup');
                     updateHUD();
                     if (statePill) statePill.textContent = "Playing";
@@ -5404,13 +5934,15 @@
         // Check each spawn point
         for (let i = 1; i <= spawnsPerLevel; i++) {
           const spawnScore = levelStart + (spawnInterval * i);
-          // Spawn within a 200 point window
-          if (world.score >= spawnScore - 100 && world.score < spawnScore + 100) {
-            const spawnKey = `${currentLevel.id}_${i}`;
-            // Only spawn if we haven't spawned this boss at this point yet
-            if (!world.bossSpawnsThisLevel[spawnKey]) {
+          const spawnKey = `${currentLevel.id}_${i}`;
+          
+          // Only spawn if we haven't spawned this boss at this point yet
+          if (!world.bossSpawnsThisLevel[spawnKey]) {
+            // Spawn when score reaches or exceeds spawn point (wider window for reliability)
+            if (world.score >= spawnScore - 200 && world.score <= spawnScore + 300) {
               const bossData = BossData[bossKey];
               if (bossData) {
+                console.log(`Spawning boss: ${bossData.name} at score ${world.score}, spawnScore: ${spawnScore}`);
                 showStickinessNotification(`👹 BOSS APPROACHING: ${bossData.name}`, 'danger');
                 playSFX('powerup');
                 spawnBoss(bossKey);
@@ -5547,10 +6079,23 @@
     }
     if (viking.x > world.nextPowerupAt - W) {
       spawnPowerup(world.nextPowerupAt);
-      // More frequent powerups - reduced from 4000-8000 to 2500-5000
-      const baseDelay = rand(2500, 5000);
-      const variability = Math.random() < 0.3 ? rand(800, 1500) : rand(3000, 6000);
-      world.nextPowerupAt += Math.random() < 0.4 ? baseDelay * 0.6 : variability;
+      // Powerup frequency scales by level - fewer in early levels, more in later levels
+      const currentLevel = world.currentLevel || 1;
+      let minDelay, maxDelay;
+      if (currentLevel === 1) {
+        minDelay = 8000; maxDelay = 12000; // Very few powerups
+      } else if (currentLevel === 2) {
+        minDelay = 6000; maxDelay = 10000; // Few powerups
+      } else if (currentLevel === 3) {
+        minDelay = 5000; maxDelay = 8000; // Moderate powerups
+      } else if (currentLevel === 4) {
+        minDelay = 4000; maxDelay = 7000; // More powerups
+      } else if (currentLevel === 5) {
+        minDelay = 3000; maxDelay = 6000; // Many powerups
+      } else {
+        minDelay = 2000; maxDelay = 5000; // Very frequent powerups (level 6+)
+      }
+      world.nextPowerupAt += rand(minDelay, maxDelay);
     }
     if (viking.x > world.nextPlatformAt - W) {
       spawnPlatform(world.nextPlatformAt);
@@ -5565,6 +6110,13 @@
       const minSpawn = baseMin - (baseMin * 0.2 * scoreFactor); // Less aggressive (was 0.3)
       const maxSpawn = baseMax - (baseMax * 0.2 * scoreFactor);
       world.nextEnemyAt += rand(Math.max(700, minSpawn), Math.max(1000, maxSpawn)); // More spacing (was 500-800)
+    }
+    // Spawn bird enemies - level-specific
+    if (viking.x > world.nextBirdAt - W) {
+      spawnBirdEnemy(world.nextBirdAt);
+      // Birds spawn less frequently than ground enemies, more in higher levels
+      const birdSpawnRate = 1500 + (world.currentLevel * 200);
+      world.nextBirdAt += rand(birdSpawnRate, birdSpawnRate + 500);
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < 5) { // Only spawn hearts if lives < 5
@@ -5598,6 +6150,10 @@
         const scoreSpeedBoost = 1.0 + (world.score / 100000) * 0.3;
         const enemySpeed = (e.speed || 1.0) * diff.enemySpeedMultiplier * scoreSpeedBoost;
         e.x -= world.speed * enemySpeed * dt;
+        // Birds can move slightly faster and have slight vertical movement
+        if (e.isBird) {
+          e.y += Math.sin(world.t * 5 + e.x * 0.01) * 0.5; // Slight vertical bob
+        }
         if (e.x < viking.x - W - 200) e.defeated = true;
       }
     }
@@ -5708,22 +6264,16 @@
           playSFX('damage');
           updateHUD();
           
-          if (world.lives <= 0) {
-            // Check for respawn powerup
-            if (world.powerups.respawn.active) {
-              // Respawn activated!
-              world.powerups.respawn.active = false;
-              world.lives = 1;
-              world.over = false;
-              viking.faceplant = 0;
-              viking.vy = 0;
-              viking.y = world.groundY;
-              viking.onGround = true;
-              showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
-              playSFX('powerup');
-              updateHUD();
-              if (statePill) statePill.textContent = "Playing";
-            } else {
+            if (world.lives <= 0) {
+              // Check for respawn powerup
+              if (activateRespawn()) {
+                world.over = false;
+                viking.faceplant = 0;
+                viking.vy = 0;
+                viking.y = world.groundY;
+                viking.onGround = true;
+                if (statePill) statePill.textContent = "Playing";
+              } else {
               // Stop all powerup sounds on game over
               for (const key in powerupSounds) {
                 stopPowerupSound(key);
@@ -5819,6 +6369,14 @@
                 // Update level mastery
                 LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
                 
+                // Stop gameplay music and resume menu music
+                stopVikingMusic();
+                if (!menuMusicMuted && !menuMusicPlaying) {
+                  setTimeout(() => {
+                    startMenuMusic();
+                  }, 1000);
+                }
+                
                 playSFX('gameover');
                 setTimeout(() => { 
                   if (overlay) {
@@ -5890,7 +6448,20 @@
           continue;
         }
         
-        // Check if viking is coming from above (stomping)
+        // For birds, check if viking can duck under or jump over
+        if (e.isBird) {
+          const birdY = e.y;
+          const vikingHeadY = viking.y - (viking.ducking ? 42 : 70);
+          const canDuckUnder = birdY < world.groundY - 50 && viking.ducking && vikingBottom > birdY + e.h/2;
+          const canJumpOver = birdY < world.groundY - 100 && vikingTop < birdY - e.h/2;
+          
+          // If can duck under or jump over, no collision
+          if (horizontalOverlap && (canDuckUnder || canJumpOver)) {
+            continue; // Safe - ducked under or jumped over
+          }
+        }
+        
+        // Check if viking is coming from above (stomping) - works for both ground enemies and birds
         const comingFromAbove = viking.vy > 0 && 
                                vikingBottom <= enemyTop + 25 &&
                                vikingBottom >= enemyTop - 15;
@@ -5927,8 +6498,10 @@
           }
           
           // Base points that scale with score and level
+          // Birds give bonus points
           const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
-          const basePoints = 50 + Math.floor(world.score / 1000) + (currentLevel.id * 25);
+          const birdBonus = e.isBird ? 25 : 0; // Extra points for killing birds
+          const basePoints = 50 + Math.floor(world.score / 1000) + (currentLevel.id * 25) + birdBonus;
           
           // Apply combo multiplier on top of base points
           world.score += basePoints * comboMult;
@@ -5953,8 +6526,9 @@
           addParticle(e.x, e.y - e.h/2, "#fbbf24", 20 + engagement.combo.count * 3);
           playSFX('stomp');
           updateHUD();
-        } else if (horizontalOverlap && verticalOverlap) {
-          // Side/front collision - YOU TAKE DAMAGE
+        } else if (horizontalOverlap && verticalOverlap && !e.isBird) {
+          // Side/front collision - YOU TAKE DAMAGE (ground enemies only)
+          // Birds handled separately - if you hit a bird from the side, you take damage
           if (!world.powerups.invincibility.active) {
             e.hit = true;
             world.lives--;
@@ -5964,9 +6538,7 @@
               
             if (world.lives <= 0) {
               // Check for respawn powerup
-              if (world.powerups.respawn.active) {
-                activateRespawn();
-              } else {
+              if (!activateRespawn()) {
                 // Stop all powerup sounds on game over
                 for (const key in powerupSounds) {
                   stopPowerupSound(key);
@@ -6080,31 +6652,41 @@
             updateHUD();
             
             if (world.lives <= 0) {
-              for (const key in powerupSounds) {
-                stopPowerupSound(key);
-              }
-              world.over = true;
-              viking.faceplant = 1.5;
-              if (statePill) statePill.textContent = "Game Over";
-              engagement.sessionDeaths++;
-              if (world.score > engagement.personalBest) {
-                engagement.personalBest = Math.floor(world.score);
-                localStorage.setItem('personalBest', engagement.personalBest.toString());
-              }
-              HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
-              playSFX('gameover');
-              setTimeout(() => { 
-                if (overlay) {
-                  overlay.style.display = "grid";
-                  overlay.style.visibility = "visible";
-                  overlay.style.opacity = "1";
+              // Check for respawn powerup
+              if (activateRespawn()) {
+                world.over = false;
+                viking.faceplant = 0;
+                viking.vy = 0;
+                viking.y = world.groundY;
+                viking.onGround = true;
+                if (statePill) statePill.textContent = "Playing";
+              } else {
+                for (const key in powerupSounds) {
+                  stopPowerupSound(key);
                 }
-                const overlayTitle = $("overlayTitle");
-                const overlayText = $("overlayText");
-                if (overlayTitle) overlayTitle.textContent = "Game Over";
-                if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                if (startBtn) startBtn.textContent = "Play Again";
-              }, 1200);
+                world.over = true;
+                viking.faceplant = 1.5;
+                if (statePill) statePill.textContent = "Game Over";
+                engagement.sessionDeaths++;
+                if (world.score > engagement.personalBest) {
+                  engagement.personalBest = Math.floor(world.score);
+                  localStorage.setItem('personalBest', engagement.personalBest.toString());
+                }
+                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+                playSFX('gameover');
+                setTimeout(() => { 
+                  if (overlay) {
+                    overlay.style.display = "grid";
+                    overlay.style.visibility = "visible";
+                    overlay.style.opacity = "1";
+                  }
+                  const overlayTitle = $("overlayTitle");
+                  const overlayText = $("overlayText");
+                  if (overlayTitle) overlayTitle.textContent = "Game Over";
+                  if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                  if (startBtn) startBtn.textContent = "Play Again";
+                }, 1200);
+              }
             } else {
               world.powerups.invincibility.active = true;
               world.powerups.invincibility.timeLeft = 1.5;
@@ -6203,12 +6785,15 @@
       ctx.translate(shakeX, shakeY);
     }
     
-    // Apply level theme background
+    // Apply level theme background - enhanced with multiple gradient stops
     const theme = LevelThemes.getCurrent();
     const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
-    if (theme.bgGradient.length === 2) {
-      bgGradient.addColorStop(0, theme.bgGradient[0]);
-      bgGradient.addColorStop(1, theme.bgGradient[1]);
+    if (theme.bgGradient && theme.bgGradient.length > 0) {
+      // Support multiple gradient colors for richer visuals
+      const numStops = theme.bgGradient.length;
+      theme.bgGradient.forEach((color, i) => {
+        bgGradient.addColorStop(i / (numStops - 1), color);
+      });
     } else {
       // Rainbow gradient for level 8
       const stops = theme.bgGradient.length;
@@ -6489,43 +7074,174 @@
       ctx.restore();
     }
 
-    // Draw bosses
+    // Draw bosses - proper viking/British leader design
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated && boss.x > viking.x - W - 100 && boss.x < viking.x + W + 100) {
         ctx.save();
         ctx.translate(boss.x, boss.y);
         
-        // Boss body
-        ctx.fillStyle = boss.color;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = boss.color;
-        ctx.fillRect(-boss.size.width/2, -boss.size.height, boss.size.width, boss.size.height);
+        const bossWidth = boss.size.width;
+        const bossHeight = boss.size.height;
+        const groundOffset = 0; // Boss is at ground level
         
-        // Boss head
-        ctx.fillStyle = "#d4a574";
+        // Boss body - large British/Saxon leader with armor
+        const bodyHeight = bossHeight * 0.65;
+        const bodyWidth = bossWidth * 0.75;
+        
+        // Tunic/body - rich colors for boss
+        ctx.fillStyle = "#8B4513";
         ctx.beginPath();
-        ctx.arc(0, -boss.size.height - 20, 25, 0, Math.PI * 2);
+        ctx.moveTo(-bodyWidth/2, groundOffset);
+        ctx.lineTo(-bodyWidth/2 + 8, -bodyHeight * 0.2);
+        ctx.lineTo(bodyWidth/2 - 8, -bodyHeight * 0.2);
+        ctx.lineTo(bodyWidth/2, groundOffset);
+        ctx.lineTo(bodyWidth/2 - 12, -bodyHeight * 0.4);
+        ctx.lineTo(-bodyWidth/2 + 12, -bodyHeight * 0.4);
+        ctx.closePath();
         ctx.fill();
         
-        // Boss glow effect
+        // Strong black outline
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        
+        // Chainmail/armor overlay - larger for boss
+        ctx.fillStyle = "#8b8b9a";
+        ctx.fillRect(-bodyWidth/2 + 12, -bodyHeight * 0.35, bodyWidth - 24, bodyHeight * 0.3);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-bodyWidth/2 + 12, -bodyHeight * 0.35, bodyWidth - 24, bodyHeight * 0.3);
+        
+        // Belt with decorative buckle
+        ctx.fillStyle = "#3A2C1A";
+        ctx.fillRect(-bodyWidth/2 + 8, -bodyHeight * 0.15, bodyWidth - 16, 8);
+        ctx.strokeRect(-bodyWidth/2 + 8, -bodyHeight * 0.15, bodyWidth - 16, 8);
+        // Buckle
+        ctx.fillStyle = "#FFD700";
+        ctx.fillRect(-8, -bodyHeight * 0.15, 16, 8);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-8, -bodyHeight * 0.15, 16, 8);
+        
+        // Head - larger boss head
+        ctx.fillStyle = "#d4a574";
+        ctx.beginPath();
+        ctx.arc(0, -bodyHeight - 10, 28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        
+        // Helmet - ornate British/Saxon leader helmet
+        ctx.fillStyle = "#71717a";
+        ctx.beginPath();
+        ctx.arc(0, -bodyHeight - 12, 30, Math.PI, 0);
+        ctx.fill();
+        ctx.stroke();
+        // Nose guard - larger
+        ctx.fillRect(-4, -bodyHeight - 14, 8, 25);
+        ctx.strokeRect(-4, -bodyHeight - 14, 8, 25);
+        // Helmet bands - decorative
+        ctx.strokeStyle = "#4A3B1A";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-22, -bodyHeight - 5);
+        ctx.lineTo(22, -bodyHeight - 5);
+        ctx.stroke();
+        // Crown/crest for boss
+        ctx.fillStyle = "#FFD700";
+        ctx.fillRect(-15, -bodyHeight - 35, 30, 8);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-15, -bodyHeight - 35, 30, 8);
+        
+        // Eyes (angry) - larger
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(-14, -bodyHeight - 10, 8, 7);
+        ctx.fillRect(6, -bodyHeight - 10, 8, 7);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-14, -bodyHeight - 10, 8, 7);
+        ctx.strokeRect(6, -bodyHeight - 10, 8, 7);
+        
+        // Beard - larger for boss
+        ctx.fillStyle = "#2A1C0A";
+        ctx.beginPath();
+        ctx.moveTo(-16, -bodyHeight + 8);
+        ctx.quadraticCurveTo(0, -bodyHeight + 20, 16, -bodyHeight + 8);
+        ctx.lineTo(14, -bodyHeight + 4);
+        ctx.quadraticCurveTo(0, -bodyHeight + 12, -14, -bodyHeight + 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Shield - large boss shield
+        ctx.fillStyle = "#dc2626";
+        ctx.beginPath();
+        ctx.arc(-bodyWidth/2 - 15, -bodyHeight * 0.3, 32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        // Shield boss (center metal)
+        ctx.fillStyle = "#C0C0C0";
+        ctx.beginPath();
+        ctx.arc(-bodyWidth/2 - 15, -bodyHeight * 0.3, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Cross on shield
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-bodyWidth/2 - 15, -bodyHeight * 0.3 - 20);
+        ctx.lineTo(-bodyWidth/2 - 15, -bodyHeight * 0.3 + 20);
+        ctx.moveTo(-bodyWidth/2 - 35, -bodyHeight * 0.3);
+        ctx.lineTo(-bodyWidth/2 + 5, -bodyHeight * 0.3);
+        ctx.stroke();
+        
+        // Weapon - large boss sword
+        ctx.fillStyle = "#78350f";
+        ctx.fillRect(bodyWidth/2, -bodyHeight * 0.2, 6, 70);
+        ctx.strokeRect(bodyWidth/2, -bodyHeight * 0.2, 6, 70);
+        // Sword blade - larger
+        ctx.fillStyle = "#C0C0C0";
+        ctx.beginPath();
+        ctx.moveTo(bodyWidth/2 + 3, -bodyHeight * 0.2);
+        ctx.lineTo(bodyWidth/2 + 12, -bodyHeight * 0.2 - 18);
+        ctx.lineTo(bodyWidth/2 - 3, -bodyHeight * 0.2 - 18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Legs - larger
+        ctx.fillStyle = "#4A3B1A";
+        ctx.fillRect(-bodyWidth/2 + 8, groundOffset, 12, 25);
+        ctx.fillRect(bodyWidth/2 - 20, groundOffset, 12, 25);
+        ctx.strokeRect(-bodyWidth/2 + 8, groundOffset, 12, 25);
+        ctx.strokeRect(bodyWidth/2 - 20, groundOffset, 12, 25);
+        
+        // Boss glow effect based on phase
         if (boss.phase >= 2) {
+          ctx.shadowBlur = 30;
+          ctx.shadowColor = boss.phase === 3 ? "#FF0000" : "#FFD700";
           ctx.strokeStyle = boss.phase === 3 ? "#FF0000" : "#FFD700";
-          ctx.lineWidth = 3;
-          ctx.strokeRect(-boss.size.width/2 - 5, -boss.size.height - 5, boss.size.width + 10, boss.size.height + 10);
+          ctx.lineWidth = 5;
+          ctx.stroke();
         }
         
+        ctx.shadowBlur = 0;
         ctx.restore();
       }
     }
     
-    // Boss health bar
+    // Boss health bar - only show if boss is active and not defeated
     for (const boss of Bosses) {
-      if (boss.active && !boss.defeated) {
+      if (boss.active && !boss.defeated && boss.currentHealth > 0) {
         const barWidth = 300;
         const barHeight = 20;
         const barX = W / 2 - barWidth / 2;
         const barY = 30;
-        const healthPercent = boss.currentHealth / boss.maxHealth;
+        const healthPercent = Math.max(0, Math.min(1, boss.currentHealth / boss.maxHealth));
         
         // Background
         ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
@@ -6544,7 +7260,7 @@
         ctx.fillStyle = "#FFFFFF";
         ctx.font = "700 18px -apple-system";
         ctx.textAlign = "center";
-        ctx.fillText(`${boss.name} - ${boss.currentHealth}/${boss.maxHealth}`, W / 2, barY - 10);
+        ctx.fillText(`${boss.name} - ${Math.ceil(boss.currentHealth)}/${boss.maxHealth}`, W / 2, barY - 10);
       }
     }
 
@@ -6686,6 +7402,19 @@
         gazeZoneIndicator.style.display = world.paused ? 'none' : 'block';
       }
     };
+  }
+  
+  // Music button handler
+  if (musicBtn) {
+    musicBtn.onclick = () => {
+      menuMusicMuted = !menuMusicMuted;
+      setMenuMusicVolume(menuMusicMuted);
+      musicBtn.textContent = menuMusicMuted ? "🔇 Music: Off" : "🎵 Music: On";
+    };
+    // Set initial state
+    if (menuMusicMuted) {
+      musicBtn.textContent = "🔇 Music: Off";
+    }
   }
   
   if (soundBtn) {
