@@ -1612,18 +1612,43 @@
     supported: ['warhorn', 'mead', 'gameover', 'stomp', 'gold', 'shipStart', 'shipDestroy', 'jump', 'damage', 'heart', 'powerup'],
     
     async init() {
+      // Gracefully handle CORS and file loading errors
       for (const name of this.supported) {
         try {
           const audio = new Audio();
+          // Handle CORS errors gracefully
+          audio.crossOrigin = 'anonymous';
           audio.src = `sounds/${name}.mp3`;
+          
+          // Use Promise with timeout and error handling
           await new Promise((resolve, reject) => {
-            audio.oncanplaythrough = resolve;
-            audio.onerror = reject;
-            setTimeout(reject, 2000);
+            const timeout = setTimeout(() => {
+              // Timeout is not an error - file just doesn't exist or can't load
+              resolve();
+            }, 2000);
+            
+            audio.oncanplaythrough = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+            
+            audio.onerror = (e) => {
+              clearTimeout(timeout);
+              // CORS or file not found - not critical, just resolve
+              resolve();
+            };
+            
+            // Try to load
+            audio.load();
           });
-          this.files[name] = audio.src;
+          
+          // Only store if audio actually loaded
+          if (audio.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+            this.files[name] = audio.src;
+          }
         } catch (e) {
-          // File not found, will use synthesis
+          // Silently ignore - will use synthesis fallback
+          // Don't log errors for missing files (CORS/file:// issues)
         }
       }
       this.loaded = true;
@@ -1635,16 +1660,22 @@
         const audio = new Audio(this.files[name]);
         audio.volume = Math.min(1, Math.max(0, volume * (0.9 + Math.random() * 0.2)));
         audio.playbackRate = rate * (0.95 + Math.random() * 0.1);
-        audio.play().catch(() => {});
+        // Gracefully handle play() promise rejection
+        audio.play().catch(() => {
+          // Audio play failed (user interaction, etc.) - not critical
+        });
         return true;
       } catch (e) {
+        // Audio creation/play failed - not critical
         return false;
       }
     }
   };
   
-  // Try to load audio files (non-blocking)
-  AudioLoader.init().catch(() => {});
+  // Try to load audio files (non-blocking, graceful error handling)
+  AudioLoader.init().catch(() => {
+    // Silently fail - synthesis will be used as fallback
+  });
   
   const playSFX = (sfxType) => {
     if (!OPT.sound) return;
@@ -3686,7 +3717,16 @@
     
     async loadExternal() {
       try {
-        const response = await fetch('levels.json');
+        // Gracefully handle CORS errors when running from file://
+        const response = await fetch('levels.json').catch(() => {
+          // CORS or file not found - use default levels
+          return null;
+        });
+        
+        if (!response || !response.ok) {
+          // File doesn't exist or CORS blocked - use default levels
+          return;
+        }
         if (response.ok) {
           const data = await response.json();
           if (data.levels && Array.isArray(data.levels)) {
@@ -4389,6 +4429,40 @@
     Platforms.push({ x, y, width, height, isLow: isLowPlatform });
   };
 
+  // Viking enemy properties - unique Viking warriors per level
+  // Moved to global scope so both spawnEnemy() and drawEnemy() can access it
+  const enemyProps = {
+    // Level 1: Basic Viking raiders
+    vikingScout: { w: 75, h: 90, speed: 0.8, color: '#8B4513', tier: 1, weapon: 'axe' },
+    vikingRaider: { w: 75, h: 90, speed: 0.9, color: '#654321', tier: 1, weapon: 'sword' },
+    vikingBerserker: { w: 85, h: 95, speed: 1.1, color: '#8B0000', tier: 1, weapon: 'axe' },
+    
+    // Level 2: Viking warriors
+    vikingWarrior: { w: 85, h: 100, speed: 1.0, color: '#4A5568', tier: 2, weapon: 'sword' },
+    vikingAxeman: { w: 85, h: 100, speed: 0.9, color: '#2D3748', tier: 2, weapon: 'axe' },
+    vikingSpearman: { w: 80, h: 100, speed: 1.0, color: '#1A202C', tier: 2, weapon: 'spear' },
+    
+    // Level 3: Experienced Vikings
+    vikingShieldMaiden: { w: 80, h: 100, speed: 1.1, color: '#553C9A', tier: 3, weapon: 'sword' },
+    vikingVeteran: { w: 90, h: 105, speed: 0.8, color: '#4A5568', tier: 3, weapon: 'axe' },
+    vikingChampion: { w: 90, h: 110, speed: 1.0, color: '#2D3748', tier: 3, weapon: 'sword' },
+    
+    // Level 4: Elite Vikings
+    vikingEliteWarrior: { w: 95, h: 115, speed: 0.9, color: '#1A202C', tier: 4, weapon: 'sword' },
+    vikingJarl: { w: 95, h: 115, speed: 0.8, color: '#FFD700', tier: 4, weapon: 'axe' },
+    vikingBerserkerElite: { w: 95, h: 110, speed: 1.2, color: '#DC2626', tier: 4, weapon: 'axe' },
+    
+    // Level 5: Legendary Vikings
+    vikingRoyalGuard: { w: 95, h: 115, speed: 0.9, color: '#4A5568', tier: 5, weapon: 'sword' },
+    vikingWarlord: { w: 100, h: 120, speed: 0.8, color: '#2D3748', tier: 5, weapon: 'axe' },
+    vikingLegend: { w: 100, h: 120, speed: 1.0, color: '#FFD700', tier: 5, weapon: 'sword' },
+    
+    // Level 6+: Mythical Vikings
+    vikingMythicalWarrior: { w: 100, h: 120, speed: 1.0, color: '#4B0082', tier: 6, weapon: 'sword' },
+    vikingGodWarrior: { w: 105, h: 125, speed: 1.1, color: '#FFD700', tier: 6, weapon: 'axe' },
+    vikingRagnarok: { w: 110, h: 130, speed: 1.2, color: '#DC2626', tier: 6, weapon: 'axe' }
+  };
+
   // Historical enemies Vikings fought - unique per level
   const spawnEnemy = (x) => {
     const theme = LevelThemes.getCurrent();
@@ -4400,39 +4474,6 @@
     }
     
     const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-    
-    // Viking enemy properties - unique Viking warriors per level
-    const enemyProps = {
-      // Level 1: Basic Viking raiders
-      vikingScout: { w: 75, h: 90, speed: 0.8, color: '#8B4513', tier: 1, weapon: 'axe' },
-      vikingRaider: { w: 75, h: 90, speed: 0.9, color: '#654321', tier: 1, weapon: 'sword' },
-      vikingBerserker: { w: 85, h: 95, speed: 1.1, color: '#8B0000', tier: 1, weapon: 'axe' },
-      
-      // Level 2: Viking warriors
-      vikingWarrior: { w: 85, h: 100, speed: 1.0, color: '#4A5568', tier: 2, weapon: 'sword' },
-      vikingAxeman: { w: 85, h: 100, speed: 0.9, color: '#2D3748', tier: 2, weapon: 'axe' },
-      vikingSpearman: { w: 80, h: 100, speed: 1.0, color: '#1A202C', tier: 2, weapon: 'spear' },
-      
-      // Level 3: Experienced Vikings
-      vikingShieldMaiden: { w: 80, h: 100, speed: 1.1, color: '#553C9A', tier: 3, weapon: 'sword' },
-      vikingVeteran: { w: 90, h: 105, speed: 0.8, color: '#4A5568', tier: 3, weapon: 'axe' },
-      vikingChampion: { w: 90, h: 110, speed: 1.0, color: '#2D3748', tier: 3, weapon: 'sword' },
-      
-      // Level 4: Elite Vikings
-      vikingEliteWarrior: { w: 95, h: 115, speed: 0.9, color: '#1A202C', tier: 4, weapon: 'sword' },
-      vikingJarl: { w: 95, h: 115, speed: 0.8, color: '#FFD700', tier: 4, weapon: 'axe' },
-      vikingBerserkerElite: { w: 95, h: 110, speed: 1.2, color: '#DC2626', tier: 4, weapon: 'axe' },
-      
-      // Level 5: Legendary Vikings
-      vikingRoyalGuard: { w: 95, h: 115, speed: 0.9, color: '#4A5568', tier: 5, weapon: 'sword' },
-      vikingWarlord: { w: 100, h: 120, speed: 0.8, color: '#2D3748', tier: 5, weapon: 'axe' },
-      vikingLegend: { w: 100, h: 120, speed: 1.0, color: '#FFD700', tier: 5, weapon: 'sword' },
-      
-      // Level 6+: Mythical Vikings
-      vikingMythicalWarrior: { w: 100, h: 120, speed: 1.0, color: '#4B0082', tier: 6, weapon: 'sword' },
-      vikingGodWarrior: { w: 105, h: 125, speed: 1.1, color: '#FFD700', tier: 6, weapon: 'axe' },
-      vikingRagnarok: { w: 110, h: 130, speed: 1.2, color: '#DC2626', tier: 6, weapon: 'axe' }
-    };
     
     const props = enemyProps[enemyType];
     if (!props) {
@@ -8409,8 +8450,41 @@
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = src;
-          script.type = 'text/javascript';
+          // Try as module first, fallback to regular script
+          script.type = 'module';
           script.async = true;
+          
+          // Handle module load errors gracefully
+          script.onerror = (error) => {
+            // If module fails, try as regular script
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = src;
+            fallbackScript.type = 'text/javascript';
+            fallbackScript.async = true;
+            
+            fallbackScript.onload = () => {
+              let attempts = 0;
+              const checkInterval = setInterval(() => {
+                attempts++;
+                if (typeof window.tasksVision !== 'undefined') {
+                  mediapipeAvailable = true;
+                  console.log(`MediaPipe loaded successfully from ${src} (fallback)`);
+                  clearInterval(checkInterval);
+                  resolve(true);
+                } else if (attempts >= 20) {
+                  clearInterval(checkInterval);
+                  reject(new Error('MediaPipe not available after load'));
+                }
+              }, 100);
+            };
+            
+            fallbackScript.onerror = () => {
+              reject(new Error(`Failed to load from ${src}`));
+            };
+            
+            document.head.appendChild(fallbackScript);
+          };
+          
           script.onload = () => {
             // Wait longer for global to be available
             let attempts = 0;
@@ -8427,20 +8501,17 @@
               }
             }, 100);
           };
-          script.onerror = () => {
-            console.warn(`Failed to load MediaPipe from ${src}`);
-            reject(new Error(`Failed to load from ${src}`));
-          };
+          
           document.head.appendChild(script);
         });
         return true;
       } catch (e) {
-        console.warn(`Failed to load MediaPipe from ${src}:`, e);
+        // Silently continue to next source - don't log errors that break game
         continue;
       }
     }
     
-    console.error('All MediaPipe CDN sources failed');
+    // All sources failed - gracefully disable eye tracking without breaking game
     mediapipeAvailable = false;
     return false;
   };
