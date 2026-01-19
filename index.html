@@ -851,6 +851,274 @@
       font-size: 11px;
       color: var(--text-secondary);
     }
+
+    /* Progress Visualization System */
+    .progress-container {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      left: auto;
+      top: auto;
+      z-index: 50;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      opacity: 0.35;
+      max-width: 280px;
+    }
+
+    .progress-bar-wrapper {
+      background: rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      border-radius: 8px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: auto;
+    }
+
+    .progress-label {
+      font-size: 9px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .progress-label .progress-text {
+      color: var(--text);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .progress-bar-bg {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--ios-blue), var(--ios-green));
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-bar-fill.warning {
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    }
+
+    .progress-bar-fill.danger {
+      background: linear-gradient(90deg, #ef4444, #dc2626);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Future Rewards Preview */
+    .future-rewards {
+      position: absolute;
+      right: 20px;
+      top: 80px;
+      z-index: 50;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 280px;
+    }
+
+    .reward-card {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      pointer-events: auto;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .reward-card:hover {
+      transform: translateX(-4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .reward-icon {
+      font-size: 20px;
+      margin-right: 8px;
+    }
+
+    .reward-title {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .reward-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .reward-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .reward-progress {
+      font-size: 10px;
+      color: var(--ios-blue);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Powerup Countdown Timers */
+    .powerup-indicators {
+      position: absolute;
+      right: 20px;
+      bottom: 80px;
+      z-index: 99;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .powerup-indicator {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 10px 14px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 140px;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+    }
+
+    .powerup-indicator.warning {
+      border-color: #fbbf24;
+      animation: pulse-warning 1s infinite;
+    }
+
+    .powerup-indicator.danger {
+      border-color: #ef4444;
+      animation: pulse-danger 0.5s infinite;
+    }
+
+    @keyframes pulse-warning {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes pulse-danger {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    .powerup-icon {
+      font-size: 24px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .powerup-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .powerup-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .powerup-timer {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      color: var(--ios-blue);
+      letter-spacing: -0.5px;
+    }
+
+    .powerup-timer.warning {
+      color: #fbbf24;
+    }
+
+    .powerup-timer.danger {
+      color: #ef4444;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateX(-50%) translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(-50%) translateY(-100%);
+        opacity: 0;
+      }
+    }
+
+    /* Duck Warning Indicator */
   </style>
 </head>
 
@@ -938,6 +1206,72 @@
           <button class="btn primary" id="restartBtn">Restart</button>
         </div>
       </div>
+
+      <!-- Progress Visualization System -->
+      <div class="progress-container" id="progressContainer" style="display: none;">
+        <div class="progress-bar-wrapper" id="levelProgressBar">
+          <div class="progress-label">
+            <span>Next Level</span>
+            <span class="progress-text" id="levelProgressText">--</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="levelProgressFill" style="width: 0%;"></div>
+          </div>
+        </div>
+        <div class="progress-bar-wrapper" id="bossProgressBar">
+          <div class="progress-label">
+            <span>Next Boss</span>
+            <span class="progress-text" id="bossProgressText">--</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="bossProgressFill" style="width: 0%;"></div>
+          </div>
+        </div>
+        <div class="progress-bar-wrapper" id="achievementProgressBar" style="display: none !important;">
+          <div class="progress-label">
+            <span>Next Achievement</span>
+            <span class="progress-text" id="achievementProgressText">--</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="achievementProgressFill" style="width: 0%;"></div>
+          </div>
+        </div>
+        <div class="progress-bar-wrapper" id="challengeProgressBar" style="display: none;">
+          <div class="progress-label">
+            <span>Daily Challenge</span>
+            <span class="progress-text" id="challengeProgressText">--</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="challengeProgressFill" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Future Rewards Preview -->
+      <div class="future-rewards" id="futureRewards" style="display: none;">
+        <div class="reward-card" id="nextLevelCard">
+          <div class="reward-title">Next Level</div>
+          <div class="reward-name" id="nextLevelName">--</div>
+          <div class="reward-desc" id="nextLevelDesc">--</div>
+          <div class="reward-progress" id="nextLevelProgress">--</div>
+        </div>
+        <div class="reward-card" id="nextAchievementCard">
+          <div class="reward-title">Next Achievement</div>
+          <div class="reward-name" id="nextAchievementName">--</div>
+          <div class="reward-desc" id="nextAchievementDesc">--</div>
+          <div class="reward-progress" id="nextAchievementProgress">--</div>
+        </div>
+        <div class="reward-card" id="nextBossCard">
+          <div class="reward-title">Next Boss</div>
+          <div class="reward-name" id="nextBossName">--</div>
+          <div class="reward-desc" id="nextBossDesc">--</div>
+          <div class="reward-progress" id="nextBossProgress">--</div>
+        </div>
+      </div>
+
+      <!-- Powerup Countdown Timers -->
+      <div class="powerup-indicators" id="powerupIndicators"></div>
+
 
 
       <div class="hudline">
@@ -1827,6 +2161,60 @@
   let musicNodes = [];
   let musicGain = null;
   
+  // Level-specific music themes
+  const LevelMusicThemes = {
+    1: { // Forest - Nature sounds, birds, wind
+      baseFreq: 73.4, // D
+      scale: [146.8, 174.6, 196, 220, 261.6], // D minor pentatonic
+      drumPattern: 'slow',
+      atmosphere: 'calm'
+    },
+    2: { // Village - Fire crackling, battle sounds
+      baseFreq: 82.4, // E
+      scale: [164.8, 196, 220, 246.9, 293.7], // E minor pentatonic
+      drumPattern: 'medium',
+      atmosphere: 'tense'
+    },
+    3: { // Snow - Wind, ice cracking
+      baseFreq: 65.4, // C
+      scale: [130.8, 155.6, 174.6, 196, 233.1], // C minor pentatonic
+      drumPattern: 'slow',
+      atmosphere: 'cold'
+    },
+    4: { // Volcano - Lava bubbling, rumbling
+      baseFreq: 87.3, // F
+      scale: [174.6, 207.7, 233.1, 261.6, 311.1], // F minor pentatonic
+      drumPattern: 'fast',
+      atmosphere: 'intense'
+    },
+    5: { // Valhalla - Epic orchestral, thunder
+      baseFreq: 98, // G
+      scale: [196, 233.1, 261.6, 293.7, 349.2], // G major pentatonic
+      drumPattern: 'epic',
+      atmosphere: 'majestic'
+    },
+    6: { // Ragnarok - Chaos sounds, destruction
+      baseFreq: 110, // A
+      scale: [220, 261.6, 293.7, 329.6, 392], // A minor pentatonic
+      drumPattern: 'chaotic',
+      atmosphere: 'chaos'
+    },
+    7: { // Cosmic - Space sounds, ethereal
+      baseFreq: 55, // Low A
+      scale: [110, 130.8, 146.8, 174.6, 220], // A minor pentatonic (lower)
+      drumPattern: 'slow',
+      atmosphere: 'ethereal'
+    },
+    8: { // Bifrost - Divine sounds, rainbow effects
+      baseFreq: 73.4, // D
+      scale: [146.8, 174.6, 196, 220, 261.6, 293.7, 329.6], // D major scale
+      drumPattern: 'epic',
+      atmosphere: 'divine'
+    }
+  };
+
+  let currentMusicLevel = 1;
+
   const startVikingMusic = () => {
     if (musicPlaying) return;
     
@@ -1844,6 +2232,12 @@
       musicGain.gain.setValueAtTime(0.15, musicContext.currentTime);
       musicGain.connect(musicContext.destination);
       
+      // Get current level for music theme
+      const score = world.score || 0;
+      const currentLevel = LevelSystem.levels.slice().reverse().find(l => score >= l.unlockScore) || LevelSystem.levels[0];
+      currentMusicLevel = currentLevel.id;
+      const theme = LevelMusicThemes[currentMusicLevel] || LevelMusicThemes[1];
+      
       // Create a deep, epic Nordic drone
       const createDrone = (freq, type = 'sine') => {
         const osc = musicContext.createOscillator();
@@ -1858,10 +2252,10 @@
         return { osc, gain };
       };
       
-      // Base drone - low D (73.4 Hz) for epic feel
-      createDrone(73.4, 'sine');
-      createDrone(73.4 * 2, 'triangle'); // Octave
-      createDrone(73.4 * 1.5, 'sine'); // Fifth (A)
+      // Base drone - level-specific frequency
+      createDrone(theme.baseFreq, 'sine');
+      createDrone(theme.baseFreq * 2, 'triangle'); // Octave
+      createDrone(theme.baseFreq * 1.5, 'sine'); // Fifth
       
       // Slow modulating pad
       const lfo = musicContext.createOscillator();
@@ -1877,7 +2271,7 @@
       lfo.start();
       musicNodes.push({ osc: lfo, gain: lfoGain });
       
-      // Viking war drum - deep, powerful beats
+      // Level-specific war drum patterns
       const createWarDrum = () => {
         let beatCount = 0;
         const playBeat = () => {
@@ -1886,13 +2280,40 @@
           const now = musicContext.currentTime;
           beatCount++;
           
+          // Level-specific drum patterns
+          let drumFreq = 50;
+          let drumGainVal = 0.5;
+          let nextBeat = 1000;
+          
+          if (theme.drumPattern === 'slow') {
+            drumFreq = 45;
+            drumGainVal = 0.4;
+            nextBeat = beatCount % 2 === 0 ? 1000 : 1500;
+          } else if (theme.drumPattern === 'medium') {
+            drumFreq = 55;
+            drumGainVal = 0.6;
+            nextBeat = beatCount % 2 === 0 ? 700 : 1100;
+          } else if (theme.drumPattern === 'fast') {
+            drumFreq = 60;
+            drumGainVal = 0.7;
+            nextBeat = beatCount % 2 === 0 ? 500 : 800;
+          } else if (theme.drumPattern === 'epic') {
+            drumFreq = 50;
+            drumGainVal = 0.8;
+            nextBeat = beatCount % 2 === 0 ? 600 : 1000;
+          } else if (theme.drumPattern === 'chaotic') {
+            drumFreq = 55 + Math.random() * 20;
+            drumGainVal = 0.7 + Math.random() * 0.2;
+            nextBeat = 400 + Math.random() * 600;
+          }
+          
           // Main drum hit
           const drum = musicContext.createOscillator();
           const drumGain = musicContext.createGain();
           drum.type = 'sine';
-          drum.frequency.setValueAtTime(50, now);
-          drum.frequency.exponentialRampToValueAtTime(25, now + 0.25);
-          drumGain.gain.setValueAtTime(0.5, now);
+          drum.frequency.setValueAtTime(drumFreq, now);
+          drum.frequency.exponentialRampToValueAtTime(drumFreq * 0.5, now + 0.25);
+          drumGain.gain.setValueAtTime(drumGainVal, now);
           drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
           drum.connect(drumGain);
           drumGain.connect(musicGain);
@@ -1904,9 +2325,9 @@
             const accent = musicContext.createOscillator();
             const accentGain = musicContext.createGain();
             accent.type = 'triangle';
-            accent.frequency.setValueAtTime(40, now);
-            accent.frequency.exponentialRampToValueAtTime(20, now + 0.3);
-            accentGain.gain.setValueAtTime(0.6, now);
+            accent.frequency.setValueAtTime(drumFreq * 0.8, now);
+            accent.frequency.exponentialRampToValueAtTime(drumFreq * 0.4, now + 0.3);
+            accentGain.gain.setValueAtTime(drumGainVal * 1.2, now);
             accentGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
             accent.connect(accentGain);
             accentGain.connect(musicGain);
@@ -1914,8 +2335,6 @@
             accent.stop(now + 0.6);
           }
           
-          // Viking march rhythm: BOOM - boom - BOOM - boom
-          const nextBeat = beatCount % 2 === 0 ? 800 : 1200;
           if (musicPlaying) {
             setTimeout(playBeat, nextBeat);
           }
@@ -1925,19 +2344,28 @@
       
       createWarDrum();
       
-      // Nordic war horn melody - uses D minor scale (Viking sound)
+      // Level-specific melody using theme scale
       const playMelody = () => {
         if (!musicPlaying || !musicContext) return;
         
-        // D minor pentatonic - authentic Nordic sound
-        const notes = [146.8, 174.6, 196, 220, 261.6]; // D3, F3, G3, A3, C4
+        const notes = theme.scale;
         const note = notes[Math.floor(Math.random() * notes.length)];
         const now = musicContext.currentTime;
         
         const hornOsc = musicContext.createOscillator();
         const hornGain = musicContext.createGain();
         
-        hornOsc.type = 'sawtooth';
+        // Level-specific oscillator types
+        if (theme.atmosphere === 'calm' || theme.atmosphere === 'cold') {
+          hornOsc.type = 'sine';
+        } else if (theme.atmosphere === 'tense' || theme.atmosphere === 'intense') {
+          hornOsc.type = 'sawtooth';
+        } else if (theme.atmosphere === 'majestic' || theme.atmosphere === 'divine') {
+          hornOsc.type = 'triangle';
+        } else {
+          hornOsc.type = 'sawtooth';
+        }
+        
         hornOsc.frequency.setValueAtTime(note, now);
         
         hornGain.gain.setValueAtTime(0, now);
@@ -1945,10 +2373,18 @@
         hornGain.gain.linearRampToValueAtTime(0.08, now + 1);
         hornGain.gain.exponentialRampToValueAtTime(0.01, now + 2);
         
-        // Low-pass filter for warmer sound
+        // Level-specific filter
         const filter = musicContext.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(800, now);
+        if (theme.atmosphere === 'cold') {
+          filter.frequency.setValueAtTime(600, now);
+        } else if (theme.atmosphere === 'intense' || theme.atmosphere === 'chaos') {
+          filter.frequency.setValueAtTime(1200, now);
+        } else if (theme.atmosphere === 'divine') {
+          filter.frequency.setValueAtTime(1500, now);
+        } else {
+          filter.frequency.setValueAtTime(800, now);
+        }
         
         hornOsc.connect(filter);
         filter.connect(hornGain);
@@ -1956,9 +2392,10 @@
         hornOsc.start(now);
         hornOsc.stop(now + 2.5);
         
-        // Next melody note in 3-6 seconds
+        // Level-specific melody timing
+        const melodyDelay = theme.atmosphere === 'calm' ? 4000 : theme.atmosphere === 'chaos' ? 2000 : 3000;
         if (musicPlaying) {
-          setTimeout(playMelody, 3000 + Math.random() * 3000);
+          setTimeout(playMelody, melodyDelay + Math.random() * 2000);
         }
       };
       
@@ -1988,6 +2425,87 @@
     if (musicGain) {
       musicGain.gain.setValueAtTime(muted ? 0 : 0.15, musicContext.currentTime);
     }
+  };
+
+  // Update music when level changes
+  const updateLevelMusic = () => {
+    if (!world.started || !musicPlaying || !musicContext) return;
+    
+    // Use world.currentLevel instead of calculating from score
+    const currentLevel = world.currentLevel || 1;
+    
+    if (currentLevel !== currentMusicLevel) {
+      // Level changed - restart music with new theme
+      stopVikingMusic();
+      currentMusicLevel = currentLevel;
+      setTimeout(() => {
+        if (world.started) {
+          startVikingMusic();
+        }
+      }, 500);
+    }
+  };
+
+  // Boss music - more intense
+  let bossMusicActive = false;
+  const startBossMusic = () => {
+    if (bossMusicActive || !musicContext) return;
+    bossMusicActive = true;
+    
+    // Increase music intensity for boss
+    if (musicGain) {
+      musicGain.gain.linearRampToValueAtTime(0.3, musicContext.currentTime + 0.5);
+    }
+    
+    // Add intense bass drum
+    const playBossDrum = () => {
+      if (!bossMusicActive || !musicContext) return;
+      
+      const now = musicContext.currentTime;
+      const bossDrum = musicContext.createOscillator();
+      const bossDrumGain = musicContext.createGain();
+      bossDrum.type = 'sine';
+      bossDrum.frequency.setValueAtTime(30, now);
+      bossDrum.frequency.exponentialRampToValueAtTime(15, now + 0.3);
+      bossDrumGain.gain.setValueAtTime(0.8, now);
+      bossDrumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      bossDrum.connect(bossDrumGain);
+      bossDrumGain.connect(musicGain);
+      bossDrum.start(now);
+      bossDrum.stop(now + 0.6);
+      
+      setTimeout(playBossDrum, 600);
+    };
+    playBossDrum();
+  };
+
+  const stopBossMusic = () => {
+    bossMusicActive = false;
+    if (musicGain) {
+      musicGain.gain.linearRampToValueAtTime(0.15, musicContext.currentTime + 0.5);
+    }
+  };
+
+  // Victory fanfare when boss defeated
+  const playVictoryFanfare = () => {
+    if (!musicContext || !OPT.sound) return;
+    
+    const now = musicContext.currentTime;
+    const fanfareNotes = [261.6, 329.6, 392, 523.3]; // C4, E4, G4, C5 (major triad)
+    
+    fanfareNotes.forEach((freq, i) => {
+      const osc = musicContext.createOscillator();
+      const gain = musicContext.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.1);
+      gain.gain.setValueAtTime(0, now + i * 0.1);
+      gain.gain.linearRampToValueAtTime(0.3, now + i * 0.1 + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.8);
+      osc.connect(gain);
+      gain.connect(musicContext.destination);
+      osc.start(now + i * 0.1);
+      osc.stop(now + i * 0.1 + 1);
+    });
   };
   
   // Dynamic music intensity based on gameplay
@@ -2202,35 +2720,35 @@
     presets: {
       easy: {
         name: 'Easy',
-        baseSpeed: 230,
-        maxSpeed: 400,
-        enemySpawnMin: 600,
-        enemySpawnMax: 1000,
+        baseSpeed: 200, // Reduced from 230 (13% slower)
+        maxSpeed: 350, // Reduced from 400 (12.5% slower)
+        enemySpawnMin: 750, // Increased from 600 (25% more spacing)
+        enemySpawnMax: 1250, // Increased from 1000 (25% more spacing)
         comboTimer: 5.0,
         startingLives: 4,
-        enemySpeedMultiplier: 0.4,
+        enemySpeedMultiplier: 0.35, // Reduced from 0.4
         icon: '🛡️'
       },
       normal: {
         name: 'Normal',
-        baseSpeed: 265,
-        maxSpeed: 460,
-        enemySpawnMin: 500,
-        enemySpawnMax: 900,
+        baseSpeed: 230, // Reduced from 265 (13% slower)
+        maxSpeed: 400, // Reduced from 460 (13% slower)
+        enemySpawnMin: 650, // Increased from 500 (30% more spacing)
+        enemySpawnMax: 1150, // Increased from 900 (28% more spacing)
         comboTimer: 4.0,
         startingLives: 3,
-        enemySpeedMultiplier: 0.5,
+        enemySpeedMultiplier: 0.45, // Reduced from 0.5
         icon: '⚔️'
       },
       hard: {
         name: 'Hard',
-        baseSpeed: 300,
-        maxSpeed: 520,
-        enemySpawnMin: 350,
-        enemySpawnMax: 650,
+        baseSpeed: 260, // Reduced from 300 (13% slower)
+        maxSpeed: 450, // Reduced from 520 (13% slower)
+        enemySpawnMin: 450, // Increased from 350 (29% more spacing)
+        enemySpawnMax: 850, // Increased from 650 (31% more spacing)
         comboTimer: 3.0,
         startingLives: 2,
-        enemySpeedMultiplier: 0.6,
+        enemySpeedMultiplier: 0.55, // Reduced from 0.6
         icon: '💀'
       }
     },
@@ -2302,14 +2820,18 @@
     },
     
     showUnlockNotification(level) {
+      // Play unlock sound
+      playSFX('powerup');
+      
       const notification = document.createElement('div');
       notification.className = 'level-unlock-notification';
+      notification.style.zIndex = '10001'; // Ensure it's on top
       notification.innerHTML = `
         <div class="level-unlock-content">
           <div class="level-unlock-icon">🎉</div>
           <div class="level-unlock-text">
-            <strong>Level Unlocked!</strong><br>
-            <span>${level.name}</span>
+            <strong>LEVEL UNLOCKED!</strong><br>
+            <span style="font-size: 24px; font-weight: 700; color: #ffd700; margin-top: 8px; display: block;">${level.name}</span>
           </div>
         </div>
       `;
@@ -2318,7 +2840,7 @@
       setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
-      }, 3000);
+      }, 4000); // Show for 4 seconds instead of 3
     },
     
     getLevel(id) {
@@ -2373,7 +2895,7 @@
         { speed: 0.4, color: '#87CEEB' },
         { speed: 0.6, color: '#90EE90' }
       ],
-      enemies: ['bandit', 'boar', 'archer'],
+      enemies: ['nordicRaider', 'wildBoar', 'nordicArcher'],
       obstacles: ['tree', 'log', 'rock', 'branch'],
       duckObstacles: ['raven', 'lowBranch'],
       powerups: ['speed', 'invincibility', 'scoreMultiplier'],
@@ -2390,7 +2912,7 @@
         { speed: 0.5, color: '#FF6B35' },
         { speed: 0.7, color: '#2E2E2E' }
       ],
-      enemies: ['warrior', 'fireThrower', 'shieldBearer'],
+      enemies: ['saxonWarrior', 'saxonFireThrower', 'saxonShieldBearer'],
       obstacles: ['debris', 'building', 'firePit'],
       duckObstacles: ['axe', 'lowFire'],
       powerups: ['fireResistance', 'doubleJump'],
@@ -2500,6 +3022,10 @@
       bossSpawnScore: 1200000
     },
     getCurrent() {
+      // Ensure world.currentLevel is synced
+      if (!world.currentLevel) {
+        world.currentLevel = LevelSystem.currentLevel || 1;
+      }
       return this[world.currentLevel] || this[1];
     }
   };
@@ -2665,30 +3191,40 @@
       firstJump: { name: 'First Leap', desc: 'Make your first jump', icon: '🦘', rarity: 'bronze' },
       firstDuck: { name: 'Head Down', desc: 'Duck for the first time', icon: '🦆', rarity: 'bronze' },
       firstMead: { name: 'Thirsty Viking', desc: 'Collect your first mead', icon: '🍺', rarity: 'bronze' },
-      firstGold: { name: 'Shiny!', desc: 'Collect your first gold coin', icon: '🪙', rarity: 'bronze' },
-      firstPowerup: { name: 'Empowered', desc: 'Collect your first powerup', icon: '⚡', rarity: 'bronze' },
+      firstGold: { name: 'First Plunder', desc: 'Collect your first gold coin', icon: '🪙', rarity: 'bronze' },
+      firstPowerup: { name: 'Odin\'s Blessing', desc: 'Collect your first powerup', icon: '⚡', rarity: 'bronze' },
       tenJumps: { name: 'Bouncy Viking', desc: 'Jump 10 times in one run', icon: '🏃', rarity: 'bronze' },
-      surviveMinute: { name: 'One Minute Man', desc: 'Survive for 60 seconds', icon: '⏱️', rarity: 'bronze' },
+      surviveMinute: { name: 'Minute Warrior', desc: 'Survive for 60 seconds', icon: '⏱️', rarity: 'bronze' },
       
       // Score milestones (1k, 5k, 10k, 25k, 50k, 100k, 500k, 1M, 5M, 10M)
       score1k: { name: 'Viking Initiate', desc: 'Reach 1,000 points', icon: '🌱', rarity: 'bronze' },
       score5k: { name: 'Fjord Runner', desc: 'Reach 5,000 points', icon: '🏔️', rarity: 'bronze' },
       score10k: { name: 'Shield Bearer', desc: 'Reach 10,000 points', icon: '🛡️', rarity: 'bronze' },
-      score25k: { name: 'Survivor', desc: 'Reach 25,000 points', icon: '⚔️', rarity: 'silver' },
-      score50k: { name: 'Veteran', desc: 'Reach 50,000 points', icon: '🗡️', rarity: 'silver' },
+      score25k: { name: 'Nordic Warrior', desc: 'Reach 25,000 points', icon: '⚔️', rarity: 'silver' },
+      score50k: { name: 'Viking Veteran', desc: 'Reach 50,000 points', icon: '🗡️', rarity: 'silver' },
       score100k: { name: 'Viking Legend', desc: 'Reach 100,000 points', icon: '👑', rarity: 'gold' },
-      score500k: { name: 'Score Legend', desc: 'Reach 500,000 points', icon: '🏆', rarity: 'gold' },
-      score1m: { name: 'Millionaire', desc: 'Reach 1,000,000 points', icon: '💎', rarity: 'platinum' },
+      score500k: { name: 'Odin\'s Chosen', desc: 'Reach 500,000 points', icon: '🏆', rarity: 'gold' },
+      score1m: { name: 'Valhalla Warrior', desc: 'Reach 1,000,000 points', icon: '💎', rarity: 'platinum' },
       score5m: { name: 'Legendary Viking', desc: 'Reach 5,000,000 points', icon: '🌟', rarity: 'platinum' },
       score10m: { name: 'God of War', desc: 'Reach 10,000,000 points', icon: '⚡', rarity: 'platinum' },
       
       // Other bronze achievements
       firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️', rarity: 'bronze' },
-      goldRush: { name: 'Gold Rush', desc: 'Collect 10 gold coins in one run', icon: '💰', rarity: 'bronze' },
+      goldRush: { name: 'Plunder Master', desc: 'Collect 10 gold coins in one run', icon: '💰', rarity: 'bronze' },
       meadLover: { name: 'Mead Lover', desc: 'Collect 50 mead in one run', icon: '🍺', rarity: 'bronze' },
-      closeCall: { name: 'Close Call', desc: 'Survive 10 near misses in one run', icon: '😰', rarity: 'bronze' },
+      closeCall: { name: 'Narrow Escape', desc: 'Survive 10 near misses in one run', icon: '😰', rarity: 'bronze' },
       level2: { name: 'Raid Master', desc: 'Complete Level 2', icon: '🛡️', rarity: 'bronze' },
       level3: { name: 'Berserker', desc: 'Complete Level 3', icon: '⚔️', rarity: 'bronze' },
+      
+      // Level-specific boss achievements
+      boss1: { name: 'Forest Troll Slayer', desc: 'Defeat the Forest Troll', icon: '🌲', rarity: 'bronze' },
+      boss2: { name: 'Saxon Conqueror', desc: 'Defeat the Saxon Warlord', icon: '⚔️', rarity: 'bronze' },
+      boss3: { name: 'Frost Giant Slayer', desc: 'Defeat the Frost Giant', icon: '❄️', rarity: 'silver' },
+      boss4: { name: 'Fire Giant Slayer', desc: 'Defeat the Fire Giant', icon: '🔥', rarity: 'silver' },
+      boss5: { name: 'Einherjar Champion', desc: 'Defeat the Einherjar Warrior', icon: '⚡', rarity: 'gold' },
+      boss6: { name: 'Fenrir Slayer', desc: 'Defeat Fenrir', icon: '🐺', rarity: 'gold' },
+      boss7: { name: 'Odin\'s Challenger', desc: 'Defeat Odin\'s Trial Boss', icon: '👁️', rarity: 'platinum' },
+      boss8: { name: 'God Slayer', desc: 'Defeat the Final Boss', icon: '⚡', rarity: 'platinum' },
       
       // Silver achievements
       comboMaster: { name: 'Combo Master', desc: 'Get a 10x combo streak', icon: '🔥', rarity: 'silver' },
@@ -2697,19 +3233,19 @@
       combo20: { name: 'Combo Fury', desc: 'Get a 20x combo streak', icon: '🔥', rarity: 'silver' },
       goldCollector: { name: 'Gold Collector', desc: 'Collect 100 gold coins total', icon: '💎', rarity: 'silver' },
       meadMaster: { name: 'Mead Master', desc: 'Collect 500 mead total', icon: '🍻', rarity: 'silver' },
-      hardMode: { name: 'Hard Mode', desc: 'Reach 50k points on Hard difficulty', icon: '💀', rarity: 'silver' },
+      hardMode: { name: 'Hard Mode Warrior', desc: 'Reach 50k points on Hard difficulty', icon: '💀', rarity: 'silver' },
       
       // Gold achievements
       level5: { name: 'Valhalla Bound', desc: 'Complete Level 5', icon: '⚡', rarity: 'gold' },
       combo50: { name: 'Combo God', desc: 'Get a 50x combo streak', icon: '🔥', rarity: 'gold' },
       level6: { name: 'Ragnarok', desc: 'Complete Level 6', icon: '🌋', rarity: 'gold' },
-      streak5: { name: 'Dedicated', desc: '5-day login streak', icon: '📅', rarity: 'gold' },
+      streak5: { name: 'Dedicated Raider', desc: '5-day login streak', icon: '📅', rarity: 'gold' },
       playtime1h: { name: 'Hour Warrior', desc: 'Play for 1 hour total', icon: '⏰', rarity: 'gold' },
       nearMissMaster: { name: 'Dodge Master', desc: 'Survive 50 near misses total', icon: '🎯', rarity: 'gold' },
       
       // Platinum achievements
       combo100: { name: 'Combo Deity', desc: 'Get a 100x combo streak', icon: '🔥', rarity: 'platinum' },
-      streak30: { name: 'Unstoppable', desc: '30-day login streak', icon: '🔥', rarity: 'platinum' },
+      streak30: { name: 'Unstoppable Raider', desc: '30-day login streak', icon: '🔥', rarity: 'platinum' },
       playtime10h: { name: 'Viking Veteran', desc: 'Play for 10 hours total', icon: '⚔️', rarity: 'platinum' },
       allLevels: { name: 'Level Master', desc: 'Complete all levels', icon: '🌟', rarity: 'platinum' },
       hardLegend: { name: 'Hard Legend', desc: 'Reach 100k points on Hard difficulty', icon: '💀', rarity: 'platinum' }
@@ -2826,10 +3362,13 @@
     lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
     difficulty: 'normal', currentLevel: 1,
     nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextHeartAt: 0, nextGoldAt: 0,
+    bossSpawnsThisLevel: {}, // Track which bosses have spawned this level
     powerups: {
       speedBoost: { active: false, timeLeft: 0 },
       invincibility: { active: false, timeLeft: 0 },
-      scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }
+      scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
+      vikingShip: { active: false, timeLeft: 0 },
+      respawn: { active: false, timeLeft: 0 }
     }
   };
 
@@ -2891,7 +3430,7 @@
   const spawnDuckObstacle = (x) => {
     const types = ['raven', 'arrow', 'branch', 'axe', 'spear', 'fireball'];
     const type = types[Math.floor(Math.random() * types.length)];
-    const y = world.groundY - rand(60, 100); // Head height - requires ducking
+    const y = world.groundY - 70; // Fixed head height - requires ducking
     DuckObstacles.push({ 
       x, 
       y, 
@@ -2943,6 +3482,8 @@
     
     // Always include vikingShip as rare option
     weights.vikingShip = (weights.vikingShip || 0) + 5;
+    // Always include respawn as rare option
+    weights.respawn = (weights.respawn || 0) + 3;
     
     const total = Object.values(weights).reduce((a, b) => a + b, 0);
     let roll = Math.random() * total;
@@ -2974,38 +3515,38 @@
   const spawnEnemy = (x) => {
     const theme = LevelThemes.getCurrent();
     // Select enemy type from level theme
-    const enemyTypes = theme.enemies || ['bandit'];
+    const enemyTypes = theme.enemies || ['nordicRaider'];
     const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
     
-    // Enemy properties based on type
+    // Enemy properties based on type - All enemies minimum 80x80 for maximum visibility
     const enemyProps = {
-      bandit: { w: 50, h: 60, speed: 1.0, color: '#8B4513' },
-      boar: { w: 60, h: 40, speed: 1.3, color: '#654321' },
-      archer: { w: 45, h: 65, speed: 0.8, color: '#696969' },
-      warrior: { w: 55, h: 70, speed: 1.1, color: '#A0522D' },
-      fireThrower: { w: 50, h: 60, speed: 0.9, color: '#FF4500' },
-      shieldBearer: { w: 60, h: 65, speed: 0.7, color: '#C0C0C0' },
-      iceWarrior: { w: 55, h: 70, speed: 1.0, color: '#B0E0E6' },
-      snowWolf: { w: 50, h: 45, speed: 1.5, color: '#F0F8FF' },
-      frostArcher: { w: 45, h: 65, speed: 0.8, color: '#E0F6FF' },
-      lavaGolem: { w: 70, h: 80, speed: 0.6, color: '#8B0000' },
-      fireImp: { w: 40, h: 50, speed: 1.4, color: '#FF6347' },
-      magmaWarrior: { w: 60, h: 70, speed: 1.0, color: '#FF4500' },
-      valhallaWarrior: { w: 60, h: 75, speed: 1.2, color: '#FFD700' },
-      lightningSpirit: { w: 50, h: 60, speed: 1.3, color: '#FFFF00' },
-      goldenGuardian: { w: 70, h: 80, speed: 0.8, color: '#FFD700' },
-      chaosWarrior: { w: 60, h: 70, speed: 1.1, color: '#800080' },
-      fireIceHybrid: { w: 65, h: 75, speed: 1.0, color: '#FF1493' },
-      ragnarokBeast: { w: 80, h: 90, speed: 0.9, color: '#4B0082' },
-      starWarrior: { w: 55, h: 70, speed: 1.2, color: '#FFFFFF' },
-      voidCreature: { w: 60, h: 65, speed: 1.4, color: '#000000' },
-      celestialGuardian: { w: 75, h: 85, speed: 0.9, color: '#9370DB' },
-      godWarrior: { w: 70, h: 80, speed: 1.3, color: '#FFD700' },
-      divineSpirit: { w: 50, h: 60, speed: 1.5, color: '#FF69B4' },
-      asgardGuardian: { w: 85, h: 95, speed: 0.8, color: '#FF1493' }
+      nordicRaider: { w: 85, h: 95, speed: 1.0, color: '#8B4513' },
+      wildBoar: { w: 90, h: 80, speed: 1.3, color: '#654321' },
+      nordicArcher: { w: 80, h: 100, speed: 0.8, color: '#696969' },
+      saxonWarrior: { w: 85, h: 100, speed: 1.1, color: '#A0522D' },
+      saxonFireThrower: { w: 85, h: 95, speed: 0.9, color: '#FF4500' },
+      saxonShieldBearer: { w: 90, h: 95, speed: 0.7, color: '#C0C0C0' },
+      iceWarrior: { w: 85, h: 100, speed: 1.0, color: '#B0E0E6' },
+      snowWolf: { w: 85, h: 80, speed: 1.5, color: '#F0F8FF' },
+      frostArcher: { w: 80, h: 100, speed: 0.8, color: '#E0F6FF' },
+      lavaGolem: { w: 100, h: 110, speed: 0.6, color: '#8B0000' },
+      fireImp: { w: 80, h: 85, speed: 1.4, color: '#FF6347' },
+      magmaWarrior: { w: 90, h: 100, speed: 1.0, color: '#FF4500' },
+      valhallaWarrior: { w: 90, h: 105, speed: 1.2, color: '#FFD700' },
+      lightningSpirit: { w: 85, h: 95, speed: 1.3, color: '#FFFF00' },
+      goldenGuardian: { w: 100, h: 110, speed: 0.8, color: '#FFD700' },
+      chaosWarrior: { w: 90, h: 100, speed: 1.1, color: '#800080' },
+      fireIceHybrid: { w: 95, h: 105, speed: 1.0, color: '#FF1493' },
+      ragnarokBeast: { w: 110, h: 120, speed: 0.9, color: '#4B0082' },
+      starWarrior: { w: 85, h: 100, speed: 1.2, color: '#FFFFFF' },
+      voidCreature: { w: 90, h: 95, speed: 1.4, color: '#000000' },
+      celestialGuardian: { w: 105, h: 115, speed: 0.9, color: '#9370DB' },
+      godWarrior: { w: 100, h: 110, speed: 1.3, color: '#FFD700' },
+      divineSpirit: { w: 85, h: 95, speed: 1.5, color: '#FF69B4' },
+      asgardGuardian: { w: 115, h: 125, speed: 0.8, color: '#FF1493' }
     };
     
-    const props = enemyProps[enemyType] || enemyProps.bandit;
+    const props = enemyProps[enemyType] || enemyProps.nordicRaider;
     
     Enemies.push({
       x,
@@ -3099,6 +3640,10 @@
       engagement.gamesPlayed++;
       localStorage.setItem('gamesPlayed', engagement.gamesPlayed.toString());
       Achievements.reset();
+      
+      // Sync world.currentLevel with LevelSystem.currentLevel
+      world.currentLevel = LevelSystem.currentLevel || 1;
+      
     world.groundY = H * 0.8;
       world.camX = 0;
       viking.x = 100;
@@ -3139,8 +3684,10 @@
         speedBoost: { active: false, timeLeft: 0 },
         invincibility: { active: false, timeLeft: 0 },
         scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
-        vikingShip: { active: false, timeLeft: 0 }
+        vikingShip: { active: false, timeLeft: 0 },
+        respawn: { active: false, timeLeft: 0 }
       };
+      world.bossSpawnsThisLevel = {}; // Reset boss spawn tracking on reset
       viking.jumpsUsed = 0;
       viking.maxJumps = 1;
       Input.jump = false;
@@ -3195,6 +3742,221 @@
       }
     } catch (e) {
       console.error("Error in updateHUD:", e);
+    }
+  };
+
+  const updatePowerupCountdowns = () => {
+    try {
+      const container = $("powerupIndicators");
+      if (!container) return;
+
+      if (!world.started || world.paused || world.over) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const powerupConfigs = {
+        speedBoost: { name: "Speed Boost", icon: "⚡", color: "#FFD700" },
+        invincibility: { name: "Invincibility", icon: "🛡️", color: "#00FF00" },
+        scoreMultiplier: { name: "Score Multiplier", icon: "⭐", color: "#FF69B4" },
+        vikingShip: { name: "Viking Ship", icon: "⛵", color: "#4A90D9" },
+        respawn: { name: "Respawn", icon: "🔄", color: "#9B59B6" }
+      };
+
+      container.innerHTML = "";
+
+      for (const [key, powerup] of Object.entries(world.powerups)) {
+        if (powerup.active) {
+          // Respawn has no timer, show as "READY" instead
+          if (key === "respawn" && powerup.timeLeft === 0) {
+            const config = powerupConfigs[key];
+            if (!config) continue;
+            
+            const indicator = document.createElement("div");
+            indicator.className = "powerup-indicator";
+            indicator.innerHTML = `
+              <div class="powerup-icon" style="background: ${config.color}20; border: 1px solid ${config.color}40;">
+                ${config.icon}
+              </div>
+              <div class="powerup-info">
+                <div class="powerup-name">${config.name}</div>
+                <div class="powerup-timer" style="color: #00FF00;">READY</div>
+              </div>
+            `;
+            container.appendChild(indicator);
+            continue;
+          }
+          
+          if (powerup.timeLeft > 0) {
+          const config = powerupConfigs[key];
+          if (!config) continue;
+
+          const timeLeft = Math.ceil(powerup.timeLeft);
+          const indicator = document.createElement("div");
+          indicator.className = "powerup-indicator";
+          
+          // Add warning/danger classes based on time left
+          if (timeLeft <= 3) {
+            indicator.classList.add("danger");
+          } else if (timeLeft <= 5) {
+            indicator.classList.add("warning");
+          }
+
+          const timerClass = timeLeft <= 3 ? "danger" : timeLeft <= 5 ? "warning" : "";
+          
+          indicator.innerHTML = `
+            <div class="powerup-icon" style="background: ${config.color}20; border: 1px solid ${config.color}40;">
+              ${config.icon}
+            </div>
+            <div class="powerup-info">
+              <div class="powerup-name">${config.name}</div>
+              <div class="powerup-timer ${timerClass}">${timeLeft}s</div>
+            </div>
+          `;
+
+          container.appendChild(indicator);
+
+          // Play warning sounds
+          if (timeLeft === 5 && OPT.sound) {
+            playSFX('powerup'); // Subtle warning
+          } else if (timeLeft === 3 && OPT.sound) {
+            playSFX('powerup'); // More urgent
+          } else if (timeLeft === 1 && OPT.sound) {
+            playSFX('powerup'); // Final warning
+          }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error in updatePowerupCountdowns:", e);
+    }
+  };
+
+  // Stickiness notifications
+  let lastStickinessNotification = 0;
+  const showStickinessNotification = (message, type = 'info') => {
+    const now = Date.now();
+    if (now - lastStickinessNotification < 3000) return; // Throttle notifications
+    lastStickinessNotification = now;
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${type === 'warning' ? 'rgba(251, 191, 36, 0.95)' : type === 'danger' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(59, 130, 246, 0.95)'};
+      color: white;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      z-index: 10001;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      animation: slideDown 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideUp 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 2500);
+  };
+
+  const updateProgressVisualization = () => {
+    try {
+      if (!world.started || world.paused || world.over) {
+        const progressContainer = $("progressContainer");
+        const futureRewards = $("futureRewards");
+        if (progressContainer) progressContainer.style.display = "none";
+        if (futureRewards) futureRewards.style.display = "none";
+        return;
+      }
+      
+      // Stickiness features: Completion urgency and loss aversion
+      const score = world.score;
+      const personalBest = engagement.personalBest || 0;
+      
+      // Loss aversion: "You're 90% to your personal best!"
+      if (personalBest > 0 && score >= personalBest * 0.9 && score < personalBest && !engagement.notifiedApproaching) {
+        showStickinessNotification(`🔥 You're ${Math.round((score / personalBest) * 100)}% to your personal best!`, 'warning');
+        engagement.notifiedApproaching = true;
+      }
+      
+      // Completion urgency: "Only X points until next level!"
+      const nextLevel = LevelSystem.levels.find(l => l.unlockScore > score);
+      if (nextLevel) {
+        const remaining = nextLevel.unlockScore - score;
+        if (remaining <= 500 && remaining > 0 && Math.random() < 0.01) {
+          showStickinessNotification(`⚡ Only ${remaining.toLocaleString()} points until ${nextLevel.name}!`, 'info');
+        }
+      }
+      
+      // Completion urgency: "Boss spawning in X points!"
+      const theme = LevelThemes.getCurrent();
+      if (theme && theme.bossSpawnScore) {
+        const bossRemaining = theme.bossSpawnScore - score;
+        if (bossRemaining <= 1000 && bossRemaining > 0 && Math.random() < 0.01) {
+          showStickinessNotification(`👹 Boss spawning in ${bossRemaining.toLocaleString()} points!`, 'warning');
+        }
+      }
+      
+      // Streak protection: Daily login streak warning
+      const { streak } = DailyBonus.getStreak();
+      if (streak >= 3) {
+        const lastLogin = localStorage.getItem('lastLoginDate');
+        const today = new Date().toDateString();
+        if (lastLogin !== today) {
+          const hoursUntilReset = 24 - (new Date().getHours());
+          if (hoursUntilReset <= 3 && Math.random() < 0.005) {
+            showStickinessNotification(`⏰ Don't lose your ${streak}-day streak! Login in ${hoursUntilReset} hours!`, 'danger');
+          }
+        }
+      }
+      
+      // Daily challenge completion urgency
+      if (DailyChallenges && DailyChallenges.challenges) {
+        const activeChallenge = DailyChallenges.challenges.find(c => !c.completed);
+        if (activeChallenge) {
+          const remaining = activeChallenge.target - activeChallenge.progress;
+          if (remaining <= 3 && remaining > 0 && Math.random() < 0.02) {
+            showStickinessNotification(`🎯 Only ${remaining} ${activeChallenge.type} for daily challenge!`, 'info');
+          }
+        }
+      }
+
+      // Progress bars removed - notifications shown on screen when events happen
+
+      // Achievement Progress - REMOVED (only show until bosses)
+
+      // Daily Challenge Progress (if challenges exist)
+      if (DailyChallenges && DailyChallenges.challenges) {
+        const activeChallenge = DailyChallenges.challenges.find(c => !c.completed);
+        if (activeChallenge) {
+          const challengeProgress = (activeChallenge.progress / activeChallenge.target) * 100;
+          const remaining = Math.ceil(activeChallenge.target - activeChallenge.progress);
+          
+          const challengeProgressBar = $("challengeProgressBar");
+          const challengeProgressFill = $("challengeProgressFill");
+          const challengeProgressText = $("challengeProgressText");
+          
+          if (challengeProgressBar) challengeProgressBar.style.display = "block";
+          if (challengeProgressFill) {
+            challengeProgressFill.style.width = challengeProgress + "%";
+            if (remaining <= 3) challengeProgressFill.classList.add("warning");
+            else challengeProgressFill.classList.remove("warning");
+          }
+          if (challengeProgressText) {
+            challengeProgressText.textContent = `${remaining} ${activeChallenge.type} remaining`;
+          }
+        } else {
+          const challengeProgressBar = $("challengeProgressBar");
+          if (challengeProgressBar) challengeProgressBar.style.display = "none";
+        }
+      }
+    } catch (e) {
+      console.error("Error in updateProgressVisualization:", e);
     }
   };
 
@@ -3344,6 +4106,10 @@
       world.over = false;
       world.paused = false;
       sessionStartTime = Date.now();
+      
+      // Sync world.currentLevel with LevelSystem.currentLevel
+      world.currentLevel = LevelSystem.currentLevel || 1;
+      
       if (overlay) {
     overlay.style.display = "none";
         overlay.style.visibility = "hidden";
@@ -3369,10 +4135,12 @@
     const oarPhase = Math.sin(world.t * 8);
     const wind = Math.sin(world.t * 2) * 0.1;
     
-    // Enhanced water splash particles
-    if (Math.random() < 0.4) {
-      addParticle(x - 85, y + 8, "#4A90D9", 10);
-      addParticle(x - 90, y + 12, "#87CEEB", 6);
+    // Enhanced water splash particles - more realistic wake
+    if (Math.random() < 0.5) {
+      for (let i = 0; i < 3; i++) {
+        addParticle(x - 85 + Math.random() * 20, y + 8 + Math.random() * 5, "#4A90D9", 8 + Math.random() * 5);
+        addParticle(x - 90 + Math.random() * 20, y + 12 + Math.random() * 5, "#87CEEB", 5 + Math.random() * 4);
+      }
     }
     
     // Realistic hull with proper proportions (7:1 length:width ratio)
@@ -3380,8 +4148,13 @@
     const hullWidth = 20;
     const hullDepth = 35;
     
-    // Main hull - detailed wooden planks
-    ctx.fillStyle = "#6B5B47";
+    // Main hull - detailed wooden planks with realistic shading
+    const hullGradient = ctx.createLinearGradient(0, -hullDepth + bob, 0, bob);
+    hullGradient.addColorStop(0, "#5A4B37"); // Darker at top
+    hullGradient.addColorStop(0.5, "#6B5B47"); // Medium
+    hullGradient.addColorStop(1, "#7A6B57"); // Lighter at waterline
+    
+    ctx.fillStyle = hullGradient;
     ctx.beginPath();
     ctx.moveTo(-hullLength/2, bob);
     ctx.quadraticCurveTo(-hullLength/2 - 5, -hullDepth/3 + bob, -hullLength/2 + 10, -hullDepth + bob);
@@ -3390,68 +4163,148 @@
     ctx.quadraticCurveTo(0, hullWidth/2 + bob, -hullLength/2, bob);
     ctx.fill();
     
-    // Wood grain texture - horizontal planks
-    ctx.strokeStyle = "#5A4B37";
-    ctx.lineWidth = 1.5;
+    // Detailed wood grain texture - individual planks with grain lines
+    ctx.strokeStyle = "#4A3B27";
+    ctx.lineWidth = 1;
     for (let i = -hullLength/2 + 15; i < hullLength/2 - 15; i += 12) {
+      // Plank outline
       ctx.beginPath();
       ctx.moveTo(i, -hullDepth/2 + bob);
       ctx.quadraticCurveTo(i + 2, -hullDepth/3 + bob, i + 4, -hullDepth/4 + bob);
+      ctx.lineTo(i + 12, -hullDepth/4 + bob);
+      ctx.quadraticCurveTo(i + 14, -hullDepth/3 + bob, i + 12, -hullDepth/2 + bob);
       ctx.stroke();
+      
+      // Wood grain lines within plank
+      for (let g = 0; g < 3; g++) {
+        ctx.beginPath();
+        ctx.moveTo(i + 2 + g * 3, -hullDepth/2 + bob);
+        ctx.quadraticCurveTo(i + 3 + g * 3, -hullDepth/3 + bob, i + 4 + g * 3, -hullDepth/4 + bob);
+        ctx.stroke();
+      }
     }
     
-    // Rivets/plank joints
-    ctx.fillStyle = "#4A3C2A";
+    // Rivets/plank joints - more realistic metal
+    ctx.fillStyle = "#3A2C1A";
     for (let i = -hullLength/2 + 20; i < hullLength/2 - 20; i += 25) {
+      // Metal rivet with highlight
       ctx.beginPath();
-      ctx.arc(i, -hullDepth/2 + bob, 1.5, 0, Math.PI * 2);
+      ctx.arc(i, -hullDepth/2 + bob, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#5A4C3A";
+      ctx.beginPath();
+      ctx.arc(i - 0.5, -hullDepth/2 - 0.5 + bob, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#3A2C1A";
+    }
+    
+    // Weathering and battle damage - scratches and dents
+    ctx.strokeStyle = "#4A3B27";
+    ctx.lineWidth = 1;
+    const damagePositions = [-45, -20, 20, 45];
+    damagePositions.forEach(dx => {
+      if (Math.random() < 0.3) {
+        ctx.beginPath();
+        ctx.moveTo(dx, -hullDepth/2 + bob);
+        ctx.lineTo(dx + 3, -hullDepth/3 + bob);
+        ctx.stroke();
+      }
+    })
+    
+    // Detailed dragon head prow - highly realistic carving with shading
+    const dragonGradient = ctx.createLinearGradient(hullLength/2, -hullDepth + bob, hullLength/2 + 25, -hullDepth - 50 + bob);
+    dragonGradient.addColorStop(0, "#8A6B4A");
+    dragonGradient.addColorStop(0.5, "#7A5B3A");
+    dragonGradient.addColorStop(1, "#6A4B2A");
+    
+    ctx.fillStyle = dragonGradient;
+    ctx.beginPath();
+    ctx.moveTo(hullLength/2, -hullDepth + bob);
+    ctx.bezierCurveTo(hullLength/2 + 15, -hullDepth - 10 + bob, hullLength/2 + 25, -hullDepth - 25 + bob, hullLength/2 + 22, -hullDepth - 48 + bob);
+    ctx.bezierCurveTo(hullLength/2 + 20, -hullDepth - 52 + bob, hullLength/2 + 17, -hullDepth - 50 + bob, hullLength/2 + 14, -hullDepth - 54 + bob);
+    ctx.bezierCurveTo(hullLength/2 + 12, -hullDepth - 52 + bob, hullLength/2 + 10, -hullDepth - 48 + bob, hullLength/2 + 7, -hullDepth - 42 + bob);
+    ctx.bezierCurveTo(hullLength/2 + 4, -hullDepth - 32 + bob, hullLength/2 + 2, -hullDepth - 18 + bob, hullLength/2 - 3, -hullDepth + bob);
+    ctx.fill();
+    
+    // Dragon snout detail
+    ctx.fillStyle = "#6A4B2A";
+    ctx.beginPath();
+    ctx.ellipse(hullLength/2 + 18, -hullDepth - 40 + bob, 6, 4, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Dragon scales/details - more intricate
+    ctx.strokeStyle = "#5A3B1A";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j < 2; j++) {
+        ctx.beginPath();
+        ctx.moveTo(hullLength/2 + 8 + i * 3.5, -hullDepth - 28 - i * 4.5 + bob - j * 2);
+        ctx.lineTo(hullLength/2 + 10 + i * 3.5, -hullDepth - 32 - i * 4.5 + bob - j * 2);
+        ctx.lineTo(hullLength/2 + 12 + i * 3.5, -hullDepth - 30 - i * 4.5 + bob - j * 2);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    
+    // Dragon eye - realistic glowing with depth
+    const eyeGradient = ctx.createRadialGradient(hullLength/2 + 16, -hullDepth - 37 + bob, 0, hullLength/2 + 16, -hullDepth - 37 + bob, 6);
+    eyeGradient.addColorStop(0, "#FFD700");
+    eyeGradient.addColorStop(0.5, "#FFA500");
+    eyeGradient.addColorStop(1, "#FF8C00");
+    
+    ctx.fillStyle = eyeGradient;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#FFD700";
+    ctx.beginPath();
+    ctx.arc(hullLength/2 + 16, -hullDepth - 37 + bob, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Eye pupil with highlight
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(hullLength/2 + 17, -hullDepth - 37 + bob, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FFF";
+    ctx.beginPath();
+    ctx.arc(hullLength/2 + 17.5, -hullDepth - 37.5 + bob, 1, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Dragon mouth - open with teeth
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(hullLength/2 + 12, -hullDepth - 32 + bob, 4, 2, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Teeth
+    ctx.fillStyle = "#FFF";
+    for (let t = 0; t < 3; t++) {
+      ctx.beginPath();
+      ctx.moveTo(hullLength/2 + 10 + t * 2, -hullDepth - 32 + bob);
+      ctx.lineTo(hullLength/2 + 11 + t * 2, -hullDepth - 34 + bob);
+      ctx.lineTo(hullLength/2 + 12 + t * 2, -hullDepth - 32 + bob);
       ctx.fill();
     }
     
-    // Detailed dragon head prow - more realistic carving
-    ctx.fillStyle = "#7A5B3A";
+    // Dragon horns - curved and detailed
+    ctx.strokeStyle = "#4A3B1A";
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(hullLength/2, -hullDepth + bob);
-    ctx.bezierCurveTo(hullLength/2 + 15, -hullDepth - 10 + bob, hullLength/2 + 25, -hullDepth - 25 + bob, hullLength/2 + 20, -hullDepth - 45 + bob);
-    ctx.bezierCurveTo(hullLength/2 + 18, -hullDepth - 50 + bob, hullLength/2 + 15, -hullDepth - 48 + bob, hullLength/2 + 12, -hullDepth - 52 + bob);
-    ctx.bezierCurveTo(hullLength/2 + 10, -hullDepth - 50 + bob, hullLength/2 + 8, -hullDepth - 45 + bob, hullLength/2 + 5, -hullDepth - 40 + bob);
-    ctx.bezierCurveTo(hullLength/2 + 2, -hullDepth - 30 + bob, hullLength/2, -hullDepth - 15 + bob, hullLength/2 - 5, -hullDepth + bob);
-    ctx.fill();
-    
-    // Dragon scales/details
-    ctx.strokeStyle = "#6A4B2A";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.moveTo(hullLength/2 + 8 + i * 4, -hullDepth - 30 - i * 5 + bob);
-      ctx.lineTo(hullLength/2 + 12 + i * 4, -hullDepth - 35 - i * 5 + bob);
-      ctx.stroke();
-    }
-    
-    // Dragon eye - glowing
-    ctx.fillStyle = "#FFD700";
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = "#FFD700";
-    ctx.beginPath();
-    ctx.arc(hullLength/2 + 15, -hullDepth - 35 + bob, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "#000";
-    ctx.beginPath();
-    ctx.arc(hullLength/2 + 16, -hullDepth - 35 + bob, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Dragon horns
-    ctx.strokeStyle = "#5A4B2A";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(hullLength/2 + 18, -hullDepth - 48 + bob);
-    ctx.lineTo(hullLength/2 + 22, -hullDepth - 55 + bob);
+    ctx.moveTo(hullLength/2 + 20, -hullDepth - 50 + bob);
+    ctx.quadraticCurveTo(hullLength/2 + 24, -hullDepth - 58 + bob, hullLength/2 + 23, -hullDepth - 62 + bob);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(hullLength/2 + 14, -hullDepth - 50 + bob);
-    ctx.lineTo(hullLength/2 + 18, -hullDepth - 57 + bob);
+    ctx.moveTo(hullLength/2 + 16, -hullDepth - 52 + bob);
+    ctx.quadraticCurveTo(hullLength/2 + 20, -hullDepth - 60 + bob, hullLength/2 + 19, -hullDepth - 64 + bob);
     ctx.stroke();
+    
+    // Horn details
+    ctx.fillStyle = "#3A2B0A";
+    ctx.beginPath();
+    ctx.arc(hullLength/2 + 23, -hullDepth - 62 + bob, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hullLength/2 + 19, -hullDepth - 64 + bob, 1.5, 0, Math.PI * 2);
+    ctx.fill();
     
     // Tail curl at stern - more detailed
     ctx.fillStyle = "#7A5B3A";
@@ -3462,8 +4315,13 @@
     ctx.bezierCurveTo(-hullLength/2 - 5, -hullDepth - 25 + bob, -hullLength/2 - 2, -hullDepth - 10 + bob, -hullLength/2 + 5, -hullDepth + bob);
     ctx.fill();
     
-    // Mast - tapered
-    ctx.fillStyle = "#3A2C1A";
+    // Mast - realistic tapered wooden mast with grain
+    const mastGradient = ctx.createLinearGradient(-3, -hullDepth + bob, 3, -hullDepth - 90 + bob);
+    mastGradient.addColorStop(0, "#2A1C0A");
+    mastGradient.addColorStop(0.5, "#3A2C1A");
+    mastGradient.addColorStop(1, "#4A3C2A");
+    
+    ctx.fillStyle = mastGradient;
     ctx.beginPath();
     ctx.moveTo(-3, -hullDepth + bob);
     ctx.lineTo(3, -hullDepth + bob);
@@ -3472,75 +4330,218 @@
     ctx.closePath();
     ctx.fill();
     
-    // Sail - billowing with wind effect
-    const sailBillow = Math.sin(world.t * 3) * 8;
+    // Mast grain lines
+    ctx.strokeStyle = "#1A0C0A";
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-2 + i, -hullDepth + bob);
+      ctx.lineTo(-1.5 + i, -hullDepth - 90 + bob);
+      ctx.stroke();
+    }
+    
+    // Rigging/ropes
+    ctx.strokeStyle = "#4A3C2A";
+    ctx.lineWidth = 1.5;
+    // Fore stay
+    ctx.beginPath();
+    ctx.moveTo(-2, -hullDepth - 90 + bob);
+    ctx.lineTo(hullLength/2 - 5, -hullDepth + bob);
+    ctx.stroke();
+    // Back stay
+    ctx.beginPath();
+    ctx.moveTo(2, -hullDepth - 90 + bob);
+    ctx.lineTo(-hullLength/2 + 5, -hullDepth + bob);
+    ctx.stroke();
+    // Shrouds
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-2 + i * 2, -hullDepth - 70 + bob);
+      ctx.lineTo(-hullLength/2 + 10 + i * 15, -hullDepth + bob);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(2 - i * 2, -hullDepth - 70 + bob);
+      ctx.lineTo(hullLength/2 - 10 - i * 15, -hullDepth + bob);
+      ctx.stroke();
+    }
+    
+    // Sail - realistic billowing with wind effect and shading
+    const sailBillow = Math.sin(world.t * 3) * 10;
+    const sailGradient = ctx.createLinearGradient(0, -hullDepth - 15 + bob, 50 + sailBillow * 1.5, -hullDepth - 5 + bob);
+    sailGradient.addColorStop(0, "#B41E2A");
+    sailGradient.addColorStop(0.5, "#C41E3A");
+    sailGradient.addColorStop(1, "#D41E4A");
+    
+    ctx.fillStyle = sailGradient;
     ctx.beginPath();
     ctx.moveTo(0, -hullDepth - 15 + bob);
-    ctx.quadraticCurveTo(25 + sailBillow, -hullDepth - 30 + bob, 50 + sailBillow * 1.5, -hullDepth - 20 + bob);
-    ctx.lineTo(50 + sailBillow * 1.5, -hullDepth - 5 + bob);
-    ctx.quadraticCurveTo(25 + sailBillow, -hullDepth + 5 + bob, 0, -hullDepth - 5 + bob);
+    ctx.quadraticCurveTo(25 + sailBillow, -hullDepth - 35 + bob, 55 + sailBillow * 1.5, -hullDepth - 22 + bob);
+    ctx.lineTo(55 + sailBillow * 1.5, -hullDepth - 3 + bob);
+    ctx.quadraticCurveTo(25 + sailBillow, -hullDepth + 8 + bob, 0, -hullDepth - 5 + bob);
     ctx.closePath();
-    ctx.fillStyle = "#C41E3A";
     ctx.fill();
     
-    // Sail stripes
+    // Sail stripes - alternating red and white
     ctx.fillStyle = "#FFF";
-    ctx.fillRect(15 + sailBillow * 0.3, -hullDepth - 12 + bob, 25 + sailBillow * 0.5, 12);
+    for (let s = 0; s < 3; s++) {
+      ctx.fillRect(12 + sailBillow * 0.3 + s * 12, -hullDepth - 12 + bob + s * 3, 10 + sailBillow * 0.3, 8);
+    }
     
-    // Sail details - seams
+    // Sail details - realistic seams and stitching
     ctx.strokeStyle = "#A01E2A";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(10 + sailBillow * 0.2, -hullDepth - 10 + bob);
-    ctx.lineTo(35 + sailBillow * 0.6, -hullDepth - 3 + bob);
-    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    for (let seam = 0; seam < 3; seam++) {
+      ctx.beginPath();
+      ctx.moveTo(8 + sailBillow * 0.2 + seam * 15, -hullDepth - 10 + bob + seam * 2);
+      ctx.quadraticCurveTo(20 + sailBillow * 0.4 + seam * 15, -hullDepth - 5 + bob + seam * 2, 30 + sailBillow * 0.6 + seam * 15, -hullDepth - 2 + bob + seam * 2);
+      ctx.stroke();
+    }
     
-    // Oars - more realistic positioning and animation
+    // Sail shadow for depth
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.beginPath();
+    ctx.moveTo(0, -hullDepth - 15 + bob);
+    ctx.quadraticCurveTo(15 + sailBillow * 0.5, -hullDepth - 25 + bob, 30 + sailBillow, -hullDepth - 15 + bob);
+    ctx.lineTo(30 + sailBillow, -hullDepth - 3 + bob);
+    ctx.quadraticCurveTo(15 + sailBillow * 0.5, -hullDepth + 3 + bob, 0, -hullDepth - 5 + bob);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Oars - highly realistic with proper rowing animation
     ctx.strokeStyle = "#5D4E37";
     ctx.lineWidth = 2.5;
     const oarPositions = [-50, -30, -10, 10, 30, 50];
     oarPositions.forEach((ox, i) => {
-      const oarAngle = Math.sin(world.t * 8 + i * 0.5) * 0.4;
-      const oarOut = Math.abs(Math.sin(world.t * 8 + i * 0.5)) > 0.5;
+      const oarPhase = world.t * 8 + i * 0.5;
+      const oarAngle = Math.sin(oarPhase) * 0.5;
+      const oarOut = Math.abs(Math.sin(oarPhase)) > 0.5;
+      const oarDepth = oarOut ? 50 : 30;
+      
       ctx.save();
       ctx.translate(ox, -hullDepth/2 + bob);
       ctx.rotate(0.3 + oarAngle);
+      
+      // Oar shaft - wooden with grain
+      const oarGradient = ctx.createLinearGradient(0, 0, 0, oarDepth);
+      oarGradient.addColorStop(0, "#6D5E47");
+      oarGradient.addColorStop(1, "#4A3C2A");
+      ctx.strokeStyle = oarGradient;
       ctx.beginPath();
       ctx.moveTo(0, 0);
-      ctx.lineTo(0, oarOut ? 45 : 35);
+      ctx.lineTo(0, oarDepth);
       ctx.stroke();
-      // Oar blade - paddle shape
-      ctx.fillStyle = "#4A3C2A";
+      
+      // Oar blade - realistic paddle shape with water effect
+      ctx.fillStyle = "#3A2C1A";
       ctx.beginPath();
-      ctx.ellipse(-3, oarOut ? 42 : 32, 6, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(-3, oarDepth - 2, 7, 14, 0, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Water splash on oar blade when out
+      if (oarOut) {
+        ctx.fillStyle = "rgba(74, 144, 217, 0.3)";
+        ctx.beginPath();
+        ctx.ellipse(-3, oarDepth - 2, 5, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
       ctx.restore();
     });
     
-    // Multiple Viking warriors on ship
+    // Multiple Viking warriors on ship - highly detailed
     const warriorPositions = [-40, -15, 15, 40];
     warriorPositions.forEach((wx, i) => {
-      // Body/armor
-      ctx.fillStyle = "#4A5568";
-      ctx.fillRect(wx - 6, -hullDepth/2 - 15 + bob, 12, 18);
-      // Head
-      ctx.fillStyle = "#ffdbac";
+      const warriorBob = bob + Math.sin(world.t * 4 + i) * 1;
+      
+      // Body/armor with chainmail texture
+      const armorGradient = ctx.createLinearGradient(wx - 6, -hullDepth/2 - 15 + bob, wx + 6, -hullDepth/2 + 3 + bob);
+      armorGradient.addColorStop(0, "#3A4558");
+      armorGradient.addColorStop(0.5, "#4A5568");
+      armorGradient.addColorStop(1, "#5A6578");
+      ctx.fillStyle = armorGradient;
+      ctx.fillRect(wx - 7, -hullDepth/2 - 16 + warriorBob, 14, 20);
+      
+      // Chainmail pattern
+      ctx.strokeStyle = "#2A3548";
+      ctx.lineWidth = 0.5;
+      for (let cy = 0; cy < 3; cy++) {
+        for (let cx = 0; cx < 4; cx++) {
+          ctx.strokeRect(wx - 6 + cx * 3, -hullDepth/2 - 15 + warriorBob + cy * 5, 2, 2);
+        }
+      }
+      
+      // Leather belt
+      ctx.fillStyle = "#3A2C1A";
+      ctx.fillRect(wx - 6, -hullDepth/2 - 5 + warriorBob, 12, 2);
+      
+      // Head with realistic skin tone
+      const headGradient = ctx.createRadialGradient(wx, -hullDepth/2 - 20 + warriorBob, 0, wx, -hullDepth/2 - 20 + warriorBob, 6);
+      headGradient.addColorStop(0, "#ffdbac");
+      headGradient.addColorStop(1, "#e6c89a");
+      ctx.fillStyle = headGradient;
       ctx.beginPath();
-      ctx.arc(wx, -hullDepth/2 - 20 + bob, 5, 0, Math.PI * 2);
+      ctx.arc(wx, -hullDepth/2 - 20 + warriorBob, 6, 0, Math.PI * 2);
       ctx.fill();
-      // Helmet
-      ctx.fillStyle = "#6B7280";
+      
+      // Beard
+      ctx.fillStyle = "#4A3C2A";
       ctx.beginPath();
-      ctx.arc(wx, -hullDepth/2 - 22 + bob, 6, Math.PI, 0);
+      ctx.ellipse(wx, -hullDepth/2 - 16 + warriorBob, 4, 3, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Weapon (spear/axe visible)
+      
+      // Helmet - detailed with nose guard
+      const helmetGradient = ctx.createLinearGradient(wx, -hullDepth/2 - 25 + warriorBob, wx, -hullDepth/2 - 18 + warriorBob);
+      helmetGradient.addColorStop(0, "#5B6270");
+      helmetGradient.addColorStop(1, "#7B8290");
+      ctx.fillStyle = helmetGradient;
+      ctx.beginPath();
+      ctx.arc(wx, -hullDepth/2 - 22 + warriorBob, 7, Math.PI, 0);
+      ctx.fill();
+      
+      // Nose guard
+      ctx.fillStyle = "#4B5260";
+      ctx.fillRect(wx - 1, -hullDepth/2 - 20 + warriorBob, 2, 4);
+      
+      // Helmet rim
+      ctx.strokeStyle = "#3B4250";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(wx, -hullDepth/2 - 18 + warriorBob, 7, Math.PI, 0);
+      ctx.stroke();
+      
+      // Weapon (spear/axe visible) - more detailed
       if (i % 2 === 0) {
-        ctx.strokeStyle = "#8B7355";
-        ctx.lineWidth = 1.5;
+        // Spear
+        ctx.strokeStyle = "#6B6355";
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(wx + 8, -hullDepth/2 - 18 + bob);
-        ctx.lineTo(wx + 15, -hullDepth/2 - 25 + bob);
+        ctx.moveTo(wx + 9, -hullDepth/2 - 18 + warriorBob);
+        ctx.lineTo(wx + 18, -hullDepth/2 - 28 + warriorBob);
         ctx.stroke();
+        // Spear tip
+        ctx.fillStyle = "#C0C0C0";
+        ctx.beginPath();
+        ctx.moveTo(wx + 18, -hullDepth/2 - 28 + warriorBob);
+        ctx.lineTo(wx + 20, -hullDepth/2 - 30 + warriorBob);
+        ctx.lineTo(wx + 16, -hullDepth/2 - 30 + warriorBob);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Axe
+        ctx.strokeStyle = "#5B5345";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(wx - 9, -hullDepth/2 - 18 + warriorBob);
+        ctx.lineTo(wx - 18, -hullDepth/2 - 25 + warriorBob);
+        ctx.stroke();
+        // Axe head
+        ctx.fillStyle = "#A0A0A0";
+        ctx.beginPath();
+        ctx.moveTo(wx - 18, -hullDepth/2 - 25 + warriorBob);
+        ctx.lineTo(wx - 20, -hullDepth/2 - 27 + warriorBob);
+        ctx.lineTo(wx - 16, -hullDepth/2 - 27 + warriorBob);
+        ctx.closePath();
+        ctx.fill();
       }
     });
     
@@ -3567,14 +4568,42 @@
       ctx.stroke();
     });
     
-    // Water wake trail
-    ctx.strokeStyle = "rgba(74, 144, 217, 0.4)";
-    ctx.lineWidth = 3;
+    // Realistic water wake trail - multiple layers
+    // Main wake
+    ctx.strokeStyle = "rgba(74, 144, 217, 0.5)";
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(-hullLength/2 - 10, bob + 5);
-    ctx.quadraticCurveTo(-hullLength/4, bob + 8, 0, bob + 6);
-    ctx.quadraticCurveTo(hullLength/4, bob + 8, hullLength/2 + 10, bob + 5);
+    ctx.moveTo(-hullLength/2 - 12, bob + 6);
+    ctx.quadraticCurveTo(-hullLength/4, bob + 10, 0, bob + 8);
+    ctx.quadraticCurveTo(hullLength/4, bob + 10, hullLength/2 + 12, bob + 6);
     ctx.stroke();
+    
+    // Secondary wake (foam)
+    ctx.strokeStyle = "rgba(135, 206, 235, 0.6)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-hullLength/2 - 8, bob + 7);
+    ctx.quadraticCurveTo(-hullLength/4, bob + 9, 0, bob + 7.5);
+    ctx.quadraticCurveTo(hullLength/4, bob + 9, hullLength/2 + 8, bob + 7);
+    ctx.stroke();
+    
+    // Bow wave
+    ctx.fillStyle = "rgba(74, 144, 217, 0.3)";
+    ctx.beginPath();
+    ctx.moveTo(hullLength/2 + 20, -hullDepth + bob);
+    ctx.quadraticCurveTo(hullLength/2 + 25, bob + 3, hullLength/2 + 15, bob + 5);
+    ctx.lineTo(hullLength/2 + 10, bob + 4);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Stern wake
+    ctx.fillStyle = "rgba(74, 144, 217, 0.2)";
+    ctx.beginPath();
+    ctx.moveTo(-hullLength/2 - 15, -hullDepth + bob);
+    ctx.quadraticCurveTo(-hullLength/2 - 20, bob + 4, -hullLength/2 - 10, bob + 6);
+    ctx.lineTo(-hullLength/2 - 5, bob + 5);
+    ctx.closePath();
+    ctx.fill();
     
     ctx.restore();
   };
@@ -3591,22 +4620,34 @@
     if (viking.faceplant > 0) ctx.rotate(viking.faceplant * -1);
 
     const bob = viking.onGround ? Math.sin(world.t * 12) * 4 : 0;
-    const duckH = viking.ducking ? 0.6 : 1;
+    const duckH = viking.ducking ? 0.5 : 1; // More pronounced ducking (was 0.6)
+    const duckY = viking.ducking ? 10 : 0; // Lower position when ducking
+
+    // Visual indicator when ducking (glow effect)
+    if (viking.ducking) {
+      const duckGlow = ctx.createRadialGradient(0, duckY, 0, 0, duckY, 40);
+      duckGlow.addColorStop(0, 'rgba(0, 255, 0, 0.3)');
+      duckGlow.addColorStop(1, 'rgba(0, 255, 0, 0)');
+      ctx.fillStyle = duckGlow;
+      ctx.beginPath();
+      ctx.arc(0, duckY, 40, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.fillStyle = "#556677";
-    ctx.fillRect(-20, -50 * duckH + bob, 40, 50 * duckH);
+    ctx.fillRect(-20, -50 * duckH + bob + duckY, 40, 50 * duckH);
 
     ctx.fillStyle = "#ffdbac";
-    ctx.beginPath(); ctx.arc(0, -65 * duckH + bob, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -65 * duckH + bob + duckY, 15, 0, Math.PI * 2); ctx.fill();
 
     ctx.fillStyle = "#e67e22";
-    ctx.beginPath(); ctx.moveTo(-12, -60 * duckH + bob); ctx.lineTo(12, -60 * duckH + bob); ctx.lineTo(0, -35 * duckH + bob); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-12, -60 * duckH + bob + duckY); ctx.lineTo(12, -60 * duckH + bob + duckY); ctx.lineTo(0, -35 * duckH + bob + duckY); ctx.fill();
 
     ctx.fillStyle = "#7f8c8d";
-    ctx.beginPath(); ctx.arc(0, -70 * duckH + bob, 16, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -70 * duckH + bob + duckY, 16, Math.PI, 0); ctx.fill();
     ctx.fillStyle = "#ecf0f1";
-    ctx.beginPath(); ctx.moveTo(-15, -75 * duckH + bob); ctx.lineTo(-25, -90 * duckH + bob); ctx.lineTo(-10, -80 * duckH + bob); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(15, -75 * duckH + bob); ctx.lineTo(25, -90 * duckH + bob); ctx.lineTo(10, -80 * duckH + bob); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-15, -75 * duckH + bob + duckY); ctx.lineTo(-25, -90 * duckH + bob + duckY); ctx.lineTo(-10, -80 * duckH + bob + duckY); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(15, -75 * duckH + bob + duckY); ctx.lineTo(25, -90 * duckH + bob + duckY); ctx.lineTo(10, -80 * duckH + bob + duckY); ctx.fill();
 
     ctx.restore();
   };
@@ -3632,99 +4673,152 @@
     ctx.save();
     ctx.translate(e.x, e.y);
     
-    // Use enemy color from type, or default
+    // Use enemy color from type, or default - make it more vibrant
     const baseColor = e.color || "#1e3a5f";
     
-    // Body
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(-e.w/2 + 5, -e.h + 15, e.w - 10, e.h - 15);
+    // Strong outline for visibility - enemies are angular, distinct from circular powerups
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 4;
+    ctx.shadowBlur = 0;
     
-    // Special effects based on type
-    if (e.type === 'fireImp' || e.type === 'fireThrower' || e.type === 'magmaWarrior') {
-      // Fire glow
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = '#FF4500';
-    } else if (e.type === 'iceWarrior' || e.type === 'snowWolf' || e.type === 'frostArcher') {
-      // Ice glow
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = '#B0E0E6';
-    } else if (e.type === 'lightningSpirit' || e.type === 'valhallaWarrior') {
-      // Lightning glow
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = '#FFD700';
-    } else if (e.type === 'starWarrior' || e.type === 'celestialGuardian') {
-      // Cosmic glow
+    // Body - larger, more angular shape
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(-e.w/2, -e.h, e.w, e.h);
+    // Strong black outline
+    ctx.strokeRect(-e.w/2, -e.h, e.w, e.h);
+    
+    // Special effects based on type - enhanced glow
+    if (e.type === 'fireImp' || e.type === 'saxonFireThrower' || e.type === 'magmaWarrior') {
+      // Fire glow - stronger
       ctx.shadowBlur = 25;
+      ctx.shadowColor = '#FF4500';
+      ctx.strokeStyle = '#FF4500';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
+    } else if (e.type === 'iceWarrior' || e.type === 'snowWolf' || e.type === 'frostArcher') {
+      // Ice glow - stronger
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = '#B0E0E6';
+      ctx.strokeStyle = '#B0E0E6';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
+    } else if (e.type === 'lightningSpirit' || e.type === 'valhallaWarrior') {
+      // Lightning glow - stronger
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = '#FFD700';
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
+    } else if (e.type === 'starWarrior' || e.type === 'celestialGuardian') {
+      // Cosmic glow - stronger
+      ctx.shadowBlur = 35;
       ctx.shadowColor = '#FFFFFF';
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-e.w/2 - 2, -e.h - 2, e.w + 4, e.h + 4);
+    } else {
+      // Default strong outline for all enemies
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(-e.w/2, -e.h, e.w, e.h);
     }
     
-    // Chainmail/armor overlay
-    ctx.fillStyle = e.type && e.type.includes('Guardian') ? "#FFD700" : "#6b7280";
-    ctx.fillRect(-e.w/2 + 8, -e.h + 15, e.w - 16, 25);
+    // Chainmail/armor overlay - more visible
+    ctx.fillStyle = e.type && e.type.includes('Guardian') ? "#FFD700" : "#8b8b9a";
+    ctx.fillRect(-e.w/2 + 6, -e.h + 12, e.w - 12, 30);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-e.w/2 + 6, -e.h + 12, e.w - 12, 30);
     
-    // Head
+    // Head - larger and more visible
     ctx.fillStyle = "#d4a574";
     ctx.beginPath();
-    ctx.arc(0, -e.h - 5, 14, 0, Math.PI * 2);
+    ctx.arc(0, -e.h - 8, 18, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.stroke();
     
-    // Helmet/headgear based on type
-    if (e.type === 'boar') {
+    // Helmet/headgear based on type - larger
+    if (e.type === 'wildBoar') {
       // Boar head
       ctx.fillStyle = "#654321";
       ctx.beginPath();
-      ctx.ellipse(0, -e.h - 3, 18, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -e.h - 5, 22, 15, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     } else if (e.type === 'snowWolf') {
       // Wolf head
       ctx.fillStyle = "#F0F8FF";
       ctx.beginPath();
-      ctx.ellipse(0, -e.h - 3, 16, 10, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -e.h - 5, 20, 13, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     } else {
-      // Standard helmet
+      // Standard helmet - larger
       ctx.fillStyle = "#71717a";
       ctx.beginPath();
-      ctx.arc(0, -e.h - 8, 16, Math.PI, 0);
+      ctx.arc(0, -e.h - 10, 20, Math.PI, 0);
       ctx.fill();
-      // Nose guard
-      ctx.fillRect(-2, -e.h - 10, 4, 15);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // Nose guard - larger
+      ctx.fillRect(-3, -e.h - 12, 6, 18);
+      ctx.strokeRect(-3, -e.h - 12, 6, 18);
     }
     
-    // Eyes (angry)
-    ctx.fillStyle = "#000";
-    ctx.fillRect(-7, -e.h - 5, 4, 3);
-    ctx.fillRect(3, -e.h - 5, 4, 3);
+    // Eyes (angry) - larger and more visible
+    ctx.fillStyle = "#FF0000"; // Red angry eyes
+    ctx.fillRect(-10, -e.h - 8, 6, 5);
+    ctx.fillRect(4, -e.h - 8, 6, 5);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-10, -e.h - 8, 6, 5);
+    ctx.strokeRect(4, -e.h - 8, 6, 5);
     
-    // Shield (round Saxon shield with cross)
+    // Shield (round Saxon shield with cross) - larger
     ctx.fillStyle = "#dc2626";
     ctx.beginPath();
-    ctx.arc(-e.w/2 - 8, -e.h/2, 18, 0, Math.PI * 2);
+    ctx.arc(-e.w/2 - 10, -e.h/2, 22, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
     ctx.stroke();
-    // Cross on shield
     ctx.strokeStyle = "#fbbf24";
     ctx.lineWidth = 3;
+    ctx.stroke();
+    // Cross on shield - thicker
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(-e.w/2 - 8, -e.h/2 - 12);
-    ctx.lineTo(-e.w/2 - 8, -e.h/2 + 12);
-    ctx.moveTo(-e.w/2 - 20, -e.h/2);
-    ctx.lineTo(-e.w/2 + 4, -e.h/2);
+    ctx.moveTo(-e.w/2 - 10, -e.h/2 - 15);
+    ctx.lineTo(-e.w/2 - 10, -e.h/2 + 15);
+    ctx.moveTo(-e.w/2 - 25, -e.h/2);
+    ctx.lineTo(-e.w/2 + 5, -e.h/2);
     ctx.stroke();
     
-    // Spear
+    // Spear - larger
     ctx.fillStyle = "#78350f";
-    ctx.fillRect(e.w/2, -e.h + 5, 4, 50);
-    // Spear tip
+    ctx.fillRect(e.w/2, -e.h + 8, 5, 60);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(e.w/2, -e.h + 8, 5, 60);
+    // Spear tip - larger
     ctx.fillStyle = "#a1a1aa";
     ctx.beginPath();
-    ctx.moveTo(e.w/2 + 2, -e.h + 5);
-    ctx.lineTo(e.w/2 - 3, -e.h - 10);
-    ctx.lineTo(e.w/2 + 7, -e.h - 10);
+    ctx.moveTo(e.w/2 + 2.5, -e.h + 8);
+    ctx.lineTo(e.w/2 - 4, -e.h - 15);
+    ctx.lineTo(e.w/2 + 9, -e.h - 15);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
     
     ctx.restore();
   };
@@ -3822,7 +4916,8 @@
       speedBoost: "#FF6B6B",
       invincibility: "#4ECDC4",
       scoreMultiplier: "#FFD93D",
-      vikingShip: "#8B4513"
+      vikingShip: "#8B4513",
+      respawn: "#9B59B6"
     };
     return colors[type] || "#FFF";
   };
@@ -3832,7 +4927,8 @@
       speedBoost: "⚡",
       invincibility: "🛡",
       scoreMultiplier: "⭐",
-      vikingShip: "⛵"
+      vikingShip: "⛵",
+      respawn: "🔄"
     };
     return symbols[type] || "?";
   };
@@ -3857,6 +4953,10 @@
       p.timeLeft = 10;
       playSFX('powerup'); // Initial activation sound
       startPowerupSound('scoreMultiplier'); // Start looping sound
+    } else if (type === "respawn") {
+      p.timeLeft = 0; // Permanent until used (one-time use)
+      playSFX('powerup');
+      showStickinessNotification('🔄 RESPAWN POWERUP ACTIVATED!', 'info');
     } else {
       p.timeLeft = 10;
     }
@@ -3948,32 +5048,48 @@
                 updateHUD();
                 
                 if (world.lives <= 0) {
-                  // Stop all powerup sounds on game over
-                  for (const key in powerupSounds) {
-                    stopPowerupSound(key);
-                  }
-                  world.over = true;
-                  viking.faceplant = 1.5;
-                  if (statePill) statePill.textContent = "Game Over";
-                  engagement.sessionDeaths++;
-                  if (world.score > engagement.personalBest) {
-                    engagement.personalBest = Math.floor(world.score);
-                    localStorage.setItem('personalBest', engagement.personalBest.toString());
-                  }
-                  HighScoreManager.saveScore(world.score);
-                  playSFX('gameover');
-                  setTimeout(() => { 
-                    if (overlay) {
-                      overlay.style.display = "grid";
-                      overlay.style.visibility = "visible";
-                      overlay.style.opacity = "1";
+                  // Check for respawn powerup
+                  if (world.powerups.respawn.active) {
+                    // Respawn activated!
+                    world.powerups.respawn.active = false;
+                    world.lives = 1;
+                    world.over = false;
+                    viking.faceplant = 0;
+                    viking.vy = 0;
+                    viking.y = world.groundY;
+                    viking.onGround = true;
+                    showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
+                    playSFX('powerup');
+                    updateHUD();
+                    if (statePill) statePill.textContent = "Playing";
+                  } else {
+                    // Stop all powerup sounds on game over
+                    for (const key in powerupSounds) {
+                      stopPowerupSound(key);
                     }
-                    const overlayTitle = $("overlayTitle");
-                    const overlayText = $("overlayText");
-                    if (overlayTitle) overlayTitle.textContent = "Game Over";
-                    if (overlayText) overlayText.textContent = `Hit a low platform!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                    if (startBtn) startBtn.textContent = "Play Again";
-                  }, 1200);
+                    world.over = true;
+                    viking.faceplant = 1.5;
+                    if (statePill) statePill.textContent = "Game Over";
+                    engagement.sessionDeaths++;
+                    if (world.score > engagement.personalBest) {
+                      engagement.personalBest = Math.floor(world.score);
+                      localStorage.setItem('personalBest', engagement.personalBest.toString());
+                    }
+                    HighScoreManager.saveScore(world.score);
+                    playSFX('gameover');
+                    setTimeout(() => { 
+                      if (overlay) {
+                        overlay.style.display = "grid";
+                        overlay.style.visibility = "visible";
+                        overlay.style.opacity = "1";
+                      }
+                      const overlayTitle = $("overlayTitle");
+                      const overlayText = $("overlayText");
+                      if (overlayTitle) overlayTitle.textContent = "Game Over";
+                      if (overlayText) overlayText.textContent = `Hit a low platform!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                      if (startBtn) startBtn.textContent = "Play Again";
+                    }, 1200);
+                  }
                 } else {
                   world.powerups.invincibility.active = true;
                   world.powerups.invincibility.timeLeft = 2;
@@ -4072,13 +5188,58 @@
     // Check for level unlocks
     LevelSystem.checkUnlocks(world.score);
     
-    // Check for boss spawn
+    // Update world.currentLevel based on score (for level progression)
+    const scoreBasedLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+    if (scoreBasedLevel.id !== world.currentLevel) {
+      const oldLevel = world.currentLevel;
+      world.currentLevel = scoreBasedLevel.id;
+      LevelSystem.currentLevel = scoreBasedLevel.id;
+      LevelSystem.save();
+      // Show level change notification
+      if (scoreBasedLevel.id > oldLevel) {
+        showStickinessNotification(`🎯 LEVEL ${scoreBasedLevel.id}: ${scoreBasedLevel.name}`, 'info');
+        playSFX('powerup');
+      }
+    }
+    
+    // Check for boss spawn - multiple times per level
     const theme = LevelThemes.getCurrent();
-    if (theme.boss && theme.bossSpawnScore) {
+    if (theme.boss) {
       const bossKey = theme.boss;
       const hasBoss = Bosses.some(b => b.active && !b.defeated);
-      if (!hasBoss && world.score >= theme.bossSpawnScore && world.score < theme.bossSpawnScore + 100) {
-        spawnBoss(bossKey);
+      
+      if (!hasBoss) {
+        // Get current level info
+        const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+        const nextLevel = LevelSystem.levels.find(l => l.unlockScore > world.score);
+        const levelStart = currentLevel.unlockScore;
+        const levelEnd = nextLevel ? nextLevel.unlockScore : Infinity;
+        const levelRange = levelEnd - levelStart;
+        
+        // Calculate spawns per level based on level number
+        // Level 1-2: 1 spawn, Level 3-4: 2 spawns, Level 5-6: 3 spawns, Level 7-8: 4 spawns
+        const spawnsPerLevel = Math.min(4, Math.max(1, Math.floor((currentLevel.id - 1) / 2) + 1));
+        const spawnInterval = levelRange / (spawnsPerLevel + 1);
+        
+        // Check each spawn point
+        for (let i = 1; i <= spawnsPerLevel; i++) {
+          const spawnScore = levelStart + (spawnInterval * i);
+          // Spawn within a 200 point window
+          if (world.score >= spawnScore - 100 && world.score < spawnScore + 100) {
+            const spawnKey = `${currentLevel.id}_${i}`;
+            // Only spawn if we haven't spawned this boss at this point yet
+            if (!world.bossSpawnsThisLevel[spawnKey]) {
+              const bossData = BossData[bossKey];
+              if (bossData) {
+                showStickinessNotification(`👹 BOSS APPROACHING: ${bossData.name}`, 'danger');
+                playSFX('powerup');
+                spawnBoss(bossKey);
+                world.bossSpawnsThisLevel[spawnKey] = true;
+                break; // Only spawn one boss at a time
+              }
+            }
+          }
+        }
       }
     }
     
@@ -4087,7 +5248,7 @@
       LevelSystem.saveBestScore(world.currentLevel, world.score);
     }
     
-    // Milestone check
+    // Milestone check - show notification
     if (world.score >= engagement.milestones.nextAt) {
       engagement.milestones.last = engagement.milestones.nextAt;
       engagement.milestones.nextAt += 10000;
@@ -4095,6 +5256,7 @@
       world.powerups.invincibility.active = true;
       world.powerups.invincibility.timeLeft = 2;
       playSFX('powerup');
+      showStickinessNotification(`🏆 MILESTONE: ${engagement.milestones.last.toLocaleString()} Points!`, 'info');
       const flash = document.createElement('div');
       flash.className = 'milestone-flash';
       shell.appendChild(flash);
@@ -4182,22 +5344,22 @@
       Achievements.sessionStats.ducks++;
     }
 
-    // Spawn logic - REDUCED FREQUENCY
+    // Spawn logic - Reduced difficulty
     if (viking.x > world.nextObstacleAt - W) {
       spawnObstacle(world.nextObstacleAt);
-      // Obstacle density increases with score - tighter spawns for more challenge
-      const baseMin = 375, baseMax = 600;
-      const scoreFactor = Math.min(world.score / 40000, 1.0);
-      const minSpawn = baseMin - (baseMin * 0.45 * scoreFactor);
-      const maxSpawn = baseMax - (baseMax * 0.45 * scoreFactor);
-      world.nextObstacleAt += rand(Math.max(200, minSpawn), Math.max(350, maxSpawn));
+      // Obstacle density increases with score - much more forgiving
+      const baseMin = 600, baseMax = 900; // Increased spacing (was 450-700)
+      const scoreFactor = Math.min(world.score / 70000, 1.0); // Slower scaling (was 50000)
+      const minSpawn = baseMin - (baseMin * 0.25 * scoreFactor); // Less aggressive (was 0.3)
+      const maxSpawn = baseMax - (baseMax * 0.25 * scoreFactor);
+      world.nextObstacleAt += rand(Math.max(400, minSpawn), Math.max(600, maxSpawn)); // More spacing (was 300-450)
     }
-    // Spawn duck obstacles (flying obstacles that require ducking)
+    // Spawn duck obstacles (flying obstacles that require ducking) - Reduced frequency
     if (viking.x > world.nextDuckObstacleAt - W) {
-      if (Math.random() < 0.4) { // 40% chance to spawn duck obstacle
+      if (Math.random() < 0.5) { // 50% chance to spawn duck obstacle (reduced from 70%)
         spawnDuckObstacle(world.nextDuckObstacleAt);
       }
-      world.nextDuckObstacleAt += rand(400, 800);
+      world.nextDuckObstacleAt += rand(500, 900); // Less frequent spawns (was 300-600)
     }
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
@@ -4216,13 +5378,13 @@
     }
     if (viking.x > world.nextEnemyAt - W) {
       spawnEnemy(world.nextEnemyAt);
-      // Dynamic spawn rate scaling based on score and difficulty
+      // Dynamic spawn rate scaling - much more forgiving
       const diff = DifficultyModes.getCurrent();
-      const baseMin = diff.enemySpawnMin, baseMax = diff.enemySpawnMax;
-      const scoreFactor = Math.min(world.score / 50000, 1.0); // Max scaling at 50k
-      const minSpawn = baseMin - (baseMin * 0.5 * scoreFactor); // Reduce by up to 50%
-      const maxSpawn = baseMax - (baseMax * 0.5 * scoreFactor);
-      world.nextEnemyAt += rand(Math.max(250, minSpawn), Math.max(500, maxSpawn));
+      const baseMin = diff.enemySpawnMin * 2.0, baseMax = diff.enemySpawnMax * 2.0; // 100% less frequent (was 1.5)
+      const scoreFactor = Math.min(world.score / 120000, 1.0); // Much slower scaling (was 80000)
+      const minSpawn = baseMin - (baseMin * 0.2 * scoreFactor); // Less aggressive (was 0.3)
+      const maxSpawn = baseMax - (baseMax * 0.2 * scoreFactor);
+      world.nextEnemyAt += rand(Math.max(700, minSpawn), Math.max(1000, maxSpawn)); // More spacing (was 500-800)
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < 5) { // Only spawn hearts if lives < 5
@@ -4367,32 +5529,48 @@
           updateHUD();
           
           if (world.lives <= 0) {
-            // Stop all powerup sounds on game over
-            for (const key in powerupSounds) {
-              stopPowerupSound(key);
-            }
-        world.over = true;
-        viking.faceplant = 1.5;
-            statePill.textContent = "Game Over";
-            engagement.sessionDeaths++;
-            if (world.score > engagement.personalBest) {
-              engagement.personalBest = Math.floor(world.score);
-              localStorage.setItem('personalBest', engagement.personalBest.toString());
-            }
-            HighScoreManager.saveScore(world.score);
-        playSFX('gameover');
-            setTimeout(() => { 
-              if (overlay) {
-                overlay.style.display = "grid";
-                overlay.style.visibility = "visible";
-                overlay.style.opacity = "1";
+            // Check for respawn powerup
+            if (world.powerups.respawn.active) {
+              // Respawn activated!
+              world.powerups.respawn.active = false;
+              world.lives = 1;
+              world.over = false;
+              viking.faceplant = 0;
+              viking.vy = 0;
+              viking.y = world.groundY;
+              viking.onGround = true;
+              showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
+              playSFX('powerup');
+              updateHUD();
+              if (statePill) statePill.textContent = "Playing";
+            } else {
+              // Stop all powerup sounds on game over
+              for (const key in powerupSounds) {
+                stopPowerupSound(key);
               }
-              const overlayTitle = $("overlayTitle");
-              const overlayText = $("overlayText");
-              if (overlayTitle) overlayTitle.textContent = "Game Over";
-              if (overlayText) overlayText.textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-              if (startBtn) startBtn.textContent = "Play Again";
-            }, 1200);
+              world.over = true;
+              viking.faceplant = 1.5;
+              statePill.textContent = "Game Over";
+              engagement.sessionDeaths++;
+              if (world.score > engagement.personalBest) {
+                engagement.personalBest = Math.floor(world.score);
+                localStorage.setItem('personalBest', engagement.personalBest.toString());
+              }
+              HighScoreManager.saveScore(world.score);
+              playSFX('gameover');
+              setTimeout(() => { 
+                if (overlay) {
+                  overlay.style.display = "grid";
+                  overlay.style.visibility = "visible";
+                  overlay.style.opacity = "1";
+                }
+                const overlayTitle = $("overlayTitle");
+                const overlayText = $("overlayText");
+                if (overlayTitle) overlayTitle.textContent = "Game Over";
+                if (overlayText) overlayText.textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                if (startBtn) startBtn.textContent = "Play Again";
+              }, 1200);
+            }
           } else {
             world.powerups.invincibility.active = true;
             world.powerups.invincibility.timeLeft = 2;
@@ -4407,9 +5585,9 @@
     // Collisions - Duck Obstacles (flying obstacles that require ducking)
     for (const duckObst of DuckObstacles) {
       if (!duckObst.hit) {
+        // Collision detection
         const distX = Math.abs(viking.x - duckObst.x);
         const distY = Math.abs((viking.y - 30) - duckObst.y); // Head height
-        // Collision if player is at head height and NOT ducking
         if (distX < (duckObst.w/2 + 20) && distY < (duckObst.h/2 + 15) && !viking.ducking) {
           if (world.powerups.vikingShip.active) {
             duckObst.hit = true;
@@ -4424,35 +5602,51 @@
             updateHUD();
             
             if (world.lives <= 0) {
-              for (const key in powerupSounds) {
-                stopPowerupSound(key);
-              }
-              world.over = true;
-              viking.faceplant = 1.5;
-              statePill.textContent = "Game Over";
-              engagement.sessionDeaths++;
-              if (world.score > engagement.personalBest) {
-                engagement.personalBest = Math.floor(world.score);
-                localStorage.setItem('personalBest', engagement.personalBest.toString());
-              }
-              HighScoreManager.saveScore(world.score);
-              
-              // Update level mastery
-              LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
-              
-              playSFX('gameover');
-              setTimeout(() => { 
-                if (overlay) {
-                  overlay.style.display = "grid";
-                  overlay.style.visibility = "visible";
-                  overlay.style.opacity = "1";
-                  const overlayTitle = $("overlayTitle");
-                  const overlayText = $("overlayText");
-                  if (overlayTitle) overlayTitle.textContent = "Game Over";
-                  if (overlayText) overlayText.textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                  if (startBtn) startBtn.textContent = "Play Again";
+              // Check for respawn powerup
+              if (world.powerups.respawn.active) {
+                // Respawn activated!
+                world.powerups.respawn.active = false;
+                world.lives = 1;
+                world.over = false;
+                viking.faceplant = 0;
+                viking.vy = 0;
+                viking.y = world.groundY;
+                viking.onGround = true;
+                showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
+                playSFX('powerup');
+                updateHUD();
+                if (statePill) statePill.textContent = "Playing";
+              } else {
+                for (const key in powerupSounds) {
+                  stopPowerupSound(key);
                 }
-              }, 1200);
+                world.over = true;
+                viking.faceplant = 1.5;
+                statePill.textContent = "Game Over";
+                engagement.sessionDeaths++;
+                if (world.score > engagement.personalBest) {
+                  engagement.personalBest = Math.floor(world.score);
+                  localStorage.setItem('personalBest', engagement.personalBest.toString());
+                }
+                HighScoreManager.saveScore(world.score);
+                
+                // Update level mastery
+                LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
+                
+                playSFX('gameover');
+                setTimeout(() => { 
+                  if (overlay) {
+                    overlay.style.display = "grid";
+                    overlay.style.visibility = "visible";
+                    overlay.style.opacity = "1";
+                    const overlayTitle = $("overlayTitle");
+                    const overlayText = $("overlayText");
+                    if (overlayTitle) overlayTitle.textContent = "Game Over";
+                    if (overlayText) overlayText.textContent = `Final Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                    if (startBtn) startBtn.textContent = "Play Again";
+                  }
+                }, 1200);
+              }
             } else {
               world.powerups.invincibility.active = true;
               world.powerups.invincibility.timeLeft = 2;
@@ -4561,32 +5755,48 @@
             updateHUD();
               
             if (world.lives <= 0) {
-              // Stop all powerup sounds on game over
-              for (const key in powerupSounds) {
-                stopPowerupSound(key);
-              }
-              world.over = true;
-              viking.faceplant = 1.5;
-              if (statePill) statePill.textContent = "Game Over";
-              engagement.sessionDeaths++;
-              if (world.score > engagement.personalBest) {
-                engagement.personalBest = Math.floor(world.score);
-                localStorage.setItem('personalBest', engagement.personalBest.toString());
-              }
-              HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
-              playSFX('gameover');
-              setTimeout(() => { 
-                if (overlay) {
-                  overlay.style.display = "grid";
-                  overlay.style.visibility = "visible";
-                  overlay.style.opacity = "1";
+              // Check for respawn powerup
+              if (world.powerups.respawn.active) {
+                // Respawn activated!
+                world.powerups.respawn.active = false;
+                world.lives = 1;
+                world.over = false;
+                viking.faceplant = 0;
+                viking.vy = 0;
+                viking.y = world.groundY;
+                viking.onGround = true;
+                showStickinessNotification('🔄 RESPAWN ACTIVATED!', 'info');
+                playSFX('powerup');
+                updateHUD();
+                if (statePill) statePill.textContent = "Playing";
+              } else {
+                // Stop all powerup sounds on game over
+                for (const key in powerupSounds) {
+                  stopPowerupSound(key);
                 }
-                const overlayTitle = $("overlayTitle");
-                const overlayText = $("overlayText");
-                if (overlayTitle) overlayTitle.textContent = "Game Over";
-                if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
-                if (startBtn) startBtn.textContent = "Play Again";
-              }, 1200);
+                world.over = true;
+                viking.faceplant = 1.5;
+                if (statePill) statePill.textContent = "Game Over";
+                engagement.sessionDeaths++;
+                if (world.score > engagement.personalBest) {
+                  engagement.personalBest = Math.floor(world.score);
+                  localStorage.setItem('personalBest', engagement.personalBest.toString());
+                }
+                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+                playSFX('gameover');
+                setTimeout(() => { 
+                  if (overlay) {
+                    overlay.style.display = "grid";
+                    overlay.style.visibility = "visible";
+                    overlay.style.opacity = "1";
+                  }
+                  const overlayTitle = $("overlayTitle");
+                  const overlayText = $("overlayText");
+                  if (overlayTitle) overlayTitle.textContent = "Game Over";
+                  if (overlayText) overlayText.textContent = `You were defeated!\nFinal Score: ${Math.floor(world.score).toLocaleString()}\nMead Collected: ${world.mead}`;
+                  if (startBtn) startBtn.textContent = "Play Again";
+                }, 1200);
+              }
             } else {
               world.powerups.invincibility.active = true;
               world.powerups.invincibility.timeLeft = 1.5;
@@ -4639,6 +5849,13 @@
             world.mead += boss.rewards.mead;
             addParticle(boss.x, boss.y - boss.size.height/2, "#FFD700", 60);
             playSFX('powerup');
+            playVictoryFanfare(); // Victory fanfare when boss defeated
+            
+            // Unlock boss achievement
+            const bossAchievementKey = `boss${boss.level}`;
+            if (Achievements.achievements[bossAchievementKey]) {
+              Achievements.unlock(bossAchievementKey);
+            }
             
             // Collect artifact from boss
             const artifactId = `artifact_${boss.level}_${boss.name}`;
@@ -4693,6 +5910,8 @@
         }
       }
     }
+    
+    // Duck warning removed - obstacles are placed so ducking is needed
 
     // Collisions - Meads
     for (const m of Meads) {
@@ -4759,6 +5978,16 @@
 
     world.camX = viking.x - 150;
     updateHUD();
+    updateProgressVisualization();
+    updatePowerupCountdowns();
+    updateLevelMusic();
+    
+    // Boss music
+    if (Bosses.length > 0 && !bossMusicActive) {
+      startBossMusic();
+    } else if (Bosses.length === 0 && bossMusicActive) {
+      stopBossMusic();
+    }
   };
 
   const draw = () => {
@@ -4945,25 +6174,42 @@
       }
     }
     
-    // Draw duck obstacles (flying obstacles)
+    // Draw duck obstacles (flying obstacles) - Enhanced visibility with glow
     for (const duckObst of DuckObstacles) {
       if (!duckObst.hit && duckObst.x > viking.x - W - 100 && duckObst.x < viking.x + W + 100) {
         ctx.save();
         ctx.translate(duckObst.x, duckObst.y);
-        ctx.fillStyle = duckObst.type === 'raven' ? '#1a1a1a' : 
+        
+        // Add warning glow effect for visibility
+        const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+        glowGradient.addColorStop(0, 'rgba(255, 200, 0, 0.4)');
+        glowGradient.addColorStop(0.5, 'rgba(255, 150, 0, 0.2)');
+        glowGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, 30, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Main obstacle color - brighter for visibility
+        ctx.fillStyle = duckObst.type === 'raven' ? '#000000' : 
                        duckObst.type === 'arrow' ? '#8B4513' :
-                       duckObst.type === 'branch' ? '#654321' :
-                       duckObst.type === 'axe' ? '#C0C0C0' :
-                       duckObst.type === 'spear' ? '#696969' : '#FF4500';
+                       duckObst.type === 'branch' ? '#8B4513' :
+                       duckObst.type === 'axe' ? '#FFD700' :
+                       duckObst.type === 'spear' ? '#C0C0C0' : '#FF4500';
+        
+        // Add shadow for depth
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(255, 0, 0, 0.5)';
+        
         if (duckObst.type === 'raven') {
-          // Draw raven
+          // Draw raven - larger and more visible
           ctx.beginPath();
-          ctx.arc(0, 0, 15, 0, Math.PI * 2);
+          ctx.arc(0, 0, 20, 0, Math.PI * 2); // Increased from 15 to 20
           ctx.fill();
-          ctx.fillStyle = '#000';
+          ctx.fillStyle = '#FFD700';
           ctx.beginPath();
-          ctx.arc(-5, -3, 3, 0, Math.PI * 2);
-          ctx.fill(); // Eye
+          ctx.arc(-6, -4, 4, 0, Math.PI * 2);
+          ctx.fill(); // Eye - brighter
         } else if (duckObst.type === 'arrow') {
           // Draw arrow
           ctx.beginPath();
@@ -5002,6 +6248,7 @@
           ctx.arc(0, 0, 8, 0, Math.PI * 2);
           ctx.fill();
         }
+        ctx.shadowBlur = 0; // Reset shadow
         ctx.restore();
       }
     }
@@ -5176,32 +6423,34 @@
     });
   };
   
-  startBtn.onclick = () => {
-    try {
-      // Save player name
-      const nameInput = $("playerNameInput");
-      if (nameInput && nameInput.value.trim()) {
-        localStorage.setItem('playerName', nameInput.value.trim());
-      }
-      
-      // If game is over, reset and start immediately
-      if (world.over) {
+  if (startBtn) {
+    startBtn.onclick = () => {
+      try {
+        // Save player name
+        const nameInput = $("playerNameInput");
+        if (nameInput && nameInput.value.trim()) {
+          localStorage.setItem('playerName', nameInput.value.trim());
+        }
+        
+        // If game is over, reset and start immediately
+        if (world.over) {
+          resetWorld();
+          // Start the game immediately after reset
+          setTimeout(() => {
+            start();
+          }, 100);
+        } else {
+          start();
+        }
+      } catch (e) {
+        console.error("Error in startBtn click:", e);
         resetWorld();
-        // Start the game immediately after reset
         setTimeout(() => {
           start();
         }, 100);
-      } else {
-        start();
       }
-    } catch (e) {
-      console.error("Error in startBtn click:", e);
-      resetWorld();
-      setTimeout(() => {
-        start();
-      }, 100);
-    }
-  };
+    };
+  }
   
   // Load player name on startup
   const nameInput = $("playerNameInput");
@@ -5212,41 +6461,47 @@
     }
   }
   
-  restartBtn.onclick = () => { 
-    try {
-      resetWorld(); 
-    } catch (e) {
-      console.error("Error in restartBtn click:", e);
-    }
-  };
-  
-  pauseBtn.onclick = () => { 
-    if (!world.started || world.over) return;
-    world.paused = !world.paused; 
-    pauseBtn.textContent = world.paused ? "Resume" : "Pause";
-    statePill.textContent = world.paused ? "Paused" : "Playing";
-    
-    // Hide/show gaze zone indicator when paused
-    if (gazeZoneIndicator && eyeTrackingEnabled) {
-      gazeZoneIndicator.style.display = world.paused ? 'none' : 'block';
-    }
-  };
-  
-  soundBtn.onclick = () => { 
-    OPT.sound = !OPT.sound; 
-    soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off";
-    
-    // Control Viking music
-    if (OPT.sound) {
-      if (!musicPlaying) {
-        startVikingMusic();
-      } else {
-        setMusicVolume(false);
+  if (restartBtn) {
+    restartBtn.onclick = () => { 
+      try {
+        resetWorld(); 
+      } catch (e) {
+        console.error("Error in restartBtn click:", e);
       }
-    } else {
-      setMusicVolume(true);
-    }
-  };
+    };
+  }
+  
+  if (pauseBtn) {
+    pauseBtn.onclick = () => { 
+      if (!world.started || world.over) return;
+      world.paused = !world.paused; 
+      pauseBtn.textContent = world.paused ? "Resume" : "Pause";
+      statePill.textContent = world.paused ? "Paused" : "Playing";
+      
+      // Hide/show gaze zone indicator when paused
+      if (gazeZoneIndicator && eyeTrackingEnabled) {
+        gazeZoneIndicator.style.display = world.paused ? 'none' : 'block';
+      }
+    };
+  }
+  
+  if (soundBtn) {
+    soundBtn.onclick = () => { 
+      OPT.sound = !OPT.sound; 
+      soundBtn.textContent = OPT.sound ? "Sound: On" : "Sound: Off";
+      
+      // Control Viking music
+      if (OPT.sound) {
+        if (!musicPlaying) {
+          startVikingMusic();
+        } else {
+          setMusicVolume(false);
+        }
+      } else {
+        setMusicVolume(true);
+      }
+    };
+  }
 
   const highscoreBtn = $("highscoreBtn");
   const highscoreModal = $("highscoreModal");
@@ -5318,7 +6573,7 @@
     smoothedBPM: 0
   };
   
-  // Dynamic MediaPipe Loader with Fallback CDNs
+  // Dynamic MediaPipe Loader with Fallback CDNs - Reinstalled
   let mediapipeAvailable = false;
   
   const loadMediaPipe = async () => {
@@ -5327,6 +6582,10 @@
       mediapipeAvailable = true;
       return true;
     }
+    
+    // Remove any existing MediaPipe scripts to ensure clean reload
+    const existingScripts = document.querySelectorAll('script[src*="mediapipe"], script[src*="tasks-vision"]');
+    existingScripts.forEach(script => script.remove());
     
     const sources = [
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js',
@@ -5339,19 +6598,28 @@
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = src;
+          script.type = 'text/javascript';
+          script.async = true;
           script.onload = () => {
-            // Wait a bit for global to be available
-            setTimeout(() => {
+            // Wait longer for global to be available
+            let attempts = 0;
+            const checkInterval = setInterval(() => {
+              attempts++;
               if (typeof window.tasksVision !== 'undefined') {
                 mediapipeAvailable = true;
-                console.log(`MediaPipe loaded from ${src}`);
+                console.log(`MediaPipe loaded successfully from ${src}`);
+                clearInterval(checkInterval);
                 resolve(true);
-              } else {
+              } else if (attempts >= 20) {
+                clearInterval(checkInterval);
                 reject(new Error('MediaPipe not available after load'));
               }
             }, 100);
           };
-          script.onerror = () => reject(new Error(`Failed to load from ${src}`));
+          script.onerror = () => {
+            console.warn(`Failed to load MediaPipe from ${src}`);
+            reject(new Error(`Failed to load from ${src}`));
+          };
           document.head.appendChild(script);
         });
         return true;
@@ -5362,6 +6630,7 @@
     }
     
     console.error('All MediaPipe CDN sources failed');
+    mediapipeAvailable = false;
     return false;
   };
   
@@ -5407,22 +6676,36 @@
     }
   });
   
-  // Initialize MediaPipe Face Landmarker
+  // Initialize MediaPipe Face Landmarker - Reinstalled with proper error handling
   const initFaceLandmarker = async () => {
     try {
       // Ensure MediaPipe is loaded
       if (typeof window.tasksVision === 'undefined') {
+        console.log("MediaPipe not loaded, attempting to load...");
         const loaded = await loadMediaPipe();
         if (!loaded) {
-          throw new Error("MediaPipe not available");
+          throw new Error("MediaPipe not available after loading attempt");
         }
+        // Wait a bit more for it to be fully ready
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
+      
+      if (typeof window.tasksVision === 'undefined') {
+        throw new Error("MediaPipe tasksVision is still undefined");
+      }
+      
       const { FaceLandmarker, FilesetResolver } = window.tasksVision;
       
+      if (!FaceLandmarker || !FilesetResolver) {
+        throw new Error("FaceLandmarker or FilesetResolver not available");
+      }
+      
+      console.log("Initializing FilesetResolver...");
       const filesetResolver = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
       );
       
+      console.log("Creating FaceLandmarker...");
       faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
         baseOptions: {
           modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -5434,20 +6717,55 @@
         numFaces: 1
       });
       
+      console.log("FaceLandmarker initialized successfully");
       return true;
     } catch (e) {
       console.error("Error initializing Face Landmarker:", e);
-      return false;
+      // Try with CPU delegate as fallback
+      try {
+        console.log("Retrying with CPU delegate...");
+        if (typeof window.tasksVision === 'undefined') {
+          throw new Error("MediaPipe still not available");
+        }
+        const { FaceLandmarker, FilesetResolver } = window.tasksVision;
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+        );
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "CPU"
+          },
+          outputFaceBlendshapes: false,
+          outputFacialTransformationMatrixes: false,
+          runningMode: "VIDEO",
+          numFaces: 1
+        });
+        console.log("FaceLandmarker initialized with CPU delegate");
+        return true;
+      } catch (e2) {
+        console.error("CPU delegate also failed:", e2);
+        return false;
+      }
     }
   };
   
-  // Start camera
+  // Start camera - Reinstalled with better error handling
   const startCamera = async () => {
     try {
-      // Create hidden video element
+      // Remove existing video element if present
+      if (videoElement && videoElement.parentNode) {
+        videoElement.parentNode.removeChild(videoElement);
+      }
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Create video element
       videoElement = document.createElement('video');
       videoElement.setAttribute('autoplay', '');
       videoElement.setAttribute('playsinline', '');
+      videoElement.setAttribute('muted', '');
       videoElement.style.position = 'fixed';
       videoElement.style.top = '10px';
       videoElement.style.right = '10px';
@@ -5457,23 +6775,42 @@
       videoElement.style.border = '2px solid #4ade80';
       videoElement.style.zIndex = '9999';
       videoElement.style.transform = 'scaleX(-1)'; // Mirror
+      videoElement.style.display = 'block';
       document.body.appendChild(videoElement);
       
+      // Request camera access
       videoStream = await navigator.mediaDevices.getUserMedia({
         video: { 
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 640, min: 320 },
+          height: { ideal: 480, min: 240 },
           facingMode: "user"
         }
       });
       
       videoElement.srcObject = videoStream;
-      await videoElement.play();
+      
+      // Wait for video to be ready
+      await new Promise((resolve, reject) => {
+        videoElement.onloadedmetadata = () => {
+          videoElement.play().then(() => {
+            console.log("Camera started successfully");
+            resolve();
+          }).catch(reject);
+        };
+        videoElement.onerror = reject;
+        setTimeout(() => reject(new Error("Video metadata timeout")), 5000);
+      });
       
       return true;
     } catch (e) {
       console.error("Error starting camera:", e);
-      alert("Could not access camera. Please allow camera access.");
+      if (videoElement && videoElement.parentNode) {
+        videoElement.parentNode.removeChild(videoElement);
+      }
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+      alert("Could not access camera. Please allow camera access and ensure your camera is connected.");
       return false;
     }
   };
@@ -5976,8 +7313,12 @@
       DifficultyModes.loadSaved();
       DailyChallenges.init();
       resize();
-  resetWorld();
-  requestAnimationFrame(tick);
+      resetWorld();
+      // Ensure level grid is rendered after initialization
+      if (typeof renderLevelGrid === 'function') {
+        renderLevelGrid();
+      }
+      requestAnimationFrame(tick);
       setTimeout(showDailyBonus, 500);
     });
   } else {
@@ -5987,6 +7328,10 @@
     DailyChallenges.init();
     resize();
     resetWorld();
+    // Ensure level grid is rendered after initialization
+    if (typeof renderLevelGrid === 'function') {
+      renderLevelGrid();
+    }
     requestAnimationFrame(tick);
     setTimeout(showDailyBonus, 500);
   }
