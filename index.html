@@ -8029,14 +8029,23 @@
     // Draw Viking player character INSIDE the camera transform (before restore)
     // Pass world coordinates - the camera transform will handle screen positioning
     // CRITICAL: Draw Viking here, inside the camera transform block
-    try {
-      if (typeof viking !== 'undefined' && viking.x !== undefined && viking.y !== undefined) {
-        drawViking(viking.x, viking.y);
-      } else {
-        console.error("Viking object or position is undefined!");
+    if (typeof viking !== 'undefined' && viking.x !== undefined && viking.y !== undefined && !isNaN(viking.x) && !isNaN(viking.y)) {
+      // Calculate screen position for debugging
+      const screenX = viking.x - world.camX;
+      const screenY = viking.y;
+      
+      // Draw Viking at world coordinates (camera transform handles screen positioning)
+      drawViking(viking.x, viking.y);
+      
+      // Debug: Draw a simple test rectangle to verify drawing works
+      if (world.started) {
+        ctx.save();
+        ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+        ctx.fillRect(viking.x - 25, viking.y - 35, 50, 70);
+        ctx.restore();
       }
-    } catch (e) {
-      console.error("Error drawing Viking:", e);
+    } else {
+      console.error("Viking object or position is invalid!", viking);
     }
     
     ctx.restore();
