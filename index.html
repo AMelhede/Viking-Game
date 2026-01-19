@@ -8042,15 +8042,6 @@
           ctx.lineTo(duckObst.w - 5, 3);
           ctx.closePath();
           ctx.fill();
-        } else if (duckObst.type === 'fireball') {
-          // Draw fireball
-          ctx.beginPath();
-          ctx.arc(0, 0, 12, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#FFD700';
-          ctx.beginPath();
-          ctx.arc(0, 0, 8, 0, Math.PI * 2);
-          ctx.fill();
         }
         ctx.shadowBlur = 0; // Reset shadow
         ctx.restore();
