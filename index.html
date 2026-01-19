@@ -7547,7 +7547,8 @@
       }
     }
 
-    world.camX = viking.x - 150;
+    // Update camera to follow Viking - ensure it's always valid
+    world.camX = Math.max(0, viking.x - 150);
     updateHUD();
     updateProgressVisualization();
     updatePowerupCountdowns();
@@ -8026,6 +8027,7 @@
     }
     
     // Draw Viking player character INSIDE the camera transform (before restore)
+    // Pass world coordinates - the camera transform will handle screen positioning
     drawViking(viking.x, viking.y);
     
     ctx.restore();
