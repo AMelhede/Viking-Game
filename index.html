@@ -1810,6 +1810,7 @@
       case 'gameover': {
         // Somber Viking funeral horn - deep, mournful, not farty
         const fundamental = 73.4; // D2 - deep but not too low
+        const endFreq = 55; // A1 - as specified in plan
         const duration = 3.0;
         
         // Main horn tone with proper resonance
@@ -1818,10 +1819,11 @@
           const gain = AC.createGain();
           osc.type = 'square'; // Square wave for horn
           const freq = fundamental * harmonic;
+          const endFreqHarmonic = endFreq * harmonic;
           
-          // Slow mournful descent
+          // Slow mournful descent: Start 73Hz (D2), descend to 55Hz (A1)
           osc.frequency.setValueAtTime(freq, now);
-          osc.frequency.linearRampToValueAtTime(freq * 0.82, now + duration);
+          osc.frequency.linearRampToValueAtTime(endFreqHarmonic, now + duration);
           
           // Formant for horn resonance
           const formant = AC.createBiquadFilter();
@@ -1874,7 +1876,9 @@
       }
       case 'warhorn': {
         // Realistic Viking war horn - proper horn resonance, no "fart" sounds
-        const fundamental = 98; // G2 - proper horn note
+        // Frequency: Start at 98Hz (G2), rise to 147Hz (D3), hold, then fall
+        const startFreq = 98; // G2
+        const peakFreq = 147; // D3
         const duration = 2.0;
         
         // Main horn tone - square wave with formants for horn resonance
@@ -1882,13 +1886,14 @@
           const osc = AC.createOscillator();
           const gain = AC.createGain();
           osc.type = 'square'; // Square wave for horn-like sound
-          const freq = fundamental * harmonic;
+          const startFreqHarmonic = startFreq * harmonic;
+          const peakFreqHarmonic = peakFreq * harmonic;
           
-          // Horn call pattern: rise, hold, fall
-          osc.frequency.setValueAtTime(freq * 0.92, now);
-          osc.frequency.linearRampToValueAtTime(freq, now + 0.3);
-          osc.frequency.setValueAtTime(freq, now + 1.0);
-          osc.frequency.linearRampToValueAtTime(freq * 0.88, now + duration);
+          // Horn call pattern: rise to peak, hold, then fall
+          osc.frequency.setValueAtTime(startFreqHarmonic * 0.92, now);
+          osc.frequency.linearRampToValueAtTime(peakFreqHarmonic, now + 0.3);
+          osc.frequency.setValueAtTime(peakFreqHarmonic, now + 1.0);
+          osc.frequency.linearRampToValueAtTime(startFreqHarmonic * 0.88, now + duration);
           
           // Formant filters for horn resonance
           const formant1 = AC.createBiquadFilter();
@@ -5984,10 +5989,10 @@
     }
     
     // Speed boost: 1.5x movement speed when active
-    // Viking ship: 1.8x speed (faster than speed boost!)
+    // Viking ship: 2x speed (faster than speed boost!)
     let speedMultiplier = 1.0;
     if (world.powerups.vikingShip.active) {
-      speedMultiplier = 1.8;
+      speedMultiplier = 2.0;
     } else if (world.powerups.speedBoost.active) {
       speedMultiplier = 1.5;
     }
