@@ -1217,6 +1217,10 @@
             </p>
           </div>
           <button class="btn primary" id="finishCalibrationBtn" style="margin-top: 24px; padding: 14px 32px; font-size: 15px;">Start Playing with Eye Tracking</button>
+          <button onclick="document.getElementById('calibrationOverlay').classList.remove('active')" 
+                  style="position:absolute; bottom:20px; background:red; color:white; padding:10px; z-index:10001; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
+            SKIP CALIBRATION & PLAY
+          </button>
         </div>
       </div>
 
@@ -1383,7 +1387,9 @@
   </div>
 
 <script>
-let mpFaceLandmarker = null; // Use 'mpFaceLandmarker' consistently
+// This makes sure the variable exists before any function tries to use it
+let mpFaceLandmarker = null; 
+let faceLandmarker = null; // We will keep both just to be 100% safe
 (() => {
   "use strict";
 
@@ -9008,119 +9014,37 @@ let mpFaceLandmarker = null; // Use 'mpFaceLandmarker' consistently
     }
   });
   
-  // Initialize MediaPipe Face Landmarker - Reinstalled with proper error handling
+  // Initialize MediaPipe Face Landmarker - Simplified version
   const initFaceLandmarker = async () => {
-    if (mpFaceLandmarker) return true;
+    // If it's already there, don't reload it
+    if (mpFaceLandmarker) return true; 
+
     try {
-      // Ensure MediaPipe is loaded
-      if (typeof window.tasksVision === 'undefined') {
-        console.log("MediaPipe not loaded, attempting to load...");
-        const loaded = await loadMediaPipe();
-        if (!loaded) {
-          throw new Error("MediaPipe not available after loading attempt");
-        }
-        // Wait a bit more for it to be fully ready
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+      );
       
-      if (typeof window.tasksVision === 'undefined') {
-        throw new Error("MediaPipe tasksVision is still undefined");
-      }
+      // We save it to BOTH names so the rest of your code never gets confused
+      const instance = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+          delegate: "GPU"
+        },
+        outputFaceBlendshapes: true,
+        runningMode: "VIDEO",
+        numFaces: 1
+      });
+
+      mpFaceLandmarker = instance;
+      faceLandmarker = instance;
       
-      const { FaceLandmarker, FilesetResolver } = window.tasksVision;
-      
-      if (!FaceLandmarker || !FilesetResolver) {
-        throw new Error("FaceLandmarker or FilesetResolver not available");
-      }
-      
-      console.log("Initializing FilesetResolver...");
-      const wasmPaths = [
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-      ];
-      let filesetResolver;
-      for (const wasmPath of wasmPaths) {
-        try {
-          filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
-          console.log(`FilesetResolver loaded from ${wasmPath}`);
-          break;
-        } catch (e) {
-          console.warn(`Failed to load from ${wasmPath}, trying next...`);
-        }
-      }
-      if (!filesetResolver) {
-        throw new Error("Could not load FilesetResolver from any source");
-      }
-      
-      // Initialize with GPU delegate first
-      if (!mpFaceLandmarker) {
-        try {
-          mpFaceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-              delegate: "GPU"
-            },
-            outputFaceBlendshapes: true,
-            runningMode: "VIDEO",
-            numFaces: 1
-          });
-          console.log("FaceLandmarker initialized successfully");
-          return true;
-        } catch (e) {
-          console.error("Error initializing Face Landmarker:", e);
-          // If it fails, hide the overlay so the user can at least play without AI
-          const calibrationOverlay = document.getElementById("calibrationOverlay");
-          if (calibrationOverlay) {
-            calibrationOverlay.classList.remove("active");
-          }
-          // Try with CPU delegate as fallback
-          try {
-            console.log("Retrying with CPU delegate...");
-            if (typeof window.tasksVision === 'undefined') {
-              throw new Error("MediaPipe still not available");
-            }
-            const { FaceLandmarker, FilesetResolver } = window.tasksVision;
-            const wasmPaths = [
-              "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
-              "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-            ];
-            let filesetResolver;
-            for (const wasmPath of wasmPaths) {
-              try {
-                filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
-                break;
-              } catch (e) {
-                console.warn(`Failed to load from ${wasmPath}, trying next...`);
-              }
-            }
-            if (!filesetResolver) {
-              throw new Error("Could not load FilesetResolver from any source");
-            }
-            mpFaceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-              baseOptions: {
-                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-                delegate: "CPU"
-              },
-              outputFaceBlendshapes: false,
-              outputFacialTransformationMatrixes: false,
-              runningMode: "VIDEO",
-              numFaces: 1
-            });
-            console.log("FaceLandmarker initialized with CPU delegate");
-            return true;
-          } catch (e2) {
-            console.error("CPU delegate also failed:", e2);
-            return false;
-          }
-        }
-      }
-    } catch (outerError) {
-      console.error("Failed to initialize FaceLandmarker:", outerError);
-      // If it fails, hide the overlay so the user can at least play without AI
-      const calibrationOverlay = document.getElementById("calibrationOverlay");
-      if (calibrationOverlay) {
-        calibrationOverlay.classList.remove("active");
-      }
+      console.log("AI tracking is ready!");
+      return true;
+    } catch (error) {
+      console.error("AI failed to load:", error);
+      // CRITICAL: If the AI fails, hide the overlay so the buttons become clickable!
+      const overlay = document.getElementById("calibrationOverlay");
+      if (overlay) overlay.classList.remove("active");
       return false;
     }
   };
@@ -9318,7 +9242,7 @@ let mpFaceLandmarker = null; // Use 'mpFaceLandmarker' consistently
   };
   
 function processFrame() {
-  // SAFETY CHECK: If mpFaceLandmarker isn't ready, don't crash the script
+  // GUARD: This stops the "not defined" crash if the AI is still downloading
   if (!mpFaceLandmarker || !videoElement) {
     if (gazeCalibration.isCalibrating) {
       requestAnimationFrame(processFrame);
@@ -9330,7 +9254,7 @@ function processFrame() {
   if (videoElement.currentTime !== lastVideoTime) {
     lastVideoTime = videoElement.currentTime;
     
-    // This will now find the variable because you fixed it at the top
+    // Now this will never say "not defined"
     const results = mpFaceLandmarker.detectForVideo(videoElement, startTimeMs);
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
