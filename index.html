@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Viking Run</title>
+  <!-- Version: 1.0.0 - MediaPipe Fix -->
   <!-- MediaPipe Face Landmarker for Eye/Gaze Tracking + rPPG - Loaded dynamically -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -1382,7 +1383,7 @@
   </div>
 
 <script>
-let mpFaceLandmarker;
+let faceLandmarker;
 (() => {
   "use strict";
 
@@ -8849,11 +8850,11 @@ let mpFaceLandmarker;
   let calibrationClicks = 0;
   let lastGazeAction = 0;
   
-  // MediaPipe Face Landmarker
-  let faceLandmarker = null;
+  // MediaPipe Face Landmarker (using global faceLandmarker)
   let videoElement = null;
   let videoStream = null;
   let animationFrameId = null;
+  let lastVideoTime = -1;
   
   // Gaze calibration thresholds (learned from calibration)
   const gazeCalibration = {
@@ -9009,6 +9010,7 @@ let mpFaceLandmarker;
   
   // Initialize MediaPipe Face Landmarker - Reinstalled with proper error handling
   const initFaceLandmarker = async () => {
+    if (faceLandmarker) return true;
     try {
       // Ensure MediaPipe is loaded
       if (typeof window.tasksVision === 'undefined') {
@@ -9050,36 +9052,19 @@ let mpFaceLandmarker;
         throw new Error("Could not load FilesetResolver from any source");
       }
       
-// --- REPLACE THE OLD FUNCTION WITH THIS ONE ---
-async function initFaceLandmarker() {
-  // 1. Check if it's already loaded to save memory
-  if (window.mpFaceLandmarker) return true; 
-
-  try {
-    const vision = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-    );
-    
-    // 2. Assign to window.mpFaceLandmarker to make sure it's "Global"
-    window.mpFaceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-        delegate: "GPU" // Optimization: Makes the game run faster
-      },
-      outputFaceBlendshapes: true,
-      runningMode: "VIDEO",
-      numFaces: 1
-    });
-    
-    console.log("MediaPipe Face Landmarker Initialized");
-    return true;
-  } catch (error) {
-    console.error("MediaPipe failed to load:", error);
-    return false;
-  }
-}
-      
-      console.log("FaceLandmarker initialized successfully");
+      // Initialize with GPU delegate first
+      if (!faceLandmarker) {
+        try {
+          faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+              modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+              delegate: "GPU"
+            },
+            outputFaceBlendshapes: true,
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+          console.log("FaceLandmarker initialized successfully");
       return true;
     } catch (e) {
       console.error("Error initializing Face Landmarker:", e);
@@ -9317,19 +9302,31 @@ async function initFaceLandmarker() {
     }
   };
   
-  // Main processing loop
-  const processFrame = async () => {
-    if (!faceLandmarker || !videoElement || videoElement.readyState < 2) {
-      animationFrameId = requestAnimationFrame(processFrame);
-      return;
+function processFrame() {
+  // PERFECT FIX: Add this guard clause to prevent crashes
+  if (!faceLandmarker || !videoElement) {
+    if (gazeCalibration.isCalibrating) {
+      requestAnimationFrame(processFrame);
     }
+    return;
+  }
+
+  let startTimeMs = performance.now();
+  if (videoElement.currentTime !== lastVideoTime) {
+    lastVideoTime = videoElement.currentTime;
     
-    const startTimeMs = performance.now();
+    // This will now work because the names match!
     const results = faceLandmarker.detectForVideo(videoElement, startTimeMs);
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-      const landmarks = results.faceLandmarks[0];
-      
+      handleGazeAndHeartRate(results.faceLandmarks[0]);
+    }
+  }
+  
+  if (gazeCalibration.isCalibrating) {
+    requestAnimationFrame(processFrame);
+  }
+}
       // Calculate gaze
       const gaze = calculateGaze(landmarks);
       
