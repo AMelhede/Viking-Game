@@ -1387,9 +1387,9 @@
   </div>
 
 <script>
-// This makes sure the variable exists before any function tries to use it
-let mpFaceLandmarker = null; 
-let faceLandmarker = null; // We will keep both just to be 100% safe
+// Line 1253 - Use both names to be safe
+let faceLandmarker = null;
+let mpFaceLandmarker = null;
 (() => {
   "use strict";
 
@@ -9016,24 +9016,19 @@ let faceLandmarker = null; // We will keep both just to be 100% safe
   
   // Initialize MediaPipe Face Landmarker - Simplified version
   const initFaceLandmarker = async () => {
-    // If it's already there, don't reload it
-    if (mpFaceLandmarker) return true; 
-
+    const overlay = document.getElementById("calibrationOverlay");
     try {
-      // Ensure MediaPipe is loaded
+      // Ensure MediaPipe is available
       if (typeof window.tasksVision === 'undefined') {
-        const loaded = await loadMediaPipe();
-        if (!loaded) {
-          throw new Error("MediaPipe not available");
-        }
+        await loadMediaPipe();
       }
-      
       const { FaceLandmarker, FilesetResolver } = window.tasksVision;
+      
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
       );
       
-      // We save it to BOTH names so the rest of your code never gets confused
+      // This fills BOTH variables so the code never crashes on "undefined"
       const instance = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
@@ -9044,15 +9039,12 @@ let faceLandmarker = null; // We will keep both just to be 100% safe
         numFaces: 1
       });
 
-      mpFaceLandmarker = instance;
       faceLandmarker = instance;
-      
-      console.log("AI tracking is ready!");
+      mpFaceLandmarker = instance;
       return true;
     } catch (error) {
-      console.error("AI failed to load:", error);
-      // CRITICAL: If the AI fails, hide the overlay so the buttons become clickable!
-      const overlay = document.getElementById("calibrationOverlay");
+      console.error("AI failed, unlocking screen anyway:", error);
+      // UNLOCK SCREEN: This removes the invisible wall if AI fails
       if (overlay) overlay.classList.remove("active");
       return false;
     }
@@ -9251,7 +9243,7 @@ let faceLandmarker = null; // We will keep both just to be 100% safe
   };
   
 function processFrame() {
-  // GUARD: This stops the "not defined" crash if the AI is still downloading
+  // If the AI tool (mpFaceLandmarker) isn't ready yet, JUST WAIT. Don't crash.
   if (!mpFaceLandmarker || !videoElement) {
     if (gazeCalibration.isCalibrating) {
       requestAnimationFrame(processFrame);
@@ -9263,7 +9255,7 @@ function processFrame() {
   if (videoElement.currentTime !== lastVideoTime) {
     lastVideoTime = videoElement.currentTime;
     
-    // Now this will never say "not defined"
+    // Now this will always find the tool it needs
     const results = mpFaceLandmarker.detectForVideo(videoElement, startTimeMs);
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
