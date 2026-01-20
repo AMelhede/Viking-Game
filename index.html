@@ -701,11 +701,15 @@
       background: rgba(0, 0, 0, 0.9);
       z-index: 500;
       display: none;
+      opacity: 0;
+      pointer-events: none; /* Default: Don't block clicks */
       place-items: center;
     }
     
     .calibration-overlay.active {
       display: grid;
+      opacity: 1;
+      pointer-events: all; /* Only block clicks when calibrating */
     }
     
     .calibration-card {
@@ -1387,9 +1391,10 @@
   </div>
 
 <script>
-// Line 1253 - Use both names to be safe
-let faceLandmarker = null;
+// 1. Declare at the top of your module - This prevents the "not defined" error
 let mpFaceLandmarker = null;
+let videoElement = document.getElementById("webcam");
+let lastVideoTime = -1;
 (() => {
   "use strict";
 
@@ -8857,10 +8862,8 @@ let mpFaceLandmarker = null;
   let lastGazeAction = 0;
   
   // MediaPipe Face Landmarker (using global mpFaceLandmarker)
-  let videoElement = null;
   let videoStream = null;
   let animationFrameId = null;
-  let lastVideoTime = -1;
   
   // Gaze calibration thresholds (learned from calibration)
   const gazeCalibration = {
@@ -9014,9 +9017,15 @@ let mpFaceLandmarker = null;
     }
   });
   
-  // Initialize MediaPipe Face Landmarker - Simplified version
+  /** * FIXED: Initialization logic with a "Panic Mode"
+   * If this fails, it unlocks the screen so buttons work.
+   */
   const initFaceLandmarker = async () => {
+    if (mpFaceLandmarker) return true;
+    
     const overlay = document.getElementById("calibrationOverlay");
+    const status = document.getElementById("calibrationStatus");
+
     try {
       // Ensure MediaPipe is available
       if (typeof window.tasksVision === 'undefined') {
@@ -9028,8 +9037,7 @@ let mpFaceLandmarker = null;
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
       );
       
-      // This fills BOTH variables so the code never crashes on "undefined"
-      const instance = await FaceLandmarker.createFromOptions(vision, {
+      mpFaceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
           delegate: "GPU"
@@ -9038,14 +9046,14 @@ let mpFaceLandmarker = null;
         runningMode: "VIDEO",
         numFaces: 1
       });
-
-      faceLandmarker = instance;
-      mpFaceLandmarker = instance;
+      
+      console.log("✅ AI Tracking Ready");
       return true;
     } catch (error) {
-      console.error("AI failed, unlocking screen anyway:", error);
-      // UNLOCK SCREEN: This removes the invisible wall if AI fails
+      console.error("❌ AI Setup Failed. Unlocking buttons for manual play.", error);
+      // PANIC MODE: Hide overlay so user can still click buttons
       if (overlay) overlay.classList.remove("active");
+      if (status) status.textContent = "AI Tracking failed. Keyboard mode active.";
       return false;
     }
   };
@@ -9242,12 +9250,15 @@ let mpFaceLandmarker = null;
     }
   };
   
+/** * FIXED: Loop logic with a Safety Guard 
+ * If mpFaceLandmarker is missing, the game idles instead of crashing.
+ */
 function processFrame() {
-  // If the AI tool (mpFaceLandmarker) isn't ready yet, JUST WAIT. Don't crash.
+  // If calibration was turned off or AI isn't ready, stop the loop safely
+  if (!gazeCalibration.isCalibrating) return;
+
   if (!mpFaceLandmarker || !videoElement) {
-    if (gazeCalibration.isCalibrating) {
-      requestAnimationFrame(processFrame);
-    }
+    requestAnimationFrame(processFrame);
     return;
   }
 
@@ -9255,7 +9266,7 @@ function processFrame() {
   if (videoElement.currentTime !== lastVideoTime) {
     lastVideoTime = videoElement.currentTime;
     
-    // Now this will always find the tool it needs
+    // This variable is now globally defined at the top
     const results = mpFaceLandmarker.detectForVideo(videoElement, startTimeMs);
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
@@ -9263,9 +9274,7 @@ function processFrame() {
     }
   }
   
-  if (gazeCalibration.isCalibrating) {
-    requestAnimationFrame(processFrame);
-  }
+  requestAnimationFrame(processFrame);
 }
       // Calculate gaze
       const gaze = calculateGaze(landmarks);
