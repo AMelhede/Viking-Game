@@ -9065,48 +9065,53 @@ let faceLandmarker;
             numFaces: 1
           });
           console.log("FaceLandmarker initialized successfully");
-      return true;
-    } catch (e) {
-      console.error("Error initializing Face Landmarker:", e);
-      // Try with CPU delegate as fallback
-      try {
-        console.log("Retrying with CPU delegate...");
-        if (typeof window.tasksVision === 'undefined') {
-          throw new Error("MediaPipe still not available");
-        }
-        const { FaceLandmarker, FilesetResolver } = window.tasksVision;
-        const wasmPaths = [
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-        ];
-        let filesetResolver;
-        for (const wasmPath of wasmPaths) {
+          return true;
+        } catch (e) {
+          console.error("Error initializing Face Landmarker:", e);
+          // Try with CPU delegate as fallback
           try {
-            filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
-            break;
-          } catch (e) {
-            console.warn(`Failed to load from ${wasmPath}, trying next...`);
+            console.log("Retrying with CPU delegate...");
+            if (typeof window.tasksVision === 'undefined') {
+              throw new Error("MediaPipe still not available");
+            }
+            const { FaceLandmarker, FilesetResolver } = window.tasksVision;
+            const wasmPaths = [
+              "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
+              "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+            ];
+            let filesetResolver;
+            for (const wasmPath of wasmPaths) {
+              try {
+                filesetResolver = await FilesetResolver.forVisionTasks(wasmPath);
+                break;
+              } catch (e) {
+                console.warn(`Failed to load from ${wasmPath}, trying next...`);
+              }
+            }
+            if (!filesetResolver) {
+              throw new Error("Could not load FilesetResolver from any source");
+            }
+            faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+              baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                delegate: "CPU"
+              },
+              outputFaceBlendshapes: false,
+              outputFacialTransformationMatrixes: false,
+              runningMode: "VIDEO",
+              numFaces: 1
+            });
+            console.log("FaceLandmarker initialized with CPU delegate");
+            return true;
+          } catch (e2) {
+            console.error("CPU delegate also failed:", e2);
+            return false;
           }
         }
-        if (!filesetResolver) {
-          throw new Error("Could not load FilesetResolver from any source");
-        }
-        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-            delegate: "CPU"
-          },
-          outputFaceBlendshapes: false,
-          outputFacialTransformationMatrixes: false,
-          runningMode: "VIDEO",
-          numFaces: 1
-        });
-        console.log("FaceLandmarker initialized with CPU delegate");
-        return true;
-      } catch (e2) {
-        console.error("CPU delegate also failed:", e2);
-        return false;
       }
+    } catch (outerError) {
+      console.error("Failed to initialize FaceLandmarker:", outerError);
+      return false;
     }
   };
   
@@ -9303,7 +9308,7 @@ let faceLandmarker;
   };
   
 function processFrame() {
-  // PERFECT FIX: Add this guard clause to prevent crashes
+  // SAFETY CHECK: If faceLandmarker isn't ready yet, don't crash the game.
   if (!faceLandmarker || !videoElement) {
     if (gazeCalibration.isCalibrating) {
       requestAnimationFrame(processFrame);
@@ -9315,7 +9320,7 @@ function processFrame() {
   if (videoElement.currentTime !== lastVideoTime) {
     lastVideoTime = videoElement.currentTime;
     
-    // This will now work because the names match!
+    // Use the correct variable name here
     const results = faceLandmarker.detectForVideo(videoElement, startTimeMs);
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
