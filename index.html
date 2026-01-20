@@ -9249,31 +9249,31 @@ let lastVideoTime = -1;
     }
   };
   
-// FIXED: Loop logic with a Safety Guard 
-// If mpFaceLandmarker is missing, the game idles instead of crashing.
-function processFrame() {
-  // If calibration was turned off or AI isn't ready, stop the loop safely
-  if (!gazeCalibration.isCalibrating) return;
+  // FIXED: Loop logic with a Safety Guard 
+  // If mpFaceLandmarker is missing, the game idles instead of crashing.
+  const processFrame = () => {
+    // If calibration was turned off or AI isn't ready, stop the loop safely
+    if (!gazeCalibration.isCalibrating) return;
 
-  if (!mpFaceLandmarker || !videoElement) {
-    requestAnimationFrame(processFrame);
-    return;
-  }
-
-  let startTimeMs = performance.now();
-  if (videoElement.currentTime !== lastVideoTime) {
-    lastVideoTime = videoElement.currentTime;
-    
-    // This variable is now globally defined at the top
-    const results = mpFaceLandmarker.detectForVideo(videoElement, startTimeMs);
-    
-    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-      handleGazeAndHeartRate(results.faceLandmarks[0]);
+    if (!mpFaceLandmarker || !videoElement) {
+      requestAnimationFrame(processFrame);
+      return;
     }
-  }
-  
-  requestAnimationFrame(processFrame);
-}
+
+    let startTimeMs = performance.now();
+    if (videoElement.currentTime !== lastVideoTime) {
+      lastVideoTime = videoElement.currentTime;
+      
+      // This variable is now globally defined at the top
+      const results = mpFaceLandmarker.detectForVideo(videoElement, startTimeMs);
+      
+      if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+        handleGazeAndHeartRate(results.faceLandmarks[0]);
+      }
+    }
+    
+    requestAnimationFrame(processFrame);
+  };
 
   // Handle gaze and heart rate from face landmarks
   const handleGazeAndHeartRate = (landmarks) => {
