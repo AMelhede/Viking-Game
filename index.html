@@ -10117,65 +10117,69 @@ let lastVideoTime = -1;
       });
       
       // Eye tracking button - start calibration (variables already declared above)
-    if (eyeTrackBtn) {
-      eyeTrackBtn.onclick = async () => {
-        // Ensure MediaPipe is loaded
-        if (typeof window.tasksVision === 'undefined') {
-          const loaded = await loadMediaPipe();
-          if (!loaded) {
-            alert("Eye tracking is not available. Please ensure you have a stable internet connection and try refreshing the page.");
+      if (eyeTrackBtn) {
+        eyeTrackBtn.onclick = async () => {
+          // Ensure MediaPipe is loaded
+          if (typeof window.tasksVision === 'undefined') {
+            const loaded = await loadMediaPipe();
+            if (!loaded) {
+              alert("Eye tracking is not available. Please ensure you have a stable internet connection and try refreshing the page.");
+              return;
+            }
+          }
+          // Show calibration overlay
+          if (calibrationOverlay) {
+            calibrationOverlay.classList.add("active");
+          }
+          
+          // Reset calibration
+          calibrationClicks = 0;
+          gazeCalibration.samples = [];
+          if (calibrationPoints && calibrationPoints.length > 0) {
+            calibrationPoints.forEach(p => {
+              p.classList.remove("clicked");
+              p.textContent = "";
+              p.style.transform = "";
+            });
+          }
+          if (calibrationStatus) {
+            calibrationStatus.textContent = "Initializing camera and face tracking...";
+          }
+          
+          // Initialize MediaPipe and camera
+          const mpInit = await initFaceLandmarker();
+          if (!mpInit) {
+            if (calibrationOverlay) {
+              calibrationOverlay.classList.remove("active");
+            }
+            alert("Could not initialize face tracking.");
             return;
           }
-        }
-        // Show calibration overlay
-        if (calibrationOverlay) {
-          calibrationOverlay.classList.add("active");
-        }
-        
-        // Reset calibration
-        calibrationClicks = 0;
-        gazeCalibration.samples = [];
-        if (calibrationPoints && calibrationPoints.length > 0) {
-          calibrationPoints.forEach(p => {
-            p.classList.remove("clicked");
-            p.textContent = "";
-            p.style.transform = "";
-          });
-        }
-        if (calibrationStatus) {
-          calibrationStatus.textContent = "Initializing camera and face tracking...";
-        }
-        
-        // Initialize MediaPipe and camera
-        const mpInit = await initFaceLandmarker();
-        if (!mpInit) {
-          if (calibrationOverlay) {
-            calibrationOverlay.classList.remove("active");
+          
+          const camInit = await startCamera();
+          if (!camInit) {
+            if (calibrationOverlay) {
+              calibrationOverlay.classList.remove("active");
+            }
+            return;
           }
-          alert("Could not initialize face tracking.");
-          return;
-        }
-        
-        const camInit = await startCamera();
-        if (!camInit) {
-          if (calibrationOverlay) {
-            calibrationOverlay.classList.remove("active");
+          
+          // Start processing
+          gazeCalibration.isCalibrating = true;
+          processFrame();
+          
+          if (calibrationStatus) {
+            calibrationStatus.textContent = "Look at each point and click it 5 times (0/9)";
           }
-          return;
-        }
-        
-        // Start processing
-        gazeCalibration.isCalibrating = true;
-        processFrame();
-        
-        if (calibrationStatus) {
-          calibrationStatus.textContent = "Look at each point and click it 5 times (0/9)";
-        }
-      };
+        };
+      }
+      
+      requestAnimationFrame(tick);
+      setTimeout(showDailyBonus, 500);
     }
-    
-    requestAnimationFrame(tick);
-    setTimeout(showDailyBonus, 500);
+  }
+  }
+  }
   }
 })();
 </script>
