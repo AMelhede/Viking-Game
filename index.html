@@ -9376,131 +9376,6 @@ let lastVideoTime = -1;
   };
   
   // Eye tracking button handler moved to DOMContentLoaded block
-  
-  // Calibration point clicks
-  calibrationPoints.forEach(point => {
-    let clickCount = 0;
-    point.onclick = () => {
-      clickCount++;
-      
-      // Need 5 clicks per point
-      if (clickCount >= 5 && !point.classList.contains("clicked")) {
-        point.classList.add("clicked");
-        calibrationClicks++;
-        
-        if (calibrationStatus) {
-          if (calibrationClicks >= 9) {
-            calibrationStatus.textContent = "✓ Calibration complete! Click the button below to start.";
-            
-            // Calculate thresholds from samples
-            if (gazeCalibration.samples.length > 50) {
-              gazeCalibration.samples.sort((a, b) => a - b);
-              const len = gazeCalibration.samples.length;
-              gazeCalibration.upThreshold = gazeCalibration.samples[Math.floor(len * 0.25)];
-              gazeCalibration.downThreshold = gazeCalibration.samples[Math.floor(len * 0.75)];
-            }
-            gazeCalibration.isCalibrating = false;
-          } else {
-            calibrationStatus.textContent = `Look at each point and click it 5 times (${calibrationClicks}/9)`;
-          }
-        }
-      } else if (!point.classList.contains("clicked")) {
-        point.style.transform = `scale(${1 + clickCount * 0.1})`;
-        point.textContent = `${clickCount}/5`;
-      }
-    };
-  });
-  
-  // Finish calibration and start game
-  if (finishCalibrationBtn) {
-    finishCalibrationBtn.onclick = () => {
-      if (calibrationClicks < 5) {
-        alert("Please click at least 5 calibration points for better accuracy.");
-        return;
-      }
-      
-      // Hide calibration overlay
-      calibrationOverlay.classList.remove("active");
-      
-      // Enable eye tracking
-      eyeTrackingEnabled = true;
-      gazeCalibration.isCalibrating = false;
-      
-      // Show indicators
-      if (eyeTrackingIndicator) {
-        eyeTrackingIndicator.classList.add("active");
-      }
-      
-      // Show BPM display
-      const bpmDisplay = $("bpmDisplay");
-      if (bpmDisplay) {
-        bpmDisplay.classList.add("active");
-      }
-      
-      // Update button text
-      if (eyeTrackBtn) {
-        eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
-        eyeTrackBtn.classList.add('active');
-      }
-      
-      // Show gaze cursor
-      if (gazeCursor) {
-        gazeCursor.classList.add("active");
-      }
-      
-      // Hide video preview (minimize it)
-      if (videoElement) {
-        videoElement.style.width = '80px';
-        videoElement.style.height = '60px';
-        videoElement.style.opacity = '0.5';
-      }
-      
-      // Update hint
-      const hint = $("hint");
-      if (hint) {
-        hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
-      }
-      
-      // Start the game
-      if (!world.started) {
-        start();
-      }
-    };
-  }
-  
-  // Toggle eye tracking on/off
-  window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyE" && mediapipeAvailable && mpFaceLandmarker) {
-      const hint = $("hint");
-      const bpmDisplay = $("bpmDisplay");
-      if (eyeTrackingEnabled) {
-        eyeTrackingEnabled = false;
-        if (eyeTrackingIndicator) eyeTrackingIndicator.classList.remove("active");
-        if (gazeCursor) gazeCursor.classList.remove("active");
-        if (gazeZoneIndicator) gazeZoneIndicator.style.display = 'none';
-        if (bpmDisplay) bpmDisplay.classList.remove("active");
-        if (eyeTrackBtn) {
-          eyeTrackBtn.textContent = "👁️ Enable Eye Tracking";
-          eyeTrackBtn.classList.remove('active');
-        }
-        if (hint) {
-          hint.innerHTML = '<kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Press <kbd>E</kbd> for Eye Tracking';
-        }
-      } else {
-        eyeTrackingEnabled = true;
-        if (eyeTrackingIndicator) eyeTrackingIndicator.classList.add("active");
-        if (gazeCursor) gazeCursor.classList.add("active");
-        if (bpmDisplay) bpmDisplay.classList.add("active");
-        if (eyeTrackBtn) {
-          eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
-          eyeTrackBtn.classList.add('active');
-        }
-        if (hint) {
-          hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
-        }
-      }
-    }
-  });
 
   // Daily Bonus System Initialization
   const showDailyBonus = () => {
@@ -10108,11 +9983,140 @@ let lastVideoTime = -1;
       }
     };
     
-    if (shareBtn) {
-      shareBtn.onclick = shareAchievement;
-    }
-    
-    // Eye tracking button - start calibration (variables already declared above)
+      if (shareBtn) {
+        shareBtn.onclick = shareAchievement;
+      }
+      
+      // Calibration point clicks
+      if (calibrationPoints && calibrationPoints.length > 0) {
+        calibrationPoints.forEach(point => {
+          let clickCount = 0;
+          point.onclick = () => {
+            clickCount++;
+            
+            // Need 5 clicks per point
+            if (clickCount >= 5 && !point.classList.contains("clicked")) {
+              point.classList.add("clicked");
+              calibrationClicks++;
+              
+              if (calibrationStatus) {
+                if (calibrationClicks >= 9) {
+                  calibrationStatus.textContent = "✓ Calibration complete! Click the button below to start.";
+                  
+                  // Calculate thresholds from samples
+                  if (gazeCalibration.samples.length > 50) {
+                    gazeCalibration.samples.sort((a, b) => a - b);
+                    const len = gazeCalibration.samples.length;
+                    gazeCalibration.upThreshold = gazeCalibration.samples[Math.floor(len * 0.25)];
+                    gazeCalibration.downThreshold = gazeCalibration.samples[Math.floor(len * 0.75)];
+                  }
+                  gazeCalibration.isCalibrating = false;
+                } else {
+                  calibrationStatus.textContent = `Look at each point and click it 5 times (${calibrationClicks}/9)`;
+                }
+              }
+            } else if (!point.classList.contains("clicked")) {
+              point.style.transform = `scale(${1 + clickCount * 0.1})`;
+              point.textContent = `${clickCount}/5`;
+            }
+          };
+        });
+      }
+      
+      // Finish calibration and start game
+      if (finishCalibrationBtn) {
+        finishCalibrationBtn.onclick = () => {
+          if (calibrationClicks < 5) {
+            alert("Please click at least 5 calibration points for better accuracy.");
+            return;
+          }
+          
+          // Hide calibration overlay
+          if (calibrationOverlay) {
+            calibrationOverlay.classList.remove("active");
+          }
+          
+          // Enable eye tracking
+          eyeTrackingEnabled = true;
+          gazeCalibration.isCalibrating = false;
+          
+          // Show indicators
+          if (eyeTrackingIndicator) {
+            eyeTrackingIndicator.classList.add("active");
+          }
+          
+          // Show BPM display
+          const bpmDisplay = $("bpmDisplay");
+          if (bpmDisplay) {
+            bpmDisplay.classList.add("active");
+          }
+          
+          // Update button text
+          if (eyeTrackBtn) {
+            eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
+            eyeTrackBtn.classList.add('active');
+          }
+          
+          // Show gaze cursor
+          if (gazeCursor) {
+            gazeCursor.classList.add("active");
+          }
+          
+          // Hide video preview (minimize it)
+          if (videoElement) {
+            videoElement.style.width = '80px';
+            videoElement.style.height = '60px';
+            videoElement.style.opacity = '0.5';
+          }
+          
+          // Update hint
+          const hint = $("hint");
+          if (hint) {
+            hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
+          }
+          
+          // Start the game
+          if (!world.started) {
+            start();
+          }
+        };
+      }
+      
+      // Toggle eye tracking on/off
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "KeyE" && mediapipeAvailable && mpFaceLandmarker) {
+          const hint = $("hint");
+          const bpmDisplay = $("bpmDisplay");
+          if (eyeTrackingEnabled) {
+            eyeTrackingEnabled = false;
+            if (eyeTrackingIndicator) eyeTrackingIndicator.classList.remove("active");
+            if (gazeCursor) gazeCursor.classList.remove("active");
+            if (gazeZoneIndicator) gazeZoneIndicator.style.display = 'none';
+            if (bpmDisplay) bpmDisplay.classList.remove("active");
+            if (eyeTrackBtn) {
+              eyeTrackBtn.textContent = "👁️ Enable Eye Tracking";
+              eyeTrackBtn.classList.remove('active');
+            }
+            if (hint) {
+              hint.innerHTML = '<kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Press <kbd>E</kbd> for Eye Tracking';
+            }
+          } else {
+            eyeTrackingEnabled = true;
+            if (eyeTrackingIndicator) eyeTrackingIndicator.classList.add("active");
+            if (gazeCursor) gazeCursor.classList.add("active");
+            if (bpmDisplay) bpmDisplay.classList.add("active");
+            if (eyeTrackBtn) {
+              eyeTrackBtn.textContent = "👁️ Eye Tracking ON";
+              eyeTrackBtn.classList.add('active');
+            }
+            if (hint) {
+              hint.innerHTML = '<span style="color:#4ade80;font-weight:700;">👁️ EYE TRACKING ACTIVE</span> | Look <kbd>UP</kbd> = Jump | Look <kbd>DOWN</kbd> = Duck | Press <kbd>E</kbd> to toggle';
+            }
+          }
+        }
+      });
+      
+      // Eye tracking button - start calibration (variables already declared above)
     if (eyeTrackBtn) {
       eyeTrackBtn.onclick = async () => {
         // Ensure MediaPipe is loaded
