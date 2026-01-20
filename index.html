@@ -2984,7 +2984,7 @@ let lastVideoTime = -1;
   
   // Start menu music on first user interaction
   const startMenuMusicOnInteraction = () => {
-    if (!menuMusicPlaying && !menuMusicMuted && !world.started) {
+    if (!menuMusicPlaying && !menuMusicMuted) {
       startMenuMusic();
     }
     document.removeEventListener('click', startMenuMusicOnInteraction);
