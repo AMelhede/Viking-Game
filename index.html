@@ -2373,7 +2373,7 @@ let lastVideoTime = -1;
       musicGain.connect(musicContext.destination);
       
       // Get current level for music theme
-      const score = world.score || 0;
+      const score = (typeof world !== 'undefined' && world.score) || 0;
       const currentLevel = LevelSystem.levels.slice().reverse().find(l => score >= l.unlockScore) || LevelSystem.levels[0];
       currentMusicLevel = currentLevel.id;
       const theme = LevelMusicThemes[currentMusicLevel] || LevelMusicThemes[1];
@@ -2977,7 +2977,7 @@ let lastVideoTime = -1;
     }
     if (muted && menuMusicPlaying) {
       stopMenuMusic();
-    } else if (!muted && !menuMusicPlaying && !world.started) {
+    } else if (!muted && !menuMusicPlaying) {
       startMenuMusic();
     }
   };
