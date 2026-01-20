@@ -1383,7 +1383,7 @@
   </div>
 
 <script>
-let faceLandmarker;
+let mpFaceLandmarker = null; // Use 'mpFaceLandmarker' consistently
 (() => {
   "use strict";
 
@@ -8850,7 +8850,7 @@ let faceLandmarker;
   let calibrationClicks = 0;
   let lastGazeAction = 0;
   
-  // MediaPipe Face Landmarker (using global faceLandmarker)
+  // MediaPipe Face Landmarker (using global mpFaceLandmarker)
   let videoElement = null;
   let videoStream = null;
   let animationFrameId = null;
@@ -9010,7 +9010,7 @@ let faceLandmarker;
   
   // Initialize MediaPipe Face Landmarker - Reinstalled with proper error handling
   const initFaceLandmarker = async () => {
-    if (faceLandmarker) return true;
+    if (mpFaceLandmarker) return true;
     try {
       // Ensure MediaPipe is loaded
       if (typeof window.tasksVision === 'undefined') {
@@ -9053,9 +9053,9 @@ let faceLandmarker;
       }
       
       // Initialize with GPU delegate first
-      if (!faceLandmarker) {
+      if (!mpFaceLandmarker) {
         try {
-          faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          mpFaceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
               modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
               delegate: "GPU"
@@ -9068,6 +9068,11 @@ let faceLandmarker;
           return true;
         } catch (e) {
           console.error("Error initializing Face Landmarker:", e);
+          // If it fails, hide the overlay so the user can at least play without AI
+          const calibrationOverlay = document.getElementById("calibrationOverlay");
+          if (calibrationOverlay) {
+            calibrationOverlay.classList.remove("active");
+          }
           // Try with CPU delegate as fallback
           try {
             console.log("Retrying with CPU delegate...");
@@ -9091,7 +9096,7 @@ let faceLandmarker;
             if (!filesetResolver) {
               throw new Error("Could not load FilesetResolver from any source");
             }
-            faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            mpFaceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
               baseOptions: {
                 modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
                 delegate: "CPU"
@@ -9111,6 +9116,11 @@ let faceLandmarker;
       }
     } catch (outerError) {
       console.error("Failed to initialize FaceLandmarker:", outerError);
+      // If it fails, hide the overlay so the user can at least play without AI
+      const calibrationOverlay = document.getElementById("calibrationOverlay");
+      if (calibrationOverlay) {
+        calibrationOverlay.classList.remove("active");
+      }
       return false;
     }
   };
@@ -9308,8 +9318,8 @@ let faceLandmarker;
   };
   
 function processFrame() {
-  // SAFETY CHECK: If faceLandmarker isn't ready yet, don't crash the game.
-  if (!faceLandmarker || !videoElement) {
+  // SAFETY CHECK: If mpFaceLandmarker isn't ready, don't crash the script
+  if (!mpFaceLandmarker || !videoElement) {
     if (gazeCalibration.isCalibrating) {
       requestAnimationFrame(processFrame);
     }
@@ -9320,8 +9330,8 @@ function processFrame() {
   if (videoElement.currentTime !== lastVideoTime) {
     lastVideoTime = videoElement.currentTime;
     
-    // Use the correct variable name here
-    const results = faceLandmarker.detectForVideo(videoElement, startTimeMs);
+    // This will now find the variable because you fixed it at the top
+    const results = mpFaceLandmarker.detectForVideo(videoElement, startTimeMs);
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
       handleGazeAndHeartRate(results.faceLandmarks[0]);
@@ -9528,7 +9538,7 @@ function processFrame() {
   
   // Toggle eye tracking on/off
   window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyE" && mediapipeAvailable && faceLandmarker) {
+    if (e.code === "KeyE" && mediapipeAvailable && mpFaceLandmarker) {
       const hint = $("hint");
       const bpmDisplay = $("bpmDisplay");
       if (eyeTrackingEnabled) {
