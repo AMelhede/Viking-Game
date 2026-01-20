@@ -1393,7 +1393,7 @@
 <script>
 // 1. Declare at the top of your module - This prevents the "not defined" error
 let mpFaceLandmarker = null;
-let videoElement = document.getElementById("webcam");
+let videoElement = null; // Will be initialized when camera starts
 let lastVideoTime = -1;
 (() => {
   "use strict";
@@ -9017,9 +9017,8 @@ let lastVideoTime = -1;
     }
   });
   
-  /** * FIXED: Initialization logic with a "Panic Mode"
-   * If this fails, it unlocks the screen so buttons work.
-   */
+  // FIXED: Initialization logic with a "Panic Mode"
+  // If this fails, it unlocks the screen so buttons work.
   const initFaceLandmarker = async () => {
     if (mpFaceLandmarker) return true;
     
@@ -9250,9 +9249,8 @@ let lastVideoTime = -1;
     }
   };
   
-/** * FIXED: Loop logic with a Safety Guard 
- * If mpFaceLandmarker is missing, the game idles instead of crashing.
- */
+// FIXED: Loop logic with a Safety Guard 
+// If mpFaceLandmarker is missing, the game idles instead of crashing.
 function processFrame() {
   // If calibration was turned off or AI isn't ready, stop the loop safely
   if (!gazeCalibration.isCalibrating) return;
@@ -9276,8 +9274,11 @@ function processFrame() {
   
   requestAnimationFrame(processFrame);
 }
-      // Calculate gaze
-      const gaze = calculateGaze(landmarks);
+
+  // Handle gaze and heart rate from face landmarks
+  const handleGazeAndHeartRate = (landmarks) => {
+    // Calculate gaze
+    const gaze = calculateGaze(landmarks);
       
       // During calibration, collect samples
       if (gazeCalibration.isCalibrating) {
@@ -9372,9 +9373,6 @@ function processFrame() {
           // Ignore rPPG errors
         }
       }
-    }
-    
-    animationFrameId = requestAnimationFrame(processFrame);
   };
   
   // Eye tracking button handler moved to DOMContentLoaded block
