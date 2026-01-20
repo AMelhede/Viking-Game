@@ -9020,6 +9020,15 @@ let faceLandmarker = null; // We will keep both just to be 100% safe
     if (mpFaceLandmarker) return true; 
 
     try {
+      // Ensure MediaPipe is loaded
+      if (typeof window.tasksVision === 'undefined') {
+        const loaded = await loadMediaPipe();
+        if (!loaded) {
+          throw new Error("MediaPipe not available");
+        }
+      }
+      
+      const { FaceLandmarker, FilesetResolver } = window.tasksVision;
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
       );
