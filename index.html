@@ -1395,24 +1395,38 @@
 let mpFaceLandmarker = null;
 let videoElement = null; // Will be initialized when camera starts
 let lastVideoTime = -1;
+
+// Make $ globally accessible
+window.$ = (id) => document.getElementById(id);
+
 (() => {
   "use strict";
+  console.log("🚀 IIFE started executing...");
 
-  const $ = (id) => document.getElementById(id);
-  const rand = (a, b) => a + Math.random() * (b - a);
-  const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+  try {
+    // $ is now global, no need to define it here
+    console.log("✅ $ function is global");
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+    console.log("✅ Helper functions defined");
 
-  const canvas = $("c");
-  const shell = $("shell");
-  const scoreV = $("scoreV");
-  const meadV = $("meadV");
-  const statePill = $("statePill");
-  const overlay = $("overlay");
-  // Button references moved to DOMContentLoaded to ensure DOM is ready
+    const canvas = $("c");
+    const shell = $("shell");
+    const scoreV = $("scoreV");
+    const meadV = $("meadV");
+    const statePill = $("statePill");
+    const overlay = $("overlay");
+    console.log("✅ DOM elements retrieved", { canvas: !!canvas, shell: !!shell });
+    // Button references moved to DOMContentLoaded to ensure DOM is ready
 
-  let W, H, DPR, ctx;
-  const resize = () => {
-    const rect = shell.getBoundingClientRect();
+    console.log("📍 About to define resize function");
+    let W, H, DPR, ctx;
+    const resize = () => {
+      if (!shell || !canvas) {
+        console.error("❌ shell or canvas is null in resize!");
+        return;
+      }
+      const rect = shell.getBoundingClientRect();
     DPR = Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
     W = Math.floor(rect.width); H = Math.floor(rect.height);
     canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
@@ -1422,7 +1436,13 @@ let lastVideoTime = -1;
   };
   window.addEventListener("resize", resize);
   resize(); // Initialize immediately
+  console.log("✅ Resize function defined and called");
 
+  // Define OPT before it's used
+  const OPT = { sound: true };
+  console.log("✅ OPT defined");
+
+  console.log("📍 About to define beep function");
   let AC = null;
   const beep = (type, freq, dur, gain = 0.2) => {
     if (!OPT.sound) return;
@@ -1433,7 +1453,9 @@ let lastVideoTime = -1;
     o.connect(g); g.connect(AC.destination);
     o.start(); o.stop(AC.currentTime + dur);
   };
+  console.log("✅ beep function defined");
 
+  console.log("📍 About to define powerupSounds");
   // Powerup looping sounds manager
   const powerupSounds = {
     speedBoost: null,
@@ -1461,6 +1483,36 @@ let lastVideoTime = -1;
     }
   };
   
+  // Sound Effects System - Define helper functions BEFORE they're used
+  
+  // White noise buffer
+  const createNoiseBuffer = (duration) => {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    const bufferSize = AC.sampleRate * duration;
+    const buffer = AC.createBuffer(1, bufferSize, AC.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  };
+  
+  // Formant filter
+  const createFormant = (freq, q, gain) => {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    const filter = AC.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = freq;
+    filter.Q.value = q;
+    const gn = AC.createGain();
+    gn.gain.value = gain;
+    filter.connect(gn);
+    return { filter, gain: gn };
+  };
+  
+  console.log("✅ createNoiseBuffer and createFormant defined");
+  
+  console.log("📍 About to define startPowerupSound");
   const startPowerupSound = (type) => {
     if (!OPT.sound) return;
     if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -1600,32 +1652,11 @@ let lastVideoTime = -1;
       powerupSounds[type] = source;
     }
   };
+  console.log("✅ startPowerupSound defined");
   
-  // Sound Effects System
+  // Sound Effects System - Helper functions moved above (before startPowerupSound)
   
-  // White noise buffer
-  const createNoiseBuffer = (duration) => {
-    const bufferSize = AC.sampleRate * duration;
-    const buffer = AC.createBuffer(1, bufferSize, AC.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
-    return buffer;
-  };
-  
-  // Formant filter
-  const createFormant = (freq, q, gain) => {
-    const filter = AC.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = freq;
-    filter.Q.value = q;
-    const gn = AC.createGain();
-    gn.gain.value = gain;
-    filter.connect(gn);
-    return { filter, gain: gn };
-  };
-  
+  console.log("📍 About to define AudioLoader");
   // Audio file loader with synthesis fallback
   const AudioLoader = {
     files: {},
@@ -1692,12 +1723,20 @@ let lastVideoTime = -1;
       }
     }
   };
+  console.log("✅ AudioLoader defined");
   
   // Try to load audio files (non-blocking, graceful error handling)
-  AudioLoader.init().catch(() => {
-    // Silently fail - synthesis will be used as fallback
-  });
+  console.log("📍 About to call AudioLoader.init()");
+  try {
+    AudioLoader.init().catch(() => {
+      // Silently fail - synthesis will be used as fallback
+    });
+    console.log("✅ AudioLoader.init() called (async, non-blocking)");
+  } catch (e) {
+    console.error("❌ Error calling AudioLoader.init():", e);
+  }
   
+  console.log("📍 About to define playSFX function");
   const playSFX = (sfxType) => {
     if (!OPT.sound) return;
     
@@ -2287,7 +2326,9 @@ let lastVideoTime = -1;
       }
     }
   };
-
+  console.log("✅ playSFX function defined");
+  
+  console.log("📍 About to define music variables");
   // Background Music
   let musicContext = null;
   let musicPlaying = false;
@@ -2374,8 +2415,13 @@ let lastVideoTime = -1;
       
       // Get current level for music theme
       const score = (typeof world !== 'undefined' && world.score) || 0;
-      const currentLevel = LevelSystem.levels.slice().reverse().find(l => score >= l.unlockScore) || LevelSystem.levels[0];
-      currentMusicLevel = currentLevel.id;
+      if (typeof LevelSystem === 'undefined' || !LevelSystem || !LevelSystem.levels) {
+        console.warn("LevelSystem not ready yet, using default level");
+        currentMusicLevel = 1;
+      } else {
+        const currentLevel = LevelSystem.levels.slice().reverse().find(l => score >= l.unlockScore) || LevelSystem.levels[0];
+        currentMusicLevel = currentLevel.id;
+      }
       const theme = LevelMusicThemes[currentMusicLevel] || LevelMusicThemes[1];
       
       // Create a deep, epic Nordic drone
@@ -3004,8 +3050,9 @@ let lastVideoTime = -1;
   document.addEventListener('click', startMusicOnInteraction);
   document.addEventListener('keydown', startMusicOnInteraction);
 
-  const OPT = { sound: true };
+  // OPT moved to line 1426 to fix ReferenceError
   
+  console.log("📍 About to define engagement object");
   // Engagement & Addiction Systems
   const engagement = {
     combo: { count: 0, timer: 0, maxCombo: 0 },
@@ -3029,6 +3076,36 @@ let lastVideoTime = -1;
     maxComboPerLevel: JSON.parse(localStorage.getItem('maxComboPerLevel') || '{}'),
     sessionStartTime: Date.now()
   };
+  console.log("✅ engagement object defined");
+  
+  // DEFINE WORLD FIRST - before any other systems that might reference it
+  console.log("📍 About to define world object");
+  let world;
+  try {
+    world = { 
+      started: false, paused: false, over: false, 
+      score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
+      lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
+      difficulty: 'normal', currentLevel: 1,
+      nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0,
+      bossSpawnsThisLevel: {},
+      powerups: {
+        speedBoost: { active: false, timeLeft: 0 },
+        invincibility: { active: false, timeLeft: 0 },
+        scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
+        vikingShip: { active: false, timeLeft: 0 },
+        respawn: { count: 0 },
+        respawnPlus: { count: 0 }
+      }
+    };
+    console.log("✅ world object created");
+  } catch (e) {
+    console.error("❌ Error creating world object:", e);
+    world = { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: 1, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
+  }
+  window.world = world;
+  console.log("✅ window.world set:", !!window.world);
+  console.log("📍 About to define DailyBonus (before resetWorld and start)");
   
   // Daily Bonus System
   const DailyBonus = {
@@ -3058,9 +3135,12 @@ let lastVideoTime = -1;
       return this.rewards[(streak - 1) % 7];
     }
   };
+  console.log("✅ DailyBonus object defined");
   
   // Daily Challenges System
-  const DailyChallenges = {
+  let DailyChallenges; // Declare outside try-catch so it's accessible later
+  try {
+  DailyChallenges = {
     challenges: [],
     init() {
       const today = new Date().toDateString();
@@ -3088,7 +3168,9 @@ let lastVideoTime = -1;
           challenge.progress += amount;
           if (challenge.progress >= challenge.target) {
             challenge.completed = true;
-            world.score += challenge.reward;
+            if (typeof world !== 'undefined' && world) {
+              world.score += challenge.reward;
+            }
             showAchievement({ name: 'Challenge Complete!', desc: challenge.desc, icon: '🎯', rarity: 'gold' });
           }
         }
@@ -3100,6 +3182,10 @@ let lastVideoTime = -1;
       return this.challenges.filter(c => !c.completed).length;
     }
   };
+  console.log("✅ DailyChallenges object defined");
+  } catch (e) {
+    console.error("❌ Error defining DailyChallenges:", e);
+  }
   
   // Weekly Challenges System - Maximum Addiction Potential
   const WeeklyChallenges = {
@@ -3208,7 +3294,9 @@ let lastVideoTime = -1;
           
           if (challenge.progress >= challenge.target) {
             challenge.completed = true;
-            world.score += challenge.reward;
+            if (typeof world !== 'undefined' && world) {
+              world.score += challenge.reward;
+            }
             PrestigeSystem.points += challenge.prestigeReward || 0;
             localStorage.setItem('prestigePoints', PrestigeSystem.points.toString());
             showAchievement({ 
@@ -3246,9 +3334,12 @@ let lastVideoTime = -1;
       return { hours, minutes, total: msRemaining };
     }
   };
+  console.log("✅ WeeklyChallenges object defined");
   
   // Time-Limited Events System - Maximum Addiction Potential
-  const EventSystem = {
+  let EventSystem; // Declare outside try-catch so it's accessible later
+  try {
+  EventSystem = {
     currentEvent: null,
     events: [],
     
@@ -3358,9 +3449,15 @@ let lastVideoTime = -1;
       return { hours, minutes, total: msRemaining };
     }
   };
+  console.log("✅ EventSystem object defined");
+  } catch (e) {
+    console.error("❌ Error defining EventSystem:", e);
+  }
   
   // Level Mastery System
-  const LevelMastery = {
+  let LevelMastery; // Declare outside try-catch so it's accessible later
+  try {
+  LevelMastery = {
     stars: JSON.parse(localStorage.getItem('levelMastery') || '{}'),
     checkLevel(levelId, score, deaths) {
       const key = `level_${levelId}`;
@@ -3388,9 +3485,22 @@ let lastVideoTime = -1;
       return this.stars[`level_${levelId}`] || 0;
     }
   };
+  console.log("✅ LevelMastery object defined");
+  } catch (e) {
+    console.error("❌ Error defining LevelMastery:", e);
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3489',message:'After LevelMastery, before PrestigeSystem',data:{difficultyModesExists:(()=>{try{return typeof DifficultyModes!=='undefined'}catch(e){return false}})(),showStickinessNotificationExists:(()=>{try{return typeof showStickinessNotification!=='undefined'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   
   // Prestige System - Maximum Addiction Potential
-  const PrestigeSystem = {
+  let PrestigeSystem; // Declare outside try-catch so it's accessible later
+  try {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3491',message:'About to define PrestigeSystem',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  PrestigeSystem = {
     level: parseInt(localStorage.getItem('prestigeLevel') || '0'),
     points: parseInt(localStorage.getItem('prestigePoints') || '0'),
     upgrades: JSON.parse(localStorage.getItem('prestigeUpgrades') || '{}'),
@@ -3424,6 +3534,9 @@ let lastVideoTime = -1;
     
     calculatePoints(score) {
       // Points = score / 10000, with bonus for difficulty
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3526',message:'PrestigeSystem.calculatePoints accessing DifficultyModes',data:{difficultyModesExists:(()=>{try{return typeof DifficultyModes!=='undefined'}catch(e){return false}})(),difficultyModesGetCurrentExists:(()=>{try{return typeof DifficultyModes!=='undefined'&&typeof DifficultyModes.getCurrent==='function'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
       const diff = DifficultyModes.getCurrent();
       const basePoints = Math.floor(score / 10000);
       const difficultyMultiplier = {
@@ -3446,7 +3559,12 @@ let lastVideoTime = -1;
       localStorage.setItem('prestigePoints', this.points.toString());
       
       // Show prestige notification
-      showStickinessNotification(`⭐ PRESTIGE ${this.level} UNLOCKED! +${pointsEarned.toLocaleString()} Prestige Points`, 'info');
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3548',message:'PrestigeSystem.prestige calling showStickinessNotification',data:{showStickinessNotificationExists:(()=>{try{return typeof showStickinessNotification!=='undefined'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+      // #endregion
+      if (typeof showStickinessNotification !== 'undefined') {
+        showStickinessNotification(`⭐ PRESTIGE ${this.level} UNLOCKED! +${pointsEarned.toLocaleString()} Prestige Points`, 'info');
+      }
       playSFX('powerup');
       
       return true;
@@ -3492,9 +3610,21 @@ let lastVideoTime = -1;
       return 1.0 - (this.upgrades.enemySpeedReduction || 0) * 0.03; // -3% enemy speed per level
     }
   };
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3593',message:'PrestigeSystem object definition complete',data:{prestigeSystemType:typeof PrestigeSystem},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  console.log("✅ PrestigeSystem object defined");
+  } catch (e) {
+    console.error("❌ Error defining PrestigeSystem:", e);
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3596',message:'ERROR in PrestigeSystem definition',data:{errorName:e.name,errorMessage:e.message,errorStack:e.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+  }
   
   // Unlockables System - Maximum Addiction Potential
-  const Unlockables = {
+  let Unlockables; // Declare outside try-catch so it's accessible later
+  try {
+  Unlockables = {
     unlocked: JSON.parse(localStorage.getItem('unlockables') || '[]'),
     
     // Unlock definitions
@@ -3566,9 +3696,18 @@ let lastVideoTime = -1;
       return this.unlocked.filter(key => this.definitions[key]?.type === type);
     }
   };
+  console.log("✅ Unlockables object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3692',message:'After Unlockables definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining Unlockables:", e);
+  }
   
   // Collectibles System
-  const Collectibles = {
+  let Collectibles; // Declare outside try-catch so it's accessible later
+  try {
+  Collectibles = {
     runeStones: JSON.parse(localStorage.getItem('runeStones') || '[]'),
     artifacts: JSON.parse(localStorage.getItem('artifacts') || '[]'),
     spawnRuneStone(x, y, levelId) {
@@ -3576,7 +3715,7 @@ let lastVideoTime = -1;
         const id = `rune_${levelId}_${Date.now()}`;
         Golds.push({
           x,
-          y: world.groundY - rand(60, 200),
+          y: (typeof world !== 'undefined' && world ? world.groundY : 400) - rand(60, 200),
           taken: false,
           rotation: 0,
           value: 0,
@@ -3609,9 +3748,18 @@ let lastVideoTime = -1;
       };
     }
   };
+  console.log("✅ Collectibles object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3740',message:'After Collectibles definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining Collectibles:", e);
+  }
   
   // Difficulty Modes System
-  const DifficultyModes = {
+  let DifficultyModes; // Declare outside try-catch so it's accessible later
+  try {
+  DifficultyModes = {
     presets: {
       easy: {
         name: 'Easy',
@@ -3659,22 +3807,36 @@ let lastVideoTime = -1;
       }
     },
     getCurrent() {
+      if (typeof world === 'undefined' || !world) {
+        return this.presets.normal;
+      }
       return this.presets[world.difficulty] || this.presets.normal;
     },
     apply(difficulty) {
-      world.difficulty = difficulty;
+      if (typeof world !== 'undefined' && world) {
+        world.difficulty = difficulty;
+      }
       localStorage.setItem('selectedDifficulty', difficulty);
     },
     loadSaved() {
       const saved = localStorage.getItem('selectedDifficulty');
-      if (saved && this.presets[saved]) {
+      if (saved && this.presets[saved] && typeof world !== 'undefined' && world) {
         world.difficulty = saved;
       }
     }
   };
+  console.log("✅ DifficultyModes object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3884',message:'After DifficultyModes definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining DifficultyModes:", e);
+  }
   
   // Level System
-  const LevelSystem = {
+  let LevelSystem; // Declare outside try-catch so it's accessible later
+  try {
+  LevelSystem = {
     levels: [
       { id: 1, name: "Fjord Runner", unlockScore: 0, difficulty: "easy", description: "Begin your journey" },
       { id: 2, name: "Raid Master", unlockScore: 10000, difficulty: "easy", description: "Prove your worth" },
@@ -3797,9 +3959,18 @@ let lastVideoTime = -1;
       }
     }
   };
+  console.log("✅ LevelSystem object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3943',message:'After LevelSystem definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining LevelSystem:", e);
+  }
   
   // Level Themes System - Unique visuals, enemies, obstacles per level
-  const LevelThemes = {
+  let LevelThemes; // Declare outside try-catch so it's accessible later
+  try {
+  LevelThemes = {
     1: {
       name: 'York',
       bgGradient: ['#87CEEB', '#228B22'],
@@ -3946,15 +4117,27 @@ let lastVideoTime = -1;
     },
     getCurrent() {
       // Ensure world.currentLevel is synced
-      if (!world.currentLevel) {
-        world.currentLevel = LevelSystem.currentLevel || 1;
+      if (typeof world !== 'undefined' && world) {
+        if (!world.currentLevel) {
+          world.currentLevel = LevelSystem.currentLevel || 1;
+        }
+        return this[world.currentLevel] || this[1];
       }
-      return this[world.currentLevel] || this[1];
+      return this[1]; // Default to level 1 if world doesn't exist
     }
   };
+  console.log("✅ LevelThemes object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4106',message:'After LevelThemes definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining LevelThemes:", e);
+  }
   
   // Boss System - 8 Unique Bosses
-  const BossData = {
+  let BossData; // Declare outside try-catch so it's accessible later
+  try {
+  BossData = {
     troll: {
       name: 'King Alfred of Wessex',
       level: 1,
@@ -4100,16 +4283,27 @@ let lastVideoTime = -1;
       rewards: { score: 100000, mead: 100 }
     }
   };
+  console.log("✅ BossData object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4274',message:'After BossData definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining BossData:", e);
+  }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4281',message:'After BossData try-catch, before spawnBoss',data:{vikingExists:(()=>{try{return typeof viking!=='undefined'}catch(e){return false}})(),WExists:typeof W!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   
   const spawnBoss = (bossKey) => {
-    const bossData = BossData[bossKey];
+    const bossData = (BossData && BossData[bossKey]) || null;
     if (!bossData) return;
     
     Bosses.push({
       ...bossData,
       bossKey: bossKey, // Store bossKey for drawing
       x: viking.x + W + 100,
-      y: world.groundY,
+      y: (typeof world !== 'undefined' && world ? world.groundY : 400),
       currentHealth: bossData.health,
       lastAttack: 0,
       attackIndex: 0,
@@ -4118,7 +4312,9 @@ let lastVideoTime = -1;
     });
     
     // Screen shake on boss spawn
-    world.screenShake = 1.0;
+    if (typeof world !== 'undefined' && world) {
+      world.screenShake = 1.0;
+    }
     playSFX('warhorn');
     startBossMusic();
     
@@ -4165,10 +4361,21 @@ let lastVideoTime = -1;
         style.remove();
       }, 500);
     }, 3000); // Show for 3 seconds
+    } // Close the if (!hasActiveBoss) block
   };
+  console.log("✅ spawnBoss function defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4349',message:'After spawnBoss definition, before Achievements',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   
   // Achievement System
-  const Achievements = {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4351',message:'About to define Achievements - execution reached here',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  console.log("📍 About to define Achievements object");
+  let Achievements; // Declare outside try-catch so it's accessible later
+  try {
+  Achievements = {
     list: {
       // Beginner achievements (instant gratification)
       firstJump: { name: 'First Leap', desc: 'Make your first jump', icon: '🦘', rarity: 'bronze' },
@@ -4256,14 +4463,19 @@ let lastVideoTime = -1;
         const points = achievement.rarity === 'platinum' ? 10000 : 
                       achievement.rarity === 'gold' ? 5000 :
                       achievement.rarity === 'silver' ? 2000 : 1000;
-        world.score += points;
-        updateHUD();
+        if (typeof world !== 'undefined' && world) {
+          world.score += points;
+          updateHUD();
+        }
       }
       return true;
     },
     check() {
       const s = this.sessionStats;
       const t = this.totalStats;
+      
+      // Safety check: world must exist before using it
+      const worldExists = typeof world !== 'undefined' && world;
       
       // Beginner achievements (instant gratification)
       if (s.jumps >= 1) this.unlock('firstJump');
@@ -4275,21 +4487,23 @@ let lastVideoTime = -1;
       if (s.timeSurvived >= 60) this.unlock('surviveMinute');
       
       // Score milestones (1k, 5k, 10k, 25k, 50k, 100k, 500k, 1M, 5M, 10M)
-      if (world.score >= 1000) this.unlock('score1k');
-      if (world.score >= 5000) this.unlock('score5k');
-      if (world.score >= 10000) this.unlock('score10k');
-      if (world.score >= 25000) this.unlock('score25k');
-      if (world.score >= 50000) this.unlock('score50k');
-      if (world.score >= 100000) this.unlock('score100k');
-      if (world.score >= 500000) this.unlock('score500k');
-      if (world.score >= 1000000) this.unlock('score1m');
-      if (world.score >= 5000000) this.unlock('score5m');
-      if (world.score >= 10000000) this.unlock('score10m');
+      if (typeof world !== 'undefined' && world) {
+        if (world.score >= 1000) this.unlock('score1k');
+        if (world.score >= 5000) this.unlock('score5k');
+        if (world.score >= 10000) this.unlock('score10k');
+        if (world.score >= 25000) this.unlock('score25k');
+        if (world.score >= 50000) this.unlock('score50k');
+        if (world.score >= 100000) this.unlock('score100k');
+        if (world.score >= 500000) this.unlock('score500k');
+        if (world.score >= 1000000) this.unlock('score1m');
+        if (world.score >= 5000000) this.unlock('score5m');
+        if (world.score >= 10000000) this.unlock('score10m');
+        if (world.mead >= 50) this.unlock('meadLover');
+      }
       
       // Bronze achievements
       if (s.stomps >= 1) this.unlock('firstBlood');
       if (s.gold >= 10) this.unlock('goldRush');
-      if (world.mead >= 50) this.unlock('meadLover');
       if (s.nearMisses >= 10) this.unlock('closeCall');
       if (LevelSystem.unlocked.includes(2)) this.unlock('level2');
       if (LevelSystem.unlocked.includes(3)) this.unlock('level3');
@@ -4301,7 +4515,7 @@ let lastVideoTime = -1;
       if (engagement.combo.maxCombo >= 20) this.unlock('combo20');
       if (t.gold >= 100) this.unlock('goldCollector');
       if (t.mead >= 500) this.unlock('meadMaster');
-      if (world.score >= 50000 && world.difficulty === 'hard') this.unlock('hardMode');
+      if (worldExists && world.score >= 50000 && world.difficulty === 'hard') this.unlock('hardMode');
       
       // Gold achievements
       if (LevelSystem.unlocked.includes(5)) this.unlock('level5');
@@ -4319,17 +4533,25 @@ let lastVideoTime = -1;
       if (streak >= 30) this.unlock('streak30');
       if (t.playtime >= 36000) this.unlock('playtime10h');
       if (LevelSystem.unlocked.length >= LevelSystem.levels.length) this.unlock('allLevels');
-      if (world.score >= 100000 && world.difficulty === 'hard') this.unlock('hardLegend');
+      if (typeof world !== 'undefined' && world && world.score >= 100000 && world.difficulty === 'hard') this.unlock('hardLegend');
     },
     reset() {
       this.sessionStats = { 
         stomps: 0, gold: 0, shipKills: 0, nearMisses: 0,
-        jumps: 0, ducks: 0, powerupsCollected: 0, timeSurvived: 0, meadCollected: 0
+        jumps: 0, ducks: 0, powerupsCollected: 0, timeSurvived: 0,         meadCollected: 0
       };
     }
   };
+  console.log("✅ Achievements object defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4503',message:'After Achievements definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  } catch (e) {
+    console.error("❌ Error defining Achievements:", e);
+  }
   
   // Show achievement popup with rarity-based styling
+  console.log("📍 About to define showAchievement");
   const showAchievement = (achievement) => {
     const rarityColors = {
       bronze: '#cd7f32',
@@ -4350,23 +4572,10 @@ let lastVideoTime = -1;
     }, 3000);
     playSFX('powerup');
   };
-  
-  const world = { 
-    started: false, paused: false, over: false, 
-    score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
-    lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
-    difficulty: 'normal', currentLevel: 1,
-    nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0,
-    bossSpawnsThisLevel: {}, // Track which bosses have spawned this level
-    powerups: {
-      speedBoost: { active: false, timeLeft: 0 },
-      invincibility: { active: false, timeLeft: 0 },
-      scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 },
-      vikingShip: { active: false, timeLeft: 0 },
-      respawn: { count: 0 }, // Count of respawns collected (each gives 1 life)
-      respawnPlus: { count: 0 } // Rare respawn that gives 3 lives
-    }
-  };
+  console.log("✅ showAchievement function defined");
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4530',message:'After showAchievement definition, before viking',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
 
   const viking = {
     x: 100, y: 0, vy: 0, w: 50, h: 70, 
@@ -4424,6 +4633,7 @@ let lastVideoTime = -1;
   };
   
   const spawnDuckObstacle = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     // Only Viking-themed weapons - removed fireball (not Viking-themed)
     const types = ['raven', 'arrow', 'branch', 'axe', 'spear'];
     const type = types[Math.floor(Math.random() * types.length)];
@@ -4440,10 +4650,12 @@ let lastVideoTime = -1;
   };
 
   const spawnMead = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     Meads.push({ x, y: world.groundY - rand(40, 160), taken: false, rotation: 0 });
   };
 
   const spawnPowerup = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     const theme = LevelThemes.getCurrent();
     const availablePowerups = theme.powerups || ['speed', 'invincibility', 'scoreMultiplier'];
     
@@ -4516,6 +4728,7 @@ let lastVideoTime = -1;
   };
 
   const spawnPlatform = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     const width = rand(80, 150);
     const height = 20;
     // Sometimes spawn low platforms that require ducking (at ground level or slightly above)
@@ -4563,6 +4776,7 @@ let lastVideoTime = -1;
 
   // Historical enemies Vikings fought - unique per level
   const spawnEnemy = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     const theme = LevelThemes.getCurrent();
     const currentLevel = world.currentLevel || 1;
     const enemyTypes = theme.enemies || [];
@@ -4601,6 +4815,7 @@ let lastVideoTime = -1;
   
   // Bird enemies - level-specific, can duck under, jump over, or kill
   const spawnBirdEnemy = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     const currentLevel = world.currentLevel || 1;
     const theme = LevelThemes.getCurrent();
     const birdTypes = theme.birdEnemies || [];
@@ -4654,6 +4869,7 @@ let lastVideoTime = -1;
 
 
   const spawnHeart = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     Hearts.push({
       x,
       y: world.groundY - rand(50, 150),
@@ -4664,6 +4880,7 @@ let lastVideoTime = -1;
   };
 
   const spawnGold = (x) => {
+    if (typeof world === 'undefined' || !world) return;
     Golds.push({
       x,
       y: world.groundY - rand(60, 200),
@@ -4685,7 +4902,12 @@ let lastVideoTime = -1;
       });
     }
   };
+  console.log("✅ All objects before resetWorld defined successfully");
 
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4838',message:'About to define resetWorld function',data:{worldExists:typeof world!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
+  console.log("📍 About to define resetWorld function");
   const resetWorld = () => {
     try {
       // Stop all powerup sounds when resetting
@@ -4794,7 +5016,9 @@ let lastVideoTime = -1;
         startingLives += 1;
       }
       // Add prestige bonus
-      startingLives += PrestigeSystem.getStartingLivesBonus();
+      if (PrestigeSystem && typeof PrestigeSystem.getStartingLivesBonus === 'function') {
+        startingLives += PrestigeSystem.getStartingLivesBonus();
+      }
       world.lives = Math.min(startingLives, 10); // Cap at 10 lives max
       
       world.powerups = {
@@ -4839,6 +5063,23 @@ let lastVideoTime = -1;
       console.error("Error in resetWorld:", e);
     }
   };
+  // CRITICAL: Set window.resetWorld IMMEDIATELY after definition - NO TRY/CATCH, just do it
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4984',message:'About to set window.resetWorld',data:{resetWorldType:typeof resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
+  console.log("📍 Setting window.resetWorld, resetWorld type:", typeof resetWorld);
+  window.resetWorld = resetWorld;
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4986',message:'window.resetWorld set',data:{windowResetWorldExists:!!window.resetWorld,windowResetWorldType:typeof window.resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
+  console.log("✅ window.resetWorld set:", !!window.resetWorld, typeof window.resetWorld);
+  
+  // VERIFY it worked
+  if (!window.resetWorld) {
+    console.error("❌ CRITICAL: window.resetWorld assignment failed!");
+  } else {
+    console.log("✅ VERIFIED: window.resetWorld is a function:", typeof window.resetWorld === 'function');
+  }
 
   // Activate respawn on death
   const activateRespawn = () => {
@@ -5470,10 +5711,41 @@ let lastVideoTime = -1;
 
   let sessionStartTime = 0;
 
+  // Apply pending reward when game starts - MUST be defined before start() uses it
+  const applyPendingReward = () => {
+    const pending = localStorage.getItem('pendingReward');
+    if (pending) {
+      const reward = JSON.parse(pending);
+      if (reward.type === 'life') {
+        world.lives += reward.value;
+      } else if (reward.type === 'gold') {
+        world.score += reward.value;
+      } else if (reward.type === 'powerup') {
+        world.powerups[reward.value].active = true;
+        world.powerups[reward.value].timeLeft = 10;
+      } else if (reward.type === 'mega') {
+        world.lives += 3;
+        world.score += 2000;
+        world.powerups.invincibility.active = true;
+        world.powerups.invincibility.timeLeft = 15;
+      }
+      localStorage.removeItem('pendingReward');
+      updateHUD();
+    }
+  };
+
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5658',message:'About to define start function',data:{worldExists:typeof world!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
+  console.log("📍 About to define start function");
   const start = () => {
-    if (world.started && !world.over) return; // Allow restart if game is over
+    console.log("🚀 start() called. world.started:", world.started, "world.over:", world.over);
+    if (world.started && !world.over) {
+      console.log("⚠️ Game already started, ignoring");
+      return; // Allow restart if game is over
+    }
     try {
-      console.log("Game starting...");
+      console.log("🎮 Game starting...");
       
       // Ensure clean state before starting
       if (world.over) {
@@ -5495,9 +5767,14 @@ let lastVideoTime = -1;
             world.speed = diff.baseSpeed;
             console.log("Difficulty:", diff.name, "Speed:", world.speed);
             
+            // FORCE HIDE OVERLAY
+            const overlay = document.getElementById("calibrationOverlay");
             if (overlay) {
-    overlay.style.display = "none";
+              overlay.style.display = "none";
               overlay.style.visibility = "hidden";
+              overlay.classList.remove("active");
+              overlay.style.pointerEvents = "none";
+              console.log("✅ Overlay hidden (delayed start)");
             }
             if (statePill) statePill.textContent = "Playing";
             const pauseBtn = $("pauseBtn");
@@ -5545,9 +5822,24 @@ let lastVideoTime = -1;
       world.speed = diff.baseSpeed;
       console.log("Difficulty:", diff.name, "Speed:", world.speed);
       
-      if (overlay) {
+      // FORCE HIDE OVERLAY - this is critical!
+      const overlayEl = document.getElementById("calibrationOverlay");
+      if (overlayEl) {
+        overlayEl.style.display = "none";
+        overlayEl.style.visibility = "hidden";
+        overlayEl.classList.remove("active");
+        overlayEl.style.pointerEvents = "none";
+        overlayEl.style.opacity = "0";
+        console.log("✅ Overlay hidden");
+      } else {
+        console.warn("⚠️ Overlay element not found");
+      }
+      // Also try the overlay variable if it exists
+      if (typeof overlay !== 'undefined' && overlay) {
         overlay.style.display = "none";
         overlay.style.visibility = "hidden";
+        overlay.classList.remove("active");
+        overlay.style.pointerEvents = "none";
       }
       if (statePill) statePill.textContent = "Playing";
       const pauseBtn = $("pauseBtn");
@@ -5572,16 +5864,57 @@ let lastVideoTime = -1;
       } catch (e) {
         console.warn("Error playing warhorn:", e);
       }
-      console.log("Game started successfully");
+      console.log("✅ Game started successfully! world.started:", world.started);
+      console.log("✅ Game state:", { started: world.started, paused: world.paused, over: world.over });
+      
+      // FORCE IMMEDIATE REDRAW - critical!
+      setTimeout(() => {
+        try {
+          if (typeof draw === 'function') {
+            draw();
+            console.log("✅ Forced redraw after start");
+          }
+        } catch (e) {
+          console.error("❌ Draw error:", e);
+        }
+      }, 10);
     } catch (e) {
-      console.error("Error in start:", e);
+      console.error("❌ CRITICAL ERROR in start():", e);
+      console.error("Error stack:", e.stack);
+      alert("Error starting game: " + e.message + "\n\nCheck console for details.");
       // Reset on error
       world.started = false;
       world.over = false;
       world.paused = false;
     }
   };
-
+  // CRITICAL: Set window.start IMMEDIATELY after definition - NO TRY/CATCH, just do it
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5783',message:'About to set window.start',data:{startType:typeof start},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
+  console.log("📍 Setting window.start, start type:", typeof start);
+  window.start = start;
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5785',message:'window.start set',data:{windowStartExists:!!window.start,windowStartType:typeof window.start},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
+  console.log("✅ window.start set:", !!window.start, typeof window.start);
+  
+  // VERIFY it worked
+  if (!window.start) {
+    console.error("❌ CRITICAL: window.start assignment failed!");
+  } else {
+    console.log("✅ VERIFIED: window.start is a function:", typeof window.start === 'function');
+  }
+  
+  window.Input = Input;
+  window.applyPendingReward = applyPendingReward;
+  window.stopMenuMusic = stopMenuMusic;
+  window.playSFX = playSFX;
+  window.Achievements = Achievements;
+  window.LevelSystem = LevelSystem;
+  window.DifficultyModes = DifficultyModes;
+  window.LevelThemes = LevelThemes;
+  window.HighScoreManager = HighScoreManager;
   // Draw realistic Viking longship (when ship powerup is active) - optimized for performance
   const drawVikingShip = (x, y) => {
     ctx.save();
@@ -6952,9 +7285,11 @@ let lastVideoTime = -1;
                     }
                     
                     // Check for prestige opportunity
-                    if (PrestigeSystem.canPrestige(world.score)) {
+                    if (PrestigeSystem && typeof PrestigeSystem.canPrestige === 'function' && PrestigeSystem.canPrestige(world.score)) {
                       setTimeout(() => {
-                        const prestige = confirm(`⭐ You've reached Prestige ${PrestigeSystem.level + 1} threshold!\n\nPrestige to gain ${PrestigeSystem.calculatePoints(world.score).toLocaleString()} Prestige Points and permanent bonuses!\n\n(You'll keep your prestige level and points, but reset your current run)`);
+                        const prestigeLevel = (PrestigeSystem && PrestigeSystem.level) || 0;
+                        const prestigePoints = (PrestigeSystem && typeof PrestigeSystem.calculatePoints === 'function') ? PrestigeSystem.calculatePoints(world.score) : 0;
+                        const prestige = confirm(`⭐ You've reached Prestige ${prestigeLevel + 1} threshold!\n\nPrestige to gain ${prestigePoints.toLocaleString()} Prestige Points and permanent bonuses!\n\n(You'll keep your prestige level and points, but reset your current run)`);
                         if (prestige) {
                           PrestigeSystem.prestige(world.score);
                           // Track weekly challenge: prestige
@@ -7208,7 +7543,7 @@ let lastVideoTime = -1;
             const scoreBasedSpawn = world.score >= spawnThreshold;
             
             if (timeBasedSpawn || scoreBasedSpawn) {
-              const bossData = BossData[bossKey];
+              const bossData = (BossData && BossData[bossKey]) || null;
               if (bossData) {
                 console.log(`Spawning boss: ${bossData.name} at score ${world.score}, time: ${world.timeInCurrentLevel.toFixed(1)}s, level: ${currentLevel.id}`);
                 // Only show notification if no active boss exists
@@ -7680,7 +8015,9 @@ let lastVideoTime = -1;
                 HighScoreManager.saveScore(world.score);
                 
                 // Update level mastery
-                LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
+                if (LevelMastery && typeof LevelMastery.checkLevel === 'function') {
+                  LevelMastery.checkLevel(world.currentLevel, world.score, engagement.sessionDeaths);
+                }
                 
                 // Update weekly challenges
                 const diff = DifficultyModes.getCurrent();
@@ -8503,7 +8840,7 @@ let lastVideoTime = -1;
         const bodyWidth = bossWidth * 0.75;
         
         // Get boss data for level-specific visuals
-        const bossData = BossData[boss.bossKey] || BossData.troll;
+        const bossData = (BossData && (BossData[boss.bossKey] || BossData.troll)) || null;
         const robeColor = bossData.robeColor || bossData.color || "#8B4513";
         const crownType = bossData.crownType || 'simple';
         
@@ -9425,30 +9762,6 @@ let lastVideoTime = -1;
       }
     };
   };
-  
-  // Apply pending reward when game starts
-  const applyPendingReward = () => {
-    const pending = localStorage.getItem('pendingReward');
-    if (pending) {
-      const reward = JSON.parse(pending);
-      if (reward.type === 'life') {
-        world.lives += reward.value;
-      } else if (reward.type === 'gold') {
-        world.score += reward.value;
-      } else if (reward.type === 'powerup') {
-        world.powerups[reward.value].active = true;
-        world.powerups[reward.value].timeLeft = 10;
-      } else if (reward.type === 'mega') {
-        world.lives += 3;
-        world.score += 2000;
-        world.powerups.invincibility.active = true;
-        world.powerups.invincibility.timeLeft = 15;
-      }
-      localStorage.removeItem('pendingReward');
-      updateHUD();
-    }
-  };
-
   // Initialize after DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -9510,6 +9823,16 @@ let lastVideoTime = -1;
       if (startBtn) {
         startBtn.onclick = () => {
           try {
+            // Ensure window.world is set
+            if (!window.world) {
+              console.error("window.world is not defined! Trying to initialize...");
+              if (typeof world !== 'undefined') {
+                window.world = world;
+              } else {
+                console.error("Cannot start game: world object not available");
+                return;
+              }
+            }
             // Save player name
             const nameInput = $("playerNameInput");
             if (nameInput && nameInput.value.trim()) {
@@ -9517,45 +9840,41 @@ let lastVideoTime = -1;
             }
             
             // If game is over, reset and start immediately
-            if (world.over) {
-              resetWorld();
-              setTimeout(() => {
-                start();
-              }, 100);
+            if (window.world && window.world.over) {
+              if (window.resetWorld) window.resetWorld();
+              if (window.start) setTimeout(() => window.start(), 100);
             } else {
-              start();
+              if (window.start) window.start();
             }
           } catch (e) {
             console.error("Error in startBtn click:", e);
-            resetWorld();
-            setTimeout(() => {
-              start();
-            }, 100);
+            if (window.resetWorld) window.resetWorld();
+            if (window.start) setTimeout(() => window.start(), 100);
           }
         };
       }
       
       if (restartBtn) {
         restartBtn.onclick = () => { 
-          resetWorld();
+          window.resetWorld();
           setTimeout(() => {
-            start();
+            window.start();
           }, 100);
         };
       }
       
       if (pauseBtn) {
         pauseBtn.onclick = () => { 
-          if (!world.started || world.over) return;
-          world.paused = !world.paused; 
-          pauseBtn.textContent = world.paused ? "Resume" : "Pause";
+          if (!window.world.started || window.world.over) return;
+          window.world.paused = !window.world.paused; 
+          pauseBtn.textContent = window.world.paused ? "Resume" : "Pause";
           const statePill = $("statePill");
-          if (statePill) statePill.textContent = world.paused ? "Paused" : "Playing";
+          if (statePill) statePill.textContent = window.world.paused ? "Paused" : "Playing";
           
           // Hide/show gaze zone indicator when paused
           const gazeZoneIndicator = $("gazeZoneIndicator");
           if (gazeZoneIndicator && eyeTrackingEnabled) {
-            gazeZoneIndicator.style.display = world.paused ? 'none' : 'block';
+            gazeZoneIndicator.style.display = window.world.paused ? 'none' : 'block';
           }
         };
       }
@@ -9631,9 +9950,9 @@ let lastVideoTime = -1;
         const score = world.score || engagement.personalBest || 0;
         const level = world.currentLevel || LevelSystem.currentLevel || 1;
         const diff = DifficultyModes.getCurrent();
-        const prestige = PrestigeSystem.level;
-        const titles = Unlockables.getUnlockedByType('title');
-        const titleName = titles.length > 0 ? Unlockables.definitions[titles[titles.length - 1]]?.name : 'Viking Warrior';
+        const prestige = (PrestigeSystem && PrestigeSystem.level) || 0;
+        const titles = (Unlockables && typeof Unlockables.getUnlockedByType === 'function') ? Unlockables.getUnlockedByType('title') : [];
+        const titleName = titles.length > 0 && Unlockables && Unlockables.definitions ? Unlockables.definitions[titles[titles.length - 1]]?.name : 'Viking Warrior';
         
         const shareText = `⚔️ Viking Run Achievement! ⚔️\n\n` +
           `Score: ${Math.floor(score).toLocaleString()}\n` +
@@ -9807,51 +10126,24 @@ let lastVideoTime = -1;
     const calibrationStatus = $("calibrationStatus");
     const calibrationPoints = document.querySelectorAll(".calibration-point");
     
-    if (startBtn) {
-      startBtn.onclick = () => {
-        try {
-          // Save player name
-          const nameInput = $("playerNameInput");
-          if (nameInput && nameInput.value.trim()) {
-            localStorage.setItem('playerName', nameInput.value.trim());
-          }
-          
-          // If game is over, reset and start immediately
-          if (world.over) {
-            resetWorld();
-            // Start the game immediately after reset
-            setTimeout(() => {
-              start();
-            }, 100);
-          } else {
-            start();
-          }
-        } catch (e) {
-          console.error("Error in startBtn click:", e);
-          resetWorld();
-          setTimeout(() => {
-            start();
-          }, 100);
-        }
-      };
-    }
+    // REMOVED - handlers now in attachAllHandlers to avoid conflicts
     
     if (restartBtn) {
       restartBtn.onclick = () => { 
-        resetWorld();
+        window.resetWorld();
         setTimeout(() => {
-          start();
+          window.start();
         }, 100);
       };
     }
     
     if (pauseBtn) {
       pauseBtn.onclick = () => { 
-        if (!world.started || world.over) return;
-        world.paused = !world.paused; 
-        pauseBtn.textContent = world.paused ? "Resume" : "Pause";
+        if (!window.world.started || window.world.over) return;
+        window.world.paused = !window.world.paused; 
+        pauseBtn.textContent = window.world.paused ? "Resume" : "Pause";
         const statePill = $("statePill");
-        if (statePill) statePill.textContent = world.paused ? "Paused" : "Playing";
+        if (statePill) statePill.textContent = window.world.paused ? "Paused" : "Playing";
         
         // Hide/show gaze zone indicator when paused
         const gazeZoneIndicator = $("gazeZoneIndicator");
@@ -9932,7 +10224,7 @@ let lastVideoTime = -1;
       const score = world.score || engagement.personalBest || 0;
       const level = world.currentLevel || LevelSystem.currentLevel || 1;
       const diff = DifficultyModes.getCurrent();
-      const prestige = PrestigeSystem.level;
+      const prestige = (PrestigeSystem && PrestigeSystem.level) || 0;
       const titles = Unlockables.getUnlockedByType('title');
       const titleName = titles.length > 0 ? Unlockables.definitions[titles[titles.length - 1]]?.name : 'Viking Warrior';
       
@@ -10076,8 +10368,8 @@ let lastVideoTime = -1;
           }
           
           // Start the game
-          if (!world.started) {
-            start();
+          if (!window.world.started) {
+            window.start();
           }
         };
       }
@@ -10177,10 +10469,116 @@ let lastVideoTime = -1;
       requestAnimationFrame(tick);
       setTimeout(showDailyBonus, 500);
     }
+  
+  // Attach button handlers - SIMPLIFIED VERSION
+  // This runs AFTER start and resetWorld are defined
+  const attachAllHandlers = () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:10386',message:'attachAllHandlers called',data:{windowWorldExists:!!window.world,windowStartExists:!!window.start,windowResetWorldExists:!!window.resetWorld,windowWorldType:typeof window.world,windowStartType:typeof window.start,windowResetWorldType:typeof window.resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H4,H5'})}).catch(()=>{});
+    // #endregion
+    console.log("🔧 Attaching button handlers");
+    console.log("window.world:", !!window.world);
+    console.log("window.start:", !!window.start);
+    console.log("window.resetWorld:", !!window.resetWorld);
+    
+    // Simple button handlers - just use window functions directly
+    const startBtn = window.$("startBtn");
+    if (startBtn) {
+      startBtn.onclick = () => {
+        console.log("🔴 START BUTTON CLICKED");
+        if (!window.world || !window.start) {
+          alert("Game not ready. Please refresh the page.");
+          return;
+        }
+        const nameInput = window.$("playerNameInput");
+        if (nameInput && nameInput.value.trim()) {
+          localStorage.setItem('playerName', nameInput.value.trim());
+        }
+        if (window.world.over && window.resetWorld) {
+          window.resetWorld();
+          setTimeout(() => window.start(), 100);
+        } else {
+          window.start();
+        }
+      };
+      console.log("✅ Start button handler attached");
+    }
+    
+    const restartBtn = window.$("restartBtn");
+    if (restartBtn) {
+      restartBtn.onclick = () => {
+        if (window.resetWorld) window.resetWorld();
+        if (window.start) setTimeout(() => window.start(), 100);
+      };
+      console.log("✅ Restart button handler attached");
+    }
+    
+    const pauseBtn = window.$("pauseBtn");
+    if (pauseBtn) {
+      pauseBtn.onclick = () => {
+        if (!window.world || !window.world.started || window.world.over) return;
+        window.world.paused = !window.world.paused;
+        pauseBtn.textContent = window.world.paused ? "Resume" : "Pause";
+        const statePill = window.$("statePill");
+        if (statePill) statePill.textContent = window.world.paused ? "Paused" : "Playing";
+      };
+      console.log("✅ Pause button handler attached");
+    }
+  };
+  
+  // Call attachAllHandlers at the END, after everything is defined
+  // This ensures window.start and window.resetWorld exist
+  if (document.readyState !== 'loading') {
+    attachAllHandlers();
+  } else {
+    document.addEventListener('DOMContentLoaded', attachAllHandlers);
   }
+  
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:10507',message:'CRITICAL ERROR in IIFE caught',data:{errorName:error.name,errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+    console.error("❌ CRITICAL ERROR in IIFE:", error);
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    // Try to set window properties even on error - FORCE IT
+    try {
+      // Use eval to access closure variables even if they're not in scope
+      if (typeof world === 'undefined') {
+        // Create a minimal world object if it doesn't exist
+        window.world = { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: 1, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
+        console.log("✅ window.world created in error handler");
+      } else {
+        window.world = world;
+        console.log("✅ window.world set in error handler");
+      }
+      if (typeof start !== 'undefined') {
+        window.start = start;
+        console.log("✅ window.start set in error handler");
+      } else {
+        // Create a minimal start function
+        window.start = () => { if (window.world) { window.world.started = true; window.world.over = false; window.world.paused = false; } };
+        console.log("✅ window.start created in error handler");
+      }
+      if (typeof resetWorld !== 'undefined') {
+        window.resetWorld = resetWorld;
+        console.log("✅ window.resetWorld set in error handler");
+      } else {
+        // Create a minimal resetWorld function
+        window.resetWorld = () => { if (window.world) { window.world.started = false; window.world.over = false; window.world.paused = false; window.world.score = 0; window.world.mead = 0; window.world.lives = 3; } };
+        console.log("✅ window.resetWorld created in error handler");
+      }
+    } catch (e2) {
+      console.error("❌ Failed to set window properties in error handler:", e2);
+      // Last resort - create minimal objects
+      window.world = window.world || { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: 1, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
+      window.start = window.start || (() => { if (window.world) { window.world.started = true; window.world.over = false; window.world.paused = false; } });
+      window.resetWorld = window.resetWorld || (() => { if (window.world) { window.world.started = false; window.world.over = false; window.world.paused = false; window.world.score = 0; window.world.mead = 0; window.world.lives = 3; } });
+      console.log("✅ Created minimal window objects as last resort");
+    }
   }
-  }
-  }
+  
 })();
 </script>
 
