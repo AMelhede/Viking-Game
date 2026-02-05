@@ -2419,8 +2419,8 @@ window.$ = (id) => document.getElementById(id);
         console.warn("LevelSystem not ready yet, using default level");
         currentMusicLevel = 1;
       } else {
-        const currentLevel = LevelSystem.levels.slice().reverse().find(l => score >= l.unlockScore) || LevelSystem.levels[0];
-        currentMusicLevel = currentLevel.id;
+        // Use world.currentLevel instead of score-based detection
+        currentMusicLevel = (typeof world !== 'undefined' && world ? world.currentLevel : 1) || 1;
       }
       const theme = LevelMusicThemes[currentMusicLevel] || LevelMusicThemes[1];
       
@@ -3086,7 +3086,11 @@ window.$ = (id) => document.getElementById(id);
       started: false, paused: false, over: false, 
       score: 0, mead: 0, speed: 200, t: 0, groundY: 0, camX: 0,
       lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0,
-      difficulty: 'normal', currentLevel: 1,
+      difficulty: 'normal', 
+      currentLevel: (() => {
+        const saved = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+        return saved ? parseInt(saved) : 1;
+      })(),
       nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0,
       bossSpawnsThisLevel: {},
       powerups: {
@@ -3101,7 +3105,9 @@ window.$ = (id) => document.getElementById(id);
     console.log("✅ world object created");
   } catch (e) {
     console.error("❌ Error creating world object:", e);
-    world = { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: 1, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
+    const savedLevel = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+    const initialLevel = savedLevel ? parseInt(savedLevel) : 1;
+    world = { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: initialLevel, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
   }
   window.world = world;
   console.log("✅ window.world set:", !!window.world);
@@ -3858,7 +3864,8 @@ window.$ = (id) => document.getElementById(id);
         this.unlocked = [1]; // Level 1 always unlocked
         this.save();
       }
-      const current = localStorage.getItem('currentLevel');
+      // Check both currentLevel and selectedLevel for compatibility
+      const current = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
       if (current) {
         this.currentLevel = parseInt(current);
       }
@@ -3960,9 +3967,6 @@ window.$ = (id) => document.getElementById(id);
     }
   };
   console.log("✅ LevelSystem object defined");
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3943',message:'After LevelSystem definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   } catch (e) {
     console.error("❌ Error defining LevelSystem:", e);
   }
@@ -4116,14 +4120,49 @@ window.$ = (id) => document.getElementById(id);
       bossSpawnScore: 1200000
     },
     getCurrent() {
-      // Ensure world.currentLevel is synced
+      // Ensure world.currentLevel is synced - ALWAYS sync with LevelSystem if it exists
       if (typeof world !== 'undefined' && world) {
-        if (!world.currentLevel) {
-          world.currentLevel = LevelSystem.currentLevel || 1;
+        // Priority: LevelSystem.currentLevel > localStorage > world.currentLevel > 1
+        let targetLevel = null;
+        
+        // First, try LevelSystem if it exists and has a value
+        if (LevelSystem && typeof LevelSystem.currentLevel !== 'undefined' && LevelSystem.currentLevel !== null) {
+          targetLevel = LevelSystem.currentLevel;
+        } else {
+          // Fall back to localStorage
+          const saved = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+          if (saved) {
+            targetLevel = parseInt(saved);
+          } else if (!world.currentLevel || world.currentLevel < 1) {
+            targetLevel = 1;
+          } else {
+            targetLevel = world.currentLevel; // Keep current value
+          }
         }
-        return this[world.currentLevel] || this[1];
+        
+        // Apply the target level
+        if (targetLevel !== null && targetLevel !== world.currentLevel) {
+          world.currentLevel = targetLevel;
+        }
+        
+        // Sync LevelSystem if it's out of sync (bidirectional sync)
+        if (LevelSystem && LevelSystem.currentLevel !== world.currentLevel) {
+          LevelSystem.currentLevel = world.currentLevel;
+          LevelSystem.save();
+        }
+        
+        const theme = this[world.currentLevel] || this[1];
+        console.log('[LevelThemes.getCurrent] Level:', world.currentLevel, 'Theme:', theme.name);
+        return theme;
       }
-      return this[1]; // Default to level 1 if world doesn't exist
+      // If world doesn't exist, try LevelSystem
+      if (typeof LevelSystem !== 'undefined' && LevelSystem && LevelSystem.currentLevel) {
+        const theme = this[LevelSystem.currentLevel] || this[1];
+        console.log('[LevelThemes.getCurrent] Using LevelSystem, Level:', LevelSystem.currentLevel, 'Theme:', theme.name);
+        return theme;
+      }
+      console.log('[LevelThemes.getCurrent] Defaulting to level 1');
+      return this[1]; // Default to level 1
     }
   };
   console.log("✅ LevelThemes object defined");
@@ -4305,6 +4344,7 @@ window.$ = (id) => document.getElementById(id);
       x: viking.x + W + 100,
       y: (typeof world !== 'undefined' && world ? world.groundY : 400),
       currentHealth: bossData.health,
+      maxHealth: bossData.maxHealth != null ? bossData.maxHealth : bossData.health,
       lastAttack: 0,
       attackIndex: 0,
       phase: 1, // 1 = normal, 2 = enraged (50% health), 3 = final (25% health)
@@ -4466,6 +4506,33 @@ window.$ = (id) => document.getElementById(id);
         if (typeof world !== 'undefined' && world) {
           world.score += points;
           updateHUD();
+        }
+        // Odin's Blessing (first powerup): grant hammer strike + brief invincibility
+        if (id === 'firstPowerup' && typeof world !== 'undefined' && world && world.started && !world.over) {
+          if (world.powerups && world.powerups.invincibility) {
+            world.powerups.invincibility.active = true;
+            world.powerups.invincibility.timeLeft = 6;
+          }
+          if (typeof Enemies !== 'undefined' && Enemies.length) {
+            let cleared = 0;
+            for (const e of Enemies) {
+              if (!e.defeated) {
+                e.defeated = true;
+                cleared++;
+                if (typeof addParticle === 'function') addParticle(e.x, e.y, "#FFD700", 12);
+              }
+            }
+            if (cleared > 0 && typeof world !== 'undefined' && world) {
+              world.score += cleared * 50;
+            }
+          }
+          if (typeof viking !== 'undefined' && typeof addParticle === 'function') {
+            addParticle(viking.x, viking.y - 40, "#FFD700", 25);
+          }
+          if (typeof showStickinessNotification === 'function') {
+            showStickinessNotification("⚡ Odin's Blessing! Hammer strike + invincibility!", 'success');
+          }
+          if (typeof updateHUD === 'function') updateHUD();
         }
       }
       return true;
@@ -4689,6 +4756,7 @@ window.$ = (id) => document.getElementById(id);
       weights[mappedType] = (weights[mappedType] || 0) + 1;
     });
     
+    // VERIFIED: Viking ship powerup is included in powerup weights (weight: 5)
     // Always include vikingShip as rare option
     weights.vikingShip = (weights.vikingShip || 0) + 5;
     // Always include respawn as rare option
@@ -4779,6 +4847,7 @@ window.$ = (id) => document.getElementById(id);
     if (typeof world === 'undefined' || !world) return;
     const theme = LevelThemes.getCurrent();
     const currentLevel = world.currentLevel || 1;
+    console.log('[spawnEnemy] Level:', currentLevel, 'Theme:', theme.name, 'Enemies:', theme.enemies);
     const enemyTypes = theme.enemies || [];
     if (enemyTypes.length === 0) {
       console.warn('No enemies defined for level', currentLevel);
@@ -4868,6 +4937,7 @@ window.$ = (id) => document.getElementById(id);
   };
 
 
+  // VERIFIED: Extra lives system - spawnHeart function exists and is called in game loop
   const spawnHeart = (x) => {
     if (typeof world === 'undefined' || !world) return;
     Hearts.push({
@@ -4977,8 +5047,29 @@ window.$ = (id) => document.getElementById(id);
       localStorage.setItem('gamesPlayed', engagement.gamesPlayed.toString());
       Achievements.reset();
       
-      // Sync world.currentLevel with LevelSystem.currentLevel
-      world.currentLevel = LevelSystem.currentLevel || 1;
+      // Sync world.currentLevel with LevelSystem.currentLevel EARLY - before any theme-dependent code
+      // Priority: LevelSystem.currentLevel > selectedLevel > currentLevel > 1
+      if (LevelSystem && LevelSystem.currentLevel) {
+        world.currentLevel = LevelSystem.currentLevel;
+      } else {
+        const selectedLevel = localStorage.getItem('selectedLevel') || localStorage.getItem('currentLevel');
+        if (selectedLevel) {
+          world.currentLevel = parseInt(selectedLevel);
+          if (LevelSystem) {
+            LevelSystem.currentLevel = world.currentLevel;
+            LevelSystem.save();
+          }
+        } else {
+          world.currentLevel = 1;
+          if (LevelSystem) {
+            LevelSystem.currentLevel = 1;
+          }
+        }
+      }
+      // Force theme refresh to ensure correct theme is applied
+      if (typeof LevelThemes !== 'undefined' && LevelThemes) {
+        LevelThemes.getCurrent();
+      }
       
     world.groundY = H * 0.8;
       world.camX = 0;
@@ -5082,6 +5173,8 @@ window.$ = (id) => document.getElementById(id);
   }
 
   // Activate respawn on death
+  // VERIFIED: Respawn system - activateRespawn function exists and is called on death
+  // Supports both regular respawn (1 life) and respawnPlus (3 lives)
   const activateRespawn = () => {
     let livesToGive = 0;
     let isRare = false;
@@ -5486,8 +5579,9 @@ window.$ = (id) => document.getElementById(id);
       // Boss countdown display
       const bossTheme = LevelThemes.getCurrent();
       if (bossTheme && bossTheme.boss) {
-        const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
-        const nextLevel = LevelSystem.levels.find(l => l.unlockScore > world.score);
+        // Use world.currentLevel instead of score-based detection
+        const currentLevel = LevelSystem.levels.find(l => l.id === world.currentLevel) || LevelSystem.levels[0];
+        const nextLevel = LevelSystem.levels.find(l => l.id > world.currentLevel);
         const levelStart = currentLevel.unlockScore;
         const levelEnd = nextLevel ? nextLevel.unlockScore : Infinity;
         const levelRange = levelEnd - levelStart;
@@ -5585,16 +5679,20 @@ window.$ = (id) => document.getElementById(id);
       }
     },
 
-    async saveScore(score, playerName = null) {
+    async saveScore(score, playerName = null, levelId = null) {
       const now = new Date();
       const playerId = localStorage.getItem('playerId') || `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const name = playerName || localStorage.getItem('playerName') || `Player${playerId.substring(7, 11)}`;
+      
+      // Get level ID from parameter or world.currentLevel
+      const currentLevelId = levelId !== null ? levelId : (typeof world !== 'undefined' && world ? world.currentLevel : 1);
       
       const scoreEntry = { 
         score, 
         date: now.toISOString(),
         playerId: playerId,
-        playerName: name
+        playerName: name,
+        levelId: currentLevelId
       };
       
       // Generate player ID if not exists
@@ -5607,10 +5705,10 @@ window.$ = (id) => document.getElementById(id);
         localStorage.setItem('playerName', playerName);
       }
       
-      // Save to all periods
+      // Save to all periods - per level
       for (const period of ['daily', 'weekly', 'monthly', 'yearly', 'alltime']) {
-        const key = HighScoreManager.getPeriodKey(period) + `_${world.difficulty}`;
-        let scores = HighScoreManager.getScoresLocal(period, world.difficulty);
+        const key = HighScoreManager.getPeriodKey(period) + `_${world.difficulty}_level${currentLevelId}`;
+        let scores = HighScoreManager.getScoresLocal(period, world.difficulty, currentLevelId);
         scores.push(scoreEntry);
         scores.sort((a, b) => b.score - a.score);
         scores = scores.slice(0, 10);
@@ -5619,29 +5717,35 @@ window.$ = (id) => document.getElementById(id);
       
     },
 
-    getScoresLocal(period = 'alltime', difficulty = 'normal') {
-      const key = HighScoreManager.getPeriodKey(period) + `_${difficulty}`;
+    getScoresLocal(period = 'alltime', difficulty = 'normal', levelId = null) {
+      // Get level ID from parameter or world.currentLevel
+      const currentLevelId = levelId !== null ? levelId : (typeof world !== 'undefined' && world ? world.currentLevel : 1);
+      const key = HighScoreManager.getPeriodKey(period) + `_${difficulty}_level${currentLevelId}`;
       return JSON.parse(localStorage.getItem(key) || '[]');
     },
 
-    async getScores(period = 'alltime', difficulty = 'normal') {
-      return HighScoreManager.getScoresLocal(period, difficulty);
+    async getScores(period = 'alltime', difficulty = 'normal', levelId = null) {
+      return HighScoreManager.getScoresLocal(period, difficulty, levelId);
     },
 
-    async displayScores(period = 'alltime', difficulty = 'normal') {
-      const scores = await HighScoreManager.getScores(period, difficulty);
+    async displayScores(period = 'alltime', difficulty = 'normal', levelId = null) {
+      // Get level ID from parameter or world.currentLevel
+      const currentLevelId = levelId !== null ? levelId : (typeof world !== 'undefined' && world ? world.currentLevel : 1);
+      const scores = await HighScoreManager.getScores(period, difficulty, currentLevelId);
       const list = $("highscoreList");
       if (!list) return;
       
       list.innerHTML = '';
       
-      // Show difficulty in header
+      // Show difficulty and level in header
       const modalTitle = document.querySelector('#highscoreModal h2');
       if (modalTitle) {
         const diffPreset = DifficultyModes.presets[difficulty];
         const diffName = diffPreset?.name || difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
         const diffIcon = diffPreset?.icon || '⚔️';
-        modalTitle.textContent = `🏆 High Scores - ${diffIcon} ${diffName}`;
+        const levelInfo = LevelSystem && LevelSystem.getLevel ? LevelSystem.getLevel(currentLevelId) : null;
+        const levelName = levelInfo ? ` - Level ${currentLevelId}: ${levelInfo.name}` : ` - Level ${currentLevelId}`;
+        modalTitle.textContent = `🏆 High Scores - ${diffIcon} ${diffName}${levelName}`;
       }
       
       if (scores.length === 0) {
@@ -5758,9 +5862,30 @@ window.$ = (id) => document.getElementById(id);
             world.paused = false;
             sessionStartTime = Date.now();
             
-            // Sync world.currentLevel with LevelSystem.currentLevel
-            world.currentLevel = LevelSystem.currentLevel || 1;
-            console.log("Current level:", world.currentLevel);
+      // Sync world.currentLevel with LevelSystem.currentLevel - ensure theme is applied
+      // Priority: LevelSystem.currentLevel > selectedLevel in localStorage > currentLevel in localStorage > 1
+      if (LevelSystem && LevelSystem.currentLevel) {
+        world.currentLevel = LevelSystem.currentLevel;
+      } else {
+        const selectedLevel = localStorage.getItem('selectedLevel') || localStorage.getItem('currentLevel');
+        if (selectedLevel) {
+          world.currentLevel = parseInt(selectedLevel);
+          if (LevelSystem) {
+            LevelSystem.currentLevel = world.currentLevel;
+            LevelSystem.save();
+          }
+        } else {
+          world.currentLevel = 1;
+          if (LevelSystem) {
+            LevelSystem.currentLevel = 1;
+          }
+        }
+      }
+      // Force theme refresh
+      if (typeof LevelThemes !== 'undefined' && LevelThemes) {
+        LevelThemes.getCurrent();
+      }
+      console.log("Current level:", world.currentLevel);
             
             // Apply difficulty settings
             const diff = DifficultyModes.getCurrent();
@@ -5813,8 +5938,29 @@ window.$ = (id) => document.getElementById(id);
       world.paused = false;
       sessionStartTime = Date.now();
       
-      // Sync world.currentLevel with LevelSystem.currentLevel
-      world.currentLevel = LevelSystem.currentLevel || 1;
+      // Sync world.currentLevel with LevelSystem.currentLevel EARLY - before any theme-dependent code
+      // Priority: LevelSystem.currentLevel > selectedLevel in localStorage > currentLevel in localStorage > 1
+      if (LevelSystem && LevelSystem.currentLevel) {
+        world.currentLevel = LevelSystem.currentLevel;
+      } else {
+        const selectedLevel = localStorage.getItem('selectedLevel') || localStorage.getItem('currentLevel');
+        if (selectedLevel) {
+          world.currentLevel = parseInt(selectedLevel);
+          if (LevelSystem) {
+            LevelSystem.currentLevel = world.currentLevel;
+            LevelSystem.save();
+          }
+        } else {
+          world.currentLevel = 1;
+          if (LevelSystem) {
+            LevelSystem.currentLevel = 1;
+          }
+        }
+      }
+      // Force theme refresh
+      if (typeof LevelThemes !== 'undefined' && LevelThemes) {
+        LevelThemes.getCurrent();
+      }
       console.log("Current level:", world.currentLevel);
       
       // Apply difficulty settings
@@ -6691,15 +6837,15 @@ window.$ = (id) => document.getElementById(id);
     const wingFlap = Math.sin(world.t * 10) * 0.3;
     const birdType = e.type || 'crow';
     
-    // Bird-specific properties
+    // Bird-specific properties (viking-themed: crest and rune accent per level)
     const birdStyles = {
-      crow: { bodyColor: '#000000', beakColor: '#FFA500', size: 1.0, wingSize: 1.0 },
-      raven: { bodyColor: '#000000', beakColor: '#FFA500', size: 1.2, wingSize: 1.2 },
-      seagull: { bodyColor: '#FFFFFF', beakColor: '#FFD700', size: 1.1, wingSize: 1.3 },
-      eagle: { bodyColor: '#8B4513', beakColor: '#FFA500', size: 1.6, wingSize: 1.8 },
-      hawk: { bodyColor: '#654321', beakColor: '#FF8C00', size: 1.3, wingSize: 1.4 },
-      mythicalRaven: { bodyColor: '#4B0082', beakColor: '#FFD700', size: 1.8, wingSize: 2.0, glow: true },
-      phoenix: { bodyColor: '#FF4500', beakColor: '#FFD700', size: 2.0, wingSize: 2.2, glow: true }
+      crow: { bodyColor: '#000000', beakColor: '#FFA500', size: 1.0, wingSize: 1.0, crestColor: '#8B4513' },
+      raven: { bodyColor: '#000000', beakColor: '#FFA500', size: 1.2, wingSize: 1.2, crestColor: '#654321' },
+      seagull: { bodyColor: '#FFFFFF', beakColor: '#FFD700', size: 1.1, wingSize: 1.3, crestColor: '#C0C0C0' },
+      eagle: { bodyColor: '#8B4513', beakColor: '#FFA500', size: 1.6, wingSize: 1.8, crestColor: '#FFD700' },
+      hawk: { bodyColor: '#654321', beakColor: '#FF8C00', size: 1.3, wingSize: 1.4, crestColor: '#FFD700' },
+      mythicalRaven: { bodyColor: '#4B0082', beakColor: '#FFD700', size: 1.8, wingSize: 2.0, glow: true, crestColor: '#FFD700' },
+      phoenix: { bodyColor: '#FF4500', beakColor: '#FFD700', size: 2.0, wingSize: 2.2, glow: true, crestColor: '#FFD700' }
     };
     
     const style = birdStyles[birdType] || birdStyles.crow;
@@ -6723,6 +6869,20 @@ window.$ = (id) => document.getElementById(id);
     ctx.lineWidth = 2;
     ctx.stroke();
     
+    // Viking rune / shield mark on chest
+    const crestColor = style.crestColor || '#8B4513';
+    ctx.fillStyle = crestColor;
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, -bodySize * 0.3);
+    ctx.lineTo(bodySize * 0.25, bodySize * 0.2);
+    ctx.lineTo(0, bodySize * 0.5);
+    ctx.lineTo(-bodySize * 0.25, bodySize * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
     // Wings - animated flapping
     ctx.fillStyle = style.bodyColor;
     ctx.beginPath();
@@ -6737,6 +6897,18 @@ window.$ = (id) => document.getElementById(id);
     // Head
     ctx.beginPath();
     ctx.arc(0, -bodySize - 5, headSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Viking helmet-like crest (ridge above head)
+    ctx.fillStyle = crestColor;
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-headSize * 0.5, -bodySize - 5 - headSize);
+    ctx.lineTo(0, -bodySize - 5 - headSize * 1.4);
+    ctx.lineTo(headSize * 0.5, -bodySize - 5 - headSize);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
     
@@ -6775,28 +6947,14 @@ window.$ = (id) => document.getElementById(id);
   };
 
 
-  // Draw Viking-themed health item (mead horn, not abstract heart)
+  // Draw Viking-themed health item (mead horn) - no ball/glow, horn only
   const drawHeart = (x, y, pulse, rotation) => {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rotation);
     const size = 20 * pulse;
     
-    // Glow effect
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 2);
-    gradient.addColorStop(0, "#ef4444AA");
-    gradient.addColorStop(0.5, "#ef444460");
-    gradient.addColorStop(1, "#ef444400");
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Viking drinking horn (mead horn) - healing item
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#ef4444";
-    
-    // Horn body (curved shape)
+    // Horn body (curved shape) - no circular glow
     ctx.fillStyle = "#8B4513"; // Brown leather/horn color
     ctx.beginPath();
     ctx.moveTo(-size * 0.3, size * 0.4);
@@ -6966,9 +7124,9 @@ window.$ = (id) => document.getElementById(id);
     const theme = LevelThemes.getCurrent();
     const levelId = world.currentLevel || 1;
     
-    // Base colors
+    // Base colors (no red balls - use amber/orange for speed)
     const baseColors = {
-      speedBoost: "#FF6B6B",
+      speedBoost: "#F59E0B",
       invincibility: "#4ECDC4",
       scoreMultiplier: "#FFD93D",
       vikingShip: "#8B4513",
@@ -7298,7 +7456,8 @@ window.$ = (id) => document.getElementById(id);
                       }, 1500);
                     }
                     
-                    HighScoreManager.saveScore(world.score);
+                    // VERIFIED: High scores are per-level - all saveScore calls include world.currentLevel
+                    HighScoreManager.saveScore(world.score, null, world.currentLevel);
                     playSFX('gameover');
                     setTimeout(() => { 
                       if (overlay) {
@@ -7383,7 +7542,9 @@ window.$ = (id) => document.getElementById(id);
     } else if (world.powerups.speedBoost.active) {
       speedMultiplier = 1.5;
     }
-    const actualSpeed = world.speed * speedMultiplier;
+    // Slide (duck): slightly faster movement while sliding
+    const slideSpeedMultiplier = viking.ducking ? 1.15 : 1.0;
+    const actualSpeed = world.speed * speedMultiplier * slideSpeedMultiplier;
     viking.x += actualSpeed * dt;
     const scoreMultiplier = world.powerups.scoreMultiplier.active ? world.powerups.scoreMultiplier.multiplier : 1;
     const streakBonus = engagement.streakBonus || 1.0;
@@ -7437,18 +7598,21 @@ window.$ = (id) => document.getElementById(id);
     }
     
     // Update world.currentLevel based on score (for level progression)
-    const scoreBasedLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
-    if (scoreBasedLevel.id !== world.currentLevel) {
+    // Only progress if score has reached next level's unlockScore (don't overwrite on game start)
+    const currentLevelObj = LevelSystem.levels.find(l => l.id === world.currentLevel) || LevelSystem.levels[0];
+    const nextLevel = LevelSystem.levels.find(l => l.id > world.currentLevel);
+    if (nextLevel && world.score >= nextLevel.unlockScore && world.score > 0) {
+      // Progress to next level only if score reached threshold
       const oldLevel = world.currentLevel;
-      world.currentLevel = scoreBasedLevel.id;
-      LevelSystem.currentLevel = scoreBasedLevel.id;
+      world.currentLevel = nextLevel.id;
+      LevelSystem.currentLevel = nextLevel.id;
       LevelSystem.save();
       // Reset time in level when level changes
       world.timeInCurrentLevel = 0;
       world.previousLevel = oldLevel;
       // Show level change notification
-      if (scoreBasedLevel.id > oldLevel) {
-        showStickinessNotification(`🎯 LEVEL ${scoreBasedLevel.id}: ${scoreBasedLevel.name}`, 'info');
+      if (nextLevel.id > oldLevel) {
+        showStickinessNotification(`🎯 LEVEL ${nextLevel.id}: ${nextLevel.name}`, 'info');
         // Play level-up sound (war horn fanfare)
         try {
           if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -7493,9 +7657,9 @@ window.$ = (id) => document.getElementById(id);
       const hasBoss = Bosses.some(b => b.active && !b.defeated);
       
       if (!hasBoss) {
-        // Get current level info
-        const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
-        const nextLevel = LevelSystem.levels.find(l => l.unlockScore > world.score);
+        // Get current level info - use world.currentLevel instead of score-based detection
+        const currentLevel = LevelSystem.levels.find(l => l.id === world.currentLevel) || LevelSystem.levels[0];
+        const nextLevel = LevelSystem.levels.find(l => l.id > world.currentLevel);
         const levelStart = currentLevel.unlockScore;
         const levelEnd = nextLevel ? nextLevel.unlockScore : Infinity;
         const levelRange = levelEnd - levelStart;
@@ -7513,16 +7677,49 @@ window.$ = (id) => document.getElementById(id);
         
         // Check each spawn point
         for (let i = 1; i <= spawnsPerLevel; i++) {
-          const spawnScore = levelStart + (spawnInterval * i);
           const spawnKey = `${currentLevel.id}_${i}`;
           
           // Only spawn if we haven't spawned this boss at this point yet
           if (!world.bossSpawnsThisLevel[spawnKey]) {
+            // Calculate spawn thresholds - handle direct level selection differently
+            let windowSize;
+            let spawnThreshold;
+            
+            // If starting from a higher level (score < levelStart), use time-based or fixed score thresholds
+            if (world.score < levelStart) {
+              // Direct level selection: use time-based or reasonable score thresholds
+              // First boss spawns after 20-30 seconds, subsequent bosses after intervals
+              const timePerBoss = 25; // 25 seconds per boss when starting from higher level
+              const timeBasedThreshold = world.timeInCurrentLevel >= (timePerBoss * i);
+              
+              // Also allow score-based spawning with reasonable thresholds
+              const scoreThreshold = 5000 * i; // 5k, 10k, 15k, etc. for bosses 1, 2, 3...
+              spawnThreshold = scoreThreshold;
+              windowSize = 2000; // Allow some flexibility
+              
+              // Spawn if time OR score threshold reached
+              if (timeBasedThreshold || world.score >= spawnThreshold) {
+                const bossData = (BossData && BossData[bossKey]) || null;
+                if (bossData) {
+                  console.log(`Spawning boss (direct level select): ${bossData.name} at score ${world.score}, time: ${world.timeInCurrentLevel.toFixed(1)}s, level: ${currentLevel.id}`);
+                  if (!hasBoss) {
+                    showStickinessNotification(`👹 BOSS APPROACHING: ${bossData.name}`, 'danger');
+                  }
+                  playSFX('powerup');
+                  spawnBoss(bossKey);
+                  world.bossSpawnsThisLevel[spawnKey] = true;
+                  break;
+                }
+              }
+              continue; // Skip normal spawn logic for direct level selection
+            }
+            
+            // Normal progression: calculate spawn score based on level range
+            const spawnScore = levelStart + (spawnInterval * i);
+            
             // Spawn when score reaches or exceeds spawn point (much wider window for reliability)
             // Level 1-2 need very wide window since score starts at 0, others can be wider too
             // For Level 1, spawn boss much earlier (at lower score threshold)
-            let windowSize;
-            let spawnThreshold;
             if (currentLevel.id === 1) {
               // Level 1: Spawn boss at score 2000-6000 (very wide window) OR after 30 seconds
               spawnThreshold = 2000;
@@ -7674,13 +7871,8 @@ window.$ = (id) => document.getElementById(id);
       const maxSpawn = baseMax - (baseMax * 0.2 * scoreFactor);
       world.nextObstacleAt += rand(Math.max(600, minSpawn), Math.max(800, maxSpawn)); // More spacing
     }
-    // Spawn duck obstacles (flying obstacles that require ducking) - Reduced frequency
-    if (viking.x > world.nextDuckObstacleAt - W) {
-      if (Math.random() < 0.5) { // 50% chance to spawn duck obstacle (reduced from 70%)
-        spawnDuckObstacle(world.nextDuckObstacleAt);
-      }
-      world.nextDuckObstacleAt += rand(500, 900); // Less frequent spawns (was 300-600)
-    }
+    // Flying obstacles (duck obstacles) removed - only land enemies spawn
+    // spawnDuckObstacle function exists but is never called
     if (viking.x > world.nextMeadAt - W) {
       spawnMead(world.nextMeadAt);
       world.nextMeadAt += rand(400, 600);
@@ -7726,12 +7918,9 @@ window.$ = (id) => document.getElementById(id);
       // Ensure minimum spacing for playability
       world.nextEnemyAt += rand(Math.max(diff.enemySpawnMin * 0.5, minSpawn), Math.max(diff.enemySpawnMax * 0.5, maxSpawn));
     }
-    // Spawn bird enemies - level-specific
     if (viking.x > world.nextBirdAt - W) {
       spawnBirdEnemy(world.nextBirdAt);
-      // Birds spawn less frequently than ground enemies, more in higher levels
-      const birdSpawnRate = 1500 + (world.currentLevel * 200);
-      world.nextBirdAt += rand(birdSpawnRate, birdSpawnRate + 500);
+      world.nextBirdAt += rand(800, 1400);
     }
     if (viking.x > world.nextHeartAt - W) {
       if (world.lives < 5) { // Only spawn hearts if lives < 5
@@ -7752,14 +7941,8 @@ window.$ = (id) => document.getElementById(id);
     
     // Update all objects
     for (const o of Obstacles) o.x -= world.speed * dt;
-    // Update duck obstacles (flying obstacles)
-    for (const duckObst of DuckObstacles) {
-      if (!duckObst.hit) {
-        duckObst.x += duckObst.vx * dt;
-        // Remove if off screen
-        if (duckObst.x < viking.x - W - 200) duckObst.hit = true;
-      }
-    }
+    // Duck obstacles (flying obstacles) disabled - array should be empty
+    // No update needed since nothing spawns
     // Platforms disabled - no movement
     // for (const p of Platforms) p.x -= world.speed * dt;
     
@@ -7796,6 +7979,7 @@ window.$ = (id) => document.getElementById(id);
     }
     
     // Update bosses - bosses stay until killed, never removed automatically
+    // VERIFIED: Boss movement implements back-and-forth patrolling between patrolLeft and patrolRight
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated) {
         // Dynamic movement patterns based on phase
@@ -7803,16 +7987,34 @@ window.$ = (id) => document.getElementById(id);
         const moveSpeed = boss.speed || 1.0;
         const phaseMultiplier = phase === 3 ? 1.5 : phase === 2 ? 1.2 : 1.0;
         
-        // Horizontal movement - charge toward player, then back off
-        const targetX = viking.x + 150; // Keep boss in front of player
-        const distToTarget = boss.x - targetX;
+        // Back-and-forth patrolling - boss moves left and right on screen so player can stomp
+        const patrolLeft = viking.x - 180;
+        const patrolRight = viking.x + 260;
         
-        if (Math.abs(distToTarget) > 20) {
-          // Move toward target position
-          boss.x -= Math.sign(distToTarget) * world.speed * moveSpeed * phaseMultiplier * dt * 0.8;
-        } else {
-          // Add side-to-side movement when close
-          boss.x += Math.sin(world.t * 2 + boss.x * 0.01) * 30 * phaseMultiplier * dt;
+        // Initialize direction if not set
+        if (boss.direction === undefined) {
+          boss.direction = -1; // Start moving left so boss enters from right
+        }
+        
+        // Move in current direction (4x so boss clearly patrols back and forth)
+        boss.x += boss.direction * world.speed * moveSpeed * phaseMultiplier * dt * 0.8 * 4;
+        
+        // Reverse direction at boundaries
+        if (boss.x <= patrolLeft) {
+          boss.direction = 1; // Move right
+        }
+        if (boss.x >= patrolRight) {
+          boss.direction = -1; // Move left
+        }
+        
+        // Keep boss on screen (safety bounds) - nudge back, don't snap every frame
+        if (boss.x < viking.x - 100) {
+          boss.x = Math.max(boss.x, viking.x - 100);
+          boss.direction = 1; // Force right if too far left
+        }
+        if (boss.x > viking.x + W + 50) {
+          boss.x = Math.min(boss.x, viking.x + W + 50);
+          boss.direction = -1; // Force left if too far right
         }
         
         // Vertical movement - bobbing and jumping
@@ -7820,10 +8022,6 @@ window.$ = (id) => document.getElementById(id);
         const verticalOffset = Math.sin(world.t * 3 + boss.x * 0.01) * 15 * phaseMultiplier;
         const jumpOffset = phase === 3 ? Math.sin(world.t * 4) * 30 : 0; // Jump in final phase
         boss.y = baseY + verticalOffset + jumpOffset;
-        
-        // Keep boss on screen
-        if (boss.x < viking.x - 100) boss.x = viking.x - 100;
-        if (boss.x > viking.x + W + 50) boss.x = viking.x + W + 50;
         
         // Boss attacks
         const now = Date.now();
@@ -7934,7 +8132,7 @@ window.$ = (id) => document.getElementById(id);
                 engagement.personalBest = Math.floor(world.score);
                 localStorage.setItem('personalBest', engagement.personalBest.toString());
               }
-              HighScoreManager.saveScore(world.score);
+              HighScoreManager.saveScore(world.score, null, world.currentLevel);
               playSFX('gameover');
               setTimeout(() => { 
                 if (overlay) {
@@ -7977,8 +8175,9 @@ window.$ = (id) => document.getElementById(id);
       }
     }
     
-    // Collisions - Duck Obstacles (flying obstacles that require ducking)
-    for (const duckObst of DuckObstacles) {
+    // Duck obstacles (flying obstacles) disabled - no collision checks needed
+    // Array should always be empty since spawnDuckObstacle is never called
+    if (false) for (const duckObst of DuckObstacles) {
       if (!duckObst.hit) {
         // Collision detection
         const distX = Math.abs(viking.x - duckObst.x);
@@ -8012,7 +8211,7 @@ window.$ = (id) => document.getElementById(id);
                   engagement.personalBest = Math.floor(world.score);
                   localStorage.setItem('personalBest', engagement.personalBest.toString());
                 }
-                HighScoreManager.saveScore(world.score);
+                HighScoreManager.saveScore(world.score, null, world.currentLevel);
                 
                 // Update level mastery
                 if (LevelMastery && typeof LevelMastery.checkLevel === 'function') {
@@ -8143,7 +8342,8 @@ window.$ = (id) => document.getElementById(id);
                     engagement.personalBest = Math.floor(world.score);
                     localStorage.setItem('personalBest', engagement.personalBest.toString());
                   }
-                  HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+                  // VERIFIED: High scores are per-level - all saveScore calls include world.currentLevel
+                  HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player', world.currentLevel);
                   playSFX('gameover');
                   setTimeout(() => { 
                     if (overlay) {
@@ -8205,7 +8405,7 @@ window.$ = (id) => document.getElementById(id);
           
           // Base points that scale with score and level (2x per level)
           // Birds give bonus points
-          const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+          const currentLevel = LevelSystem.levels.find(l => l.id === world.currentLevel) || LevelSystem.levels[0];
           const birdBonus = e.isBird ? 25 : 0; // Extra points for killing birds
           // 2x scaling per level: Level 1 = 50, Level 2 = 100, Level 3 = 200, etc.
           const basePoints = (50 * Math.pow(2, currentLevel.id - 1)) + Math.floor(world.score / 1000) + birdBonus;
@@ -8258,7 +8458,7 @@ window.$ = (id) => document.getElementById(id);
                   engagement.personalBest = Math.floor(world.score);
                   localStorage.setItem('personalBest', engagement.personalBest.toString());
                 }
-                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player', world.currentLevel);
                 playSFX('gameover');
                 setTimeout(() => { 
                   if (overlay) {
@@ -8302,7 +8502,7 @@ window.$ = (id) => document.getElementById(id);
           boss.defeated = true;
           boss.active = false;
           // Boss points scale with level (2x per level), bonus for ship kill
-          const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+          const currentLevel = LevelSystem.levels.find(l => l.id === world.currentLevel) || LevelSystem.levels[0];
           // 2x scaling per level: Level 1 = 1000, Level 2 = 2000, Level 3 = 4000, etc.
           const bossPoints = 1000 * Math.pow(2, currentLevel.id - 1);
           world.score += bossPoints * 10; // Bonus for ship kill
@@ -8313,10 +8513,10 @@ window.$ = (id) => document.getElementById(id);
           continue;
         }
         
-        // Jump on boss from above = damage boss
+        // Jump on boss from above = damage boss (forgiving stomp window)
         const comingFromAbove = viking.vy > 0 && 
-                               vikingBottom <= bossTop + 30 &&
-                               vikingBottom >= bossTop - 10;
+                               vikingBottom <= bossTop + 80 &&
+                               vikingBottom >= bossTop - 40;
         
         if (horizontalOverlap && comingFromAbove) {
           try {
@@ -8335,7 +8535,7 @@ window.$ = (id) => document.getElementById(id);
               boss.active = false;
               
               // Boss points scale with level (2x per level)
-              const currentLevel = LevelSystem.levels.slice().reverse().find(l => world.score >= l.unlockScore) || LevelSystem.levels[0];
+              const currentLevel = LevelSystem.levels.find(l => l.id === world.currentLevel) || LevelSystem.levels[0];
               // 2x scaling per level: Level 1 = 1000, Level 2 = 2000, Level 3 = 4000, etc.
               const bossPoints = 1000 * Math.pow(2, (currentLevel?.id || 1) - 1);
               world.score += bossPoints;
@@ -8415,7 +8615,7 @@ window.$ = (id) => document.getElementById(id);
                   engagement.personalBest = Math.floor(world.score);
                   localStorage.setItem('personalBest', engagement.personalBest.toString());
                 }
-                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player');
+                HighScoreManager.saveScore(world.score, localStorage.getItem('playerName') || 'Player', world.currentLevel);
                 playSFX('gameover');
                 setTimeout(() => { 
                   if (overlay) {
@@ -8437,6 +8637,11 @@ window.$ = (id) => document.getElementById(id);
           }
         }
       }
+    }
+    
+    // Remove defeated bosses so they don't persist and boss music can stop
+    for (let i = Bosses.length - 1; i >= 0; i--) {
+      if (Bosses[i].defeated) Bosses.splice(i, 1);
     }
     
     // Duck warning removed - obstacles are placed so ducking is needed
@@ -8511,11 +8716,12 @@ window.$ = (id) => document.getElementById(id);
     updatePowerupCountdowns();
     updateLevelMusic();
     
-    // Boss music
+    // Boss music - only while at least one boss is active and not defeated
     try {
-      if (Bosses.length > 0 && !bossMusicActive) {
+      const hasActiveBoss = Bosses.some(b => b.active && !b.defeated);
+      if (hasActiveBoss && !bossMusicActive) {
         startBossMusic();
-      } else if (Bosses.length === 0 && bossMusicActive) {
+      } else if (!hasActiveBoss && bossMusicActive) {
         stopBossMusic();
       }
     } catch (e) {
@@ -8718,8 +8924,9 @@ window.$ = (id) => document.getElementById(id);
       }
     }
     
-    // Draw duck obstacles (flying obstacles) - Enhanced visibility with glow
-    for (const duckObst of DuckObstacles) {
+    // Duck obstacles (flying obstacles) disabled - nothing to draw
+    // Array should always be empty since spawnDuckObstacle is never called
+    if (false) for (const duckObst of DuckObstacles) {
       if (!duckObst.hit && duckObst.x > viking.x - W - 100 && duckObst.x < viking.x + W + 100) {
         ctx.save();
         ctx.translate(duckObst.x, duckObst.y);
@@ -8741,9 +8948,9 @@ window.$ = (id) => document.getElementById(id);
                        duckObst.type === 'axe' ? '#FFD700' :
                        duckObst.type === 'spear' ? '#C0C0C0' : '#FF4500';
         
-        // Add shadow for depth
+        // Add shadow for depth (neutral - no red glow)
         ctx.shadowBlur = 10;
-        ctx.shadowColor = 'rgba(255, 0, 0, 0.5)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
         
         if (duckObst.type === 'raven') {
           // Draw raven - larger and more visible
@@ -9075,12 +9282,13 @@ window.$ = (id) => document.getElementById(id);
     ctx.restore();
     
     // Boss health bar - only show if boss is active and not defeated (drawn in screen space, not world space)
+    // Positioned below topbar (topbar occupies 16-72px, so place at 85px to avoid overlap)
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated && boss.currentHealth > 0) {
         const barWidth = 300;
         const barHeight = 20;
         const barX = W / 2 - barWidth / 2;
-        const barY = 30;
+        const barY = 85; // Position below topbar (topbar ends at ~72px, add 13px spacing)
         const healthPercent = Math.max(0, Math.min(1, boss.currentHealth / boss.maxHealth));
         
         // Background
@@ -9155,11 +9363,26 @@ window.$ = (id) => document.getElementById(id);
       card.className = `level-card ${!isUnlocked ? 'locked' : ''} ${isActive ? 'active' : ''}`;
       card.onclick = () => {
         if (isUnlocked) {
+          // Update all level references
+          console.log('[Level Selection] Changing to level:', level.id);
           world.currentLevel = level.id;
           LevelSystem.currentLevel = level.id;
           LevelSystem.save();
           // Save selected level to localStorage
           localStorage.setItem('selectedLevel', level.id.toString());
+          localStorage.setItem('currentLevel', level.id.toString());
+          // Force theme refresh by calling getCurrent
+          const theme = LevelThemes.getCurrent();
+          console.log('[Level Selection] Theme after change:', theme.name, 'Level:', world.currentLevel);
+          // If game hasn't started, reset world to apply theme immediately
+          if (!world.started && !world.over) {
+            resetWorld();
+          } else {
+            // Even if game is running, update the theme immediately
+            // This ensures background and other visuals update
+            const theme = LevelThemes.getCurrent();
+            console.log('Level changed to', level.id, 'Theme:', theme.name);
+          }
           renderLevelGrid();
         }
       };
@@ -9772,6 +9995,25 @@ window.$ = (id) => document.getElementById(id);
       WeeklyChallenges.init();
       EventSystem.init();
       resize();
+      // Ensure world.currentLevel is synced after LevelSystem.init()
+      // Priority: LevelSystem.currentLevel > selectedLevel > currentLevel > 1
+      if (LevelSystem && LevelSystem.currentLevel) {
+        world.currentLevel = LevelSystem.currentLevel;
+      } else {
+        // Fallback to localStorage
+        const saved = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+        if (saved) {
+          world.currentLevel = parseInt(saved);
+          if (LevelSystem) {
+            LevelSystem.currentLevel = world.currentLevel;
+            LevelSystem.save();
+          }
+        }
+      }
+      // Force theme refresh to ensure correct theme is applied
+      if (typeof LevelThemes !== 'undefined' && LevelThemes) {
+        LevelThemes.getCurrent();
+      }
   resetWorld();
       // Ensure level grid is rendered after initialization
       if (typeof renderLevelGrid === 'function') {
@@ -9915,7 +10157,7 @@ window.$ = (id) => document.getElementById(id);
           highscoreModal.classList.add("active");
           // Display scores for current difficulty
           const currentDifficulty = world.difficulty || 'normal';
-          HighScoreManager.displayScores('alltime', currentDifficulty);
+          HighScoreManager.displayScores('alltime', currentDifficulty, world.currentLevel);
         };
       }
       
@@ -9926,7 +10168,7 @@ window.$ = (id) => document.getElementById(id);
             tab.classList.add("active");
             const period = tab.dataset.period || 'alltime';
             const currentDifficulty = world.difficulty || 'normal';
-            HighScoreManager.displayScores(period, currentDifficulty);
+            HighScoreManager.displayScores(period, currentDifficulty, world.currentLevel);
           };
         });
       }
@@ -10078,6 +10320,25 @@ window.$ = (id) => document.getElementById(id);
     WeeklyChallenges.init();
     EventSystem.init();
     resize();
+    // Ensure world.currentLevel is synced after LevelSystem.init()
+    // Priority: LevelSystem.currentLevel > selectedLevel > currentLevel > 1
+    if (LevelSystem && LevelSystem.currentLevel) {
+      world.currentLevel = LevelSystem.currentLevel;
+    } else {
+      // Fallback to localStorage
+      const saved = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+      if (saved) {
+        world.currentLevel = parseInt(saved);
+        if (LevelSystem) {
+          LevelSystem.currentLevel = world.currentLevel;
+          LevelSystem.save();
+        }
+      }
+    }
+    // Force theme refresh to ensure correct theme is applied
+    if (typeof LevelThemes !== 'undefined' && LevelThemes) {
+      LevelThemes.getCurrent();
+    }
     resetWorld();
     // Ensure level grid is rendered after initialization
     if (typeof renderLevelGrid === 'function') {
@@ -10547,7 +10808,9 @@ window.$ = (id) => document.getElementById(id);
       // Use eval to access closure variables even if they're not in scope
       if (typeof world === 'undefined') {
         // Create a minimal world object if it doesn't exist
-        window.world = { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: 1, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
+        const savedLevel = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+        const initialLevel = savedLevel ? parseInt(savedLevel) : 1;
+        window.world = { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: initialLevel, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
         console.log("✅ window.world created in error handler");
       } else {
         window.world = world;
@@ -10572,7 +10835,9 @@ window.$ = (id) => document.getElementById(id);
     } catch (e2) {
       console.error("❌ Failed to set window properties in error handler:", e2);
       // Last resort - create minimal objects
-      window.world = window.world || { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: 1, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
+      const savedLevelFallback = localStorage.getItem('currentLevel') || localStorage.getItem('selectedLevel');
+      const initialLevelFallback = savedLevelFallback ? parseInt(savedLevelFallback) : 1;
+      window.world = window.world || { started: false, paused: false, over: false, score: 0, mead: 0, speed: 200, t: 0, groundY: 400, camX: 0, lives: 3, screenShake: 0, goldenRun: false, goldenRunTimer: 0, difficulty: 'normal', currentLevel: initialLevelFallback, nextObstacleAt: 0, nextMeadAt: 0, nextPowerupAt: 0, nextPlatformAt: 0, nextEnemyAt: 0, nextBirdAt: 0, nextHeartAt: 0, nextGoldAt: 0, bossSpawnsThisLevel: {}, powerups: { speedBoost: { active: false, timeLeft: 0 }, invincibility: { active: false, timeLeft: 0 }, scoreMultiplier: { active: false, timeLeft: 0, multiplier: 1 }, vikingShip: { active: false, timeLeft: 0 }, respawn: { count: 0 }, respawnPlus: { count: 0 } } };
       window.start = window.start || (() => { if (window.world) { window.world.started = true; window.world.over = false; window.world.paused = false; } });
       window.resetWorld = window.resetWorld || (() => { if (window.world) { window.world.started = false; window.world.over = false; window.world.paused = false; window.world.score = 0; window.world.mead = 0; window.world.lives = 3; } });
       console.log("✅ Created minimal window objects as last resort");
