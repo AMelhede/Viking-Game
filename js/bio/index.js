@@ -110,14 +110,21 @@ export const Bio = {
 // Attach to window so legacy non-module game code can read it.
 if (typeof window !== "undefined") {
   window.Bio = Bio;
-  // Mount the floating UI (status badge + settings panel).
-  // Defer mount to next tick so the DOM is fully parsed.
-  window.requestAnimationFrame(() => {
-    mountUi(Bio);
-    startEffects(Bio);
-    startDebriefWatcher(Bio);
-  });
-  // Notify game code that Bio is ready, in case it loaded before this module.
-  window.dispatchEvent(new CustomEvent("bio:ready"));
-  console.log("[Bio] adapter ready", Bio.capabilities());
+
+  const boot = () => {
+    try { mountUi(Bio); } catch (e) { console.warn("[Bio] mountUi failed", e); }
+    try { startEffects(Bio); } catch (e) { console.warn("[Bio] startEffects failed", e); }
+    try { startDebriefWatcher(Bio); } catch (e) { console.warn("[Bio] startDebriefWatcher failed", e); }
+    window.dispatchEvent(new CustomEvent("bio:ready"));
+    console.log("[Bio] adapter ready", Bio.capabilities());
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    // body might still not exist if this module loaded synchronously between
+    // <head> and <body>. Defer one tick if so.
+    if (document.body) boot();
+    else queueMicrotask(() => (document.body ? boot() : setTimeout(boot, 0)));
+  }
 }

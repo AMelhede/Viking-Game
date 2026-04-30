@@ -6,6 +6,7 @@
 // One click opens the panel, one click toggles off.
 
 import { currentTier, nextTier } from "./identity.js";
+import { renderDrillList } from "./drills.js";
 
 const PANEL_ID = "bio-panel";
 const BADGE_ID = "bio-badge";
@@ -135,6 +136,11 @@ export function mountUi(Bio) {
       <div id="bio-tier-next" style="font-size:10px;color:#9ca3af;margin-top:4px">—</div>
     </div>
 
+    <div style="margin-top:12px;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">
+      Daily mind training
+    </div>
+    <div id="bio-drill-host"></div>
+
     <div class="blurb">
       Each sensor is useful alone. Combining heart rate + EEG unlocks
       <b>Flow state</b> (calm body + sharp mind) and <b>Berserker</b>
@@ -200,7 +206,17 @@ export function mountUi(Bio) {
   Bio.on("stateChange", () => refreshState());
 
   // Periodic refresh for warming progress and health snapshot
-  setInterval(() => { refreshMetrics(); refreshState(); refreshBadge(); }, 1000);
+  setInterval(() => {
+    refreshMetrics();
+    refreshState();
+    refreshBadge();
+    if (open) refreshDrills();
+  }, 1000);
+
+  function refreshDrills() {
+    const host = panel.querySelector("#bio-drill-host");
+    if (host) renderDrillList(host);
+  }
 
   function refreshBadge() {
     const s = Bio.status();

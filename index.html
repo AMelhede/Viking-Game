@@ -2451,10 +2451,11 @@ window.$ = (id) => document.getElementById(id);
         return { osc, gain };
       };
       
-      // Base drone - level-specific frequency
-      createDrone(theme.baseFreq, 'sine');
-      createDrone(theme.baseFreq * 2, 'triangle'); // Octave
-      createDrone(theme.baseFreq * 1.5, 'sine'); // Fifth
+      // Base drone - level-specific frequency. Lower gain than original to
+      // leave room for melody and SFX without sounding muddy.
+      const drone1 = createDrone(theme.baseFreq, 'sine');           drone1.gain.gain.setValueAtTime(0.12, musicContext.currentTime);
+      const drone2 = createDrone(theme.baseFreq * 2, 'sine');       drone2.gain.gain.setValueAtTime(0.06, musicContext.currentTime);
+      const drone3 = createDrone(theme.baseFreq * 1.5, 'sine');     drone3.gain.gain.setValueAtTime(0.05, musicContext.currentTime);
       
       // Slow modulating pad
       const lfo = musicContext.createOscillator();
@@ -2506,18 +2507,38 @@ window.$ = (id) => document.getElementById(id);
             nextBeat = 400 + Math.random() * 600;
           }
           
-          // Main drum hit
+          // Main drum hit — sine sub for body + short noise burst for thud attack.
+          // Pure sine drums sound like a pulse; layering noise gives them a real
+          // skin/leather "whack". This is the standard taiko/synth-drum recipe.
           const drum = musicContext.createOscillator();
           const drumGain = musicContext.createGain();
           drum.type = 'sine';
-          drum.frequency.setValueAtTime(drumFreq, now);
-          drum.frequency.exponentialRampToValueAtTime(drumFreq * 0.5, now + 0.25);
-          drumGain.gain.setValueAtTime(drumGainVal, now);
-          drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          drum.frequency.setValueAtTime(drumFreq * 1.4, now);
+          drum.frequency.exponentialRampToValueAtTime(drumFreq * 0.5, now + 0.18);
+          drumGain.gain.setValueAtTime(0, now);
+          drumGain.gain.linearRampToValueAtTime(drumGainVal * 0.7, now + 0.005);
+          drumGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
           drum.connect(drumGain);
           drumGain.connect(musicGain);
           drum.start(now);
-          drum.stop(now + 0.5);
+          drum.stop(now + 0.4);
+
+          // Noise transient — gives the drum its "wood/leather" attack
+          try {
+            const buf = musicContext.createBuffer(1, Math.floor(musicContext.sampleRate * 0.06), musicContext.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+            const noise = musicContext.createBufferSource();
+            const noiseFilter = musicContext.createBiquadFilter();
+            const noiseGain = musicContext.createGain();
+            noise.buffer = buf;
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(900, now);
+            noiseGain.gain.setValueAtTime(drumGainVal * 0.35, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(musicGain);
+            noise.start(now); noise.stop(now + 0.07);
+          } catch {}
           
           // Accent on every 4th beat (stronger)
           if (beatCount % 4 === 1) {
@@ -2543,59 +2564,51 @@ window.$ = (id) => document.getElementById(id);
       
       createWarDrum();
       
-      // Level-specific melody using theme scale
+      // Level-specific melody — fixed Norse-modal motifs, NOT random picks.
+      // Random pentatonic notes sound aimless and atonal; real Viking music uses
+      // call-and-response phrases anchored on the root and fifth.
+      let melodyPhase = 0;
       const playMelody = () => {
         if (!musicPlaying || !musicContext) return;
-        
-        const notes = theme.scale;
-        const note = notes[Math.floor(Math.random() * notes.length)];
+        const scale = theme.scale; // 5-7 note pentatonic/modal scale
+        // Index pattern selectors: emphasize root(0), third(1-2), fifth(3-4)
+        const phrases = [
+          [0, 2, 3, 2],         // call
+          [3, 4, 3, 2],         // response (rises)
+          [4, 3, 2, 0],         // descend home
+          [0, 0, 2, 0],         // resolution
+        ];
+        const phrase = phrases[melodyPhase % phrases.length];
+        melodyPhase++;
         const now = musicContext.currentTime;
-        
-        const hornOsc = musicContext.createOscillator();
-        const hornGain = musicContext.createGain();
-        
-        // Level-specific oscillator types
-        if (theme.atmosphere === 'calm' || theme.atmosphere === 'cold') {
-          hornOsc.type = 'sine';
-        } else if (theme.atmosphere === 'tense' || theme.atmosphere === 'intense') {
-          hornOsc.type = 'sawtooth';
-        } else if (theme.atmosphere === 'majestic' || theme.atmosphere === 'divine') {
-          hornOsc.type = 'triangle';
-        } else {
-          hornOsc.type = 'sawtooth';
-        }
-        
-        hornOsc.frequency.setValueAtTime(note, now);
-        
-        hornGain.gain.setValueAtTime(0, now);
-        hornGain.gain.linearRampToValueAtTime(0.1, now + 0.3);
-        hornGain.gain.linearRampToValueAtTime(0.08, now + 1);
-        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 2);
-        
-        // Level-specific filter
-        const filter = musicContext.createBiquadFilter();
-        filter.type = 'lowpass';
-        if (theme.atmosphere === 'cold') {
-          filter.frequency.setValueAtTime(600, now);
-        } else if (theme.atmosphere === 'intense' || theme.atmosphere === 'chaos') {
-          filter.frequency.setValueAtTime(1200, now);
-        } else if (theme.atmosphere === 'divine') {
-          filter.frequency.setValueAtTime(1500, now);
-        } else {
-          filter.frequency.setValueAtTime(800, now);
-        }
-        
-        hornOsc.connect(filter);
-        filter.connect(hornGain);
-        hornGain.connect(musicGain);
-        hornOsc.start(now);
-        hornOsc.stop(now + 2.5);
-        
-        // Level-specific melody timing
-        const melodyDelay = theme.atmosphere === 'calm' ? 4000 : theme.atmosphere === 'chaos' ? 2000 : 3000;
-        if (musicPlaying) {
-          setTimeout(playMelody, melodyDelay + Math.random() * 2000);
-        }
+        const noteDur = theme.atmosphere === "chaos" ? 0.45 : theme.atmosphere === "calm" ? 0.85 : 0.65;
+
+        phrase.forEach((idx, i) => {
+          const note = scale[Math.min(idx, scale.length - 1)];
+          const t = now + i * noteDur;
+          const osc = musicContext.createOscillator();
+          const g = musicContext.createGain();
+          // Triangle is the most "horn-like" pure shape — sawtooth cuts too sharp.
+          osc.type = (theme.atmosphere === "divine" || theme.atmosphere === "majestic") ? "sine" : "triangle";
+          osc.frequency.setValueAtTime(note, t);
+          // Soft attack/release — no clicks
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.07, t + 0.08);
+          g.gain.setValueAtTime(0.06, t + noteDur * 0.6);
+          g.gain.exponentialRampToValueAtTime(0.001, t + noteDur);
+          // Warm lowpass — keeps it sounding like a horn, not a buzzsaw
+          const filter = musicContext.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.setValueAtTime(theme.atmosphere === "cold" ? 700 : 1100, t);
+          filter.Q.setValueAtTime(0.6, t);
+          osc.connect(filter); filter.connect(g); g.connect(musicGain);
+          osc.start(t); osc.stop(t + noteDur + 0.05);
+        });
+
+        // Phrase-level pause — gives the music room to breathe
+        const phraseLen = phrase.length * noteDur * 1000;
+        const restMs = theme.atmosphere === "chaos" ? 600 : theme.atmosphere === "calm" ? 2000 : 1100;
+        if (musicPlaying) setTimeout(playMelody, phraseLen + restMs);
       };
       
       setTimeout(playMelody, 2000);
@@ -2927,14 +2940,15 @@ window.$ = (id) => document.getElementById(id);
           formant3.frequency.setValueAtTime(2400, playTime);
           formant3.Q.setValueAtTime(4, playTime);
           
-          hornOsc.type = 'sawtooth';
+          // Triangle through formant filters = mellow horn. Sawtooth was too buzzy.
+          hornOsc.type = 'triangle';
           hornOsc.frequency.setValueAtTime(note, playTime);
-          
-          // Smooth attack and decay
+
+          // Smooth attack and decay — slightly lower peak, longer release
           hornGain.gain.setValueAtTime(0, playTime);
-          hornGain.gain.linearRampToValueAtTime(0.12, playTime + 0.2);
-          hornGain.gain.setValueAtTime(0.1, playTime + 0.4);
-          hornGain.gain.exponentialRampToValueAtTime(0.01, playTime + 0.6);
+          hornGain.gain.linearRampToValueAtTime(0.10, playTime + 0.2);
+          hornGain.gain.setValueAtTime(0.08, playTime + 0.4);
+          hornGain.gain.exponentialRampToValueAtTime(0.01, playTime + 0.7);
           
           hornOsc.connect(formant1);
           formant1.connect(formant2);
@@ -2973,41 +2987,51 @@ window.$ = (id) => document.getElementById(id);
         menuMusicNodes.push({ osc, gain });
       };
       
-      // D minor drone layers
-      createDrone(73.4, 'sine'); // D
-      createDrone(146.8, 'triangle'); // D octave
-      createDrone(110, 'sine'); // A (fifth)
-      
-      // Subtle ambient layer (wind-like)
-      const ambientOsc = menuMusicContext.createOscillator();
-      const ambientGain = menuMusicContext.createGain();
-      const ambientFilter = menuMusicContext.createBiquadFilter();
-      ambientFilter.type = 'lowpass';
-      ambientFilter.frequency.setValueAtTime(200, now);
-      ambientFilter.Q.setValueAtTime(1, now);
-      
-      ambientOsc.type = 'sawtooth';
-      ambientOsc.frequency.setValueAtTime(65, now);
-      
-      // Slow LFO for wind effect
-      const windLFO = menuMusicContext.createOscillator();
-      const windLFOGain = menuMusicContext.createGain();
-      windLFO.frequency.setValueAtTime(0.05, now);
-      windLFOGain.gain.setValueAtTime(5, now);
-      windLFO.connect(windLFOGain);
-      windLFOGain.connect(ambientOsc.frequency);
-      
-      ambientGain.gain.setValueAtTime(0.08, now);
-      
-      ambientOsc.connect(ambientFilter);
-      ambientFilter.connect(ambientGain);
-      ambientGain.connect(menuMusicGain);
-      
-      ambientOsc.start();
-      windLFO.start();
-      menuMusicNodes.push({ osc: ambientOsc, gain: ambientGain });
-      menuMusicNodes.push({ osc: windLFO, gain: windLFOGain });
-      
+      // D minor drone layers — lower gains and pure sine to leave headroom
+      // for the horn melody and drums without sounding muddy.
+      const md1 = menuMusicContext.createOscillator(); const mg1 = menuMusicContext.createGain();
+      md1.type = 'sine'; md1.frequency.value = 73.4;  mg1.gain.value = 0.10; md1.connect(mg1); mg1.connect(menuMusicGain); md1.start(); menuMusicNodes.push({osc: md1, gain: mg1});
+      const md2 = menuMusicContext.createOscillator(); const mg2 = menuMusicContext.createGain();
+      md2.type = 'sine'; md2.frequency.value = 146.8; mg2.gain.value = 0.05; md2.connect(mg2); mg2.connect(menuMusicGain); md2.start(); menuMusicNodes.push({osc: md2, gain: mg2});
+      const md3 = menuMusicContext.createOscillator(); const mg3 = menuMusicContext.createGain();
+      md3.type = 'sine'; md3.frequency.value = 110;   mg3.gain.value = 0.04; md3.connect(mg3); mg3.connect(menuMusicGain); md3.start(); menuMusicNodes.push({osc: md3, gain: mg3});
+
+      // Wind ambient: filtered noise sounds like real wind. The previous
+      // sawtooth at 65Hz with a slow LFO sounded like a buzzsaw, not weather.
+      let ambientOsc, ambientGain, ambientFilter, windLFO, windLFOGain;
+      try {
+        const noiseBuf = menuMusicContext.createBuffer(1, menuMusicContext.sampleRate * 4, menuMusicContext.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        ambientOsc = menuMusicContext.createBufferSource();
+        ambientOsc.buffer = noiseBuf;
+        ambientOsc.loop = true;
+        ambientGain = menuMusicContext.createGain();
+        ambientGain.gain.setValueAtTime(0.04, now);
+        ambientFilter = menuMusicContext.createBiquadFilter();
+        ambientFilter.type = 'bandpass';
+        ambientFilter.frequency.setValueAtTime(400, now);
+        ambientFilter.Q.setValueAtTime(0.5, now);
+        // Slow LFO sweeps the bandpass to give wind its rise-and-fall
+        windLFO = menuMusicContext.createOscillator();
+        windLFOGain = menuMusicContext.createGain();
+        windLFO.frequency.setValueAtTime(0.08, now);
+        windLFOGain.gain.setValueAtTime(150, now);
+        windLFO.connect(windLFOGain);
+        windLFOGain.connect(ambientFilter.frequency);
+
+        ambientOsc.connect(ambientFilter);
+        ambientFilter.connect(ambientGain);
+        ambientGain.connect(menuMusicGain);
+
+        ambientOsc.start();
+        windLFO.start();
+        menuMusicNodes.push({ osc: ambientOsc, gain: ambientGain });
+        menuMusicNodes.push({ osc: windLFO, gain: windLFOGain });
+      } catch (e) {
+        console.warn("Wind ambient init failed", e);
+      }
+
       menuMusicPlaying = true;
     } catch (e) {
       console.error("Error starting menu music:", e);
@@ -7965,44 +7989,36 @@ window.$ = (id) => document.getElementById(id);
       }
     }
     
-    // Update bosses - bosses stay until killed, never removed automatically
-    // VERIFIED: Boss movement implements back-and-forth patrolling between patrolLeft and patrolRight
+    // Update bosses - bosses stay until killed, never removed automatically.
+    // Boss patrols back and forth in SCREEN SPACE relative to the viking.
+    // Important: viking.x increases each frame as the world scrolls. The boss
+    // must track that scroll first, then add its own oscillation on top — or
+    // it gets left behind by the camera and stuck on the left edge.
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated) {
-        // Dynamic movement patterns based on phase
         const phase = boss.phase || 1;
         const moveSpeed = boss.speed || 1.0;
         const phaseMultiplier = phase === 3 ? 1.5 : phase === 2 ? 1.2 : 1.0;
-        
-        // Back-and-forth patrolling - boss moves left and right on screen so player can stomp
+
+        // 1) Track the camera so the boss stays anchored to the viking's frame.
+        boss.x += actualSpeed * dt;
+
+        // 2) Add patrol oscillation in screen space (relative to viking).
+        if (boss.direction === undefined) boss.direction = -1; // enter from the right
+        const patrolPxPerSec = 220 * moveSpeed * phaseMultiplier;
+        boss.x += boss.direction * patrolPxPerSec * dt;
+
+        // 3) Reverse at screen-relative bounds.
         const patrolLeft = viking.x - 180;
-        const patrolRight = viking.x + 260;
-        
-        // Initialize direction if not set
-        if (boss.direction === undefined) {
-          boss.direction = -1; // Start moving left so boss enters from right
-        }
-        
-        // Move in current direction (4x so boss clearly patrols back and forth)
-        boss.x += boss.direction * world.speed * moveSpeed * phaseMultiplier * dt * 0.8 * 4;
-        
-        // Reverse direction at boundaries
-        if (boss.x <= patrolLeft) {
-          boss.direction = 1; // Move right
-        }
-        if (boss.x >= patrolRight) {
-          boss.direction = -1; // Move left
-        }
-        
-        // Keep boss on screen (safety bounds) - nudge back, don't snap every frame
-        if (boss.x < viking.x - 100) {
-          boss.x = Math.max(boss.x, viking.x - 100);
-          boss.direction = 1; // Force right if too far left
-        }
-        if (boss.x > viking.x + W + 50) {
-          boss.x = Math.min(boss.x, viking.x + W + 50);
-          boss.direction = -1; // Force left if too far right
-        }
+        const patrolRight = viking.x + 280;
+        if (boss.x <= patrolLeft) { boss.x = patrolLeft; boss.direction = 1; }
+        if (boss.x >= patrolRight) { boss.x = patrolRight; boss.direction = -1; }
+
+        // 4) Hard safety bounds — never let boss escape the visible band.
+        const safeMin = viking.x - 220;
+        const safeMax = viking.x + W * 0.65;
+        if (boss.x < safeMin) { boss.x = safeMin; boss.direction = 1; }
+        if (boss.x > safeMax) { boss.x = safeMax; boss.direction = -1; }
         
         // Vertical movement - bobbing and jumping
         const baseY = world.groundY;

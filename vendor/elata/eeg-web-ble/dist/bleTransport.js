@@ -1,5 +1,5 @@
 import { HEADBAND_FRAME_SCHEMA_VERSION, HeadbandTransportState, asElataError, } from "@elata-biosciences/eeg-web";
-import { MuseBleDevice } from "./museDevice";
+import { MuseBleDevice } from "./museDevice.js";
 export class BleTransport {
     constructor(options = {}) {
         this.sequenceId = 0;
