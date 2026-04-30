@@ -3,29 +3,16 @@
     "allow": [
       "Skill(update-config)",
       "Skill(update-config:*)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=JSON.parse\\(fs.readFileSync\\('C:/Users/andre/Downloads/Viking Game/.claude/settings.local.json','utf8'\\)\\); console.log\\(s.hooks.PostToolUse[0].hooks[0].command\\);\")",
       "Bash(git add *)",
-      "Bash(git commit *)",
+      "Bash(git commit -m 'Add auto-push hook for git commits *)",
       "Bash(git push *)",
       "Bash(gh repo *)",
       "Bash(gh api *)",
-      "Bash(node -e *)",
-      "Bash(node --check *)"
-    ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "if": "Bash(git commit*)",
-            "command": "git push origin HEAD 2>&1 || true",
-            "timeout": 60,
-            "statusMessage": "Pushing to GitHub..."
-          }
-        ]
-      }
+      "Bash(python -c \"import json,sys; [print\\(x['type'], x['name']\\) for x in json.load\\(sys.stdin\\)]\")",
+      "Bash(node -e ' *)",
+      "Bash(gh pr *)",
+      "Bash(git commit -m 'Restore auto-push hook in worktree settings + tidy permissions *)"
     ]
   }
 }
