@@ -1,0 +1,67 @@
+{
+  "name": "@elata-biosciences/eeg-web",
+  "version": "0.1.19",
+  "description": "Web wrapper for the Elata EEG WASM bindings",
+  "license": "MIT",
+  "author": "Elata",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Elata-Biosciences/elata-bio-sdk.git",
+    "directory": "packages/eeg-web"
+  },
+  "homepage": "https://github.com/Elata-Biosciences/elata-bio-sdk#readme",
+  "bugs": "https://github.com/Elata-Biosciences/elata-bio-sdk/issues",
+  "keywords": [
+    "eeg",
+    "bci",
+    "neuroscience",
+    "brain-computer-interface",
+    "muse",
+    "elata",
+    "wasm"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./wasm/*": "./wasm/*"
+  },
+  "files": [
+    "dist",
+    "wasm/*.js",
+    "wasm/*.ts",
+    "wasm/*.wasm",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/jest": "29.5.14",
+    "jest": "29.7.0",
+    "jest-environment-jsdom": "29.7.0",
+    "ts-jest": "29.4.4",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "lint": "pnpm exec biome lint src scripts/verify-wasm.js jest.config.cjs",
+    "test": "jest --config jest.config.cjs --passWithNoTests",
+    "test:coverage": "jest --config jest.config.cjs --coverage --passWithNoTests",
+    "clean": "node scripts/clean.mjs",
+    "build": "tsc -p tsconfig.json && node ./scripts/fix-dist-import-specifiers.mjs && node ./scripts/verify-dist-esm.mjs",
+    "sync-wasm": "bash ./scripts/sync-wasm.sh",
+    "test:consumer:node": "node ./scripts/verify-consumer-node-smoke.mjs",
+    "verify:build": "node ../../scripts/verify-package-build.mjs dist/index.js dist/index.d.ts && pnpm run test:consumer:node",
+    "verify:publish": "pnpm run verify:build && pnpm run verify:wasm",
+    "prepare:publish": "node ./scripts/prepare-publish.mjs",
+    "verify:wasm": "node ./scripts/verify-wasm.js"
+  }
+}

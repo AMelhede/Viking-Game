@@ -1157,6 +1157,19 @@
 
     /* Duck Warning Indicator */
   </style>
+
+  <!-- Biosignal SDK (Elata) — vendored, ESM, loaded via import map.
+       Bio is additive; the game runs fine if these fail to load. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@elata-biosciences/rppg-web": "./vendor/elata/rppg-web/dist/index.js",
+      "@elata-biosciences/eeg-web": "./vendor/elata/eeg-web/dist/index.js",
+      "@elata-biosciences/eeg-web-ble": "./vendor/elata/eeg-web-ble/dist/index.js"
+    }
+  }
+  </script>
+  <script type="module" src="./js/bio/index.js"></script>
 </head>
 
 <body>

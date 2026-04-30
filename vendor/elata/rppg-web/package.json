@@ -1,0 +1,72 @@
+{
+  "name": "@elata-biosciences/rppg-web",
+  "version": "0.1.19",
+  "description": "TypeScript wrapper for the Elata rPPG pipeline",
+  "license": "MIT",
+  "author": "Elata",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Elata-Biosciences/elata-bio-sdk.git",
+    "directory": "packages/rppg-web"
+  },
+  "homepage": "https://github.com/Elata-Biosciences/elata-bio-sdk#readme",
+  "bugs": "https://github.com/Elata-Biosciences/elata-bio-sdk/issues",
+  "keywords": [
+    "rppg",
+    "heart-rate",
+    "photoplethysmography",
+    "elata",
+    "bci",
+    "neuroscience"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./pkg/*": "./pkg/*"
+  },
+  "files": [
+    "dist",
+    "pkg",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@types/jest": "29.5.14",
+    "esbuild": "0.25.10",
+    "jest": "29.7.0",
+    "jest-environment-jsdom": "29.7.0",
+    "ts-jest": "29.4.4",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "lint": "pnpm exec biome lint src playwright.config.ts scripts/build-demo.mjs jest.config.cjs",
+    "test": "jest --config jest.config.cjs --passWithNoTests",
+    "test:consumer:node": "node ./scripts/verify-consumer-node-smoke.mjs",
+    "test:consumer:browser": "pnpm exec playwright test e2e/consumer.spec.ts --project=chromium",
+    "clean": "node ./scripts/clean.mjs",
+    "build": "tsc -p . && node ./scripts/fix-dist-import-specifiers.mjs && node ./scripts/verify-dist-esm.mjs",
+    "verify:build": "node ../../scripts/verify-package-build.mjs dist/index.js dist/index.d.ts && pnpm run test:consumer:node",
+    "verify:publish": "node ../../scripts/verify-package-build.mjs dist/index.js dist/index.d.ts pkg/rppg_wasm.js pkg/rppg_wasm_bg.wasm && pnpm run test:consumer:node",
+    "prepare:publish": "pnpm run build:demo && pnpm run build",
+    "build:wasm": "node ./scripts/build-demo.mjs wasm",
+    "build:demo": "node ./scripts/build-demo.mjs all",
+    "bundle:demo": "node ./scripts/build-demo.mjs bundle",
+    "start-demo": "pnpm build:demo && pnpm dlx http-server demo -p 8080 --silent",
+    "start-demo:quick": "pnpm dlx http-server demo -p 8080 --silent",
+    "prepare:wasm": "pnpm build:wasm",
+    "e2e": "pnpm dlx playwright test",
+    "ci:e2e": "pnpm dlx playwright test --project=chromium --retries=1"
+  }
+}
