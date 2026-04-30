@@ -1,2 +1,3 @@
-Fun viking game where you have to advance through levels kill bosses, get powerups, and will be playable with sentiment analysis, eye tracking and BCI functionality moving forward.
-V.0.5 currently up and running.
+Fun viking game where you have to advance through levels kill bosses, get powerups, which currently is playable with ppg technology (webcam/phone camera), brain devices like Muse to use biosignals in app.
+It will be playable with sentiment analysis, and BCI functionality moving forward as well.
+V.0.6 is in progress and about to be redeployed to the closed beta of the Elata app store (https://app.elata.bio/) let me know if you want an early access code and I will hook you up.
