@@ -19,6 +19,8 @@ import { EegSensor } from "./sensors/eeg.js";
 import { StateFusion } from "./state.js";
 import { HealthLog } from "./health.js";
 import { mountUi } from "./ui.js";
+import { startEffects } from "./effects.js";
+import { startDebriefWatcher } from "./debrief.js";
 
 const listeners = new Map(); // event name -> Set<fn>
 
@@ -45,6 +47,8 @@ const fusion = new StateFusion({
 });
 
 const health = new HealthLog();
+// Expose the log so effects.js can call accrueState() without a circular import.
+if (typeof window !== "undefined") window.__bioHealthLog = health;
 
 // Public API ---------------------------------------------------------------
 export const Bio = {
@@ -108,7 +112,11 @@ if (typeof window !== "undefined") {
   window.Bio = Bio;
   // Mount the floating UI (status badge + settings panel).
   // Defer mount to next tick so the DOM is fully parsed.
-  window.requestAnimationFrame(() => mountUi(Bio));
+  window.requestAnimationFrame(() => {
+    mountUi(Bio);
+    startEffects(Bio);
+    startDebriefWatcher(Bio);
+  });
   // Notify game code that Bio is ready, in case it loaded before this module.
   window.dispatchEvent(new CustomEvent("bio:ready"));
   console.log("[Bio] adapter ready", Bio.capabilities());

@@ -5,6 +5,8 @@
 // Privacy principle: when a sensor is active, the badge always shows it.
 // One click opens the panel, one click toggles off.
 
+import { currentTier, nextTier } from "./identity.js";
+
 const PANEL_ID = "bio-panel";
 const BADGE_ID = "bio-badge";
 const STYLE_ID = "bio-styles";
@@ -120,6 +122,19 @@ export function mountUi(Bio) {
       <div class="metric"><div class="v" id="bio-flow">—</div><div class="k">Flow min</div></div>
     </div>
 
+    <div id="bio-tier-block" style="margin-top:12px;padding:10px 12px;border-radius:10px;
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <div><span style="font-size:10px;color:#9ca3af;letter-spacing:.5px;text-transform:uppercase">Tier</span>
+        <div id="bio-tier-name" style="font-weight:800;font-size:15px">Initiate</div></div>
+        <div id="bio-tier-streak" style="font-size:11px;color:#9ca3af">— day streak</div>
+      </div>
+      <div style="margin-top:8px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden">
+        <div id="bio-tier-fill" style="height:100%;background:#fbbf24;width:0%;transition:width .6s ease"></div>
+      </div>
+      <div id="bio-tier-next" style="font-size:10px;color:#9ca3af;margin-top:4px">—</div>
+    </div>
+
     <div class="blurb">
       Each sensor is useful alone. Combining heart rate + EEG unlocks
       <b>Flow state</b> (calm body + sharp mind) and <b>Berserker</b>
@@ -208,6 +223,25 @@ export function mountUi(Bio) {
     focusEl.textContent = m.eeg?.focus != null ? fmt(m.eeg.focus * 100, 0) + "%" : "—";
     const h = Bio.health();
     flowEl.textContent = fmt(h.today.flowMinutes, 1);
+    refreshTier(h);
+  }
+
+  function refreshTier(h) {
+    const tier = currentTier(h);
+    const next = nextTier(h);
+    const nameEl = panel.querySelector("#bio-tier-name");
+    const streakEl = panel.querySelector("#bio-tier-streak");
+    const fillEl = panel.querySelector("#bio-tier-fill");
+    const nextEl = panel.querySelector("#bio-tier-next");
+    if (nameEl) { nameEl.textContent = tier.name; nameEl.style.color = tier.color; }
+    if (streakEl) streakEl.textContent = `${h.streak} day streak`;
+    if (fillEl) {
+      fillEl.style.width = (next.progress * 100).toFixed(0) + "%";
+      fillEl.style.background = (next.tier?.color) || tier.color;
+    }
+    if (nextEl) nextEl.textContent = next.tier
+      ? `Next: ${next.tier.name} — ${(next.progress * 100).toFixed(0)}%`
+      : "Highest tier reached.";
   }
 
   function refreshState() {
