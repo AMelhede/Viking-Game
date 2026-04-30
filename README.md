@@ -1,8 +1,14 @@
 # Viking Game
 
-Fun Viking endless-runner where you advance through levels, kill bosses, and collect powerups — and a tech demo for biosignal-driven gameplay using the [Elata Bio SDK](https://github.com/Elata-Biosciences/elata-bio-sdk).
+Fun Viking endless-runner where you advance through levels, kill bosses, and collect powerups — playable with **rPPG** (webcam/phone camera heart rate) and **EEG** brain devices like Muse to drive gameplay from your real biosignals.
 
-V.0.5 + biosignals foundation.
+Sentiment analysis and additional BCI functionality coming next.
+
+**V.0.6 in progress** — about to be redeployed to the closed beta of the [Elata app store](https://app.elata.bio/) with functional rPPG and brain-device support. Let Andre know if you want an early-access code.
+
+This repo is also the reference integration for the [Elata Bio SDK](https://github.com/Elata-Biosciences/elata-bio-sdk).
+
+---
 
 ## Run it
 
@@ -32,3 +38,5 @@ Each sensor is useful alone. Combining them unlocks states neither can detect on
 - `vendor/elata/` — vendored Elata SDK (ESM + WASM).
 - `server.js` — zero-dep static server with proper WASM MIME types.
 - `start-game.{bat,sh}` — launchers.
+
+See [HOW_TO_TEST.md](HOW_TO_TEST.md) for the full smoke-test walkthrough.
