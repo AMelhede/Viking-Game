@@ -3497,14 +3497,12 @@ window.$ = (id) => document.getElementById(id);
   }
   
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3489',message:'After LevelMastery, before PrestigeSystem',data:{difficultyModesExists:(()=>{try{return typeof DifficultyModes!=='undefined'}catch(e){return false}})(),showStickinessNotificationExists:(()=>{try{return typeof showStickinessNotification!=='undefined'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   
   // Prestige System - Maximum Addiction Potential
   let PrestigeSystem; // Declare outside try-catch so it's accessible later
   try {
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3491',message:'About to define PrestigeSystem',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   PrestigeSystem = {
     level: parseInt(localStorage.getItem('prestigeLevel') || '0'),
@@ -3541,7 +3539,6 @@ window.$ = (id) => document.getElementById(id);
     calculatePoints(score) {
       // Points = score / 10000, with bonus for difficulty
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3526',message:'PrestigeSystem.calculatePoints accessing DifficultyModes',data:{difficultyModesExists:(()=>{try{return typeof DifficultyModes!=='undefined'}catch(e){return false}})(),difficultyModesGetCurrentExists:(()=>{try{return typeof DifficultyModes!=='undefined'&&typeof DifficultyModes.getCurrent==='function'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
       // #endregion
       const diff = DifficultyModes.getCurrent();
       const basePoints = Math.floor(score / 10000);
@@ -3566,7 +3563,6 @@ window.$ = (id) => document.getElementById(id);
       
       // Show prestige notification
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3548',message:'PrestigeSystem.prestige calling showStickinessNotification',data:{showStickinessNotificationExists:(()=>{try{return typeof showStickinessNotification!=='undefined'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
       if (typeof showStickinessNotification !== 'undefined') {
         showStickinessNotification(`⭐ PRESTIGE ${this.level} UNLOCKED! +${pointsEarned.toLocaleString()} Prestige Points`, 'info');
@@ -3617,13 +3613,11 @@ window.$ = (id) => document.getElementById(id);
     }
   };
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3593',message:'PrestigeSystem object definition complete',data:{prestigeSystemType:typeof PrestigeSystem},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   console.log("✅ PrestigeSystem object defined");
   } catch (e) {
     console.error("❌ Error defining PrestigeSystem:", e);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3596',message:'ERROR in PrestigeSystem definition',data:{errorName:e.name,errorMessage:e.message,errorStack:e.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
   }
   
@@ -3704,7 +3698,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ Unlockables object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3692',message:'After Unlockables definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining Unlockables:", e);
@@ -3756,7 +3749,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ Collectibles object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3740',message:'After Collectibles definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining Collectibles:", e);
@@ -3833,7 +3825,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ DifficultyModes object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3884',message:'After DifficultyModes definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining DifficultyModes:", e);
@@ -4152,13 +4143,11 @@ window.$ = (id) => document.getElementById(id);
         }
         
         const theme = this[world.currentLevel] || this[1];
-        console.log('[LevelThemes.getCurrent] Level:', world.currentLevel, 'Theme:', theme.name);
         return theme;
       }
       // If world doesn't exist, try LevelSystem
       if (typeof LevelSystem !== 'undefined' && LevelSystem && LevelSystem.currentLevel) {
         const theme = this[LevelSystem.currentLevel] || this[1];
-        console.log('[LevelThemes.getCurrent] Using LevelSystem, Level:', LevelSystem.currentLevel, 'Theme:', theme.name);
         return theme;
       }
       console.log('[LevelThemes.getCurrent] Defaulting to level 1');
@@ -4167,7 +4156,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ LevelThemes object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4106',message:'After LevelThemes definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining LevelThemes:", e);
@@ -4324,14 +4312,12 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ BossData object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4274',message:'After BossData definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining BossData:", e);
   }
   
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4281',message:'After BossData try-catch, before spawnBoss',data:{vikingExists:(()=>{try{return typeof viking!=='undefined'}catch(e){return false}})(),WExists:typeof W!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   
   const spawnBoss = (bossKey) => {
@@ -4405,12 +4391,10 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ spawnBoss function defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4349',message:'After spawnBoss definition, before Achievements',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   
   // Achievement System
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4351',message:'About to define Achievements - execution reached here',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   console.log("📍 About to define Achievements object");
   let Achievements; // Declare outside try-catch so it's accessible later
@@ -4611,7 +4595,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ Achievements object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4503',message:'After Achievements definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining Achievements:", e);
@@ -4641,7 +4624,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ showAchievement function defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4530',message:'After showAchievement definition, before viking',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
 
   const viking = {
@@ -4847,7 +4829,6 @@ window.$ = (id) => document.getElementById(id);
     if (typeof world === 'undefined' || !world) return;
     const theme = LevelThemes.getCurrent();
     const currentLevel = world.currentLevel || 1;
-    console.log('[spawnEnemy] Level:', currentLevel, 'Theme:', theme.name, 'Enemies:', theme.enemies);
     const enemyTypes = theme.enemies || [];
     if (enemyTypes.length === 0) {
       console.warn('No enemies defined for level', currentLevel);
@@ -4879,7 +4860,6 @@ window.$ = (id) => document.getElementById(id);
     };
     
     Enemies.push(enemy);
-    console.log('Spawned enemy:', enemyType, 'at x:', x, 'y:', enemy.y);
   };
   
   // Bird enemies - level-specific, can duck under, jump over, or kill
@@ -4975,7 +4955,6 @@ window.$ = (id) => document.getElementById(id);
   console.log("✅ All objects before resetWorld defined successfully");
 
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4838',message:'About to define resetWorld function',data:{worldExists:typeof world!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   console.log("📍 About to define resetWorld function");
   const resetWorld = () => {
@@ -5156,12 +5135,10 @@ window.$ = (id) => document.getElementById(id);
   };
   // CRITICAL: Set window.resetWorld IMMEDIATELY after definition - NO TRY/CATCH, just do it
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4984',message:'About to set window.resetWorld',data:{resetWorldType:typeof resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   console.log("📍 Setting window.resetWorld, resetWorld type:", typeof resetWorld);
   window.resetWorld = resetWorld;
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4986',message:'window.resetWorld set',data:{windowResetWorldExists:!!window.resetWorld,windowResetWorldType:typeof window.resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   console.log("✅ window.resetWorld set:", !!window.resetWorld, typeof window.resetWorld);
   
@@ -5839,7 +5816,6 @@ window.$ = (id) => document.getElementById(id);
   };
 
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5658',message:'About to define start function',data:{worldExists:typeof world!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   console.log("📍 About to define start function");
   const start = () => {
@@ -6036,12 +6012,10 @@ window.$ = (id) => document.getElementById(id);
   };
   // CRITICAL: Set window.start IMMEDIATELY after definition - NO TRY/CATCH, just do it
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5783',message:'About to set window.start',data:{startType:typeof start},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   console.log("📍 Setting window.start, start type:", typeof start);
   window.start = start;
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5785',message:'window.start set',data:{windowStartExists:!!window.start,windowStartType:typeof window.start},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   console.log("✅ window.start set:", !!window.start, typeof window.start);
   
@@ -8552,7 +8526,7 @@ window.$ = (id) => document.getElementById(id);
               // Unlock boss achievement if boss.level exists
               if (boss.level !== undefined) {
                 const bossAchievementKey = `boss${boss.level}`;
-                if (Achievements.achievements && Achievements.achievements[bossAchievementKey]) {
+                if (Achievements.list && Achievements.list[bossAchievementKey]) {
                   Achievements.unlock(bossAchievementKey);
                 }
               }
@@ -10735,7 +10709,6 @@ window.$ = (id) => document.getElementById(id);
   // This runs AFTER start and resetWorld are defined
   const attachAllHandlers = () => {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:10386',message:'attachAllHandlers called',data:{windowWorldExists:!!window.world,windowStartExists:!!window.start,windowResetWorldExists:!!window.resetWorld,windowWorldType:typeof window.world,windowStartType:typeof window.start,windowResetWorldType:typeof window.resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H4,H5'})}).catch(()=>{});
     // #endregion
     console.log("🔧 Attaching button handlers");
     console.log("window.world:", !!window.world);
@@ -10797,7 +10770,6 @@ window.$ = (id) => document.getElementById(id);
   
   } catch (error) {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:10507',message:'CRITICAL ERROR in IIFE caught',data:{errorName:error.name,errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
     console.error("❌ CRITICAL ERROR in IIFE:", error);
     console.error("Error name:", error.name);
