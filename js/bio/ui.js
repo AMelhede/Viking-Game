@@ -27,16 +27,22 @@ const STATE_COLOR = {
 function injectStyles() {
   if (document.getElementById(STYLE_ID)) return;
   const css = `
-  #${BADGE_ID}{position:fixed;right:12px;bottom:12px;z-index:9999;display:flex;align-items:center;gap:8px;
-    background:rgba(13,17,23,.86);color:#e5e7eb;border:1px solid rgba(251,191,36,.35);border-radius:999px;
-    padding:8px 14px;font:600 12px/1.2 system-ui,sans-serif;backdrop-filter:blur(6px);
-    cursor:pointer;user-select:none;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:transform .15s ease}
-  #${BADGE_ID}:hover{transform:translateY(-1px)}
-  #${BADGE_ID} .dot{width:8px;height:8px;border-radius:50%;background:#6b7280;box-shadow:0 0 8px currentColor}
+  #${BADGE_ID}{position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;align-items:center;gap:10px;
+    background:linear-gradient(135deg,#dc2626,#fbbf24);color:#0d1117;
+    border:2px solid #fbbf24;border-radius:999px;
+    padding:12px 20px;font:800 14px/1.2 system-ui,sans-serif;
+    cursor:pointer;user-select:none;box-shadow:0 12px 32px rgba(220,38,38,.4),0 0 0 4px rgba(251,191,36,.2);
+    transition:transform .15s ease;letter-spacing:.5px}
+  #${BADGE_ID}:hover{transform:translateY(-2px) scale(1.04)}
+  #${BADGE_ID}::before{content:"🧠";font-size:18px}
+  #${BADGE_ID} .dot{width:10px;height:10px;border-radius:50%;background:#0d1117;box-shadow:0 0 10px currentColor}
   #${BADGE_ID} .dot.live{background:#10b981;animation:bio-pulse 2s infinite}
   #${BADGE_ID} .dot.warming{background:#f59e0b;animation:bio-pulse 1s infinite}
-  #${BADGE_ID} .dot.error{background:#ef4444}
-  @keyframes bio-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  #${BADGE_ID} .dot.error{background:#7f1d1d}
+  @keyframes bio-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
+  @keyframes bio-attention{0%,100%{box-shadow:0 12px 32px rgba(220,38,38,.4),0 0 0 4px rgba(251,191,36,.2)}
+    50%{box-shadow:0 12px 32px rgba(220,38,38,.6),0 0 0 12px rgba(251,191,36,.3)}}
+  #${BADGE_ID}.attract{animation:bio-attention 2s ease-in-out 3}
 
   #${PANEL_ID}{position:fixed;right:12px;bottom:56px;z-index:9999;width:320px;max-width:calc(100vw - 24px);
     background:rgba(13,17,23,.96);color:#e5e7eb;border:1px solid rgba(251,191,36,.4);border-radius:14px;
@@ -88,8 +94,11 @@ export function mountUi(Bio) {
   const badge = document.createElement("div");
   badge.id = BADGE_ID;
   badge.title = "Biosignals — click to open";
-  badge.innerHTML = `<span class="dot"></span><span class="text">Bio: off</span>`;
+  badge.innerHTML = `<span class="dot"></span><span class="text">BIO</span>`;
   document.body.appendChild(badge);
+  // Pulse 3 times on first ever mount to draw attention
+  badge.classList.add("attract");
+  setTimeout(() => badge.classList.remove("attract"), 6500);
 
   // Panel
   const panel = document.createElement("div");

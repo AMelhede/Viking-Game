@@ -1169,12 +1169,12 @@
     }
   }
   </script>
-  <script type="module" src="./js/bio/index.js"></script>
+  <script type="module" src="./js/bio/index.js?v=2"></script>
 </head>
 
 <body>
-  <!-- Eye Tracking Gaze Cursor -->
-  <div class="gaze-cursor" id="gazeCursor"></div>
+  <!-- Eye Tracking Gaze Cursor (kept for legacy JS references but hidden) -->
+  <div class="gaze-cursor" id="gazeCursor" style="display:none !important"></div>
   
   <div class="wrap">
     <div class="shell" id="shell">
@@ -1186,8 +1186,8 @@
       <!-- Personal Best Alert -->
       <div class="personal-best-alert" id="pbAlert" style="display:none;">🔥 NEW RECORD INCOMING!</div>
       
-      <!-- Eye Tracking Indicator -->
-      <div class="eye-tracking-indicator" id="eyeTrackingIndicator">
+      <!-- Eye Tracking Indicator (deprecated, hidden — kept for legacy JS refs) -->
+      <div class="eye-tracking-indicator" id="eyeTrackingIndicator" style="display:none !important">
         <div class="dot"></div>
         <span>Eye Tracking Active</span>
       </div>
@@ -1202,8 +1202,8 @@
       <!-- Gaze Zone Indicator - shows what zone you're looking at -->
       <div id="gazeZoneIndicator" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; color:white; z-index:1000; display:none; pointer-events:none;"></div>
       
-      <!-- Calibration Overlay -->
-      <div class="calibration-overlay" id="calibrationOverlay">
+      <!-- Calibration Overlay (deprecated, hidden — replaced by ambient bio calibration) -->
+      <div class="calibration-overlay" id="calibrationOverlay" style="display:none !important">
         <div class="calibration-card">
           <h2>👁️ Eye Tracking Calibration</h2>
           <p style="margin-bottom: 16px;"><strong>How it works:</strong> Look at each blue dot and click it.<br>This trains the eye tracker on your gaze patterns.</p>
@@ -1335,7 +1335,7 @@
 
       <div class="hudline">
         <div class="hint" id="hint">
-          <kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | <kbd>👁️</kbd> Eye Track | Jump ON enemies to stomp them!
+          <kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Jump ON enemies to stomp them!
         </div>
       </div>
 
@@ -1366,15 +1366,24 @@
               ⚔️ Start Game
             </button>
             
-            <div style="width: 100%; padding: 16px; background: rgba(48, 209, 88, 0.15); border-radius: 14px; margin: 4px 0; border: 1px solid rgba(48, 209, 88, 0.3);">
-              <button class="btn eye-track" id="eyeTrackBtn" style="width: 100%; height: 48px; font-size: 16px;">
-                👁️ Eye Tracking
-              </button>
-              <p style="margin: 10px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
-                Control with your eyes — look up to jump, down to duck
+            <div style="width: 100%; padding: 16px; background: linear-gradient(135deg, rgba(251,191,36,.18), rgba(220,38,38,.12)); border-radius: 14px; margin: 4px 0; border: 1px solid rgba(251,191,36,.45);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                <span style="font-size:22px;">🧠</span>
+                <span style="font-weight:800; font-size:15px; color:#fbbf24;">Biosignals (Elata SDK)</span>
+              </div>
+              <p style="margin: 0 0 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+                Heart rate (camera) and EEG (Muse) reshape gameplay in real time. Open the panel in the bottom-right to enable.
               </p>
+              <div style="display:flex; gap:8px;">
+                <button class="btn" id="bioOpenBtn" style="flex:1; height:42px; font-size:13px; background:#fbbf24; color:#111; font-weight:700;">
+                  Open Bio Panel
+                </button>
+                <button class="btn" id="bioQuickHrBtn" style="flex:1; height:42px; font-size:13px;">
+                  ❤ Heart Rate
+                </button>
+              </div>
             </div>
-            
+
             <button class="btn" id="highscoreBtn" style="width: 100%; height: 50px;">
               🏆 High Scores
             </button>
@@ -1808,25 +1817,30 @@ window.$ = (id) => document.getElementById(id);
         break;
       }
       case 'mead': {
-        // Realistic Viking mead drinking - liquid gulping + wooden mug
-        // Liquid gulping sounds (filtered noise bursts)
-        [0, 0.2, 0.4].forEach((delay, i) => {
-          const gulp = AC.createBufferSource();
-          gulp.buffer = createNoiseBuffer(0.15);
-          const gulpFilter = AC.createBiquadFilter();
-          gulpFilter.type = 'bandpass';
-          gulpFilter.frequency.setValueAtTime(400 + i * 100, now + delay);
-          gulpFilter.frequency.exponentialRampToValueAtTime(200, now + delay + 0.12);
-          gulpFilter.Q.value = 2;
-          const gulpGain = AC.createGain();
-          gulpGain.gain.setValueAtTime(0, now + delay);
-          gulpGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.02);
-          gulpGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.14);
-          gulp.connect(gulpFilter);
-          gulpFilter.connect(gulpGain);
-          gulpGain.connect(AC.destination);
-          gulp.start(now + delay);
-        });
+        // Short, crisp pickup: a single liquid "glup" + tiny mug ping. The
+        // previous version was a 1-second 3-gulp + clunk + sigh sequence
+        // that played on every mead and felt clownish.
+        const gulp = AC.createBufferSource();
+        gulp.buffer = createNoiseBuffer(0.10);
+        const gulpFilter = AC.createBiquadFilter();
+        gulpFilter.type = 'bandpass';
+        gulpFilter.frequency.setValueAtTime(450, now);
+        gulpFilter.frequency.exponentialRampToValueAtTime(220, now + 0.09);
+        gulpFilter.Q.value = 2.5;
+        const gulpGain = AC.createGain();
+        gulpGain.gain.setValueAtTime(0, now);
+        gulpGain.gain.linearRampToValueAtTime(0.22, now + 0.015);
+        gulpGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
+        gulp.connect(gulpFilter); gulpFilter.connect(gulpGain); gulpGain.connect(AC.destination);
+        gulp.start(now);
+
+        // Skip the rest — the original code below this case continues with
+        // clunk + sigh + formants. We keep that code unreachable by breaking
+        // here so the SFX is just one quick glup. (Cannot remove the rest
+        // safely without breaking syntax in the giant case statement.)
+        break;
+      }
+      case 'mead_legacy_unused': {
         
         // Wooden mug "clunk" when setting down
         const clunk = AC.createOscillator();
@@ -1996,7 +2010,7 @@ window.$ = (id) => document.getElementById(id);
         [1, 2, 3, 4].forEach((harmonic, i) => {
           const osc = AC.createOscillator();
           const gain = AC.createGain();
-          osc.type = 'square'; // Square wave for horn-like sound
+          osc.type = 'triangle'; // Triangle through formants = brassy without the square-wave "fart"
           const startFreqHarmonic = startFreq * harmonic;
           const peakFreqHarmonic = peakFreq * harmonic;
           
@@ -2017,8 +2031,8 @@ window.$ = (id) => document.getElementById(id);
           formant2.frequency.value = 400 + i * 100;
           formant2.Q.value = 1.5;
           
-          // Amplitude envelope
-          const amp = [0.25, 0.12, 0.06, 0.03][i];
+          // Amplitude envelope — slightly tamer than the original square mix
+          const amp = [0.22, 0.09, 0.04, 0.02][i];
           gain.gain.setValueAtTime(0, now);
           gain.gain.linearRampToValueAtTime(amp, now + 0.2);
           gain.gain.setValueAtTime(amp, now + 1.0);
@@ -7990,35 +8004,41 @@ window.$ = (id) => document.getElementById(id);
     }
     
     // Update bosses - bosses stay until killed, never removed automatically.
-    // Boss patrols back and forth in SCREEN SPACE relative to the viking.
-    // Important: viking.x increases each frame as the world scrolls. The boss
-    // must track that scroll first, then add its own oscillation on top — or
-    // it gets left behind by the camera and stuck on the left edge.
+    //
+    // Boss patrols left↔right ACROSS THE VISIBLE CANVAS. The game uses a
+    // scrolling camera (world.camX = viking.x - 150) so all entity x's are in
+    // WORLD coords. We compute patrol bounds from world.camX so the boss
+    // stays in screen pixels [marginLeft, W - marginRight] regardless of how
+    // far the viking has run.
+    //
+    // Two motion components per frame:
+    //   1) Camera tracking: boss.x advances at the viking's velocity so it
+    //      doesn't get scrolled off the left edge (this was the bug).
+    //   2) Patrol oscillation: a faster screen-space sweep on top.
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated) {
         const phase = boss.phase || 1;
         const moveSpeed = boss.speed || 1.0;
         const phaseMultiplier = phase === 3 ? 1.5 : phase === 2 ? 1.2 : 1.0;
 
-        // 1) Track the camera so the boss stays anchored to the viking's frame.
+        // Camera-tracking velocity (matches viking)
         boss.x += actualSpeed * dt;
 
-        // 2) Add patrol oscillation in screen space (relative to viking).
+        // Patrol oscillation — much snappier than before so motion is visible.
+        // Was 220 * 0.3 = 66 px/s for a level-1 troll; now the slowest boss
+        // sweeps the screen visibly within a few seconds.
         if (boss.direction === undefined) boss.direction = -1; // enter from the right
-        const patrolPxPerSec = 220 * moveSpeed * phaseMultiplier;
+        const patrolPxPerSec = (380 + 120 * moveSpeed) * phaseMultiplier;
         boss.x += boss.direction * patrolPxPerSec * dt;
 
-        // 3) Reverse at screen-relative bounds.
-        const patrolLeft = viking.x - 180;
-        const patrolRight = viking.x + 280;
-        if (boss.x <= patrolLeft) { boss.x = patrolLeft; boss.direction = 1; }
+        // Screen-relative patrol bounds. world.camX is "left edge of screen
+        // in world coords"; W is canvas width. Margins keep boss fully visible.
+        const marginLeft = 80;
+        const marginRight = 80;
+        const patrolLeft = world.camX + marginLeft;
+        const patrolRight = world.camX + W - marginRight;
+        if (boss.x <= patrolLeft)  { boss.x = patrolLeft;  boss.direction = 1; }
         if (boss.x >= patrolRight) { boss.x = patrolRight; boss.direction = -1; }
-
-        // 4) Hard safety bounds — never let boss escape the visible band.
-        const safeMin = viking.x - 220;
-        const safeMax = viking.x + W * 0.65;
-        if (boss.x < safeMin) { boss.x = safeMin; boss.direction = 1; }
-        if (boss.x > safeMax) { boss.x = safeMax; boss.direction = -1; }
         
         // Vertical movement - bobbing and jumping
         const baseY = world.groundY;
@@ -10163,6 +10183,26 @@ window.$ = (id) => document.getElementById(id);
           HighScoreManager.displayScores('alltime', currentDifficulty, world.currentLevel);
         };
       }
+
+      // Bio buttons in start menu — open Elata bio panel / quick-start heart rate
+      const bioOpenBtn = document.getElementById("bioOpenBtn");
+      const bioQuickHrBtn = document.getElementById("bioQuickHrBtn");
+      const openBioPanel = () => {
+        const panel = document.getElementById("bio-panel");
+        const badge = document.getElementById("bio-badge");
+        if (panel) panel.classList.add("open");
+        else if (badge) badge.click();
+      };
+      if (bioOpenBtn) bioOpenBtn.onclick = openBioPanel;
+      if (bioQuickHrBtn) bioQuickHrBtn.onclick = async () => {
+        if (!window.Bio) { openBioPanel(); return; }
+        bioQuickHrBtn.disabled = true;
+        bioQuickHrBtn.textContent = "Starting…";
+        try { await window.Bio.start({ rppg: true }); } catch {}
+        openBioPanel();
+        bioQuickHrBtn.disabled = false;
+        bioQuickHrBtn.textContent = "❤ Heart Rate";
+      };
       
       if (highscoreTabs && highscoreTabs.length > 0) {
         highscoreTabs.forEach(tab => {

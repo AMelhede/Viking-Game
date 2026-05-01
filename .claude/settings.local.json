@@ -15,7 +15,8 @@
       "Bash(git commit -m 'Restore auto-push hook in worktree settings + tidy permissions *)",
       "Bash(git fetch *)",
       "Bash(git merge *)",
-      "Bash(git commit -m 'Merge origin/main: combine V.0.6 release notes with bio-integration docs *)"
+      "Bash(git commit -m 'Merge origin/main: combine V.0.6 release notes with bio-integration docs *)",
+      "Bash(git commit -m 'Fix boss patrol bounds, remove Eye Track UI, make bio badge unmissable, tame mead+horn SFX *)"
     ]
   }
 }
