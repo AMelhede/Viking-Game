@@ -1169,7 +1169,7 @@
     }
   }
   </script>
-  <script type="module" src="./js/bio/index.js?v=2"></script>
+  <script type="module" src="./js/bio/index.js?v=3"></script>
 </head>
 
 <body>
@@ -2793,8 +2793,19 @@ window.$ = (id) => document.getElementById(id);
     if (engagement.personalBest > 0 && world.score >= engagement.personalBest * 0.9) {
       intensity += 0.08;
     }
-    
-    const clampedIntensity = Math.min(intensity, 0.4);
+
+    // Bio-reactive music: cognitive state biases intensity in a state-appropriate way.
+    // Berserker → louder drums (urgency); Meditation/Calm → quieter (breathing room);
+    // Flow → moderate boost with sparkle (rewards the rare state).
+    try {
+      const bioState = window.Bio && window.Bio.cognitiveState && window.Bio.cognitiveState();
+      if (bioState === 'berserker') intensity += 0.10;
+      else if (bioState === 'flow') intensity += 0.06;
+      else if (bioState === 'meditation' || bioState === 'calm') intensity -= 0.05;
+      else if (bioState === 'frantic') intensity += 0.03;
+    } catch (e) { /* bio not loaded yet — ignore */ }
+
+    const clampedIntensity = Math.max(0.05, Math.min(intensity, 0.45));
     musicGain.gain.linearRampToValueAtTime(clampedIntensity, musicContext.currentTime + 0.1);
   };
   
@@ -4473,6 +4484,18 @@ window.$ = (id) => document.getElementById(id);
       score5m: { name: 'Legendary Viking', desc: 'Reach 5,000,000 points', icon: '🌟', rarity: 'platinum' },
       score10m: { name: 'God of War', desc: 'Reach 10,000,000 points', icon: '⚡', rarity: 'platinum' },
       
+      // Bio achievements (unlocked by the Elata SDK biosignal layer)
+      bioFirstBeat:   { name: 'First Heartbeat',     desc: 'Camera reads your heart rate for the first time',   icon: '❤️', rarity: 'bronze' },
+      bioCalmWarrior: { name: 'Calm Warrior',        desc: 'Hold a calm body state for 60s in one run',         icon: '🧘', rarity: 'silver' },
+      bioFocusedMind: { name: 'Focused Mind',        desc: 'Hold focus for 30s straight (EEG)',                 icon: '🧠', rarity: 'silver' },
+      bioBerserker:   { name: 'Berserker Awakened',  desc: 'Enter Berserker state for the first time',          icon: '🔥', rarity: 'silver' },
+      bioFlow:        { name: 'Flow State',          desc: 'Enter Flow state — calm body, sharp mind',          icon: '🌟', rarity: 'gold' },
+      bioFlowMaster:  { name: 'Flow Master',         desc: '60s in Flow across all runs',                       icon: '👑', rarity: 'gold' },
+      bioRecovery:    { name: 'Quick Recovery',      desc: 'Heart rate drops ≥15 BPM within 30s after a death', icon: '💓', rarity: 'silver' },
+      bioCoherence:   { name: 'Heart Coherence',     desc: 'HRV ≥ 50 ms sustained for 60s',                     icon: '💗', rarity: 'gold' },
+      bioPeakFocus:   { name: 'Pure Focus',          desc: 'Peak focus over 85%',                               icon: '🎯', rarity: 'gold' },
+      bioStreak3:     { name: 'Daily Bio',           desc: 'Play with bio enabled 3 days in a row',             icon: '📅', rarity: 'silver' },
+
       // Other bronze achievements
       firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️', rarity: 'bronze' },
       goldRush: { name: 'Plunder Master', desc: 'Collect 10 gold coins in one run', icon: '💰', rarity: 'bronze' },

@@ -16,7 +16,11 @@
       "Bash(git fetch *)",
       "Bash(git merge *)",
       "Bash(git commit -m 'Merge origin/main: combine V.0.6 release notes with bio-integration docs *)",
-      "Bash(git commit -m 'Fix boss patrol bounds, remove Eye Track UI, make bio badge unmissable, tame mead+horn SFX *)"
+      "Bash(git commit -m 'Fix boss patrol bounds, remove Eye Track UI, make bio badge unmissable, tame mead+horn SFX *)",
+      "Bash(node --check js/bio/ui.js)",
+      "Bash(node --check js/bio/achievements.js)",
+      "Bash(node --check js/bio/index.js)",
+      "Bash(git commit -m 'Add bio achievements, mobile/Safari banner, bio-reactive music; bump cache key *)"
     ]
   }
 }

@@ -158,6 +158,23 @@ export function mountUi(Bio) {
   `;
   document.body.appendChild(panel);
 
+  // Friendly banner for browsers that can't run bio at all (Safari/iOS, Firefox EEG-only).
+  if (!caps.rppg && !caps.eeg) {
+    const note = document.createElement("div");
+    note.style.cssText = `position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99998;
+      max-width:520px;padding:10px 16px;background:rgba(13,17,23,.92);color:#fbbf24;
+      border:1px solid rgba(251,191,36,.35);border-radius:10px;font:600 12px/1.4 system-ui,sans-serif;
+      box-shadow:0 8px 24px rgba(0,0,0,.4);text-align:center;cursor:pointer`;
+    note.textContent = "Biosignals work in Chrome / Edge desktop. The game still plays great here — open this in Chrome to unlock bio.";
+    note.title = "Click to dismiss";
+    note.addEventListener("click", () => note.remove());
+    setTimeout(() => { note.style.opacity = "0"; note.style.transition = "opacity .5s"; setTimeout(() => note.remove(), 600); }, 8000);
+    document.body.appendChild(note);
+  } else if (!caps.eeg) {
+    // rPPG works (Chrome) but EEG doesn't (rare — Chrome should have both).
+    eegMeta.textContent = "Web Bluetooth blocked in this browser";
+  }
+
   let open = false;
   const setOpen = (v) => {
     open = v;

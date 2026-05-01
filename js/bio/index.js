@@ -21,6 +21,7 @@ import { HealthLog } from "./health.js";
 import { mountUi } from "./ui.js";
 import { startEffects } from "./effects.js";
 import { startDebriefWatcher } from "./debrief.js";
+import { startAchievementsBridge } from "./achievements.js";
 
 const listeners = new Map(); // event name -> Set<fn>
 
@@ -115,6 +116,7 @@ if (typeof window !== "undefined") {
     try { mountUi(Bio); } catch (e) { console.warn("[Bio] mountUi failed", e); }
     try { startEffects(Bio); } catch (e) { console.warn("[Bio] startEffects failed", e); }
     try { startDebriefWatcher(Bio); } catch (e) { console.warn("[Bio] startDebriefWatcher failed", e); }
+    try { startAchievementsBridge(Bio); } catch (e) { console.warn("[Bio] startAchievementsBridge failed", e); }
     window.dispatchEvent(new CustomEvent("bio:ready"));
     console.log("[Bio] adapter ready", Bio.capabilities());
   };
