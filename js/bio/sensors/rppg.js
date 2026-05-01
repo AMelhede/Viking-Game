@@ -70,7 +70,11 @@ export class RppgSensor {
       this._session = await createRppgSession({
         video: this._video,
         backend: "wasm",
-        faceMesh: "off",          // skip MediaPipe — saves ~3MB and works without it for arousal/HR
+        // "auto": SDK loads MediaPipe FaceMesh from CDN for face-ROI tracking
+        // (better BPM accuracy). If CDN is blocked / offline / fails, the SDK
+        // automatically falls back to whole-frame averaging — no error.
+        // Set window.__ELATA_DISABLE_FACEMESH = true to force whole-frame mode.
+        faceMesh: "auto",
         wasmJsUrl: WASM_JS_URL,
         wasmBinaryUrl: WASM_BIN_URL,
         sampleRate: 30,
