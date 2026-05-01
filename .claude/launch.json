@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "viking",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js", "8000"],
+      "port": 8000
+    }
+  ]
+}

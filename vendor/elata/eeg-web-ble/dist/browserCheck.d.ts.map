@@ -1,0 +1,1 @@
+{"version":3,"file":"browserCheck.d.ts","sourceRoot":"","sources":["../src/browserCheck.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,sBAAsB,GAC9B;IAAE,SAAS,EAAE,IAAI,CAAA;CAAE,GACnB;IAAE,SAAS,EAAE,KAAK,CAAC;IAAC,KAAK,EAAE,OAAO,CAAC;IAAC,OAAO,EAAE,MAAM,CAAA;CAAE,CAAC;AAE1D;;;;;;;GAOG;AACH,wBAAgB,iBAAiB,IAAI,sBAAsB,CAgC1D"}

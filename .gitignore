@@ -15,3 +15,7 @@ Thumbs.db
 # Logs
 *.log
 debug.log
+
+# Node
+node_modules/
+npm-debug.log*

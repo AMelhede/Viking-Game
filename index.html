@@ -1157,11 +1157,24 @@
 
     /* Duck Warning Indicator */
   </style>
+
+  <!-- Biosignal SDK (Elata) — vendored, ESM, loaded via import map.
+       Bio is additive; the game runs fine if these fail to load. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@elata-biosciences/rppg-web": "./vendor/elata/rppg-web/dist/index.js",
+      "@elata-biosciences/eeg-web": "./vendor/elata/eeg-web/dist/index.js",
+      "@elata-biosciences/eeg-web-ble": "./vendor/elata/eeg-web-ble/dist/index.js"
+    }
+  }
+  </script>
+  <script type="module" src="./js/bio/index.js?v=4"></script>
 </head>
 
 <body>
-  <!-- Eye Tracking Gaze Cursor -->
-  <div class="gaze-cursor" id="gazeCursor"></div>
+  <!-- Eye Tracking Gaze Cursor (kept for legacy JS references but hidden) -->
+  <div class="gaze-cursor" id="gazeCursor" style="display:none !important"></div>
   
   <div class="wrap">
     <div class="shell" id="shell">
@@ -1173,8 +1186,8 @@
       <!-- Personal Best Alert -->
       <div class="personal-best-alert" id="pbAlert" style="display:none;">🔥 NEW RECORD INCOMING!</div>
       
-      <!-- Eye Tracking Indicator -->
-      <div class="eye-tracking-indicator" id="eyeTrackingIndicator">
+      <!-- Eye Tracking Indicator (deprecated, hidden — kept for legacy JS refs) -->
+      <div class="eye-tracking-indicator" id="eyeTrackingIndicator" style="display:none !important">
         <div class="dot"></div>
         <span>Eye Tracking Active</span>
       </div>
@@ -1189,8 +1202,8 @@
       <!-- Gaze Zone Indicator - shows what zone you're looking at -->
       <div id="gazeZoneIndicator" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; color:white; z-index:1000; display:none; pointer-events:none;"></div>
       
-      <!-- Calibration Overlay -->
-      <div class="calibration-overlay" id="calibrationOverlay">
+      <!-- Calibration Overlay (deprecated, hidden — replaced by ambient bio calibration) -->
+      <div class="calibration-overlay" id="calibrationOverlay" style="display:none !important">
         <div class="calibration-card">
           <h2>👁️ Eye Tracking Calibration</h2>
           <p style="margin-bottom: 16px;"><strong>How it works:</strong> Look at each blue dot and click it.<br>This trains the eye tracker on your gaze patterns.</p>
@@ -1322,7 +1335,7 @@
 
       <div class="hudline">
         <div class="hint" id="hint">
-          <kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | <kbd>👁️</kbd> Eye Track | Jump ON enemies to stomp them!
+          <kbd>Space</kbd> Jump | <kbd>Down</kbd> Duck | Jump ON enemies to stomp them!
         </div>
       </div>
 
@@ -1353,15 +1366,24 @@
               ⚔️ Start Game
             </button>
             
-            <div style="width: 100%; padding: 16px; background: rgba(48, 209, 88, 0.15); border-radius: 14px; margin: 4px 0; border: 1px solid rgba(48, 209, 88, 0.3);">
-              <button class="btn eye-track" id="eyeTrackBtn" style="width: 100%; height: 48px; font-size: 16px;">
-                👁️ Eye Tracking
-              </button>
-              <p style="margin: 10px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
-                Control with your eyes — look up to jump, down to duck
+            <div style="width: 100%; padding: 16px; background: linear-gradient(135deg, rgba(251,191,36,.18), rgba(220,38,38,.12)); border-radius: 14px; margin: 4px 0; border: 1px solid rgba(251,191,36,.45);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                <span style="font-size:22px;">🧠</span>
+                <span style="font-weight:800; font-size:15px; color:#fbbf24;">Biosignals (Elata SDK)</span>
+              </div>
+              <p style="margin: 0 0 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+                Heart rate (camera) and EEG (Muse) reshape gameplay in real time. Open the panel in the bottom-right to enable.
               </p>
+              <div style="display:flex; gap:8px;">
+                <button class="btn" id="bioOpenBtn" style="flex:1; height:42px; font-size:13px; background:#fbbf24; color:#111; font-weight:700;">
+                  Open Bio Panel
+                </button>
+                <button class="btn" id="bioQuickHrBtn" style="flex:1; height:42px; font-size:13px;">
+                  ❤ Heart Rate
+                </button>
+              </div>
             </div>
-            
+
             <button class="btn" id="highscoreBtn" style="width: 100%; height: 50px;">
               🏆 High Scores
             </button>
@@ -1795,25 +1817,30 @@ window.$ = (id) => document.getElementById(id);
         break;
       }
       case 'mead': {
-        // Realistic Viking mead drinking - liquid gulping + wooden mug
-        // Liquid gulping sounds (filtered noise bursts)
-        [0, 0.2, 0.4].forEach((delay, i) => {
-          const gulp = AC.createBufferSource();
-          gulp.buffer = createNoiseBuffer(0.15);
-          const gulpFilter = AC.createBiquadFilter();
-          gulpFilter.type = 'bandpass';
-          gulpFilter.frequency.setValueAtTime(400 + i * 100, now + delay);
-          gulpFilter.frequency.exponentialRampToValueAtTime(200, now + delay + 0.12);
-          gulpFilter.Q.value = 2;
-          const gulpGain = AC.createGain();
-          gulpGain.gain.setValueAtTime(0, now + delay);
-          gulpGain.gain.linearRampToValueAtTime(0.25, now + delay + 0.02);
-          gulpGain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.14);
-          gulp.connect(gulpFilter);
-          gulpFilter.connect(gulpGain);
-          gulpGain.connect(AC.destination);
-          gulp.start(now + delay);
-        });
+        // Short, crisp pickup: a single liquid "glup" + tiny mug ping. The
+        // previous version was a 1-second 3-gulp + clunk + sigh sequence
+        // that played on every mead and felt clownish.
+        const gulp = AC.createBufferSource();
+        gulp.buffer = createNoiseBuffer(0.10);
+        const gulpFilter = AC.createBiquadFilter();
+        gulpFilter.type = 'bandpass';
+        gulpFilter.frequency.setValueAtTime(450, now);
+        gulpFilter.frequency.exponentialRampToValueAtTime(220, now + 0.09);
+        gulpFilter.Q.value = 2.5;
+        const gulpGain = AC.createGain();
+        gulpGain.gain.setValueAtTime(0, now);
+        gulpGain.gain.linearRampToValueAtTime(0.22, now + 0.015);
+        gulpGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
+        gulp.connect(gulpFilter); gulpFilter.connect(gulpGain); gulpGain.connect(AC.destination);
+        gulp.start(now);
+
+        // Skip the rest — the original code below this case continues with
+        // clunk + sigh + formants. We keep that code unreachable by breaking
+        // here so the SFX is just one quick glup. (Cannot remove the rest
+        // safely without breaking syntax in the giant case statement.)
+        break;
+      }
+      case 'mead_legacy_unused': {
         
         // Wooden mug "clunk" when setting down
         const clunk = AC.createOscillator();
@@ -1983,7 +2010,7 @@ window.$ = (id) => document.getElementById(id);
         [1, 2, 3, 4].forEach((harmonic, i) => {
           const osc = AC.createOscillator();
           const gain = AC.createGain();
-          osc.type = 'square'; // Square wave for horn-like sound
+          osc.type = 'triangle'; // Triangle through formants = brassy without the square-wave "fart"
           const startFreqHarmonic = startFreq * harmonic;
           const peakFreqHarmonic = peakFreq * harmonic;
           
@@ -2004,8 +2031,8 @@ window.$ = (id) => document.getElementById(id);
           formant2.frequency.value = 400 + i * 100;
           formant2.Q.value = 1.5;
           
-          // Amplitude envelope
-          const amp = [0.25, 0.12, 0.06, 0.03][i];
+          // Amplitude envelope — slightly tamer than the original square mix
+          const amp = [0.22, 0.09, 0.04, 0.02][i];
           gain.gain.setValueAtTime(0, now);
           gain.gain.linearRampToValueAtTime(amp, now + 0.2);
           gain.gain.setValueAtTime(amp, now + 1.0);
@@ -2438,10 +2465,11 @@ window.$ = (id) => document.getElementById(id);
         return { osc, gain };
       };
       
-      // Base drone - level-specific frequency
-      createDrone(theme.baseFreq, 'sine');
-      createDrone(theme.baseFreq * 2, 'triangle'); // Octave
-      createDrone(theme.baseFreq * 1.5, 'sine'); // Fifth
+      // Base drone - level-specific frequency. Lower gain than original to
+      // leave room for melody and SFX without sounding muddy.
+      const drone1 = createDrone(theme.baseFreq, 'sine');           drone1.gain.gain.setValueAtTime(0.12, musicContext.currentTime);
+      const drone2 = createDrone(theme.baseFreq * 2, 'sine');       drone2.gain.gain.setValueAtTime(0.06, musicContext.currentTime);
+      const drone3 = createDrone(theme.baseFreq * 1.5, 'sine');     drone3.gain.gain.setValueAtTime(0.05, musicContext.currentTime);
       
       // Slow modulating pad
       const lfo = musicContext.createOscillator();
@@ -2493,18 +2521,38 @@ window.$ = (id) => document.getElementById(id);
             nextBeat = 400 + Math.random() * 600;
           }
           
-          // Main drum hit
+          // Main drum hit — sine sub for body + short noise burst for thud attack.
+          // Pure sine drums sound like a pulse; layering noise gives them a real
+          // skin/leather "whack". This is the standard taiko/synth-drum recipe.
           const drum = musicContext.createOscillator();
           const drumGain = musicContext.createGain();
           drum.type = 'sine';
-          drum.frequency.setValueAtTime(drumFreq, now);
-          drum.frequency.exponentialRampToValueAtTime(drumFreq * 0.5, now + 0.25);
-          drumGain.gain.setValueAtTime(drumGainVal, now);
-          drumGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          drum.frequency.setValueAtTime(drumFreq * 1.4, now);
+          drum.frequency.exponentialRampToValueAtTime(drumFreq * 0.5, now + 0.18);
+          drumGain.gain.setValueAtTime(0, now);
+          drumGain.gain.linearRampToValueAtTime(drumGainVal * 0.7, now + 0.005);
+          drumGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
           drum.connect(drumGain);
           drumGain.connect(musicGain);
           drum.start(now);
-          drum.stop(now + 0.5);
+          drum.stop(now + 0.4);
+
+          // Noise transient — gives the drum its "wood/leather" attack
+          try {
+            const buf = musicContext.createBuffer(1, Math.floor(musicContext.sampleRate * 0.06), musicContext.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+            const noise = musicContext.createBufferSource();
+            const noiseFilter = musicContext.createBiquadFilter();
+            const noiseGain = musicContext.createGain();
+            noise.buffer = buf;
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(900, now);
+            noiseGain.gain.setValueAtTime(drumGainVal * 0.35, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(musicGain);
+            noise.start(now); noise.stop(now + 0.07);
+          } catch {}
           
           // Accent on every 4th beat (stronger)
           if (beatCount % 4 === 1) {
@@ -2530,59 +2578,51 @@ window.$ = (id) => document.getElementById(id);
       
       createWarDrum();
       
-      // Level-specific melody using theme scale
+      // Level-specific melody — fixed Norse-modal motifs, NOT random picks.
+      // Random pentatonic notes sound aimless and atonal; real Viking music uses
+      // call-and-response phrases anchored on the root and fifth.
+      let melodyPhase = 0;
       const playMelody = () => {
         if (!musicPlaying || !musicContext) return;
-        
-        const notes = theme.scale;
-        const note = notes[Math.floor(Math.random() * notes.length)];
+        const scale = theme.scale; // 5-7 note pentatonic/modal scale
+        // Index pattern selectors: emphasize root(0), third(1-2), fifth(3-4)
+        const phrases = [
+          [0, 2, 3, 2],         // call
+          [3, 4, 3, 2],         // response (rises)
+          [4, 3, 2, 0],         // descend home
+          [0, 0, 2, 0],         // resolution
+        ];
+        const phrase = phrases[melodyPhase % phrases.length];
+        melodyPhase++;
         const now = musicContext.currentTime;
-        
-        const hornOsc = musicContext.createOscillator();
-        const hornGain = musicContext.createGain();
-        
-        // Level-specific oscillator types
-        if (theme.atmosphere === 'calm' || theme.atmosphere === 'cold') {
-          hornOsc.type = 'sine';
-        } else if (theme.atmosphere === 'tense' || theme.atmosphere === 'intense') {
-          hornOsc.type = 'sawtooth';
-        } else if (theme.atmosphere === 'majestic' || theme.atmosphere === 'divine') {
-          hornOsc.type = 'triangle';
-        } else {
-          hornOsc.type = 'sawtooth';
-        }
-        
-        hornOsc.frequency.setValueAtTime(note, now);
-        
-        hornGain.gain.setValueAtTime(0, now);
-        hornGain.gain.linearRampToValueAtTime(0.1, now + 0.3);
-        hornGain.gain.linearRampToValueAtTime(0.08, now + 1);
-        hornGain.gain.exponentialRampToValueAtTime(0.01, now + 2);
-        
-        // Level-specific filter
-        const filter = musicContext.createBiquadFilter();
-        filter.type = 'lowpass';
-        if (theme.atmosphere === 'cold') {
-          filter.frequency.setValueAtTime(600, now);
-        } else if (theme.atmosphere === 'intense' || theme.atmosphere === 'chaos') {
-          filter.frequency.setValueAtTime(1200, now);
-        } else if (theme.atmosphere === 'divine') {
-          filter.frequency.setValueAtTime(1500, now);
-        } else {
-          filter.frequency.setValueAtTime(800, now);
-        }
-        
-        hornOsc.connect(filter);
-        filter.connect(hornGain);
-        hornGain.connect(musicGain);
-        hornOsc.start(now);
-        hornOsc.stop(now + 2.5);
-        
-        // Level-specific melody timing
-        const melodyDelay = theme.atmosphere === 'calm' ? 4000 : theme.atmosphere === 'chaos' ? 2000 : 3000;
-        if (musicPlaying) {
-          setTimeout(playMelody, melodyDelay + Math.random() * 2000);
-        }
+        const noteDur = theme.atmosphere === "chaos" ? 0.45 : theme.atmosphere === "calm" ? 0.85 : 0.65;
+
+        phrase.forEach((idx, i) => {
+          const note = scale[Math.min(idx, scale.length - 1)];
+          const t = now + i * noteDur;
+          const osc = musicContext.createOscillator();
+          const g = musicContext.createGain();
+          // Triangle is the most "horn-like" pure shape — sawtooth cuts too sharp.
+          osc.type = (theme.atmosphere === "divine" || theme.atmosphere === "majestic") ? "sine" : "triangle";
+          osc.frequency.setValueAtTime(note, t);
+          // Soft attack/release — no clicks
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.07, t + 0.08);
+          g.gain.setValueAtTime(0.06, t + noteDur * 0.6);
+          g.gain.exponentialRampToValueAtTime(0.001, t + noteDur);
+          // Warm lowpass — keeps it sounding like a horn, not a buzzsaw
+          const filter = musicContext.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.setValueAtTime(theme.atmosphere === "cold" ? 700 : 1100, t);
+          filter.Q.setValueAtTime(0.6, t);
+          osc.connect(filter); filter.connect(g); g.connect(musicGain);
+          osc.start(t); osc.stop(t + noteDur + 0.05);
+        });
+
+        // Phrase-level pause — gives the music room to breathe
+        const phraseLen = phrase.length * noteDur * 1000;
+        const restMs = theme.atmosphere === "chaos" ? 600 : theme.atmosphere === "calm" ? 2000 : 1100;
+        if (musicPlaying) setTimeout(playMelody, phraseLen + restMs);
       };
       
       setTimeout(playMelody, 2000);
@@ -2753,8 +2793,19 @@ window.$ = (id) => document.getElementById(id);
     if (engagement.personalBest > 0 && world.score >= engagement.personalBest * 0.9) {
       intensity += 0.08;
     }
-    
-    const clampedIntensity = Math.min(intensity, 0.4);
+
+    // Bio-reactive music: cognitive state biases intensity in a state-appropriate way.
+    // Berserker → louder drums (urgency); Meditation/Calm → quieter (breathing room);
+    // Flow → moderate boost with sparkle (rewards the rare state).
+    try {
+      const bioState = window.Bio && window.Bio.cognitiveState && window.Bio.cognitiveState();
+      if (bioState === 'berserker') intensity += 0.10;
+      else if (bioState === 'flow') intensity += 0.06;
+      else if (bioState === 'meditation' || bioState === 'calm') intensity -= 0.05;
+      else if (bioState === 'frantic') intensity += 0.03;
+    } catch (e) { /* bio not loaded yet — ignore */ }
+
+    const clampedIntensity = Math.max(0.05, Math.min(intensity, 0.45));
     musicGain.gain.linearRampToValueAtTime(clampedIntensity, musicContext.currentTime + 0.1);
   };
   
@@ -2914,14 +2965,15 @@ window.$ = (id) => document.getElementById(id);
           formant3.frequency.setValueAtTime(2400, playTime);
           formant3.Q.setValueAtTime(4, playTime);
           
-          hornOsc.type = 'sawtooth';
+          // Triangle through formant filters = mellow horn. Sawtooth was too buzzy.
+          hornOsc.type = 'triangle';
           hornOsc.frequency.setValueAtTime(note, playTime);
-          
-          // Smooth attack and decay
+
+          // Smooth attack and decay — slightly lower peak, longer release
           hornGain.gain.setValueAtTime(0, playTime);
-          hornGain.gain.linearRampToValueAtTime(0.12, playTime + 0.2);
-          hornGain.gain.setValueAtTime(0.1, playTime + 0.4);
-          hornGain.gain.exponentialRampToValueAtTime(0.01, playTime + 0.6);
+          hornGain.gain.linearRampToValueAtTime(0.10, playTime + 0.2);
+          hornGain.gain.setValueAtTime(0.08, playTime + 0.4);
+          hornGain.gain.exponentialRampToValueAtTime(0.01, playTime + 0.7);
           
           hornOsc.connect(formant1);
           formant1.connect(formant2);
@@ -2960,41 +3012,51 @@ window.$ = (id) => document.getElementById(id);
         menuMusicNodes.push({ osc, gain });
       };
       
-      // D minor drone layers
-      createDrone(73.4, 'sine'); // D
-      createDrone(146.8, 'triangle'); // D octave
-      createDrone(110, 'sine'); // A (fifth)
-      
-      // Subtle ambient layer (wind-like)
-      const ambientOsc = menuMusicContext.createOscillator();
-      const ambientGain = menuMusicContext.createGain();
-      const ambientFilter = menuMusicContext.createBiquadFilter();
-      ambientFilter.type = 'lowpass';
-      ambientFilter.frequency.setValueAtTime(200, now);
-      ambientFilter.Q.setValueAtTime(1, now);
-      
-      ambientOsc.type = 'sawtooth';
-      ambientOsc.frequency.setValueAtTime(65, now);
-      
-      // Slow LFO for wind effect
-      const windLFO = menuMusicContext.createOscillator();
-      const windLFOGain = menuMusicContext.createGain();
-      windLFO.frequency.setValueAtTime(0.05, now);
-      windLFOGain.gain.setValueAtTime(5, now);
-      windLFO.connect(windLFOGain);
-      windLFOGain.connect(ambientOsc.frequency);
-      
-      ambientGain.gain.setValueAtTime(0.08, now);
-      
-      ambientOsc.connect(ambientFilter);
-      ambientFilter.connect(ambientGain);
-      ambientGain.connect(menuMusicGain);
-      
-      ambientOsc.start();
-      windLFO.start();
-      menuMusicNodes.push({ osc: ambientOsc, gain: ambientGain });
-      menuMusicNodes.push({ osc: windLFO, gain: windLFOGain });
-      
+      // D minor drone layers — lower gains and pure sine to leave headroom
+      // for the horn melody and drums without sounding muddy.
+      const md1 = menuMusicContext.createOscillator(); const mg1 = menuMusicContext.createGain();
+      md1.type = 'sine'; md1.frequency.value = 73.4;  mg1.gain.value = 0.10; md1.connect(mg1); mg1.connect(menuMusicGain); md1.start(); menuMusicNodes.push({osc: md1, gain: mg1});
+      const md2 = menuMusicContext.createOscillator(); const mg2 = menuMusicContext.createGain();
+      md2.type = 'sine'; md2.frequency.value = 146.8; mg2.gain.value = 0.05; md2.connect(mg2); mg2.connect(menuMusicGain); md2.start(); menuMusicNodes.push({osc: md2, gain: mg2});
+      const md3 = menuMusicContext.createOscillator(); const mg3 = menuMusicContext.createGain();
+      md3.type = 'sine'; md3.frequency.value = 110;   mg3.gain.value = 0.04; md3.connect(mg3); mg3.connect(menuMusicGain); md3.start(); menuMusicNodes.push({osc: md3, gain: mg3});
+
+      // Wind ambient: filtered noise sounds like real wind. The previous
+      // sawtooth at 65Hz with a slow LFO sounded like a buzzsaw, not weather.
+      let ambientOsc, ambientGain, ambientFilter, windLFO, windLFOGain;
+      try {
+        const noiseBuf = menuMusicContext.createBuffer(1, menuMusicContext.sampleRate * 4, menuMusicContext.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        ambientOsc = menuMusicContext.createBufferSource();
+        ambientOsc.buffer = noiseBuf;
+        ambientOsc.loop = true;
+        ambientGain = menuMusicContext.createGain();
+        ambientGain.gain.setValueAtTime(0.04, now);
+        ambientFilter = menuMusicContext.createBiquadFilter();
+        ambientFilter.type = 'bandpass';
+        ambientFilter.frequency.setValueAtTime(400, now);
+        ambientFilter.Q.setValueAtTime(0.5, now);
+        // Slow LFO sweeps the bandpass to give wind its rise-and-fall
+        windLFO = menuMusicContext.createOscillator();
+        windLFOGain = menuMusicContext.createGain();
+        windLFO.frequency.setValueAtTime(0.08, now);
+        windLFOGain.gain.setValueAtTime(150, now);
+        windLFO.connect(windLFOGain);
+        windLFOGain.connect(ambientFilter.frequency);
+
+        ambientOsc.connect(ambientFilter);
+        ambientFilter.connect(ambientGain);
+        ambientGain.connect(menuMusicGain);
+
+        ambientOsc.start();
+        windLFO.start();
+        menuMusicNodes.push({ osc: ambientOsc, gain: ambientGain });
+        menuMusicNodes.push({ osc: windLFO, gain: windLFOGain });
+      } catch (e) {
+        console.warn("Wind ambient init failed", e);
+      }
+
       menuMusicPlaying = true;
     } catch (e) {
       console.error("Error starting menu music:", e);
@@ -3497,14 +3559,12 @@ window.$ = (id) => document.getElementById(id);
   }
   
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3489',message:'After LevelMastery, before PrestigeSystem',data:{difficultyModesExists:(()=>{try{return typeof DifficultyModes!=='undefined'}catch(e){return false}})(),showStickinessNotificationExists:(()=>{try{return typeof showStickinessNotification!=='undefined'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   
   // Prestige System - Maximum Addiction Potential
   let PrestigeSystem; // Declare outside try-catch so it's accessible later
   try {
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3491',message:'About to define PrestigeSystem',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   PrestigeSystem = {
     level: parseInt(localStorage.getItem('prestigeLevel') || '0'),
@@ -3541,7 +3601,6 @@ window.$ = (id) => document.getElementById(id);
     calculatePoints(score) {
       // Points = score / 10000, with bonus for difficulty
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3526',message:'PrestigeSystem.calculatePoints accessing DifficultyModes',data:{difficultyModesExists:(()=>{try{return typeof DifficultyModes!=='undefined'}catch(e){return false}})(),difficultyModesGetCurrentExists:(()=>{try{return typeof DifficultyModes!=='undefined'&&typeof DifficultyModes.getCurrent==='function'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
       // #endregion
       const diff = DifficultyModes.getCurrent();
       const basePoints = Math.floor(score / 10000);
@@ -3566,7 +3625,6 @@ window.$ = (id) => document.getElementById(id);
       
       // Show prestige notification
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3548',message:'PrestigeSystem.prestige calling showStickinessNotification',data:{showStickinessNotificationExists:(()=>{try{return typeof showStickinessNotification!=='undefined'}catch(e){return false}})()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
       if (typeof showStickinessNotification !== 'undefined') {
         showStickinessNotification(`⭐ PRESTIGE ${this.level} UNLOCKED! +${pointsEarned.toLocaleString()} Prestige Points`, 'info');
@@ -3617,13 +3675,11 @@ window.$ = (id) => document.getElementById(id);
     }
   };
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3593',message:'PrestigeSystem object definition complete',data:{prestigeSystemType:typeof PrestigeSystem},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   console.log("✅ PrestigeSystem object defined");
   } catch (e) {
     console.error("❌ Error defining PrestigeSystem:", e);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3596',message:'ERROR in PrestigeSystem definition',data:{errorName:e.name,errorMessage:e.message,errorStack:e.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
   }
   
@@ -3704,7 +3760,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ Unlockables object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3692',message:'After Unlockables definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining Unlockables:", e);
@@ -3756,7 +3811,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ Collectibles object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3740',message:'After Collectibles definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining Collectibles:", e);
@@ -3833,7 +3887,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ DifficultyModes object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:3884',message:'After DifficultyModes definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining DifficultyModes:", e);
@@ -4152,13 +4205,11 @@ window.$ = (id) => document.getElementById(id);
         }
         
         const theme = this[world.currentLevel] || this[1];
-        console.log('[LevelThemes.getCurrent] Level:', world.currentLevel, 'Theme:', theme.name);
         return theme;
       }
       // If world doesn't exist, try LevelSystem
       if (typeof LevelSystem !== 'undefined' && LevelSystem && LevelSystem.currentLevel) {
         const theme = this[LevelSystem.currentLevel] || this[1];
-        console.log('[LevelThemes.getCurrent] Using LevelSystem, Level:', LevelSystem.currentLevel, 'Theme:', theme.name);
         return theme;
       }
       console.log('[LevelThemes.getCurrent] Defaulting to level 1');
@@ -4167,7 +4218,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ LevelThemes object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4106',message:'After LevelThemes definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining LevelThemes:", e);
@@ -4324,14 +4374,12 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ BossData object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4274',message:'After BossData definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining BossData:", e);
   }
   
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4281',message:'After BossData try-catch, before spawnBoss',data:{vikingExists:(()=>{try{return typeof viking!=='undefined'}catch(e){return false}})(),WExists:typeof W!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   
   const spawnBoss = (bossKey) => {
@@ -4405,12 +4453,10 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ spawnBoss function defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4349',message:'After spawnBoss definition, before Achievements',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   
   // Achievement System
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4351',message:'About to define Achievements - execution reached here',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   console.log("📍 About to define Achievements object");
   let Achievements; // Declare outside try-catch so it's accessible later
@@ -4438,6 +4484,18 @@ window.$ = (id) => document.getElementById(id);
       score5m: { name: 'Legendary Viking', desc: 'Reach 5,000,000 points', icon: '🌟', rarity: 'platinum' },
       score10m: { name: 'God of War', desc: 'Reach 10,000,000 points', icon: '⚡', rarity: 'platinum' },
       
+      // Bio achievements (unlocked by the Elata SDK biosignal layer)
+      bioFirstBeat:   { name: 'First Heartbeat',     desc: 'Camera reads your heart rate for the first time',   icon: '❤️', rarity: 'bronze' },
+      bioCalmWarrior: { name: 'Calm Warrior',        desc: 'Hold a calm body state for 60s in one run',         icon: '🧘', rarity: 'silver' },
+      bioFocusedMind: { name: 'Focused Mind',        desc: 'Hold focus for 30s straight (EEG)',                 icon: '🧠', rarity: 'silver' },
+      bioBerserker:   { name: 'Berserker Awakened',  desc: 'Enter Berserker state for the first time',          icon: '🔥', rarity: 'silver' },
+      bioFlow:        { name: 'Flow State',          desc: 'Enter Flow state — calm body, sharp mind',          icon: '🌟', rarity: 'gold' },
+      bioFlowMaster:  { name: 'Flow Master',         desc: '60s in Flow across all runs',                       icon: '👑', rarity: 'gold' },
+      bioRecovery:    { name: 'Quick Recovery',      desc: 'Heart rate drops ≥15 BPM within 30s after a death', icon: '💓', rarity: 'silver' },
+      bioCoherence:   { name: 'Heart Coherence',     desc: 'HRV ≥ 50 ms sustained for 60s',                     icon: '💗', rarity: 'gold' },
+      bioPeakFocus:   { name: 'Pure Focus',          desc: 'Peak focus over 85%',                               icon: '🎯', rarity: 'gold' },
+      bioStreak3:     { name: 'Daily Bio',           desc: 'Play with bio enabled 3 days in a row',             icon: '📅', rarity: 'silver' },
+
       // Other bronze achievements
       firstBlood: { name: 'First Blood', desc: 'Stomp your first enemy', icon: '⚔️', rarity: 'bronze' },
       goldRush: { name: 'Plunder Master', desc: 'Collect 10 gold coins in one run', icon: '💰', rarity: 'bronze' },
@@ -4611,7 +4669,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ Achievements object defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4503',message:'After Achievements definition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
   } catch (e) {
     console.error("❌ Error defining Achievements:", e);
@@ -4641,7 +4698,6 @@ window.$ = (id) => document.getElementById(id);
   };
   console.log("✅ showAchievement function defined");
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4530',message:'After showAchievement definition, before viking',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
   // #endregion
 
   const viking = {
@@ -4847,7 +4903,6 @@ window.$ = (id) => document.getElementById(id);
     if (typeof world === 'undefined' || !world) return;
     const theme = LevelThemes.getCurrent();
     const currentLevel = world.currentLevel || 1;
-    console.log('[spawnEnemy] Level:', currentLevel, 'Theme:', theme.name, 'Enemies:', theme.enemies);
     const enemyTypes = theme.enemies || [];
     if (enemyTypes.length === 0) {
       console.warn('No enemies defined for level', currentLevel);
@@ -4879,7 +4934,6 @@ window.$ = (id) => document.getElementById(id);
     };
     
     Enemies.push(enemy);
-    console.log('Spawned enemy:', enemyType, 'at x:', x, 'y:', enemy.y);
   };
   
   // Bird enemies - level-specific, can duck under, jump over, or kill
@@ -4975,7 +5029,6 @@ window.$ = (id) => document.getElementById(id);
   console.log("✅ All objects before resetWorld defined successfully");
 
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4838',message:'About to define resetWorld function',data:{worldExists:typeof world!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   console.log("📍 About to define resetWorld function");
   const resetWorld = () => {
@@ -5156,12 +5209,10 @@ window.$ = (id) => document.getElementById(id);
   };
   // CRITICAL: Set window.resetWorld IMMEDIATELY after definition - NO TRY/CATCH, just do it
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4984',message:'About to set window.resetWorld',data:{resetWorldType:typeof resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   console.log("📍 Setting window.resetWorld, resetWorld type:", typeof resetWorld);
   window.resetWorld = resetWorld;
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:4986',message:'window.resetWorld set',data:{windowResetWorldExists:!!window.resetWorld,windowResetWorldType:typeof window.resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   console.log("✅ window.resetWorld set:", !!window.resetWorld, typeof window.resetWorld);
   
@@ -5839,7 +5890,6 @@ window.$ = (id) => document.getElementById(id);
   };
 
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5658',message:'About to define start function',data:{worldExists:typeof world!=='undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   console.log("📍 About to define start function");
   const start = () => {
@@ -6036,12 +6086,10 @@ window.$ = (id) => document.getElementById(id);
   };
   // CRITICAL: Set window.start IMMEDIATELY after definition - NO TRY/CATCH, just do it
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5783',message:'About to set window.start',data:{startType:typeof start},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   console.log("📍 Setting window.start, start type:", typeof start);
   window.start = start;
   // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:5785',message:'window.start set',data:{windowStartExists:!!window.start,windowStartType:typeof window.start},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
   // #endregion
   console.log("✅ window.start set:", !!window.start, typeof window.start);
   
@@ -7978,44 +8026,42 @@ window.$ = (id) => document.getElementById(id);
       }
     }
     
-    // Update bosses - bosses stay until killed, never removed automatically
-    // VERIFIED: Boss movement implements back-and-forth patrolling between patrolLeft and patrolRight
+    // Update bosses - bosses stay until killed, never removed automatically.
+    //
+    // Boss patrols left↔right ACROSS THE VISIBLE CANVAS. The game uses a
+    // scrolling camera (world.camX = viking.x - 150) so all entity x's are in
+    // WORLD coords. We compute patrol bounds from world.camX so the boss
+    // stays in screen pixels [marginLeft, W - marginRight] regardless of how
+    // far the viking has run.
+    //
+    // Two motion components per frame:
+    //   1) Camera tracking: boss.x advances at the viking's velocity so it
+    //      doesn't get scrolled off the left edge (this was the bug).
+    //   2) Patrol oscillation: a faster screen-space sweep on top.
     for (const boss of Bosses) {
       if (boss.active && !boss.defeated) {
-        // Dynamic movement patterns based on phase
         const phase = boss.phase || 1;
         const moveSpeed = boss.speed || 1.0;
         const phaseMultiplier = phase === 3 ? 1.5 : phase === 2 ? 1.2 : 1.0;
-        
-        // Back-and-forth patrolling - boss moves left and right on screen so player can stomp
-        const patrolLeft = viking.x - 180;
-        const patrolRight = viking.x + 260;
-        
-        // Initialize direction if not set
-        if (boss.direction === undefined) {
-          boss.direction = -1; // Start moving left so boss enters from right
-        }
-        
-        // Move in current direction (4x so boss clearly patrols back and forth)
-        boss.x += boss.direction * world.speed * moveSpeed * phaseMultiplier * dt * 0.8 * 4;
-        
-        // Reverse direction at boundaries
-        if (boss.x <= patrolLeft) {
-          boss.direction = 1; // Move right
-        }
-        if (boss.x >= patrolRight) {
-          boss.direction = -1; // Move left
-        }
-        
-        // Keep boss on screen (safety bounds) - nudge back, don't snap every frame
-        if (boss.x < viking.x - 100) {
-          boss.x = Math.max(boss.x, viking.x - 100);
-          boss.direction = 1; // Force right if too far left
-        }
-        if (boss.x > viking.x + W + 50) {
-          boss.x = Math.min(boss.x, viking.x + W + 50);
-          boss.direction = -1; // Force left if too far right
-        }
+
+        // Camera-tracking velocity (matches viking)
+        boss.x += actualSpeed * dt;
+
+        // Patrol oscillation — much snappier than before so motion is visible.
+        // Was 220 * 0.3 = 66 px/s for a level-1 troll; now the slowest boss
+        // sweeps the screen visibly within a few seconds.
+        if (boss.direction === undefined) boss.direction = -1; // enter from the right
+        const patrolPxPerSec = (380 + 120 * moveSpeed) * phaseMultiplier;
+        boss.x += boss.direction * patrolPxPerSec * dt;
+
+        // Screen-relative patrol bounds. world.camX is "left edge of screen
+        // in world coords"; W is canvas width. Margins keep boss fully visible.
+        const marginLeft = 80;
+        const marginRight = 80;
+        const patrolLeft = world.camX + marginLeft;
+        const patrolRight = world.camX + W - marginRight;
+        if (boss.x <= patrolLeft)  { boss.x = patrolLeft;  boss.direction = 1; }
+        if (boss.x >= patrolRight) { boss.x = patrolRight; boss.direction = -1; }
         
         // Vertical movement - bobbing and jumping
         const baseY = world.groundY;
@@ -8552,7 +8598,7 @@ window.$ = (id) => document.getElementById(id);
               // Unlock boss achievement if boss.level exists
               if (boss.level !== undefined) {
                 const bossAchievementKey = `boss${boss.level}`;
-                if (Achievements.achievements && Achievements.achievements[bossAchievementKey]) {
+                if (Achievements.list && Achievements.list[bossAchievementKey]) {
                   Achievements.unlock(bossAchievementKey);
                 }
               }
@@ -10160,6 +10206,26 @@ window.$ = (id) => document.getElementById(id);
           HighScoreManager.displayScores('alltime', currentDifficulty, world.currentLevel);
         };
       }
+
+      // Bio buttons in start menu — open Elata bio panel / quick-start heart rate
+      const bioOpenBtn = document.getElementById("bioOpenBtn");
+      const bioQuickHrBtn = document.getElementById("bioQuickHrBtn");
+      const openBioPanel = () => {
+        const panel = document.getElementById("bio-panel");
+        const badge = document.getElementById("bio-badge");
+        if (panel) panel.classList.add("open");
+        else if (badge) badge.click();
+      };
+      if (bioOpenBtn) bioOpenBtn.onclick = openBioPanel;
+      if (bioQuickHrBtn) bioQuickHrBtn.onclick = async () => {
+        if (!window.Bio) { openBioPanel(); return; }
+        bioQuickHrBtn.disabled = true;
+        bioQuickHrBtn.textContent = "Starting…";
+        try { await window.Bio.start({ rppg: true }); } catch {}
+        openBioPanel();
+        bioQuickHrBtn.disabled = false;
+        bioQuickHrBtn.textContent = "❤ Heart Rate";
+      };
       
       if (highscoreTabs && highscoreTabs.length > 0) {
         highscoreTabs.forEach(tab => {
@@ -10735,7 +10801,6 @@ window.$ = (id) => document.getElementById(id);
   // This runs AFTER start and resetWorld are defined
   const attachAllHandlers = () => {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:10386',message:'attachAllHandlers called',data:{windowWorldExists:!!window.world,windowStartExists:!!window.start,windowResetWorldExists:!!window.resetWorld,windowWorldType:typeof window.world,windowStartType:typeof window.start,windowResetWorldType:typeof window.resetWorld},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1,H4,H5'})}).catch(()=>{});
     // #endregion
     console.log("🔧 Attaching button handlers");
     console.log("window.world:", !!window.world);
@@ -10797,7 +10862,6 @@ window.$ = (id) => document.getElementById(id);
   
   } catch (error) {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/d49bf992-3545-4442-978a-dccde263d144',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:10507',message:'CRITICAL ERROR in IIFE caught',data:{errorName:error.name,errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
     console.error("❌ CRITICAL ERROR in IIFE:", error);
     console.error("Error name:", error.name);

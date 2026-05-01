@@ -1,0 +1,301 @@
+import { averageRgbInROI, averageRgbInROIWithSkinMaskStats, } from "./frameSource.js";
+export class DemoRunner {
+    constructor(source, processor, opts = {}) {
+        this.source = source;
+        this.processor = processor;
+        this.opts = opts;
+        this.running = false;
+        this.frameCount = 0;
+        this.lastSampleTs = 0;
+        this.smoothedRoi = null;
+        this.frameTimes = [];
+        this.lastFps = null;
+        this.lastCenter = null;
+        this.smoothedSkinRatio = null;
+        this.diagnostics = {
+            framesSeen: 0,
+            framesWithFaceRoi: 0,
+            framesWithFallbackRoi: 0,
+            framesWithMultiRoi: 0,
+            samplesPushed: 0,
+            droppedFrames: 0,
+            lastDropReason: null,
+            lastTimestampMs: null,
+            lastIntensity: null,
+            lastSkinRatio: null,
+            lastClipRatio: null,
+            lastMotion: null,
+            lastProcessorMethod: null,
+            lastRoiSource: null,
+        };
+        this.lastError = null;
+        this.source.onFrame = this.onFrame.bind(this);
+    }
+    async start() {
+        this.running = true;
+        await this.source.start();
+    }
+    async stop() {
+        this.running = false;
+        await this.source.stop();
+    }
+    getDiagnostics() {
+        return { ...this.diagnostics };
+    }
+    getLastError() {
+        return this.lastError;
+    }
+    onFrame(frame) {
+        if (!this.running)
+            return;
+        this.diagnostics.framesSeen += 1;
+        const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+        this.frameTimes.push(now);
+        if (this.frameTimes.length > 30)
+            this.frameTimes.shift();
+        if (this.frameTimes.length >= 2) {
+            const dt = (this.frameTimes[this.frameTimes.length - 1] - this.frameTimes[0]) /
+                1000;
+            if (dt > 0)
+                this.lastFps = (this.frameTimes.length - 1) / dt;
+        }
+        const useSkinMask = this.opts.useSkinMask !== false;
+        let rgb = { r: 0, g: 0, b: 0 };
+        let skinRatio = 1;
+        let clipRatio = 0;
+        let intensity = 0;
+        let motion = 0;
+        let roiSource = null;
+        const rois = frame.rois && frame.rois.length > 0 ? frame.rois : null;
+        if (rois) {
+            roiSource = "multi_roi";
+            this.diagnostics.framesWithMultiRoi += 1;
+            const agg = aggregateRgbFromRois(frame, rois, useSkinMask);
+            rgb = { r: agg.r, g: agg.g, b: agg.b };
+            skinRatio = agg.skinRatio;
+            clipRatio = agg.clipRatio;
+            intensity = agg.g;
+            if (frame.roi) {
+                motion = computeMotion(frame.roi, this.lastCenter);
+                this.lastCenter = {
+                    x: frame.roi.x + frame.roi.w * 0.5,
+                    y: frame.roi.y + frame.roi.h * 0.5,
+                };
+            }
+        }
+        else {
+            let roi = this.opts.roi;
+            if (typeof roi === "undefined") {
+                roi = frame.roi ?? null;
+            }
+            if (frame.roi) {
+                this.diagnostics.framesWithFaceRoi += 1;
+                roiSource = "face_roi";
+            }
+            if (!roi) {
+                if (frame.width <= 0 || frame.height <= 0 || !frame.data.length) {
+                    this.recordDrop("frame_invalid");
+                    return;
+                }
+                roi = {
+                    x: Math.floor((frame.width - 100) / 2),
+                    y: Math.floor((frame.height - 100) / 2),
+                    w: 100,
+                    h: 100,
+                };
+                this.diagnostics.framesWithFallbackRoi += 1;
+                roiSource = "fallback_roi";
+            }
+            const clamped = clampRoiToFrame(roi, frame.width, frame.height);
+            const smoothed = smoothRoi(this.smoothedRoi, clamped, this.opts.roiSmoothingAlpha);
+            const smoothedClamped = clampRoiToFrame(smoothed, frame.width, frame.height);
+            this.smoothedRoi = smoothedClamped;
+            if (useSkinMask) {
+                const rgbRes = averageRgbInROIWithSkinMaskStats(frame, smoothedClamped.x, smoothedClamped.y, smoothedClamped.w, smoothedClamped.h);
+                rgb = { r: rgbRes.r, g: rgbRes.g, b: rgbRes.b };
+                skinRatio = rgbRes.skinRatio;
+                clipRatio = rgbRes.clipRatio;
+                intensity = rgbRes.g;
+            }
+            else {
+                rgb = averageRgbInROI(frame, smoothedClamped.x, smoothedClamped.y, smoothedClamped.w, smoothedClamped.h);
+                intensity = rgb.g;
+                skinRatio = 1;
+                clipRatio = 0;
+            }
+            motion = computeMotion(smoothedClamped, this.lastCenter);
+            this.lastCenter = {
+                x: smoothedClamped.x + smoothedClamped.w * 0.5,
+                y: smoothedClamped.y + smoothedClamped.h * 0.5,
+            };
+        }
+        if (!Number.isFinite(intensity)) {
+            this.recordDrop("non_finite_intensity");
+            return;
+        }
+        skinRatio = smooth01(this.smoothedSkinRatio, skinRatio, this.opts.skinRatioSmoothingAlpha ?? 0.2);
+        this.smoothedSkinRatio = skinRatio;
+        const ts = frame.timestampMs ?? Date.now();
+        const proc = this.processor;
+        try {
+            if (typeof proc.pushSampleRgbMeta === "function") {
+                proc.pushSampleRgbMeta(ts, rgb.r, rgb.g, rgb.b, skinRatio, motion, clipRatio);
+                this.diagnostics.lastProcessorMethod = "rgb_meta";
+            }
+            else if (typeof proc.pushSampleRgb === "function") {
+                proc.pushSampleRgb(ts, rgb.r, rgb.g, rgb.b, skinRatio);
+                this.diagnostics.lastProcessorMethod = "rgb";
+            }
+            else if (typeof proc.pushSample === "function") {
+                proc.pushSample(ts, intensity);
+                this.diagnostics.lastProcessorMethod = "intensity";
+            }
+            else {
+                throw new TypeError("processor has no push sample API");
+            }
+        }
+        catch (error) {
+            this.recordDrop("processor_error");
+            this.running = false;
+            void this.source.stop().catch(() => { });
+            this.recordError(error);
+            return;
+        }
+        this.diagnostics.samplesPushed += 1;
+        this.diagnostics.lastDropReason = null;
+        this.diagnostics.lastTimestampMs = ts;
+        this.diagnostics.lastIntensity = intensity;
+        this.diagnostics.lastSkinRatio = skinRatio;
+        this.diagnostics.lastClipRatio = clipRatio;
+        this.diagnostics.lastMotion = motion;
+        this.diagnostics.lastRoiSource = roiSource;
+        this.emitDiagnostics();
+        if (this.opts.onStats) {
+            this.opts.onStats({
+                intensity,
+                skinRatio,
+                fps: this.lastFps,
+                r: rgb.r,
+                g: rgb.g,
+                b: rgb.b,
+                clipRatio,
+                motion,
+            });
+        }
+    }
+    recordDrop(reason) {
+        this.diagnostics.droppedFrames += 1;
+        this.diagnostics.lastDropReason = reason;
+        this.emitDiagnostics();
+    }
+    recordError(cause) {
+        const error = {
+            code: "processor_error",
+            stage: "processor",
+            message: cause instanceof Error
+                ? cause.message
+                : "The rPPG processor rejected a frame sample.",
+            timestampMs: Date.now(),
+            diagnostics: this.getDiagnostics(),
+            cause,
+        };
+        this.lastError = error;
+        this.opts.onError?.(error);
+    }
+    emitDiagnostics() {
+        if (this.opts.onDiagnostics) {
+            this.opts.onDiagnostics(this.getDiagnostics());
+        }
+    }
+}
+function clampRoiToFrame(roi, width, height) {
+    const x = Math.max(0, Math.min(width - 1, Math.floor(roi.x)));
+    const y = Math.max(0, Math.min(height - 1, Math.floor(roi.y)));
+    const w = Math.max(1, Math.min(width - x, Math.floor(roi.w)));
+    const h = Math.max(1, Math.min(height - y, Math.floor(roi.h)));
+    return { x, y, w, h };
+}
+function smoothRoi(prev, next, alpha = 0.2) {
+    if (!prev)
+        return next;
+    const prevCx = prev.x + prev.w * 0.5;
+    const prevCy = prev.y + prev.h * 0.5;
+    const nextCx = next.x + next.w * 0.5;
+    const nextCy = next.y + next.h * 0.5;
+    const dx = nextCx - prevCx;
+    const dy = nextCy - prevCy;
+    const maxDim = Math.max(prev.w, prev.h);
+    if (Math.sqrt(dx * dx + dy * dy) > maxDim * 0.35) {
+        return next;
+    }
+    const a = Math.min(0.9, Math.max(0.05, alpha));
+    return {
+        x: prev.x + (next.x - prev.x) * a,
+        y: prev.y + (next.y - prev.y) * a,
+        w: prev.w + (next.w - prev.w) * a,
+        h: prev.h + (next.h - prev.h) * a,
+    };
+}
+function aggregateRgbFromRois(frame, rois, useSkinMask) {
+    let sumR = 0;
+    let sumG = 0;
+    let sumB = 0;
+    let sumW = 0; // weight for RGB (skin pixels)
+    let sumArea = 0;
+    let sumSkinArea = 0;
+    let sumClipArea = 0;
+    for (const roi of rois) {
+        const clamped = clampRoiToFrame(roi, frame.width, frame.height);
+        const area = clamped.w * clamped.h;
+        sumArea += area;
+        if (useSkinMask) {
+            const rgbRes = averageRgbInROIWithSkinMaskStats(frame, clamped.x, clamped.y, clamped.w, clamped.h);
+            // Keep ROI contribution from collapsing to near-zero on transient skin-mask misses.
+            const weight = area * Math.max(0.15, rgbRes.skinRatio);
+            sumR += rgbRes.r * weight;
+            sumG += rgbRes.g * weight;
+            sumB += rgbRes.b * weight;
+            sumW += weight;
+            sumSkinArea += rgbRes.skinRatio * area;
+            sumClipArea += rgbRes.clipRatio * area;
+        }
+        else {
+            const rgbRes = averageRgbInROI(frame, clamped.x, clamped.y, clamped.w, clamped.h);
+            sumR += rgbRes.r * area;
+            sumG += rgbRes.g * area;
+            sumB += rgbRes.b * area;
+            sumW += area;
+            sumSkinArea += area;
+        }
+    }
+    if (sumW <= 0 || sumArea <= 0) {
+        return { r: 0, g: 0, b: 0, skinRatio: 0, clipRatio: 0 };
+    }
+    return {
+        r: sumR / sumW,
+        g: sumG / sumW,
+        b: sumB / sumW,
+        skinRatio: sumSkinArea / sumArea,
+        clipRatio: sumClipArea / sumArea,
+    };
+}
+function computeMotion(roi, last) {
+    if (!last)
+        return 0;
+    const cx = roi.x + roi.w * 0.5;
+    const cy = roi.y + roi.h * 0.5;
+    const dx = cx - last.x;
+    const dy = cy - last.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const norm = Math.max(1, Math.max(roi.w, roi.h));
+    return Math.min(1, dist / norm);
+}
+function smooth01(prev, next, alpha) {
+    const n = Math.max(0, Math.min(1, next));
+    if (prev === null || !Number.isFinite(prev))
+        return n;
+    const a = Math.min(0.8, Math.max(0.05, alpha));
+    const delta = n - prev;
+    const effectiveAlpha = Math.abs(delta) > 0.3 ? a * 0.35 : a;
+    return Math.max(0, Math.min(1, prev + delta * effectiveAlpha));
+}
