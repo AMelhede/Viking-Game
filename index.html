@@ -1686,45 +1686,10 @@ window.$ = (id) => document.getElementById(id);
     supported: ['warhorn', 'mead', 'gameover', 'stomp', 'gold', 'shipStart', 'shipDestroy', 'jump', 'damage', 'heart', 'powerup'],
     
     async init() {
-      // Gracefully handle CORS and file loading errors
-      for (const name of this.supported) {
-        try {
-          const audio = new Audio();
-          // Handle CORS errors gracefully
-          audio.crossOrigin = 'anonymous';
-          audio.src = `sounds/${name}.mp3`;
-          
-          // Use Promise with timeout and error handling
-          await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              // Timeout is not an error - file just doesn't exist or can't load
-              resolve();
-            }, 2000);
-            
-            audio.oncanplaythrough = () => {
-              clearTimeout(timeout);
-              resolve();
-            };
-            
-            audio.onerror = (e) => {
-              clearTimeout(timeout);
-              // CORS or file not found - not critical, just resolve
-              resolve();
-            };
-            
-            // Try to load
-            audio.load();
-          });
-          
-          // Only store if audio actually loaded
-          if (audio.readyState >= 2) { // HAVE_CURRENT_DATA or higher
-            this.files[name] = audio.src;
-          }
-        } catch (e) {
-          // Silently ignore - will use synthesis fallback
-          // Don't log errors for missing files (CORS/file:// issues)
-        }
-      }
+      // Audio is fully procedural via Web Audio API. The mp3 files were
+      // never shipped, so probing for them on every page load just produces
+      // 11x 404s in the network panel and slows first paint. The synthesis
+      // path is the entire audio system.
       this.loaded = true;
     },
     
@@ -3990,33 +3955,8 @@ window.$ = (id) => document.getElementById(id);
     },
     
     async loadExternal() {
-      try {
-        // Gracefully handle CORS errors when running from file://
-        const response = await fetch('levels.json').catch(() => {
-          // CORS or file not found - use default levels
-          return null;
-        });
-        
-        if (!response || !response.ok) {
-          // File doesn't exist or CORS blocked - use default levels
-          return;
-        }
-        if (response.ok) {
-          const data = await response.json();
-          if (data.levels && Array.isArray(data.levels)) {
-            // Merge external levels with defaults
-            const existingIds = new Set(this.levels.map(l => l.id));
-            for (const extLevel of data.levels) {
-              if (!existingIds.has(extLevel.id)) {
-                this.levels.push(extLevel);
-              }
-            }
-            this.levels.sort((a, b) => a.unlockScore - b.unlockScore);
-          }
-        }
-      } catch (e) {
-        // External file not found, use defaults
-      }
+      // levels.json was never shipped. Defaults are the source of truth.
+      return;
     }
   };
   console.log("✅ LevelSystem object defined");
@@ -9489,97 +9429,14 @@ window.$ = (id) => document.getElementById(id);
     smoothedBPM: 0
   };
   
-  // Dynamic MediaPipe Loader with Fallback CDNs - Reinstalled
+  // Eye tracking was removed (3979fc0); the only place that still calls
+  // loadMediaPipe is dead code behind a hidden gaze cursor and unwired
+  // initFaceLandmarker handler. The Elata SDK loads its own MediaPipe
+  // (vendor/elata/rppg-web/dist/mediapipeLoader.js) for rPPG; we don't
+  // need a second CDN loader. Stub returns false so any straggler call
+  // takes the gracefully-disabled branch instead of probing 4 CDNs.
   let mediapipeAvailable = false;
-  
-  const loadMediaPipe = async () => {
-    // If already loaded, return immediately
-    if (typeof window.tasksVision !== 'undefined') {
-      mediapipeAvailable = true;
-      return true;
-    }
-    
-    // Remove any existing MediaPipe scripts to ensure clean reload
-    const existingScripts = document.querySelectorAll('script[src*="mediapipe"], script[src*="tasks-vision"]');
-    existingScripts.forEach(script => script.remove());
-    
-    const sources = [
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.js',
-      'https://unpkg.com/@mediapipe/tasks-vision@latest/vision_bundle.js',
-      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js',
-      'https://unpkg.com/@mediapipe/tasks-vision@0.10.0/vision_bundle.js'
-    ];
-    
-    for (const src of sources) {
-      try {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = src;
-          // Try as module first, fallback to regular script
-          script.type = 'module';
-          script.async = true;
-          
-          // Handle module load errors gracefully
-          script.onerror = (error) => {
-            // If module fails, try as regular script
-            const fallbackScript = document.createElement('script');
-            fallbackScript.src = src;
-            fallbackScript.type = 'text/javascript';
-            fallbackScript.async = true;
-            
-            fallbackScript.onload = () => {
-              let attempts = 0;
-              const checkInterval = setInterval(() => {
-                attempts++;
-                if (typeof window.tasksVision !== 'undefined') {
-                  mediapipeAvailable = true;
-                  console.log(`MediaPipe loaded successfully from ${src} (fallback)`);
-                  clearInterval(checkInterval);
-                  resolve(true);
-                } else if (attempts >= 20) {
-                  clearInterval(checkInterval);
-                  reject(new Error('MediaPipe not available after load'));
-                }
-              }, 100);
-            };
-            
-            fallbackScript.onerror = () => {
-              reject(new Error(`Failed to load from ${src}`));
-            };
-            
-            document.head.appendChild(fallbackScript);
-          };
-          
-          script.onload = () => {
-            // Wait longer for global to be available
-            let attempts = 0;
-            const checkInterval = setInterval(() => {
-              attempts++;
-              if (typeof window.tasksVision !== 'undefined') {
-                mediapipeAvailable = true;
-                console.log(`MediaPipe loaded successfully from ${src}`);
-                clearInterval(checkInterval);
-                resolve(true);
-              } else if (attempts >= 20) {
-                clearInterval(checkInterval);
-                reject(new Error('MediaPipe not available after load'));
-              }
-            }, 100);
-          };
-          
-          document.head.appendChild(script);
-        });
-        return true;
-      } catch (e) {
-        // Silently continue to next source - don't log errors that break game
-        continue;
-      }
-    }
-    
-    // All sources failed - gracefully disable eye tracking without breaking game
-    mediapipeAvailable = false;
-    return false;
-  };
+  const loadMediaPipe = async () => false;
   
   const checkMediaPipeAvailability = () => {
     return new Promise((resolve) => {
