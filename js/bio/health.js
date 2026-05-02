@@ -10,6 +10,7 @@
 
 const KEY = "bio_health_v1";
 const RETAIN_DAYS = 90;
+const SAVE_THROTTLE_MS = 5000;
 
 function todayKey() {
   const d = new Date();
@@ -45,6 +46,26 @@ export class HealthLog {
   constructor() {
     this._data = load();
     this._dayBuf = this._ensureDay(todayKey());
+    this._dirty = false;
+    this._lastSaveAt = 0;
+    if (typeof window !== "undefined") {
+      // Flush on tab hide so we don't lose recent samples on refresh/close.
+      window.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden" && this._dirty) this._flush();
+      });
+      window.addEventListener("pagehide", () => { if (this._dirty) this._flush(); });
+    }
+  }
+
+  _markDirty() {
+    this._dirty = true;
+    const now = Date.now();
+    if (now - this._lastSaveAt >= SAVE_THROTTLE_MS) this._flush();
+  }
+  _flush() {
+    save(this._data);
+    this._dirty = false;
+    this._lastSaveAt = Date.now();
   }
 
   _ensureDay(key) {
@@ -76,7 +97,7 @@ export class HealthLog {
       this._dayBuf.hrvSamples++;
       this._dayBuf.hrvSum += m.hrv;
     }
-    save(this._data);
+    this._markDirty();
   }
 
   ingestEeg(m) {
@@ -84,21 +105,21 @@ export class HealthLog {
     if (typeof m.focus === "number" && m.focus > this._dayBuf.peakFocus) {
       this._dayBuf.peakFocus = m.focus;
     }
-    save(this._data);
+    this._markDirty();
   }
 
   /** Called by state fusion to track time-in-state. dt in seconds. */
   accrueState(state, dt) {
     if (typeof dt !== "number" || dt <= 0) return;
     const d = this._dayBuf;
-    if (state === "flow") d.focusMinSeconds += dt;
     if (state === "flow") d.flowSeconds += dt;
     if (state === "berserker") d.berserkerSeconds += dt;
     if (state === "meditation") d.meditationSeconds += dt;
     if (state === "frantic") d.franticSeconds += dt;
     if (state === "calm" || state === "meditation") d.calmSeconds += dt;
-    if (state === "focused" || state === "flow") d.focusMinSeconds += dt;
-    save(this._data);
+    // Focus minutes: any state where the EEG mind is "sharp" — flow + focused + berserker
+    if (state === "focused" || state === "flow" || state === "berserker") d.focusMinSeconds += dt;
+    this._markDirty();
   }
 
   snapshot() {
