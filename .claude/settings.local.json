@@ -24,7 +24,8 @@
       "Bash(git commit -m 'Enable FaceMesh auto-load for better rPPG accuracy when online *)",
       "mcp__Claude_Preview__preview_start",
       "Bash(git ls-tree *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(node --check index.html)"
     ]
   }
 }

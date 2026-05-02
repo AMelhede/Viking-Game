@@ -41,6 +41,7 @@ const PROFILES = {
 
 const TINT_ID = "bio-tint";
 const TOAST_ID = "bio-toast";
+const HUD_BADGE_ID = "bio-hud-badge";
 
 let active = false;
 let lastScore = 0;
@@ -49,6 +50,9 @@ let lastFrameAt = 0;
 let lastState = "neutral";
 let tintEl = null;
 let toastEl = null;
+let hudBadgeEl = null;
+let bonusBufferS = 0;
+let bonusAccum = 0;
 
 function ensureTint() {
   if (tintEl) return tintEl;
@@ -106,6 +110,70 @@ function applyTint(profile) {
   el.style.opacity = "0.18";
 }
 
+function ensureHudBadge() {
+  if (hudBadgeEl && document.body.contains(hudBadgeEl)) return hudBadgeEl;
+  // Mount next to the score in the existing .topbar so the player sees it
+  // exactly where they're already watching their score.
+  const host = document.querySelector(".scorecard") || document.querySelector(".topbar") || document.body;
+  const el = document.createElement("div");
+  el.id = HUD_BADGE_ID;
+  el.style.cssText = [
+    "display:none", "align-items:center", "gap:6px",
+    "padding:4px 10px", "border-radius:999px",
+    "background:rgba(13,17,23,.85)", "color:#fbbf24",
+    "border:1.5px solid currentColor",
+    "font:800 11px/1 system-ui,sans-serif", "letter-spacing:1px",
+    "box-shadow:0 4px 14px rgba(0,0,0,.4)",
+    "pointer-events:none", "user-select:none",
+    "transition:transform .25s ease, opacity .25s ease",
+    "white-space:nowrap",
+  ].join(";");
+  host.appendChild(el);
+  hudBadgeEl = el;
+  return el;
+}
+
+function setHudBadge(profile, state) {
+  const el = ensureHudBadge();
+  if (!profile.label || profile.score <= 1 && profile.mead <= 0) {
+    el.style.display = "none";
+    return;
+  }
+  // Compact, glanceable: "FLOW ×2"
+  const mult = profile.score > 1 ? `×${profile.score}` : "";
+  const passive = profile.mead > 0 ? `+${profile.mead}/s` : "";
+  const label = state.toUpperCase();
+  el.textContent = `${label} ${mult || passive}`.trim();
+  el.style.color = profile.color || "#fbbf24";
+  el.style.display = "inline-flex";
+  // Tiny pulse on change
+  el.style.transform = "scale(1.1)";
+  setTimeout(() => { if (el) el.style.transform = "scale(1)"; }, 220);
+}
+
+function spawnFloatingBonus(text, color) {
+  const score = document.getElementById("scoreV");
+  const host = score?.parentElement || document.querySelector(".scorecard") || document.body;
+  const el = document.createElement("div");
+  el.textContent = text;
+  el.style.cssText = [
+    "position:absolute", "pointer-events:none", "z-index:101",
+    `color:${color || "#fbbf24"}`,
+    "font:800 14px/1 system-ui,sans-serif",
+    "text-shadow:0 0 10px currentColor, 0 2px 6px rgba(0,0,0,.5)",
+    "transition:transform 1s cubic-bezier(.2,.8,.2,1), opacity 1s ease",
+    "transform:translate(0,0)", "opacity:1",
+    "left:50%", "top:0",
+  ].join(";");
+  host.style.position = host.style.position || "relative";
+  host.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.transform = "translate(-50%, -38px)";
+    el.style.opacity = "0";
+  });
+  setTimeout(() => el.remove(), 1100);
+}
+
 /** Start the effects loop. Safe to call multiple times. */
 export function startEffects(Bio) {
   if (active) return;
@@ -119,6 +187,7 @@ export function startEffects(Bio) {
     const profile = PROFILES[state] || PROFILES.neutral;
     if (profile.label && state !== "neutral") showToast(profile.label, profile.color || "#fbbf24");
     applyTint(profile);
+    setHudBadge(profile, state);
   });
 
   function tick(now) {
@@ -138,6 +207,20 @@ export function startEffects(Bio) {
       if (delta > 0 && profile.score > 1 && world.started && !world.over) {
         const bonus = delta * (profile.score - 1);
         world.score = cur + bonus;
+        // Aggregate bonuses and emit a floating "+N" every ~1s so the
+        // player sees WHY their score is climbing faster.
+        bonusAccum += bonus;
+        bonusBufferS += dt;
+        if (bonusBufferS >= 1.0 && bonusAccum >= 5) {
+          spawnFloatingBonus(`+${Math.round(bonusAccum)}`, profile.color);
+          bonusAccum = 0;
+          bonusBufferS = 0;
+        }
+      } else {
+        // decay the buffer when no bonus is accruing so a stale +N doesn't
+        // appear right when state changes back to neutral
+        bonusBufferS = Math.max(0, bonusBufferS - dt);
+        if (bonusBufferS === 0) bonusAccum = 0;
       }
       lastScore = world.score;
 
