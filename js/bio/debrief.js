@@ -129,6 +129,7 @@ function showDebrief(Bio, health, run) {
 
       <div class="actions">
         <button class="ghost" id="bio-debrief-close">Close</button>
+        <button id="bio-debrief-share">📤 Share run</button>
       </div>
     </div>
   `;
@@ -136,9 +137,113 @@ function showDebrief(Bio, health, run) {
 
   const close = () => el.classList.remove("show");
   el.querySelector("#bio-debrief-close").addEventListener("click", close);
+  el.querySelector("#bio-debrief-share").addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    shareRun(Bio, health, run, tier, m).catch(e => console.warn("[Bio] share failed", e));
+  });
   el.addEventListener("click", (e) => { if (e.target === el) close(); });
 
-  setTimeout(close, 12000); // auto-dismiss after 12s
+  // Was 12s; bumped to 30s now that there's a share button worth seeing.
+  setTimeout(close, 30000);
+}
+
+/** Render the run debrief as a 1080x1080 share card and trigger Web Share /
+ * download. The image is verifiable proof: tier badge, run stats, watermark. */
+async function shareRun(Bio, health, run, tier, metrics) {
+  const W = 1080, H = 1080;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const cx = cv.getContext("2d");
+
+  const bg = cx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#0d1117"); bg.addColorStop(1, "#1f2937");
+  cx.fillStyle = bg; cx.fillRect(0, 0, W, H);
+
+  cx.strokeStyle = tier.color; cx.lineWidth = 12;
+  cx.strokeRect(20, 20, W - 40, H - 40);
+
+  cx.textAlign = "center";
+  cx.fillStyle = "#9ca3af";
+  cx.font = "600 28px system-ui, -apple-system, sans-serif";
+  cx.fillText("VIKING RUN — BIO DEBRIEF", W / 2, 100);
+
+  cx.fillStyle = tier.color;
+  cx.font = "900 96px system-ui, -apple-system, sans-serif";
+  cx.fillText(tier.name.toUpperCase(), W / 2, 220);
+
+  cx.fillStyle = "#cbd5e1";
+  cx.font = "400 26px system-ui, -apple-system, sans-serif";
+  wrapText(cx, tier.blurb || "", W / 2, 270, W - 160, 36);
+
+  const gx = 100, gy = 380;
+  const cellW = (W - 200) / 2;
+  const cellH = 180;
+  const cells = [
+    { k: "Flow this run",   v: `${Math.round(run.flowS)}s` },
+    { k: "Peak HR",         v: health.today.peakHr ? `${Math.round(health.today.peakHr)}` : "—" },
+    { k: "Avg HRV today",   v: health.today.avgHrv ? `${Math.round(health.today.avgHrv)} ms` : "—" },
+    { k: "Streak",          v: `${health.streak} day${health.streak === 1 ? "" : "s"}` },
+  ];
+  for (let i = 0; i < cells.length; i++) {
+    const x = gx + (i % 2) * cellW;
+    const y = gy + Math.floor(i / 2) * cellH;
+    cx.fillStyle = "rgba(255,255,255,0.04)";
+    roundRect(cx, x, y, cellW - 16, cellH - 16, 18); cx.fill();
+    cx.fillStyle = tier.color;
+    cx.font = "900 64px system-ui, -apple-system, sans-serif";
+    cx.textAlign = "center";
+    cx.fillText(cells[i].v, x + (cellW - 16) / 2, y + 80);
+    cx.fillStyle = "#9ca3af";
+    cx.font = "600 22px system-ui, -apple-system, sans-serif";
+    cx.fillText(cells[i].k.toUpperCase(), x + (cellW - 16) / 2, y + 130);
+  }
+
+  cx.fillStyle = "#9ca3af";
+  cx.font = "500 22px system-ui, -apple-system, sans-serif";
+  cx.textAlign = "center";
+  cx.fillText("Trained with EEG + heart rate via the Elata SDK", W / 2, H - 110);
+  cx.fillStyle = "#fbbf24";
+  cx.font = "800 26px system-ui, -apple-system, sans-serif";
+  cx.fillText(new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), W / 2, H - 70);
+
+  const blob = await new Promise(res => cv.toBlob(res, "image/png", 0.95));
+  if (!blob) return;
+  const file = new File([blob], `viking-${tier.id}-${Date.now()}.png`, { type: "image/png" });
+  const text = `Just held ${tier.name} for ${Math.round(run.flowS)}s in Viking Run. Bio-driven gameplay, verified by my own heart and brain.`;
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Viking Run", text });
+      return;
+    }
+  } catch {}
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, cx, cy, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  let line = "", y = cy;
+  for (const w of words) {
+    const test = line ? line + " " + w : w;
+    if (ctx.measureText(test).width > maxWidth) {
+      ctx.fillText(line, cx, y);
+      line = w; y += lineHeight;
+    } else line = test;
+  }
+  if (line) ctx.fillText(line, cx, y);
 }
 
 function computeInsight(Bio, health, run) {
