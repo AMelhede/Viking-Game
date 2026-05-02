@@ -1169,7 +1169,7 @@
     }
   }
   </script>
-  <script type="module" src="./js/bio/index.js?v=4"></script>
+  <script type="module" src="./js/bio/index.js?v=5"></script>
 </head>
 
 <body>
@@ -9604,24 +9604,9 @@ window.$ = (id) => document.getElementById(id);
     });
   };
   
-  // Load MediaPipe on page load
-  loadMediaPipe().then(loaded => {
-    if (!loaded) {
-      console.warn("MediaPipe not loaded - eye tracking disabled");
-      if (eyeTrackBtn) {
-        eyeTrackBtn.textContent = "👁️ Eye Tracking Unavailable";
-        eyeTrackBtn.disabled = true;
-        eyeTrackBtn.style.opacity = "0.5";
-      }
-    } else {
-      console.log("MediaPipe loaded successfully");
-      if (eyeTrackBtn) {
-        eyeTrackBtn.textContent = "👁️ Eye Tracking";
-        eyeTrackBtn.disabled = false;
-        eyeTrackBtn.style.opacity = "1";
-      }
-    }
-  });
+  // Eye tracking UI was removed; MediaPipe for rPPG is loaded by the bio module
+  // (vendor/elata/rppg-web). No need to preload from CDN here — that path used to
+  // print scary "MediaPipe not loaded" warnings on every page load.
   
   // FIXED: Initialization logic with a "Panic Mode"
   // If this fails, it unlocks the screen so buttons work.
