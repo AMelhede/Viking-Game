@@ -22,6 +22,7 @@ import { mountUi } from "./ui.js";
 import { startEffects } from "./effects.js";
 import { startDebriefWatcher } from "./debrief.js";
 import { startAchievementsBridge } from "./achievements.js";
+import { mountMenuWidget, mountMorningRitual } from "./menuWidget.js";
 
 const listeners = new Map(); // event name -> Set<fn>
 
@@ -117,6 +118,8 @@ if (typeof window !== "undefined") {
     try { startEffects(Bio); } catch (e) { console.warn("[Bio] startEffects failed", e); }
     try { startDebriefWatcher(Bio); } catch (e) { console.warn("[Bio] startDebriefWatcher failed", e); }
     try { startAchievementsBridge(Bio); } catch (e) { console.warn("[Bio] startAchievementsBridge failed", e); }
+    try { mountMenuWidget(Bio); } catch (e) { console.warn("[Bio] mountMenuWidget failed", e); }
+    try { mountMorningRitual(Bio); } catch (e) { console.warn("[Bio] mountMorningRitual failed", e); }
     window.dispatchEvent(new CustomEvent("bio:ready"));
     console.log("[Bio] adapter ready", Bio.capabilities());
   };

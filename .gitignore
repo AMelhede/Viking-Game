@@ -19,3 +19,6 @@ debug.log
 # Node
 node_modules/
 npm-debug.log*
+
+# Worktree paths sometimes get re-added by tooling
+.claude/worktrees/

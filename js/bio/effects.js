@@ -244,6 +244,23 @@ export function startEffects(Bio) {
           log.accrueState(state, dt);
         }
       }
+
+      // FLOW BURN — sustained Flow state passively damages active bosses at
+      // 0.5 HP/s. With the existing 4-stomp boss, ~8s of held flow finishes
+      // a fight without a single jump. This is the irreducible "why bio"
+      // moment: bosses can be defeated purely with cognitive state.
+      // Berserker also burns, but at 0.25/s (charged body needs the stomp to
+      // fully apply).
+      const burnRate = state === "flow" ? 0.5 : state === "berserker" ? 0.25 : 0;
+      if (burnRate > 0 && Array.isArray(window.Bosses) && world.started && !world.over) {
+        for (const boss of window.Bosses) {
+          if (!boss || !boss.active || boss.defeated) continue;
+          if (typeof boss.currentHealth !== "number" || boss.currentHealth <= 0) continue;
+          boss.currentHealth -= burnRate * dt;
+          boss._bioBurnState = state;
+          boss._bioBurnAt = now;
+        }
+      }
     }
 
     requestAnimationFrame(tick);
