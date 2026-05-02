@@ -158,6 +158,11 @@ export function mountUi(Bio) {
   `;
   document.body.appendChild(panel);
 
+  const rppgToggle = panel.querySelector("#bio-rppg-toggle");
+  const eegToggle  = panel.querySelector("#bio-eeg-toggle");
+  const rppgMeta   = panel.querySelector("#bio-rppg-meta");
+  const eegMeta    = panel.querySelector("#bio-eeg-meta");
+
   // Friendly banner for browsers that can't run bio at all (Safari/iOS, Firefox EEG-only).
   if (!caps.rppg && !caps.eeg) {
     const note = document.createElement("div");
@@ -186,11 +191,6 @@ export function mountUi(Bio) {
     if (panel.contains(e.target) || badge.contains(e.target)) return;
     setOpen(false);
   });
-
-  const rppgToggle = panel.querySelector("#bio-rppg-toggle");
-  const eegToggle  = panel.querySelector("#bio-eeg-toggle");
-  const rppgMeta   = panel.querySelector("#bio-rppg-meta");
-  const eegMeta    = panel.querySelector("#bio-eeg-meta");
   const stateEl    = panel.querySelector("#bio-state-label");
   const bpmEl      = panel.querySelector("#bio-bpm");
   const hrvEl      = panel.querySelector("#bio-hrv");

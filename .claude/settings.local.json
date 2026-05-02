@@ -21,7 +21,10 @@
       "Bash(node --check js/bio/achievements.js)",
       "Bash(node --check js/bio/index.js)",
       "Bash(git commit -m 'Add bio achievements, mobile/Safari banner, bio-reactive music; bump cache key *)",
-      "Bash(git commit -m 'Enable FaceMesh auto-load for better rPPG accuracy when online *)"
+      "Bash(git commit -m 'Enable FaceMesh auto-load for better rPPG accuracy when online *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git ls-tree *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
