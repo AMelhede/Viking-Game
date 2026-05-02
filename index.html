@@ -1176,7 +1176,7 @@
     }
   }
   </script>
-  <script type="module" src="./js/bio/index.js?v=6"></script>
+  <script type="module" src="./js/bio/index.js?v=7"></script>
 </head>
 
 <body>
@@ -4663,6 +4663,9 @@ window.$ = (id) => document.getElementById(id);
   const Hearts = [];
   const Golds = [];
   const Bosses = []; // Active bosses
+  // Expose on window so the bio effects module can apply Flow Burn / Berserker bonuses
+  // without having to reach into closures via fragile globals.
+  if (typeof window !== "undefined") window.Bosses = Bosses;
 
   const spawnObstacle = (x) => {
     const theme = LevelThemes.getCurrent();
@@ -8513,11 +8516,28 @@ window.$ = (id) => document.getElementById(id);
         
         if (horizontalOverlap && comingFromAbove) {
           try {
-            // Decrement health first, then check
+            // Decrement health first, then check.
+            // Bio bonus: Berserker state (charged body + sharp mind) doubles
+            // stomp damage. This is the irreducible "why bio" moment for
+            // bosses — without bio you stomp 4 times; with bio + berserker
+            // you stomp 2. Verifiable. Player feels their physiology change
+            // the fight.
             if (boss.currentHealth !== undefined && boss.currentHealth > 0) {
-              boss.currentHealth--;
+              const bioState = (window.Bio && typeof window.Bio.cognitiveState === 'function')
+                ? window.Bio.cognitiveState() : 'neutral';
+              const stompDmg = bioState === 'berserker' ? 2 : 1;
+              boss.currentHealth -= stompDmg;
+              if (stompDmg > 1) {
+                // Floating bonus damage indicator
+                const dmgEl = document.createElement('div');
+                dmgEl.textContent = `BERSERKER ×2`;
+                dmgEl.style.cssText = 'position:fixed;left:50%;top:30%;transform:translateX(-50%);z-index:10000;pointer-events:none;color:#dc2626;font:900 24px/1 system-ui,sans-serif;text-shadow:0 0 20px currentColor,0 4px 8px rgba(0,0,0,.6);transition:transform .8s ease,opacity .8s ease;letter-spacing:2px';
+                document.body.appendChild(dmgEl);
+                requestAnimationFrame(()=>{dmgEl.style.transform='translateX(-50%) translateY(-40px)';dmgEl.style.opacity='0';});
+                setTimeout(()=>dmgEl.remove(),900);
+              }
             }
-            
+
             viking.vy = -400; // Bounce off
             addParticle(boss.x, boss.y - boss.size.height/2, boss.color || "#FFD700", 30);
             playSFX('jump');
@@ -9302,6 +9322,17 @@ window.$ = (id) => document.getElementById(id);
         ctx.font = "700 18px -apple-system";
         ctx.textAlign = "center";
         ctx.fillText(`${boss.name} - ${Math.ceil(boss.currentHealth)}/${boss.maxHealth}`, W / 2, barY - 10);
+
+        // Flow Burn indicator — when bio is currently chipping the boss, show
+        // a tag below the bar so the player knows their state is doing work.
+        if (boss._bioBurnAt && performance.now() - boss._bioBurnAt < 600) {
+          const tag = boss._bioBurnState === "flow"
+            ? { text: "🔥 FLOW BURN −0.5/s", color: "#fbbf24" }
+            : { text: "🔥 BERSERKER BURN −0.25/s", color: "#dc2626" };
+          ctx.font = "800 12px -apple-system";
+          ctx.fillStyle = tag.color;
+          ctx.fillText(tag.text, W / 2, barY + barHeight + 18);
+        }
       }
     }
     

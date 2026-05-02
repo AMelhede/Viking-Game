@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" worktree add -B claude/nice-mclaren-03d25e \"C:/Users/andre/Downloads/Viking Game/.claude/worktrees/nice-mclaren-03d25e\" origin/claude/nice-mclaren-03d25e)",
+      "Bash(git fetch *)"
+    ]
+  }
+}
