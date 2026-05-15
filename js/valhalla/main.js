@@ -254,12 +254,24 @@ class Valhalla {
     window.addEventListener("resize", () => this._resize());
     this._resize();
 
-    // Hide loader once first frame is ready
-    requestAnimationFrame(() => {
-      const ldr = $("loader");
-      if (ldr) { ldr.classList.add("hidden"); setTimeout(() => ldr.remove(), 700); }
-      this._renderOnce();
-    });
+    // Render one frame synchronously, then hide the loader. If we wait for
+    // rAF the page can paint the (still-visible) loader over our rendered
+    // scene and the user sees nothing.
+    this._renderOnce();
+    const ldr = $("loader");
+    if (ldr) {
+      ldr.classList.add("hidden");
+      setTimeout(() => ldr.remove(), 700);
+    }
+
+    // Score popper container (DOM-based floating text)
+    this._poppers = [];
+
+    // Camera shake state
+    this._shakeAmp = 0;
+    this._shakeT = 0;
+    this._timeScale = 1;     // for slow-mo on rune
+    this._timeScaleTarget = 1;
 
     this._lastT = performance.now();
     this._frame = this._frame.bind(this);
@@ -274,17 +286,23 @@ class Valhalla {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.78;
+    this.renderer.toneMappingExposure = 0.45;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0xb6c8d6, FOG_NEAR, FOG_FAR);
-    this.scene.background = new THREE.Color(0x9eb2c4);
+    // Fog color tuned to match the bright daytime sky horizon. A pale
+    // blue-white reads as "atmospheric haze" not "fog wall".
+    const fogColor = new THREE.Color(0xc4d2dc);
+    this.scene.fog = new THREE.Fog(fogColor, 60, 520);
+    this.scene.background = fogColor.clone();
 
-    this.camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.1, 800);
-    this.camera.position.set(0, 4.2, -8);
-    this.camera.lookAt(0, 1.6, 14);
+    // Cinematic camera: pull back so the Viking is ~1/4 of screen height,
+    // leaving room for the world to breathe. Narrower FOV (48) compresses
+    // mountains into a film-lens look.
+    this.camera = new THREE.PerspectiveCamera(48, 16 / 9, 0.1, 1200);
+    this.camera.position.set(0, 4.0, -11.5);
+    this.camera.lookAt(0, 2.0, 22);
   }
 
   _buildSky() {
@@ -292,42 +310,70 @@ class Valhalla {
     this.sky.scale.setScalar(450000);
     this.scene.add(this.sky);
     const u = this.sky.material.uniforms;
-    u.turbidity.value = 6;
-    u.rayleigh.value = 2.4;
-    u.mieCoefficient.value = 0.006;
-    u.mieDirectionalG.value = 0.85;
+    // Three.js Sky shader's published "clear sunny day" preset. Sky outputs
+    // physical units so the renderer's low exposure (0.45) is what brings
+    // the brightness into a viewable range.
+    u.turbidity.value = 2.5;
+    u.rayleigh.value = 1.2;
+    u.mieCoefficient.value = 0.005;
+    u.mieDirectionalG.value = 0.8;
 
-    // sun position — low northern winter sun
-    const phi = THREE.MathUtils.degToRad(82);
-    const theta = THREE.MathUtils.degToRad(38);
+    // Sun high and to the side: phi=70° from zenith = ~20° above horizon,
+    // long golden-hour shadows raking the snow without being a fireball.
+    const phi = THREE.MathUtils.degToRad(70);
+    const theta = THREE.MathUtils.degToRad(135);
     this.sunPos = new THREE.Vector3();
     this.sunPos.setFromSphericalCoords(1, phi, theta);
     u.sunPosition.value.copy(this.sunPos);
+
+    // Visible "sun disc" sprite — billboarded glow so the player feels
+    // the sun's presence in the sky. Cheap but huge perceptual impact.
+    const sunGeo = new THREE.SphereGeometry(8, 16, 12);
+    const sunMat = new THREE.MeshBasicMaterial({
+      color: 0xfff2c8, fog: false, transparent: true, opacity: 0.92,
+    });
+    this.sunDisc = new THREE.Mesh(sunGeo, sunMat);
+    // Place far away in the sun direction so it always reads as "the sun"
+    this.sunDisc.position.copy(this.sunPos).multiplyScalar(600);
+    this.scene.add(this.sunDisc);
+
+    // Sun halo — bigger, fainter quad for the diffuse glow
+    const haloGeo = new THREE.SphereGeometry(28, 16, 12);
+    const haloMat = new THREE.MeshBasicMaterial({
+      color: 0xffe2a0, fog: false, transparent: true, opacity: 0.18,
+      depthWrite: false,
+    });
+    this.sunHalo = new THREE.Mesh(haloGeo, haloMat);
+    this.sunHalo.position.copy(this.sunPos).multiplyScalar(600);
+    this.scene.add(this.sunHalo);
   }
 
   _buildLights() {
-    const hemi = new THREE.HemisphereLight(0xc8d8ee, 0x1d2a36, 0.55);
+    // Strong hemi to compensate for the low renderer exposure — keeps
+    // the snow reading bright while the sky physically self-illuminates.
+    const hemi = new THREE.HemisphereLight(0xe8eff5, 0x32404e, 2.4);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff0d4, 1.4);
-    sun.position.set(50, 80, 30);
+    const sun = new THREE.DirectionalLight(0xfff0d2, 4.5);
+    sun.position.set(60, 55, 40);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 220;
-    sun.shadow.camera.left = -50;
-    sun.shadow.camera.right = 50;
-    sun.shadow.camera.top = 60;
-    sun.shadow.camera.bottom = -40;
-    sun.shadow.bias = -0.0006;
+    sun.shadow.camera.left = -40;
+    sun.shadow.camera.right = 40;
+    sun.shadow.camera.top = 50;
+    sun.shadow.camera.bottom = -30;
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.04;
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
 
-    // soft cool fill from "north"
-    const fill = new THREE.DirectionalLight(0x7b9ec0, 0.25);
-    fill.position.set(-30, 20, -20);
-    this.scene.add(fill);
+    // Cool blue rim from the "north" — makes silhouettes pop against the fog
+    const rim = new THREE.DirectionalLight(0x8aa8c8, 0.55);
+    rim.position.set(-40, 30, -25);
+    this.scene.add(rim);
   }
 
   _buildGround() {
@@ -356,9 +402,13 @@ class Valhalla {
     const geo = this.chunkGeo.clone();
     const pos = geo.attributes.position;
     const colors = new Float32Array(pos.count * 3);
-    const nearWhite = new THREE.Color(0xeef5fb);
-    const snowMid = new THREE.Color(0xc7d4dc);
-    const moss = new THREE.Color(0x4d6149);
+    // Layered palette — sunlit snow → cool shadow → mossy edge → rock.
+    // The blue-tinted shadow color is what makes snow read as SNOW
+    // (frozen water) instead of white plastic.
+    const sunSnow = new THREE.Color(0xf5f6f0);
+    const shadowSnow = new THREE.Color(0xb4c4d4);
+    const trodden = new THREE.Color(0xa7b3bd);
+    const moss = new THREE.Color(0x435a3f);
     const rock = new THREE.Color(0x5a6068);
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -368,12 +418,19 @@ class Valhalla {
       const distFromPath = Math.max(0, Math.abs(x) - 6);
       const t = Math.min(1, distFromPath / 18);
       const c = new THREE.Color();
-      if (Math.abs(x) < 5.2) c.copy(nearWhite); // path
-      else c.lerpColors(snowMid, distFromPath > 14 ? rock : moss, t);
-      // sprinkle of color noise
-      const n = fbm(x * 0.2, z * 0.2);
-      c.r *= 0.9 + n * 0.2;
-      c.g *= 0.9 + n * 0.2;
+      // Path band: trodden cool snow with two-tone noise for that
+      // "footprints have been here" feel
+      const pathNoise = fbm(x * 0.12, z * 0.08);
+      if (Math.abs(x) < 5.2) {
+        c.lerpColors(trodden, sunSnow, pathNoise * 0.8 + 0.2);
+      } else {
+        // Outside: snowy shadow blending into moss/rock
+        c.lerpColors(shadowSnow, distFromPath > 14 ? rock : moss, t);
+      }
+      // Subtle multi-frequency variation so the surface never reads flat
+      const n = fbm(x * 0.3, z * 0.3) * 0.5 + fbm(x * 0.06, z * 0.06) * 0.5;
+      c.r *= 0.88 + n * 0.24;
+      c.g *= 0.88 + n * 0.24;
       c.b *= 0.9 + n * 0.2;
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
@@ -389,83 +446,103 @@ class Valhalla {
   }
 
   _populateChunk(zStart) {
+    // InstancedMesh-based decor. We allocate one Group per chunk that
+    // contains four instanced meshes (trunk, lower foliage, upper foliage,
+    // snowcap) plus a rocks instance. ~140 trees per chunk × 6 chunks = 840
+    // trees rendered in ~5 draw calls total (vs. 930+ before).
     const decor = new THREE.Group();
-    // Pine trees: random scatter outside the path band
-    const treeCount = 26;
-    for (let i = 0; i < treeCount; i++) {
-      const side = Math.random() < 0.5 ? -1 : 1;
-      const x = side * (8 + Math.random() * 18);
-      const z = zStart + Math.random() * CHUNK_LENGTH;
-      const tree = this._makePine(0.8 + Math.random() * 1.2);
-      tree.position.set(x, groundHeight(x, z) - 0.1, z);
-      tree.rotation.y = Math.random() * Math.PI * 2;
-      decor.add(tree);
+    const tmp = new THREE.Object3D();
+
+    const TREE_COUNT = 140;
+    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.4, 5);
+    trunkGeo.translate(0, 0.7, 0);
+    const lowGeo = new THREE.ConeGeometry(1.3, 1.5, 6);
+    lowGeo.translate(0, 1.4 + 0.45, 0);
+    const midGeo = new THREE.ConeGeometry(1.0, 1.5, 6);
+    midGeo.translate(0, 1.4 + 0.85 + 0.45, 0);
+    const topGeo = new THREE.ConeGeometry(0.7, 1.5, 6);
+    topGeo.translate(0, 1.4 + 1.7 + 0.45, 0);
+    const capGeo = new THREE.ConeGeometry(0.4, 0.5, 6);
+    capGeo.translate(0, 1.4 + 3.0, 0);
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x32200f, roughness: 0.95, flatShading: true });
+    const lowMat = new THREE.MeshStandardMaterial({ color: 0x1a3221, roughness: 0.92, flatShading: true });
+    const midMat = new THREE.MeshStandardMaterial({ color: 0x244430, roughness: 0.9, flatShading: true });
+    const topMat = new THREE.MeshStandardMaterial({ color: 0x2c5440, roughness: 0.88, flatShading: true });
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xf3f6f8, roughness: 0.4, flatShading: true });
+
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREE_COUNT);
+    const lows = new THREE.InstancedMesh(lowGeo, lowMat, TREE_COUNT);
+    const mids = new THREE.InstancedMesh(midGeo, midMat, TREE_COUNT);
+    const tops = new THREE.InstancedMesh(topGeo, topMat, TREE_COUNT);
+    const caps = new THREE.InstancedMesh(capGeo, capMat, TREE_COUNT);
+    for (const m of [trunks, lows, mids, tops, caps]) {
+      m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
     }
-    // Standing stones / rocks
-    for (let i = 0; i < 6; i++) {
+
+    for (let i = 0; i < TREE_COUNT; i++) {
       const side = Math.random() < 0.5 ? -1 : 1;
-      const x = side * (6.5 + Math.random() * 22);
+      // Two bands: close-forest (8-24) and far-forest (24-55). Far band gets
+      // smaller and more drift, so it reads as receding into haze.
+      const farBand = Math.random() < 0.55;
+      const x = side * (farBand ? 24 + Math.random() * 31 : 8 + Math.random() * 16);
       const z = zStart + Math.random() * CHUNK_LENGTH;
-      const r = 0.6 + Math.random() * 1.4;
-      const stone = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(r, 0),
-        new THREE.MeshStandardMaterial({ color: 0x6b6f76, roughness: 0.95, flatShading: true })
-      );
-      stone.position.set(x, groundHeight(x, z) + r * 0.3, z);
-      stone.rotation.set(Math.random(), Math.random(), Math.random());
-      stone.castShadow = true;
-      stone.receiveShadow = true;
-      decor.add(stone);
+      const scale = (farBand ? 1.1 : 0.85) + Math.random() * 0.9;
+      const y = groundHeight(x, z) - 0.1;
+      tmp.position.set(x, y, z);
+      tmp.rotation.set(0, Math.random() * Math.PI * 2, 0);
+      tmp.scale.setScalar(scale);
+      tmp.updateMatrix();
+      trunks.setMatrixAt(i, tmp.matrix);
+      lows.setMatrixAt(i, tmp.matrix);
+      mids.setMatrixAt(i, tmp.matrix);
+      tops.setMatrixAt(i, tmp.matrix);
+      caps.setMatrixAt(i, tmp.matrix);
     }
-    // Rune stones occasionally near the path
-    if (Math.random() < 0.45) {
+    trunks.instanceMatrix.needsUpdate = true;
+    lows.instanceMatrix.needsUpdate = true;
+    mids.instanceMatrix.needsUpdate = true;
+    tops.instanceMatrix.needsUpdate = true;
+    caps.instanceMatrix.needsUpdate = true;
+    decor.add(trunks, lows, mids, tops, caps);
+
+    // Rocks — also instanced.
+    const ROCK_COUNT = 22;
+    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x676d75, roughness: 0.96, flatShading: true });
+    const rocks = new THREE.InstancedMesh(rockGeo, rockMat, ROCK_COUNT);
+    rocks.castShadow = true; rocks.receiveShadow = true; rocks.frustumCulled = false;
+    for (let i = 0; i < ROCK_COUNT; i++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const x = side * (6.5 + Math.random() * 26);
+      const z = zStart + Math.random() * CHUNK_LENGTH;
+      const r = 0.5 + Math.random() * 1.6;
+      tmp.position.set(x, groundHeight(x, z) + r * 0.25, z);
+      tmp.rotation.set(Math.random(), Math.random(), Math.random());
+      tmp.scale.setScalar(r);
+      tmp.updateMatrix();
+      rocks.setMatrixAt(i, tmp.matrix);
+    }
+    rocks.instanceMatrix.needsUpdate = true;
+    decor.add(rocks);
+
+    // Runestone — keep as single mesh (rare, individual character).
+    if (Math.random() < 0.55) {
       const side = Math.random() < 0.5 ? -1 : 1;
       const x = side * (5.6 + Math.random() * 1.4);
       const z = zStart + 10 + Math.random() * (CHUNK_LENGTH - 20);
       const rune = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 2.4, 0.3),
-        new THREE.MeshStandardMaterial({ color: 0x4a4f56, roughness: 0.9, flatShading: true })
+        new THREE.BoxGeometry(0.7, 2.6, 0.32),
+        new THREE.MeshStandardMaterial({ color: 0x52575e, roughness: 0.88, flatShading: true })
       );
-      rune.position.set(x, groundHeight(x, z) + 1.2, z);
+      rune.position.set(x, groundHeight(x, z) + 1.3, z);
       rune.rotation.y = (Math.random() - 0.5) * 0.4;
       rune.castShadow = true;
       decor.add(rune);
     }
+
     this.scene.add(decor);
     return decor;
-  }
-
-  _makePine(scale = 1) {
-    const grp = new THREE.Group();
-    const trunkH = 1.4 * scale;
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.18 * scale, 0.22 * scale, trunkH, 6),
-      new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.95, flatShading: true })
-    );
-    trunk.position.y = trunkH / 2;
-    trunk.castShadow = true;
-    grp.add(trunk);
-    // Layered cone foliage for pine silhouette
-    const greens = [0x1e3a2a, 0x254a35, 0x2c5a3f];
-    for (let i = 0; i < 3; i++) {
-      const r = (1.3 - i * 0.3) * scale;
-      const h = 1.5 * scale;
-      const cone = new THREE.Mesh(
-        new THREE.ConeGeometry(r, h, 6),
-        new THREE.MeshStandardMaterial({ color: greens[i], roughness: 0.9, flatShading: true })
-      );
-      cone.position.y = trunkH + i * 0.85 * scale + h * 0.3;
-      cone.castShadow = true;
-      grp.add(cone);
-    }
-    // Snow-cap on top
-    const cap = new THREE.Mesh(
-      new THREE.ConeGeometry(0.4 * scale, 0.5 * scale, 6),
-      new THREE.MeshStandardMaterial({ color: 0xf3f6f8, roughness: 0.4, flatShading: true })
-    );
-    cap.position.y = trunkH + 3 * scale;
-    grp.add(cap);
-    return grp;
   }
 
   _buildWater() {
@@ -513,31 +590,69 @@ class Valhalla {
   }
 
   _buildMountains() {
-    // Two ridgelines of large jagged cones in the distance, both sides
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0x6e7d8c, roughness: 1.0, flatShading: true,
-    });
-    const snowMat = new THREE.MeshStandardMaterial({
-      color: 0xf2f6fa, roughness: 0.8, flatShading: true,
-    });
-    const ring = new THREE.Group();
-    for (let i = 0; i < 28; i++) {
-      const z = -80 + i * 20 + (Math.random() - 0.5) * 8;
-      const side = i % 2 === 0 ? -1 : 1;
-      const x = side * (60 + Math.random() * 40);
-      const h = 35 + Math.random() * 50;
-      const r = 12 + Math.random() * 10;
-      const mt = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), mat);
-      mt.position.set(x, h / 2 - 3, z);
-      mt.rotation.y = Math.random() * Math.PI * 2;
-      ring.add(mt);
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, h * 0.3, 7), snowMat);
-      cap.position.set(x, h - h * 0.15 - 3, z);
-      cap.rotation.y = mt.rotation.y;
-      ring.add(cap);
-    }
-    this.scene.add(ring);
-    this.mountainRing = ring;
+    // Three layers of mountains for proper depth.
+    // - Near ridge (~80-120m): big, dark, dramatic silhouettes
+    // - Far ridge (~180-260m): smaller, lighter, almost lost in haze
+    // - Sentinel peaks ahead in the distance for the "into the unknown" feel
+    // Using InstancedMesh per ring so we keep this cheap.
+    const tmp = new THREE.Object3D();
+
+    const makeRing = (count, sideRadius, baseDistAhead, distSpan, heightRange, opts) => {
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: opts.color, roughness: 1.0, flatShading: true,
+      });
+      const snowMat = new THREE.MeshStandardMaterial({
+        color: opts.snow, roughness: 0.7, flatShading: true,
+      });
+      const baseGeo = new THREE.ConeGeometry(1, 1, 6);
+      const snowGeo = new THREE.ConeGeometry(0.42, 0.32, 6);
+      // Snow cap geo's "0" is at base center; translate up so it sits near tip
+      snowGeo.translate(0, 0.84, 0);
+      const bases = new THREE.InstancedMesh(baseGeo, baseMat, count);
+      const snows = new THREE.InstancedMesh(snowGeo, snowMat, count);
+      bases.frustumCulled = false; snows.frustumCulled = false;
+      for (let i = 0; i < count; i++) {
+        const tFrac = i / count;
+        const z = baseDistAhead + tFrac * distSpan + (Math.random() - 0.5) * distSpan * 0.4;
+        const side = (i & 1) === 0 ? -1 : 1;
+        const lateral = sideRadius + (Math.random() - 0.5) * sideRadius * 0.7;
+        const x = side * lateral;
+        const h = heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]);
+        const r = h * (0.32 + Math.random() * 0.18);
+        tmp.position.set(x, h / 2 - 3, z);
+        tmp.rotation.set(0, Math.random() * Math.PI * 2, 0);
+        tmp.scale.set(r, h, r);
+        tmp.updateMatrix();
+        bases.setMatrixAt(i, tmp.matrix);
+        // Snow uses same transform; cap sits at top of cone
+        tmp.scale.set(r, h, r);
+        tmp.updateMatrix();
+        snows.setMatrixAt(i, tmp.matrix);
+      }
+      bases.instanceMatrix.needsUpdate = true;
+      snows.instanceMatrix.needsUpdate = true;
+      const grp = new THREE.Group();
+      grp.add(bases, snows);
+      return grp;
+    };
+
+    this.mountainRing = new THREE.Group();
+    // Near ridge — closer and taller so it dominates the horizon rather
+    // than fading into haze. This is the "we're in a real place with real
+    // scale" shot.
+    this.mountainRing.add(makeRing(20, 55, -30, 220, [75, 140], {
+      color: 0x4a525e, snow: 0xf2f6fa,
+    }));
+    // Mid ridge — the haze layer, smaller and lighter
+    this.mountainRing.add(makeRing(18, 130, 0, 320, [100, 180], {
+      color: 0x6a7480, snow: 0xeaf0f5,
+    }));
+    // Sentinel peaks ahead — three or four giants emerging from the fog
+    // dead center, drawing the eye forward.
+    this.mountainRing.add(makeRing(5, 22, 180, 140, [150, 240], {
+      color: 0x525c69, snow: 0xf5f8fb,
+    }));
+    this.scene.add(this.mountainRing);
   }
 
   _buildPlayer() {
@@ -759,12 +874,52 @@ class Valhalla {
   _buildHUD() {
     this.hud = {
       score: $("hScore"), dist: $("hDist"), mead: $("hMead"), lives: $("hLives"),
-      banner: $("banner"), flash: $("flash"),
+      banner: $("banner"), flash: $("flash"), glory: $("glory"), vignette: $("vignette"),
       lanes: $("laneInd").children,
       bpmChip: $("bpmChip"), bpmTxt: $("bpmTxt"),
       stateChip: $("stateChip"), stateTxt: $("stateTxt"),
       zone: $("zoneLabel"),
+      combo: $("combo"), comboN: $("comboN"),
     };
+  }
+
+  /** Drop a floating "+25" / "RUNE!" / "x3" text at the player's screen space. */
+  _popText(text, cls = "gold", offsetX = 0, offsetY = 0) {
+    const el = document.createElement("div");
+    el.className = "popper " + cls;
+    el.textContent = text;
+    // Project player position to screen
+    const v = new THREE.Vector3(this.player.position.x, 1.6 + this.playerY, this.player.position.z + 1);
+    v.project(this.camera);
+    const sx = (v.x * 0.5 + 0.5) * window.innerWidth + offsetX;
+    const sy = (-v.y * 0.5 + 0.5) * window.innerHeight + offsetY;
+    el.style.left = sx + "px";
+    el.style.top = sy + "px";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  }
+
+  _showCombo() {
+    if (this.combo < 2) { this.hud.combo.classList.remove("show"); return; }
+    this.hud.comboN.textContent = this.combo;
+    this.hud.combo.classList.remove("show");
+    void this.hud.combo.offsetWidth; // reflow to retrigger animation
+    this.hud.combo.classList.add("show");
+  }
+
+  _shake(amp = 0.4, dur = 0.25) {
+    this._shakeAmp = Math.max(this._shakeAmp, amp);
+    this._shakeT = Math.max(this._shakeT, dur);
+  }
+
+  _slowMo(scale = 0.35, dur = 0.7) {
+    this._timeScaleTarget = scale;
+    this.hud.vignette.classList.add("on");
+    clearTimeout(this._slowMoT);
+    this._slowMoT = setTimeout(() => {
+      this._timeScaleTarget = 1;
+      this.hud.vignette.classList.remove("on");
+    }, dur * 1000);
   }
 
   // ---------- Input ----------
@@ -908,36 +1063,76 @@ class Valhalla {
   _begin() {
     $("startOverlay").classList.add("hidden");
     $("overOverlay").classList.remove("show");
+    const bb = $("bestBeat"); if (bb) bb.style.display = "none";
     this.lane = 1; this.targetLaneX = LANES[1];
     this.playerY = 0; this.playerVy = 0;
     this.sliding = false; this.slideTimer = 0;
     this.distance = 0; this.score = 0; this.mead = 0;
     this.lives = 3; this.combo = 0; this.invuln = 0;
     this.speed = BASE_SPEED;
+    this._shakeAmp = 0; this._shakeT = 0;
+    this._timeScale = 1; this._timeScaleTarget = 1;
     this._updateLaneInd();
+    this._showCombo();
     this._updateHUD();
     // clear old obstacles
     for (const o of this.obstacles) this.scene.remove(o.mesh);
     for (const c of this.collectibles) this.scene.remove(c.mesh);
     this.obstacles = []; this.collectibles = [];
-    this._spawnZ = 30;
+    // Empty start zone — give the player ~3 seconds of pure world before the
+    // first wave. This is the "5-second hook": they see the world is beautiful
+    // and feel that controls respond before being challenged.
+    this._spawnZ = 55;
     this.running = true; this.over = false; this.paused = false;
     this.audio.ensure();
     this.audio.startWind();
     this.audio.startMusic();
+    // Open with an arrival shake — the world "wakes up"
+    this._shake(0.25, 0.4);
   }
 
   _gameOver() {
     if (this.over) return;
     this.over = true; this.running = false;
     this.audio.stopMusic();
+    // Capture pre-save best so we can compute delta
+    const prev = Store.load();
+    const prevBestScore = prev.bestScore || 0;
+    const prevBestDist = prev.bestDist || 0;
     this._saveStats();
-    $("oScore").textContent = this.score.toLocaleString();
+    $("oScore").textContent = Math.floor(this.score).toLocaleString();
     $("oDist").textContent = `${Math.round(this.distance)}m`;
     $("oMead").textContent = this.mead;
+    // "Beat your best by Xm" — the "one more run" hook. Show only on real PB.
+    const bb = $("bestBeat");
+    if (Math.floor(this.score) > prevBestScore && prevBestScore > 0) {
+      bb.textContent = `★ NEW BEST · +${(Math.floor(this.score) - prevBestScore).toLocaleString()} over your record`;
+      bb.style.display = "block";
+      this._showBanner("NEW RECORD", "flow");
+    } else if (Math.round(this.distance) > prevBestDist && prevBestDist > 0) {
+      bb.textContent = `★ FURTHEST RUN · +${Math.round(this.distance) - prevBestDist}m`;
+      bb.style.display = "block";
+      this._showBanner("FURTHEST RUN", "flow");
+    } else if (prevBestScore > 0) {
+      const gap = prevBestScore - Math.floor(this.score);
+      bb.textContent = `${gap.toLocaleString()} points to your best`;
+      bb.style.display = "block";
+      this._showBanner("FALLEN", "berserker");
+    } else {
+      bb.style.display = "none";
+      this._showBanner("FALLEN", "berserker");
+    }
+    // Tagline rotates so death never feels samey
+    const taglines = [
+      "The ravens take you home.",
+      "Odin saw. Odin remembers.",
+      "Even gods must rest.",
+      "Bifrost cracks open.",
+      "Your shield broke before your spirit.",
+    ];
+    $("overTagline").textContent = taglines[Math.floor(Math.random() * taglines.length)];
     $("overOverlay").classList.add("show");
     this._loadStats();
-    this._showBanner("FALLEN", "berserker");
   }
 
   // ---------- Spawning ----------
@@ -1095,8 +1290,13 @@ class Valhalla {
 
   // ---------- Frame ----------
   _frame(now) {
-    const dt = Math.min(0.05, (now - this._lastT) / 1000);
+    const realDt = Math.min(0.05, (now - this._lastT) / 1000);
     this._lastT = now;
+    // Smoothly ease toward the desired time scale (1 normally, 0.35 during
+    // rune slow-mo). The slow-mo creates an extended "this is great" beat
+    // that's hugely satisfying — classic juice.
+    this._timeScale += (this._timeScaleTarget - this._timeScale) * Math.min(1, realDt * 8);
+    const dt = realDt * this._timeScale;
     if (!this.paused) this._update(dt);
     this._render();
     requestAnimationFrame(this._frame);
@@ -1169,11 +1369,25 @@ class Valhalla {
     this.shadowDisc.material.opacity = Math.max(0.05, 0.35 - this.playerY * 0.04);
 
     // camera follow with subtle sway
-    const camTargetX = this.player.position.x * 0.45 + Math.sin(t * 0.3) * 0.15;
-    const camTargetY = 4.2 + Math.sin(t * 0.25) * 0.08 + this.playerY * 0.15;
+    const camTargetX = this.player.position.x * 0.4 + Math.sin(t * 0.3) * 0.15;
+    const camTargetY = 4.0 + Math.sin(t * 0.25) * 0.08 + this.playerY * 0.15;
     this.camera.position.x += (camTargetX - this.camera.position.x) * Math.min(1, dt * 4);
     this.camera.position.y += (camTargetY - this.camera.position.y) * Math.min(1, dt * 4);
-    this.camera.lookAt(this.player.position.x * 0.7, 1.4 + this.playerY * 0.4, 14);
+    this.camera.position.z = -11.5;
+
+    // Trauma-based camera shake (decays, applied as offset)
+    let shakeX = 0, shakeY = 0;
+    if (this._shakeT > 0) {
+      this._shakeT -= dt;
+      const trauma = Math.max(0, this._shakeT / 0.25);
+      const amp = this._shakeAmp * trauma * trauma;
+      shakeX = (Math.random() - 0.5) * amp;
+      shakeY = (Math.random() - 0.5) * amp;
+      if (this._shakeT <= 0) this._shakeAmp = 0;
+    }
+    this.camera.position.x += shakeX;
+    this.camera.position.y += shakeY;
+    this.camera.lookAt(this.player.position.x * 0.6 + shakeX * 0.5, 1.7 + this.playerY * 0.4 + shakeY * 0.5, 22);
 
     // sun follows camera-ish
     this.sun.position.set(this.player.position.x * 0.5 + 50, 80, this.distance + 30);
@@ -1220,8 +1434,17 @@ class Valhalla {
         this.scene.remove(o.mesh);
         this.obstacles.splice(i, 1);
         if (o.lane === this.lane && o.type !== "beam") {
-          this.combo++; // dodged in our lane
-          if (this.combo % 5 === 0) this._showBanner(`x${this.combo} dodge`, "focused");
+          // Dodged something in our lane — combo up, with payoff
+          this.combo++;
+          this._showCombo();
+          if (this.combo > 1) {
+            const bonus = 10 * this.combo;
+            this.score += bonus;
+            this._popText(`+${bonus}`, "combo", (Math.random() - 0.5) * 80, -40);
+          }
+          if (this.combo === 5) this._showBanner("STREAK", "focused");
+          if (this.combo === 10) this._showBanner("BERSERKER", "berserker");
+          if (this.combo === 20) { this._showBanner("RAGNARÖK", "berserker"); this._shake(0.6, 0.4); }
         }
       }
     }
@@ -1236,8 +1459,23 @@ class Valhalla {
       c.mesh.position.y = (c.type === "rune" ? 1.6 : 1.2) + Math.sin(c.ang * 1.3) * 0.12;
       if (Math.abs(sz) < 0.9 && Math.abs(this.player.position.x - LANES[c.lane]) < 1.2 &&
           this.playerY < 2.4 && this.playerY > -0.2) {
-        if (c.type === "mead") { this.mead++; this.score += 25; this.audio.collect(); }
-        if (c.type === "rune") { this.score += c.value; this.audio.collect(); this._showBanner("RUNE", "flow"); }
+        if (c.type === "mead") {
+          this.mead++;
+          const gain = 25;
+          this.score += gain;
+          this.audio.collect();
+          this._popText(`+${gain}`, "gold", (Math.random() - 0.5) * 60, 0);
+        }
+        if (c.type === "rune") {
+          this.score += c.value;
+          this.audio.collect();
+          this._showBanner("RUNE", "flow");
+          this._popText(`+${c.value}`, "rune", 0, -20);
+          // The big payoff: short slow-mo + glory flash. Slot-machine reward.
+          this._slowMo(0.35, 0.7);
+          this.hud.glory.classList.add("on");
+          setTimeout(() => this.hud.glory.classList.remove("on"), 350);
+        }
         this.scene.remove(c.mesh);
         this.collectibles.splice(i, 1);
       } else if (sz < -8) {
@@ -1303,10 +1541,13 @@ class Valhalla {
 
   _takeHit() {
     this.lives--;
+    if (this.combo > 1) this._popText(`STREAK LOST`, "combo", 0, -60);
     this.combo = 0;
+    this._showCombo();
     this.invuln = 1.4;
     this.audio.hit();
     this._flash();
+    this._shake(0.55, 0.35);
     this._showBanner("− ♥", "berserker");
     if (this.lives <= 0) this._gameOver();
   }

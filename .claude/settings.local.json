@@ -25,7 +25,9 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(git ls-tree *)",
       "Bash(git commit -m ' *)",
-      "Bash(node --check index.html)"
+      "Bash(node --check index.html)",
+      "WebFetch(domain:x.com)",
+      "Bash(ls \"C:\\\\Users\\\\andre\\\\.claude\\\\projects\\\\C--Users-andre-Downloads-Viking-Game\\\\memory\" 2>&1)"
     ]
   }
 }
