@@ -286,7 +286,7 @@ class Valhalla {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.45;
+    this.renderer.toneMappingExposure = 0.5;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -310,18 +310,18 @@ class Valhalla {
     this.sky.scale.setScalar(450000);
     this.scene.add(this.sky);
     const u = this.sky.material.uniforms;
-    // Three.js Sky shader's published "clear sunny day" preset. Sky outputs
-    // physical units so the renderer's low exposure (0.45) is what brings
-    // the brightness into a viewable range.
-    u.turbidity.value = 2.5;
-    u.rayleigh.value = 1.2;
+    // "Clear winter day" preset. Higher rayleigh keeps the zenith blue
+    // rather than physically-correct dark; for a game we want inviting
+    // sky over physical accuracy.
+    u.turbidity.value = 3.0;
+    u.rayleigh.value = 2.0;
     u.mieCoefficient.value = 0.005;
-    u.mieDirectionalG.value = 0.8;
+    u.mieDirectionalG.value = 0.82;
 
-    // Sun high and to the side: phi=70° from zenith = ~20° above horizon,
-    // long golden-hour shadows raking the snow without being a fireball.
-    const phi = THREE.MathUtils.degToRad(70);
-    const theta = THREE.MathUtils.degToRad(135);
+    // Sun phi=65° from zenith (~25° above horizon) gives long shadows
+    // and a visible-but-not-blinding sun toward the right of frame.
+    const phi = THREE.MathUtils.degToRad(65);
+    const theta = THREE.MathUtils.degToRad(130);
     this.sunPos = new THREE.Vector3();
     this.sunPos.setFromSphericalCoords(1, phi, theta);
     u.sunPosition.value.copy(this.sunPos);
@@ -799,24 +799,72 @@ class Valhalla {
     shadowDisc.position.y = 0.02;
     this.shadowDisc = shadowDisc;
     this.scene.add(shadowDisc);
+
+    // Footprint trail — ring of tiny circles cycled behind the player.
+    // Adds tangible "I'm leaving tracks in the snow" feedback that sells
+    // the snow surface as real.
+    this.footprints = [];
+    const fpGeo = new THREE.CircleGeometry(0.18, 8);
+    const fpMat = new THREE.MeshBasicMaterial({
+      color: 0x4a5868, transparent: true, opacity: 0.45, depthWrite: false,
+    });
+    for (let i = 0; i < 24; i++) {
+      const fp = new THREE.Mesh(fpGeo, fpMat.clone());
+      fp.rotation.x = -Math.PI / 2;
+      fp.position.y = 0.025;
+      fp.visible = false;
+      fp.userData.side = i % 2 === 0 ? -0.18 : 0.18;
+      this.scene.add(fp);
+      this.footprints.push(fp);
+    }
+    this._fpIdx = 0;
+    this._fpAccum = 0;
   }
 
   _buildSnow() {
-    const count = 2200;
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 120;
-      positions[i * 3 + 1] = Math.random() * 60;
-      positions[i * 3 + 2] = Math.random() * VIEW_DEPTH;
+    // Two layers of snow particles:
+    // 1. CLOSE flakes — small count, big, very visible, RIGHT in front of
+    //    the camera. This is what sells "weather". Without these the world
+    //    feels static.
+    // 2. FAR flakes — many small, drifting in middle distance for depth.
+
+    // Close layer (~camera-relative volume in front of player)
+    {
+      const count = 350;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 36;
+        positions[i * 3 + 1] = Math.random() * 14;
+        positions[i * 3 + 2] = (Math.random() - 0.4) * 30; // slightly biased ahead
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        color: 0xfafcff, size: 0.32, transparent: true, opacity: 0.92,
+        depthWrite: false, fog: true, sizeAttenuation: true,
+      });
+      this.snowClose = new THREE.Points(geo, mat);
+      this.scene.add(this.snowClose);
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({
-      color: 0xffffff, size: 0.18, transparent: true, opacity: 0.85,
-      depthWrite: false, fog: true,
-    });
-    this.snow = new THREE.Points(geo, mat);
-    this.scene.add(this.snow);
+
+    // Far layer (existing volumetric drift)
+    {
+      const count = 1800;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 140;
+        positions[i * 3 + 1] = Math.random() * 60;
+        positions[i * 3 + 2] = Math.random() * VIEW_DEPTH;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        color: 0xffffff, size: 0.16, transparent: true, opacity: 0.7,
+        depthWrite: false, fog: true,
+      });
+      this.snow = new THREE.Points(geo, mat);
+      this.scene.add(this.snow);
+    }
   }
 
   _buildScenery() {
@@ -1368,6 +1416,32 @@ class Valhalla {
     this.shadowDisc.scale.setScalar(Math.max(0.4, 1 - this.playerY * 0.18));
     this.shadowDisc.material.opacity = Math.max(0.05, 0.35 - this.playerY * 0.04);
 
+    // Footprint trail — only stamp while grounded and running
+    if (this.playerY < 0.05 && !this.sliding && this.running) {
+      this._fpAccum += this.speed * dt;
+      // one footstep ~ every 0.9m of forward travel
+      while (this._fpAccum > 0.9) {
+        this._fpAccum -= 0.9;
+        const fp = this.footprints[this._fpIdx];
+        fp.visible = true;
+        fp.position.x = this.player.position.x + fp.userData.side;
+        // Stamp at current world distance; scroll it back through scene each frame
+        fp.userData.spawnAt = this.distance;
+        fp.material.opacity = 0.45;
+        this._fpIdx = (this._fpIdx + 1) % this.footprints.length;
+      }
+    }
+    // Scroll all live footprints and fade them
+    for (const fp of this.footprints) {
+      if (!fp.visible) continue;
+      const sceneZ = fp.userData.spawnAt - this.distance;
+      fp.position.z = sceneZ;
+      // Fade out as they age past 8m behind
+      const age = -sceneZ;
+      if (age > 2) fp.material.opacity = Math.max(0, 0.45 - (age - 2) * 0.06);
+      if (sceneZ < -16) fp.visible = false;
+    }
+
     // camera follow with subtle sway
     const camTargetX = this.player.position.x * 0.4 + Math.sin(t * 0.3) * 0.15;
     const camTargetY = 4.0 + Math.sin(t * 0.25) * 0.08 + this.playerY * 0.15;
@@ -1581,20 +1655,44 @@ class Valhalla {
   }
 
   _driftSnow(dt) {
-    if (!this.snow) return;
-    const pos = this.snow.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      let y = pos.getY(i) - dt * 4;
-      let x = pos.getX(i) + Math.sin(performance.now() * 0.0009 + i) * dt * 0.5;
-      let z = pos.getZ(i) - this.speed * dt * 0.6;
-      if (y < 0.5) { y = 50 + Math.random() * 10; }
-      if (z < -10) { z += VIEW_DEPTH; }
-      pos.setX(i, x);
-      pos.setY(i, y);
-      pos.setZ(i, z);
+    // Far layer: drifts down + back (we're running forward into it)
+    if (this.snow) {
+      const pos = this.snow.geometry.attributes.position;
+      const now = performance.now();
+      for (let i = 0; i < pos.count; i++) {
+        let y = pos.getY(i) - dt * 4;
+        let x = pos.getX(i) + Math.sin(now * 0.0009 + i) * dt * 0.5;
+        let z = pos.getZ(i) - this.speed * dt * 0.6;
+        if (y < 0.5) y = 50 + Math.random() * 10;
+        if (z < -10) z += VIEW_DEPTH;
+        pos.setX(i, x); pos.setY(i, y); pos.setZ(i, z);
+      }
+      pos.needsUpdate = true;
     }
-    pos.needsUpdate = true;
-    this.snow.position.z = 0;
+
+    // Close layer: parented to follow camera so it always feels like
+    // weather around you. Drifts faster relative to camera = stronger
+    // sense of forward motion.
+    if (this.snowClose) {
+      const pos = this.snowClose.geometry.attributes.position;
+      const now = performance.now();
+      const forward = this.speed * dt * 0.9;
+      for (let i = 0; i < pos.count; i++) {
+        let y = pos.getY(i) - dt * 6;
+        let x = pos.getX(i) + Math.sin(now * 0.0017 + i * 0.7) * dt * 1.2;
+        let z = pos.getZ(i) - forward;
+        if (y < 0.2) { y = 12 + Math.random() * 3; x = (Math.random() - 0.5) * 36; }
+        if (z < -18) z = 12 + Math.random() * 12;
+        if (z > 16) z = -16;
+        if (x > 18) x = -18;
+        if (x < -18) x = 18;
+        pos.setX(i, x); pos.setY(i, y); pos.setZ(i, z);
+      }
+      pos.needsUpdate = true;
+      // Follow the camera so weather feels relative to you, not the world
+      this.snowClose.position.x = this.camera.position.x;
+      this.snowClose.position.z = this.camera.position.z + 14;
+    }
   }
 
   _updateAmbient(dt) {
