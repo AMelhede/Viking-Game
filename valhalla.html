@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Valhalla — Viking Run 3D</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;600;700;800&display=swap');
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;background:#000;color:#fff;overflow:hidden;
+      font-family:'Inter',-apple-system,system-ui,sans-serif;letter-spacing:-0.01em;
+      -webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+
+    canvas{display:block;width:100%;height:100%;outline:none}
+
+    /* HUD */
+    .hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+    .hud > *{pointer-events:auto}
+
+    .topL{position:absolute;top:18px;left:24px;display:flex;flex-direction:column;gap:6px}
+    .topR{position:absolute;top:18px;right:24px;display:flex;gap:14px;align-items:flex-start}
+    .botL{position:absolute;bottom:22px;left:24px;display:flex;flex-direction:column;gap:8px;max-width:340px}
+    .botR{position:absolute;bottom:22px;right:24px;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+    .botC{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px;pointer-events:auto}
+
+    .title{font-family:'Cinzel',serif;font-weight:900;letter-spacing:0.06em;
+      font-size:26px;line-height:1;text-transform:uppercase;
+      text-shadow:0 2px 16px rgba(0,0,0,.8),0 0 30px rgba(180,140,80,.35);
+      color:#f3e0b8}
+    .subtitle{font-size:11px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;
+      color:rgba(243,224,184,.6)}
+
+    .stat{background:rgba(10,12,18,.55);backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:12px 18px;min-width:90px;
+      box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06)}
+    .stat .lbl{font-size:9.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+      color:rgba(243,224,184,.55);margin-bottom:2px}
+    .stat .val{font-family:'Cinzel',serif;font-weight:700;font-size:24px;line-height:1;color:#f3e0b8;
+      font-variant-numeric:tabular-nums}
+    .stat.score .val{color:#ffd66e}
+    .stat.dist .val{color:#9ec5ff}
+    .stat.mead .val{color:#ffb070}
+    .stat.lives .val{color:#ff6e6e;font-size:22px;letter-spacing:0.05em}
+
+    .bioRow{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+    .chip{background:rgba(10,12,18,.55);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;
+      display:flex;align-items:center;gap:8px;min-width:0;
+      color:rgba(243,224,184,.85);
+      box-shadow:0 4px 16px rgba(0,0,0,.4)}
+    .chip .dot{width:8px;height:8px;border-radius:50%;background:#666;flex:0 0 auto}
+    .chip.live .dot{background:#30D158;box-shadow:0 0 10px #30D158}
+    .chip.flow{border-color:rgba(120,200,255,.6);color:#9ec5ff}
+    .chip.flow .dot{background:#5ec0ff;box-shadow:0 0 14px #5ec0ff}
+    .chip.berserker{border-color:rgba(255,90,80,.6);color:#ff9080}
+    .chip.berserker .dot{background:#ff5040;box-shadow:0 0 14px #ff5040}
+    .chip.meditation{border-color:rgba(150,255,180,.5);color:#a6f0bf}
+    .chip.meditation .dot{background:#5edc8a;box-shadow:0 0 14px #5edc8a}
+    .chip.frantic{border-color:rgba(255,180,80,.55);color:#ffc788}
+    .chip.frantic .dot{background:#ffa040;box-shadow:0 0 14px #ffa040}
+
+    .controls{font-size:11.5px;color:rgba(243,224,184,.55);letter-spacing:.05em;
+      line-height:1.7;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+    .controls kbd{display:inline-block;padding:2px 7px;margin:0 1px;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+      border-radius:5px;font-family:inherit;font-size:11px;font-weight:700;
+      color:#f3e0b8;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+
+    .btn{pointer-events:auto;border:1px solid rgba(255,255,255,.18);
+      background:rgba(10,12,18,.6);backdrop-filter:blur(20px);
+      color:#f3e0b8;padding:11px 18px;border-radius:12px;cursor:pointer;
+      font-family:inherit;font-weight:700;font-size:13px;letter-spacing:.05em;
+      transition:all .2s cubic-bezier(.4,0,.2,1)}
+    .btn:hover{background:rgba(243,224,184,.14);border-color:rgba(243,224,184,.4);
+      transform:translateY(-1px)}
+    .btn.primary{background:linear-gradient(135deg,#c0902c 0%,#8a5a18 100%);
+      color:#1a0e02;border-color:rgba(255,220,150,.5);font-weight:800;
+      box-shadow:0 6px 20px rgba(192,144,44,.35)}
+    .btn.primary:hover{background:linear-gradient(135deg,#e0a838 0%,#a06820 100%);
+      box-shadow:0 8px 28px rgba(192,144,44,.55)}
+    .btn .ico{margin-right:6px}
+
+    /* Start overlay */
+    .start{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse at center,rgba(20,15,8,.55) 0%,rgba(0,0,0,.85) 75%);
+      backdrop-filter:blur(8px);transition:opacity .6s ease}
+    .start.hidden{opacity:0;pointer-events:none}
+    .start .card{max-width:560px;width:calc(100% - 48px);padding:38px 36px 32px;
+      background:rgba(15,12,8,.78);backdrop-filter:blur(40px);
+      border:1px solid rgba(243,224,184,.15);border-radius:22px;text-align:center;
+      box-shadow:0 30px 100px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,220,150,.08)}
+    .start h1{font-family:'Cinzel',serif;font-weight:900;font-size:46px;letter-spacing:.04em;
+      text-transform:uppercase;color:#f3e0b8;margin-bottom:6px;
+      text-shadow:0 0 50px rgba(192,144,44,.4),0 4px 20px rgba(0,0,0,.6)}
+    .start .tag{font-size:12px;letter-spacing:.4em;text-transform:uppercase;
+      color:rgba(243,224,184,.55);margin-bottom:24px}
+    .start p{color:rgba(243,224,184,.75);font-size:14px;line-height:1.6;margin-bottom:22px}
+    .start .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:22px}
+    .start .row .item{padding:10px 8px;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);border-radius:10px}
+    .start .row .item .k{font-family:'Cinzel',serif;font-size:18px;color:#ffd66e;font-weight:700}
+    .start .row .item .v{font-size:10.5px;color:rgba(243,224,184,.55);
+      letter-spacing:.15em;text-transform:uppercase;margin-top:2px}
+    .start .actions{display:flex;flex-direction:column;gap:10px}
+    .start .ghost{background:transparent;border-color:rgba(255,255,255,.12);
+      color:rgba(243,224,184,.7);font-size:12px;padding:10px}
+
+    /* Game over */
+    .over{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.7);backdrop-filter:blur(10px)}
+    .over.show{display:flex}
+    .over .card{max-width:480px;padding:38px 36px;background:rgba(15,12,8,.85);
+      border:1px solid rgba(255,90,80,.25);border-radius:22px;text-align:center}
+    .over h1{font-family:'Cinzel',serif;font-size:38px;color:#ff9080;
+      letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+    .over .runStats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:20px 0}
+    .over .runStats .item{padding:14px 6px;background:rgba(255,255,255,.04);
+      border-radius:10px}
+    .over .runStats .item .k{font-family:'Cinzel',serif;font-size:22px;color:#f3e0b8;font-weight:700}
+    .over .runStats .item .v{font-size:10px;color:rgba(243,224,184,.55);
+      letter-spacing:.15em;text-transform:uppercase;margin-top:3px}
+
+    /* Crosshair / lane indicator */
+    .laneInd{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);
+      display:flex;gap:6px;pointer-events:none}
+    .laneInd .l{width:42px;height:4px;border-radius:2px;background:rgba(243,224,184,.18);
+      transition:all .2s ease}
+    .laneInd .l.active{background:#f3e0b8;box-shadow:0 0 14px rgba(243,224,184,.6)}
+
+    /* Damage flash */
+    .flash{position:fixed;inset:0;pointer-events:none;z-index:40;
+      background:radial-gradient(ellipse at center,transparent 50%,rgba(255,40,40,.45) 100%);
+      opacity:0;transition:opacity .4s ease}
+    .flash.hit{opacity:1;transition:opacity .05s ease}
+
+    /* State change banner */
+    .banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);
+      pointer-events:none;font-family:'Cinzel',serif;font-weight:900;
+      font-size:64px;letter-spacing:.1em;text-transform:uppercase;
+      color:#f3e0b8;opacity:0;transition:all .8s cubic-bezier(.2,1,.4,1);
+      text-shadow:0 0 60px currentColor,0 4px 20px rgba(0,0,0,.7)}
+    .banner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+    /* Loading */
+    .loader{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+      background:#08070b;color:#f3e0b8;font-family:'Cinzel',serif;font-size:14px;
+      letter-spacing:.4em;text-transform:uppercase;transition:opacity .6s ease}
+    .loader.hidden{opacity:0;pointer-events:none}
+    .loader::after{content:'';position:absolute;bottom:38%;left:50%;transform:translateX(-50%);
+      width:140px;height:1px;background:linear-gradient(90deg,transparent,#c0902c,transparent);
+      animation:scan 1.6s infinite}
+    @keyframes scan{0%,100%{opacity:.2}50%{opacity:1}}
+
+    @media (max-width:640px){
+      .start .card{padding:28px 22px}
+      .start h1{font-size:34px}
+      .topL,.topR,.botL,.botR{gap:6px}
+      .stat{padding:8px 12px;min-width:70px}
+      .stat .val{font-size:18px}
+      .controls{font-size:10px}
+    }
+  </style>
+
+  <!-- Three.js + addons via importmap -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "@elata-biosciences/rppg-web": "./vendor/elata/rppg-web/dist/index.js",
+      "@elata-biosciences/eeg-web": "./vendor/elata/eeg-web/dist/index.js",
+      "@elata-biosciences/eeg-web-ble": "./vendor/elata/eeg-web-ble/dist/index.js"
+    }
+  }
+  </script>
+  <!-- Bio adapter — same one the 2D game uses. window.Bio becomes available. -->
+  <script type="module" src="./js/bio/index.js?v=7"></script>
+</head>
+<body>
+  <div class="loader" id="loader">Forging Valhalla</div>
+
+  <canvas id="world"></canvas>
+
+  <div class="flash" id="flash"></div>
+  <div class="banner" id="banner"></div>
+
+  <div class="hud" id="hud">
+    <div class="topL">
+      <div class="title">Valhalla</div>
+      <div class="subtitle" id="zoneLabel">Mistfjord</div>
+    </div>
+
+    <div class="topR">
+      <div class="stat score"><div class="lbl">Score</div><div class="val" id="hScore">0</div></div>
+      <div class="stat dist"><div class="lbl">Distance</div><div class="val" id="hDist">0m</div></div>
+      <div class="stat mead"><div class="lbl">Mead</div><div class="val" id="hMead">0</div></div>
+      <div class="stat lives"><div class="lbl">Souls</div><div class="val" id="hLives">♥♥♥</div></div>
+    </div>
+
+    <div class="botL">
+      <div class="controls">
+        <kbd>A</kbd>/<kbd>←</kbd> Left lane &nbsp; <kbd>D</kbd>/<kbd>→</kbd> Right lane<br>
+        <kbd>Space</kbd>/<kbd>W</kbd>/<kbd>↑</kbd> Jump &nbsp; <kbd>S</kbd>/<kbd>↓</kbd> Slide<br>
+        <kbd>Shift</kbd> Sprint &nbsp; <kbd>P</kbd> Pause &nbsp; <kbd>M</kbd> Mute
+      </div>
+    </div>
+
+    <div class="botR">
+      <div class="bioRow" id="bioRow">
+        <div class="chip" id="bpmChip"><span class="dot"></span><span id="bpmTxt">No HR</span></div>
+        <div class="chip" id="stateChip"><span class="dot"></span><span id="stateTxt">Neutral</span></div>
+      </div>
+    </div>
+
+    <div class="laneInd" id="laneInd">
+      <div class="l"></div><div class="l active"></div><div class="l"></div>
+    </div>
+  </div>
+
+  <div class="start" id="startOverlay">
+    <div class="card">
+      <h1>Valhalla</h1>
+      <div class="tag">A Viking Run</div>
+      <p>The fjord stretches before you. Mountains breathe mist. The ravens circle.<br>Run. Endure. Earn your seat at the long table.</p>
+      <div class="row">
+        <div class="item"><div class="k" id="bestScore">0</div><div class="v">Best Score</div></div>
+        <div class="item"><div class="k" id="bestDist">0m</div><div class="v">Best Run</div></div>
+        <div class="item"><div class="k" id="totalRuns">0</div><div class="v">Runs</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="beginBtn" style="font-size:18px;padding:16px 22px;letter-spacing:.12em;text-transform:uppercase">⚔ Enter the Fjord</button>
+        <button class="btn ghost" onclick="location.href='./index.html'">← Back to Classic Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="over" id="overOverlay">
+    <div class="card">
+      <h1>Fallen</h1>
+      <p style="color:rgba(243,224,184,.7);font-size:13px">The ravens take you home.</p>
+      <div class="runStats">
+        <div class="item"><div class="k" id="oScore">0</div><div class="v">Score</div></div>
+        <div class="item"><div class="k" id="oDist">0m</div><div class="v">Distance</div></div>
+        <div class="item"><div class="k" id="oMead">0</div><div class="v">Mead</div></div>
+      </div>
+      <div class="actions" style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn primary" id="againBtn" style="font-size:16px;padding:14px;letter-spacing:.1em;text-transform:uppercase">⚔ Run Again</button>
+        <button class="btn ghost" onclick="location.href='./index.html'">← Classic Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/valhalla/main.js?v=1"></script>
+</body>
+</html>
