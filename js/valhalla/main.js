@@ -286,7 +286,7 @@ class Valhalla {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.5;
+    this.renderer.toneMappingExposure = 1.0;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -306,41 +306,86 @@ class Valhalla {
   }
 
   _buildSky() {
-    this.sky = new Sky();
-    this.sky.scale.setScalar(450000);
+    // Drop the physically-correct Sky shader. At our low exposure (needed
+    // for the snow to read right), Sky's zenith renders as near-black —
+    // which is technically accurate but reads as "night" to a viewer.
+    // Instead, use a hand-tuned vertical gradient sphere shader that
+    // gives a clean winter-day dome. We keep the sunPos vector for use
+    // by the directional light + sun-disc placement.
+    const skyGeo = new THREE.SphereGeometry(1000, 32, 16);
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: {
+        // Light, inviting Norse winter daytime dome. Top is a clean
+        // soft blue rather than a saturated zenith — reads as overcast.
+        topColor:    { value: new THREE.Color(0x9cb6cc) },
+        midColor:    { value: new THREE.Color(0xc2d2dd) },
+        horizColor:  { value: new THREE.Color(0xdee7ec) },
+        groundColor: { value: new THREE.Color(0xc4d2dc) },  // matches fog
+        offset:      { value: 0.0 },
+        exponent:    { value: 0.55 },
+      },
+      vertexShader: `
+        varying vec3 vWorldPos;
+        void main() {
+          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vWorldPos = wp.xyz;
+          gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 midColor;
+        uniform vec3 horizColor;
+        uniform vec3 groundColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPos;
+        void main() {
+          float h = normalize(vWorldPos + vec3(0.0, offset, 0.0)).y;
+          vec3 col;
+          if (h >= 0.0) {
+            float t1 = pow(clamp(h, 0.0, 1.0), exponent);
+            // horiz → mid → top
+            vec3 lower = mix(horizColor, midColor, smoothstep(0.0, 0.45, t1));
+            col = mix(lower, topColor, smoothstep(0.45, 1.0, t1));
+          } else {
+            col = mix(horizColor, groundColor, smoothstep(0.0, 0.2, -h));
+          }
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
+    });
+    this.sky = new THREE.Mesh(skyGeo, skyMat);
     this.scene.add(this.sky);
-    const u = this.sky.material.uniforms;
-    // "Clear winter day" preset. Higher rayleigh keeps the zenith blue
-    // rather than physically-correct dark; for a game we want inviting
-    // sky over physical accuracy.
-    u.turbidity.value = 3.0;
-    u.rayleigh.value = 2.0;
-    u.mieCoefficient.value = 0.005;
-    u.mieDirectionalG.value = 0.82;
 
-    // Sun phi=65° from zenith (~25° above horizon) gives long shadows
-    // and a visible-but-not-blinding sun toward the right of frame.
-    const phi = THREE.MathUtils.degToRad(65);
-    const theta = THREE.MathUtils.degToRad(130);
+    // Keep the sun position vector for the directional light + sun disc.
+    // Place sun moderately high on the right.
+    const phi = THREE.MathUtils.degToRad(58);
+    const theta = THREE.MathUtils.degToRad(120);
     this.sunPos = new THREE.Vector3();
     this.sunPos.setFromSphericalCoords(1, phi, theta);
-    u.sunPosition.value.copy(this.sunPos);
 
-    // Visible "sun disc" sprite — billboarded glow so the player feels
-    // the sun's presence in the sky. Cheap but huge perceptual impact.
-    const sunGeo = new THREE.SphereGeometry(8, 16, 12);
+    // Skip the rest of the old Sky-shader setup
+    return this._buildSkyExtras();
+  }
+
+  _buildSkyExtras() {
+    // Visible sun disc + halo, placed in the sky direction. Pure visual
+    // anchor — gives the eye something to read as "that's the sun".
+    const sunGeo = new THREE.SphereGeometry(12, 16, 12);
     const sunMat = new THREE.MeshBasicMaterial({
-      color: 0xfff2c8, fog: false, transparent: true, opacity: 0.92,
+      color: 0xfff6d8, fog: false, transparent: true, opacity: 0.98,
+      depthWrite: false,
     });
     this.sunDisc = new THREE.Mesh(sunGeo, sunMat);
-    // Place far away in the sun direction so it always reads as "the sun"
     this.sunDisc.position.copy(this.sunPos).multiplyScalar(600);
     this.scene.add(this.sunDisc);
 
-    // Sun halo — bigger, fainter quad for the diffuse glow
-    const haloGeo = new THREE.SphereGeometry(28, 16, 12);
+    // Diffuse halo around the sun
+    const haloGeo = new THREE.SphereGeometry(48, 16, 12);
     const haloMat = new THREE.MeshBasicMaterial({
-      color: 0xffe2a0, fog: false, transparent: true, opacity: 0.18,
+      color: 0xffe9b0, fog: false, transparent: true, opacity: 0.22,
       depthWrite: false,
     });
     this.sunHalo = new THREE.Mesh(haloGeo, haloMat);
@@ -349,12 +394,12 @@ class Valhalla {
   }
 
   _buildLights() {
-    // Strong hemi to compensate for the low renderer exposure — keeps
-    // the snow reading bright while the sky physically self-illuminates.
-    const hemi = new THREE.HemisphereLight(0xe8eff5, 0x32404e, 2.4);
+    // Hemi + sun balanced for exposure = 1.0 (gradient-sky build).
+    // Hemi is the dominant fill so snow reads bright; sun adds raking warmth.
+    const hemi = new THREE.HemisphereLight(0xe8eff5, 0x32404e, 1.1);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff0d2, 4.5);
+    const sun = new THREE.DirectionalLight(0xfff0d2, 2.0);
     sun.position.set(60, 55, 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
