@@ -3,14 +3,17 @@
 import * as THREE from "three";
 import { Water } from "three/addons/objects/Water.js";
 
-const LANES = [-3.4, 0, 3.4];
+// Lane 0 = visually leftmost on screen. Because the camera looks toward +Z
+// with default up = +Y, the camera's right vector is -X, so world +X appears
+// on the LEFT side of the screen. Lane 0 must therefore be at world x=+3.4.
+const LANES = [3.4, 0, -3.4];
 const GROUND_WIDTH = 60;
 const CHUNK_LENGTH = 60;
 const CHUNK_COUNT = 6;
 const VIEW_DEPTH = CHUNK_LENGTH * CHUNK_COUNT;
 const JUMP_VELOCITY = 12;
 const GRAVITY = 30;
-const SLIDE_DURATION = 0.55;
+const SLIDE_DURATION = 0.32;
 const BASE_SPEED = 22;
 const MAX_SPEED = 60;
 
@@ -945,6 +948,7 @@ class Valhalla {
   _buildHUD() {
     this.hud = {
       score: $("hScore"), dist: $("hDist"), lives: $("hLives"),
+      mult: $("hMult"),
       flash: $("flash"), glory: $("glory"), vignette: $("vignette"),
       bioRow: $("bioRow"),
       bpmChip: $("bpmChip"), bpmTxt: $("bpmTxt"),
@@ -953,6 +957,17 @@ class Valhalla {
       pauseOverlay: $("pauseOverlay"),
       touch: $("touch"),
     };
+  }
+
+  _updateMultiplier(state) {
+    const mults = { flow: 2.0, berserker: 1.5, focused: 1.4 };
+    const m = mults[state];
+    if (m && this.running) {
+      this.hud.mult.textContent = `${m}×`;
+      this.hud.mult.className = "mult on " + state;
+    } else {
+      this.hud.mult.className = "mult";
+    }
   }
 
   _popText(text, cls = "", offsetX = 0, offsetY = 0) {
@@ -1084,38 +1099,57 @@ class Valhalla {
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
 
-    // Bio start-screen buttons. Each starts the corresponding sensor and
-    // reflects its status. Both are independent.
-    const wireBioBtn = (btn, key, label) => {
+    const wireBioBtn = (btn, key) => {
       if (!btn) return;
       btn.addEventListener("click", async () => {
-        if (!window.Bio) return;
+        if (!window.Bio) { btn.textContent = "Unavailable"; return; }
         const opts = {}; opts[key] = true;
-        btn.textContent = "Starting...";
+        btn.textContent = "Starting";
         btn.disabled = true;
+        btn.classList.remove("error", "live");
         try {
           const r = await window.Bio.start(opts);
           if (r[key] && r[key].ok !== false) {
-            btn.textContent = `${label} on`;
+            btn.textContent = "On";
             btn.classList.add("live");
           } else {
-            btn.textContent = `${label} failed`;
+            btn.textContent = "Failed";
+            btn.classList.add("error");
             btn.disabled = false;
           }
         } catch (e) {
-          btn.textContent = `${label} failed`;
+          btn.textContent = "Failed";
+          btn.classList.add("error");
           btn.disabled = false;
         }
       });
     };
-    wireBioBtn($("bioHrBtn"), "rppg", "Heart rate");
-    wireBioBtn($("bioEegBtn"), "eeg", "EEG");
+    wireBioBtn($("bioHrBtn"), "rppg");
+    wireBioBtn($("bioEegBtn"), "eeg");
 
-    // Clicking the HUD bio row opens the canonical bio panel (the badge handles the toggle).
+    // Clicking the HUD bio row when no sensor is on quick-starts the heart-rate sensor.
     this.hud.bioRow.addEventListener("click", () => {
-      const badge = document.getElementById("bio-badge");
-      if (badge) badge.click();
+      const hrBtn = $("bioHrBtn");
+      if (hrBtn && !hrBtn.disabled) hrBtn.click();
     });
+
+    // Belt and braces: the bio adapter injects its own floating widgets
+    // (badge, panel, sparkline, ritual) on every page. Our CSS hides them
+    // but some browsers respect inline display:flex set via injected
+    // <style> over our :not() rule. Just delete the nodes after they mount.
+    const nukeLegacyBio = () => {
+      for (const id of ["bio-badge", "bio-panel", "bio-menu-sparkline",
+                        "bio-menu-ritual", "bio-tier-block", "bio-drill-host"]) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      }
+    };
+    window.addEventListener("bio:ready", nukeLegacyBio, { once: true });
+    // Run it once immediately too in case bio mounted before main.js bound the listener.
+    nukeLegacyBio();
+    // And again after a tick to catch any late mounts.
+    setTimeout(nukeLegacyBio, 500);
+    setTimeout(nukeLegacyBio, 1500);
   }
 
   _bindBio() {
@@ -1141,6 +1175,7 @@ class Valhalla {
       });
       window.Bio.on("stateChange", ({ state, prev }) => {
         this.cognitiveState = state;
+        this._updateMultiplier(state);
         if (state && state !== "neutral") {
           const label = state.charAt(0).toUpperCase() + state.slice(1);
           this.hud.stateTxt.textContent = label;
@@ -1229,7 +1264,13 @@ class Valhalla {
     this._timeScale = 1; this._timeScaleTarget = 1;
     this._showCombo();
     this._updateHUD();
-    for (const o of this.obstacles) this.scene.remove(o.mesh);
+    for (const o of this.obstacles) {
+      this.scene.remove(o.mesh);
+      if (o.decal) {
+        if (Array.isArray(o.decal)) for (const d of o.decal) this.scene.remove(d);
+        else this.scene.remove(o.decal);
+      }
+    }
     for (const c of this.collectibles) this.scene.remove(c.mesh);
     this.obstacles = []; this.collectibles = [];
     // First obstacle wave is ~55m ahead so the opening reads as world, not gauntlet.
@@ -1315,74 +1356,177 @@ class Valhalla {
     }
   }
 
+  // Each obstacle has a saturated emissive color so it reads against snow,
+  // and a red ground-ring decal directly under it so the player sees the
+  // threatened lane before reacting.
+  _makeGroundDecal(color = 0xff3030, radius = 1.0) {
+    const m = new THREE.Mesh(
+      new THREE.RingGeometry(radius * 0.65, radius, 24),
+      new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.55, depthWrite: false,
+        side: THREE.DoubleSide, fog: false,
+      })
+    );
+    m.rotation.x = -Math.PI / 2;
+    return m;
+  }
+
   _spawnObstacle(lane, zWorld) {
     const r = Math.random();
     let mesh, w, h, type;
-    if (r < 0.35) {
-      // boulder
-      mesh = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.95, 0),
-        new THREE.MeshStandardMaterial({ color: 0x6c727a, roughness: 0.95, flatShading: true })
-      );
-      mesh.position.y = 0.95;
-      mesh.rotation.set(Math.random(), Math.random(), Math.random());
-      w = 1.7; h = 1.7; type = "boulder";
-    } else if (r < 0.7) {
-      // troll: red-eyed lump
+    if (r < 0.34) {
+      // Boulder: dark stone cracked with hot orange lava streaks.
       mesh = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1.4, 1.6, 0.9),
-        new THREE.MeshStandardMaterial({ color: 0x4a5d3a, roughness: 0.95, flatShading: true })
-      );
-      body.position.y = 0.8;
-      body.castShadow = true;
-      mesh.add(body);
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7, 0.6, 0.6),
-        new THREE.MeshStandardMaterial({ color: 0x6e7d52, roughness: 0.9, flatShading: true })
-      );
-      head.position.y = 1.85;
-      head.castShadow = true;
-      mesh.add(head);
-      // eyes
-      for (const dx of [-0.18, 0.18]) {
-        const eye = new THREE.Mesh(
-          new THREE.SphereGeometry(0.07, 6, 6),
-          new THREE.MeshBasicMaterial({ color: 0xff3320 })
-        );
-        eye.position.set(dx, 1.92, 0.32);
-        mesh.add(eye);
-      }
-      w = 1.5; h = 2.1; type = "troll";
-    } else {
-      // ice spike
-      mesh = new THREE.Mesh(
-        new THREE.ConeGeometry(0.55, 1.8, 6),
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(1.25, 0),
         new THREE.MeshStandardMaterial({
-          color: 0xb8e3ee, roughness: 0.2, metalness: 0.3,
-          transparent: true, opacity: 0.92, flatShading: true,
+          color: 0x2a2a32, roughness: 0.95, flatShading: true,
+          emissive: 0x4a1010, emissiveIntensity: 0.35,
         })
       );
-      mesh.position.y = 0.9;
-      w = 1.2; h = 1.8; type = "ice";
+      rock.position.y = 1.2;
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      rock.castShadow = true;
+      mesh.add(rock);
+      for (let i = 0; i < 3; i++) {
+        const streak = new THREE.Mesh(
+          new THREE.BoxGeometry(0.14, 1.6, 0.14),
+          new THREE.MeshBasicMaterial({ color: 0xff7020 })
+        );
+        streak.position.set((Math.random() - 0.5) * 0.9, 1.2, 0.85 + Math.random() * 0.15);
+        streak.rotation.z = (Math.random() - 0.5) * 1.0;
+        mesh.add(streak);
+      }
+      w = 2.0; h = 2.0; type = "boulder";
+    } else if (r < 0.67) {
+      // Troll: tall dark silhouette, glowing red chest + eyes, single horn.
+      mesh = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 1.8, 1.0),
+        new THREE.MeshStandardMaterial({
+          color: 0x1a2418, roughness: 0.92, flatShading: true,
+          emissive: 0x2c0e0e, emissiveIntensity: 0.4,
+        })
+      );
+      body.position.y = 0.9;
+      body.castShadow = true;
+      mesh.add(body);
+      const chest = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.34, 0),
+        new THREE.MeshBasicMaterial({ color: 0xff2820 })
+      );
+      chest.position.set(0, 1.15, 0.55);
+      mesh.add(chest);
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 0.7, 0.78),
+        new THREE.MeshStandardMaterial({
+          color: 0x1a2418, roughness: 0.9, flatShading: true,
+        })
+      );
+      head.position.y = 2.15;
+      head.castShadow = true;
+      mesh.add(head);
+      for (const dx of [-0.2, 0.2]) {
+        const eye = new THREE.Mesh(
+          new THREE.SphereGeometry(0.1, 8, 6),
+          new THREE.MeshBasicMaterial({ color: 0xff4020 })
+        );
+        eye.position.set(dx, 2.25, 0.4);
+        mesh.add(eye);
+      }
+      const horn = new THREE.Mesh(
+        new THREE.ConeGeometry(0.18, 0.65, 6),
+        new THREE.MeshStandardMaterial({ color: 0x383838, roughness: 0.5, flatShading: true })
+      );
+      horn.position.y = 2.75;
+      mesh.add(horn);
+      w = 1.7; h = 2.6; type = "troll";
+    } else {
+      // Ice wall: opaque bright cyan slab with jagged tip ridge.
+      mesh = new THREE.Group();
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(1.6, 1.7, 0.55),
+        new THREE.MeshStandardMaterial({
+          color: 0x9eddee, roughness: 0.25, metalness: 0.2,
+          flatShading: true, emissive: 0x4080a0, emissiveIntensity: 0.5,
+        })
+      );
+      slab.position.y = 0.85;
+      slab.castShadow = true;
+      mesh.add(slab);
+      for (let i = -1; i <= 1; i++) {
+        const tip = new THREE.Mesh(
+          new THREE.ConeGeometry(0.32, 0.75, 4),
+          new THREE.MeshStandardMaterial({
+            color: 0xcaecf3, roughness: 0.2, flatShading: true,
+            emissive: 0x6098b0, emissiveIntensity: 0.45,
+          })
+        );
+        tip.position.set(i * 0.46, 2.05, 0);
+        mesh.add(tip);
+      }
+      w = 1.7; h = 2.4; type = "ice";
     }
+    // Ground decal under the obstacle. Sits in world plane, not parented,
+    // so we can scroll/fade it independently.
+    const decal = this._makeGroundDecal(0xff2820, 1.15);
+    decal.position.set(LANES[lane], 0.06, zWorld);
+    this.scene.add(decal);
+
     mesh.position.x = LANES[lane];
     mesh.position.z = zWorld;
-    if (mesh.castShadow !== undefined) mesh.castShadow = true;
     this.scene.add(mesh);
-    this.obstacles.push({ mesh, lane, spawnAt: zWorld, type, w, h, slidable: false });
+    this.obstacles.push({ mesh, lane, spawnAt: zWorld, type, w, h, slidable: false, decal });
   }
 
   _spawnBeam(zWorld) {
-    // overhead horizontal beam - must slide
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(LANES[2] - LANES[0] + 4, 0.5, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0x3a2614, roughness: 0.9, flatShading: true })
+    // Hazard bar across all lanes at chest height. Must slide under.
+    // Bright red-orange with yellow hazard stripes + glowing bottom edge.
+    const grp = new THREE.Group();
+    const span = 11;
+    const beam = new THREE.Mesh(
+      new THREE.BoxGeometry(span, 0.55, 0.55),
+      new THREE.MeshStandardMaterial({
+        color: 0xd83020, roughness: 0.6, flatShading: true,
+        emissive: 0x701010, emissiveIntensity: 0.65,
+      })
     );
-    mesh.position.set(0, 1.85, zWorld);
-    mesh.castShadow = true;
-    this.scene.add(mesh);
-    this.obstacles.push({ mesh, lane: -1, spawnAt: zWorld, type: "beam", w: 999, h: 0.5, slidable: true, yMin: 1.6 });
+    beam.position.y = 1.75;
+    beam.castShadow = true;
+    grp.add(beam);
+    for (let i = -3; i <= 3; i++) {
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.4, 0.57),
+        new THREE.MeshBasicMaterial({ color: 0xffd020 })
+      );
+      stripe.position.set(i * 1.5, 1.75, 0);
+      stripe.rotation.z = 0.35;
+      grp.add(stripe);
+    }
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(span + 0.4, 0.16),
+      new THREE.MeshBasicMaterial({
+        color: 0xff5030, transparent: true, opacity: 0.9,
+        side: THREE.DoubleSide, depthWrite: false, fog: false,
+      })
+    );
+    glow.position.set(0, 1.45, 0);
+    grp.add(glow);
+    grp.position.z = zWorld;
+    this.scene.add(grp);
+
+    // Three lane decals to telegraph the bar is across the whole row
+    const decals = [];
+    for (let li = 0; li < 3; li++) {
+      const d = this._makeGroundDecal(0xff4020, 0.95);
+      d.position.set(LANES[li], 0.06, zWorld);
+      this.scene.add(d);
+      decals.push(d);
+    }
+    this.obstacles.push({
+      mesh: grp, lane: -1, spawnAt: zWorld, type: "beam",
+      w: 999, h: 0.55, slidable: true, yMin: 1.6, decal: decals,
+    });
   }
 
   _spawnMead(lane, zWorld) {
@@ -1574,23 +1718,35 @@ class Valhalla {
       }
     }
 
-    // obstacles update (positions are absolute world z; we move scene z = spawnAt - distance)
     for (let i = this.obstacles.length - 1; i >= 0; i--) {
       const o = this.obstacles[i];
       const sz = o.spawnAt - this.distance;
       o.mesh.position.z = sz;
+      // Scroll decals with the world. Decal sits in absolute world coords,
+      // so we update its z each frame too. Pulse opacity for telegraph.
+      if (o.decal) {
+        const pulse = 0.4 + Math.abs(Math.sin(performance.now() * 0.006)) * 0.35;
+        if (Array.isArray(o.decal)) {
+          for (const d of o.decal) { d.position.z = sz; d.material.opacity = pulse; }
+        } else {
+          o.decal.position.z = sz;
+          o.decal.material.opacity = pulse;
+        }
+      }
       if (o.type === "troll") o.mesh.rotation.y = Math.sin(performance.now() * 0.003) * 0.2;
-      // collision
       if (!this.invuln && Math.abs(sz) < 1.0) {
         const hit = this._hitsPlayer(o);
         if (hit) {
           this._takeHit();
-          // nudge obstacle out of frame to prevent double hit
           o.spawnAt = this.distance - 100;
         }
       }
       if (sz < -8) {
         this.scene.remove(o.mesh);
+        if (o.decal) {
+          if (Array.isArray(o.decal)) for (const d of o.decal) this.scene.remove(d);
+          else this.scene.remove(o.decal);
+        }
         this.obstacles.splice(i, 1);
         if (o.lane === this.lane && o.type !== "beam") {
           this.combo++;
