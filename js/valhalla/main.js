@@ -1,28 +1,18 @@
-// Valhalla — immersive 3D Viking runner.
-// Single-module game built on Three.js. Procedural fjord world: snowy ground,
-// pine forest, distant mountains, water, drifting snow, dynamic sky.
-// Three lanes, jump+slide, dodge obstacles, collect mead horns and runes.
-// Hooks window.Bio (from js/bio/index.js) for HR + cognitive-state HUD.
+// 3D viking runner. Three lanes, jump+slide. Reads window.Bio if present.
 
 import * as THREE from "three";
-import { Sky } from "three/addons/objects/Sky.js";
 import { Water } from "three/addons/objects/Water.js";
 
-// ---------------- Constants ----------------
-const LANES = [-3.4, 0, 3.4];          // x positions of the 3 lanes
-const PLAYER_Z = 0;                    // player stays at origin; world scrolls toward us
+const LANES = [-3.4, 0, 3.4];
 const GROUND_WIDTH = 60;
-const CHUNK_LENGTH = 60;               // depth of one terrain chunk
-const CHUNK_COUNT = 6;                 // number of chunks tiled forward
+const CHUNK_LENGTH = 60;
+const CHUNK_COUNT = 6;
 const VIEW_DEPTH = CHUNK_LENGTH * CHUNK_COUNT;
 const JUMP_VELOCITY = 12;
 const GRAVITY = 30;
 const SLIDE_DURATION = 0.55;
-const BASE_SPEED = 22;                 // m/s forward
+const BASE_SPEED = 22;
 const MAX_SPEED = 60;
-const SPEED_RAMP = 0.35;               // m/s per second
-const FOG_NEAR = 60;
-const FOG_FAR = 320;
 
 const STORE_KEY = "valhalla.v1";
 
@@ -235,7 +225,6 @@ class Valhalla {
 
     this.cognitiveState = "neutral";
     this.bpm = null;
-    this.lastZoneIdx = -1;
 
     this._initThree();
     this._buildSky();
@@ -291,33 +280,23 @@ class Valhalla {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
-    // Fog color tuned to match the bright daytime sky horizon. A pale
-    // blue-white reads as "atmospheric haze" not "fog wall".
+    // Fog color matches the sky horizon so distant geometry blends in.
     const fogColor = new THREE.Color(0xc4d2dc);
     this.scene.fog = new THREE.Fog(fogColor, 60, 520);
     this.scene.background = fogColor.clone();
 
-    // Cinematic camera: pull back so the Viking is ~1/4 of screen height,
-    // leaving room for the world to breathe. Narrower FOV (48) compresses
-    // mountains into a film-lens look.
     this.camera = new THREE.PerspectiveCamera(48, 16 / 9, 0.1, 1200);
     this.camera.position.set(0, 4.0, -11.5);
     this.camera.lookAt(0, 2.0, 22);
   }
 
   _buildSky() {
-    // Drop the physically-correct Sky shader. At our low exposure (needed
-    // for the snow to read right), Sky's zenith renders as near-black —
-    // which is technically accurate but reads as "night" to a viewer.
-    // Instead, use a hand-tuned vertical gradient sphere shader that
-    // gives a clean winter-day dome. We keep the sunPos vector for use
-    // by the directional light + sun-disc placement.
+    // 4-stop vertical gradient sphere. Cheaper than the physical Sky shader
+    // and easier to keep readable at our exposure.
     const skyGeo = new THREE.SphereGeometry(1000, 32, 16);
     const skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        // Light, inviting Norse winter daytime dome. Top is a clean
-        // soft blue rather than a saturated zenith — reads as overcast.
         topColor:    { value: new THREE.Color(0x9cb6cc) },
         midColor:    { value: new THREE.Color(0xc2d2dd) },
         horizColor:  { value: new THREE.Color(0xdee7ec) },
@@ -346,7 +325,7 @@ class Valhalla {
           vec3 col;
           if (h >= 0.0) {
             float t1 = pow(clamp(h, 0.0, 1.0), exponent);
-            // horiz → mid → top
+            // horiz -> mid -> top
             vec3 lower = mix(horizColor, midColor, smoothstep(0.0, 0.45, t1));
             col = mix(lower, topColor, smoothstep(0.45, 1.0, t1));
           } else {
@@ -372,7 +351,7 @@ class Valhalla {
 
   _buildSkyExtras() {
     // Visible sun disc + halo, placed in the sky direction. Pure visual
-    // anchor — gives the eye something to read as "that's the sun".
+    // anchor - gives the eye something to read as "that's the sun".
     const sunGeo = new THREE.SphereGeometry(12, 16, 12);
     const sunMat = new THREE.MeshBasicMaterial({
       color: 0xfff6d8, fog: false, transparent: true, opacity: 0.98,
@@ -415,7 +394,7 @@ class Valhalla {
     this.scene.add(sun);
     this.scene.add(sun.target);
 
-    // Cool blue rim from the "north" — makes silhouettes pop against the fog
+    // Cool blue rim from the "north" - makes silhouettes pop against the fog
     const rim = new THREE.DirectionalLight(0x8aa8c8, 0.55);
     rim.position.set(-40, 30, -25);
     this.scene.add(rim);
@@ -447,7 +426,7 @@ class Valhalla {
     const geo = this.chunkGeo.clone();
     const pos = geo.attributes.position;
     const colors = new Float32Array(pos.count * 3);
-    // Layered palette — sunlit snow → cool shadow → mossy edge → rock.
+    // Layered palette - sunlit snow -> cool shadow -> mossy edge -> rock.
     // The blue-tinted shadow color is what makes snow read as SNOW
     // (frozen water) instead of white plastic.
     const sunSnow = new THREE.Color(0xf5f6f0);
@@ -551,7 +530,7 @@ class Valhalla {
     caps.instanceMatrix.needsUpdate = true;
     decor.add(trunks, lows, mids, tops, caps);
 
-    // Rocks — also instanced.
+    // Rocks - also instanced.
     const ROCK_COUNT = 22;
     const rockGeo = new THREE.DodecahedronGeometry(1, 0);
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x676d75, roughness: 0.96, flatShading: true });
@@ -571,7 +550,7 @@ class Valhalla {
     rocks.instanceMatrix.needsUpdate = true;
     decor.add(rocks);
 
-    // Runestone — keep as single mesh (rare, individual character).
+    // Runestone - keep as single mesh (rare, individual character).
     if (Math.random() < 0.55) {
       const side = Math.random() < 0.5 ? -1 : 1;
       const x = side * (5.6 + Math.random() * 1.4);
@@ -682,17 +661,17 @@ class Valhalla {
     };
 
     this.mountainRing = new THREE.Group();
-    // Near ridge — closer and taller so it dominates the horizon rather
+    // Near ridge - closer and taller so it dominates the horizon rather
     // than fading into haze. This is the "we're in a real place with real
     // scale" shot.
     this.mountainRing.add(makeRing(20, 55, -30, 220, [75, 140], {
       color: 0x4a525e, snow: 0xf2f6fa,
     }));
-    // Mid ridge — the haze layer, smaller and lighter
+    // Mid ridge - the haze layer, smaller and lighter
     this.mountainRing.add(makeRing(18, 130, 0, 320, [100, 180], {
       color: 0x6a7480, snow: 0xeaf0f5,
     }));
-    // Sentinel peaks ahead — three or four giants emerging from the fog
+    // Sentinel peaks ahead - three or four giants emerging from the fog
     // dead center, drawing the eye forward.
     this.mountainRing.add(makeRing(5, 22, 180, 140, [150, 240], {
       color: 0x525c69, snow: 0xf5f8fb,
@@ -845,7 +824,7 @@ class Valhalla {
     this.shadowDisc = shadowDisc;
     this.scene.add(shadowDisc);
 
-    // Footprint trail — ring of tiny circles cycled behind the player.
+    // Footprint trail - ring of tiny circles cycled behind the player.
     // Adds tangible "I'm leaving tracks in the snow" feedback that sells
     // the snow surface as real.
     this.footprints = [];
@@ -868,10 +847,10 @@ class Valhalla {
 
   _buildSnow() {
     // Two layers of snow particles:
-    // 1. CLOSE flakes — small count, big, very visible, RIGHT in front of
+    // 1. CLOSE flakes - small count, big, very visible, RIGHT in front of
     //    the camera. This is what sells "weather". Without these the world
     //    feels static.
-    // 2. FAR flakes — many small, drifting in middle distance for depth.
+    // 2. FAR flakes - many small, drifting in middle distance for depth.
 
     // Close layer (~camera-relative volume in front of player)
     {
@@ -963,25 +942,23 @@ class Valhalla {
     this.scene.add(this.ravens);
   }
 
-  // ---------- HUD ----------
   _buildHUD() {
     this.hud = {
-      score: $("hScore"), dist: $("hDist"), mead: $("hMead"), lives: $("hLives"),
-      banner: $("banner"), flash: $("flash"), glory: $("glory"), vignette: $("vignette"),
-      lanes: $("laneInd").children,
+      score: $("hScore"), dist: $("hDist"), lives: $("hLives"),
+      flash: $("flash"), glory: $("glory"), vignette: $("vignette"),
+      bioRow: $("bioRow"),
       bpmChip: $("bpmChip"), bpmTxt: $("bpmTxt"),
       stateChip: $("stateChip"), stateTxt: $("stateTxt"),
-      zone: $("zoneLabel"),
       combo: $("combo"), comboN: $("comboN"),
+      pauseOverlay: $("pauseOverlay"),
+      touch: $("touch"),
     };
   }
 
-  /** Drop a floating "+25" / "RUNE!" / "x3" text at the player's screen space. */
-  _popText(text, cls = "gold", offsetX = 0, offsetY = 0) {
+  _popText(text, cls = "", offsetX = 0, offsetY = 0) {
     const el = document.createElement("div");
     el.className = "popper " + cls;
     el.textContent = text;
-    // Project player position to screen
     const v = new THREE.Vector3(this.player.position.x, 1.6 + this.playerY, this.player.position.z + 1);
     v.project(this.camera);
     const sx = (v.x * 0.5 + 0.5) * window.innerWidth + offsetX;
@@ -989,7 +966,7 @@ class Valhalla {
     el.style.left = sx + "px";
     el.style.top = sy + "px";
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1200);
+    setTimeout(() => el.remove(), 1100);
   }
 
   _showCombo() {
@@ -1015,72 +992,113 @@ class Valhalla {
     }, dur * 1000);
   }
 
-  // ---------- Input ----------
+  _doAction(action) {
+    if (this.over || !this.running) return;
+    switch (action) {
+      case "left":
+        if (this.lane > 0) { this.lane--; this.targetLaneX = LANES[this.lane]; this.audio.blip(420, 0.06, "triangle", 0.08); }
+        break;
+      case "right":
+        if (this.lane < 2) { this.lane++; this.targetLaneX = LANES[this.lane]; this.audio.blip(420, 0.06, "triangle", 0.08); }
+        break;
+      case "jump":
+        if (this.playerY <= 0.001 && !this.sliding) {
+          this.playerVy = JUMP_VELOCITY; this.audio.jump();
+        }
+        break;
+      case "slide":
+        if (this.playerY <= 0.001 && !this.sliding) {
+          this.sliding = true; this.slideTimer = SLIDE_DURATION;
+        }
+        break;
+    }
+  }
+
+  _togglePause() {
+    if (!this.running || this.over) return;
+    this.paused = !this.paused;
+    this.hud.pauseOverlay.classList.toggle("on", this.paused);
+  }
+
   _bindInput() {
     const keys = new Set();
-    const onDown = (k) => {
-      if (this.over || !this.running) return;
-      switch (k) {
-        case "a": case "arrowleft":
-          if (this.lane > 0) { this.lane--; this.targetLaneX = LANES[this.lane]; this._updateLaneInd(); this.audio.blip(420, 0.06, "triangle", 0.08); }
-          break;
-        case "d": case "arrowright":
-          if (this.lane < 2) { this.lane++; this.targetLaneX = LANES[this.lane]; this._updateLaneInd(); this.audio.blip(420, 0.06, "triangle", 0.08); }
-          break;
-        case "w": case "arrowup": case " ": case "space":
-          if (this.playerY <= 0.001 && !this.sliding) {
-            this.playerVy = JUMP_VELOCITY; this.audio.jump();
-          }
-          break;
-        case "s": case "arrowdown":
-          if (this.playerY <= 0.001 && !this.sliding) {
-            this.sliding = true; this.slideTimer = SLIDE_DURATION;
-          }
-          break;
-        case "shift":
-          this.sprint = true;
-          break;
-        case "p":
-          this.paused = !this.paused;
-          break;
-        case "m":
-          this.audio.setMuted(!this.audio.muted);
-          break;
-      }
-    };
-    const onUp = (k) => {
-      if (k === "shift") this.sprint = false;
+    const keyToAction = {
+      "a": "left", "arrowleft": "left",
+      "d": "right", "arrowright": "right",
+      "w": "jump", "arrowup": "jump", " ": "jump",
+      "s": "slide", "arrowdown": "slide",
     };
     window.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
       if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
-      if (!keys.has(k)) onDown(k);
+      if (keys.has(k)) return;
       keys.add(k);
+      if (k === "shift") { this.sprint = true; return; }
+      if (k === "p") { this._togglePause(); return; }
+      if (k === "m") { this.audio.setMuted(!this.audio.muted); return; }
+      const a = keyToAction[k];
+      if (a) this._doAction(a);
     });
     window.addEventListener("keyup", (e) => {
       const k = e.key.toLowerCase();
       keys.delete(k);
-      onUp(k);
+      if (k === "shift") this.sprint = false;
     });
-    // Touch swipe
+
+    // Touch swipe on the canvas area (avoid swallowing button taps)
     let tx = 0, ty = 0, td = 0;
-    window.addEventListener("touchstart", (e) => {
+    const canvas = this.canvas;
+    canvas.addEventListener("touchstart", (e) => {
       tx = e.touches[0].clientX; ty = e.touches[0].clientY; td = performance.now();
     }, { passive: true });
-    window.addEventListener("touchend", (e) => {
-      const dx = (e.changedTouches[0].clientX - tx);
-      const dy = (e.changedTouches[0].clientY - ty);
+    canvas.addEventListener("touchend", (e) => {
+      const dx = e.changedTouches[0].clientX - tx;
+      const dy = e.changedTouches[0].clientY - ty;
       if (Math.abs(dx) < 18 && Math.abs(dy) < 18 && performance.now() - td < 250) {
-        onDown(" "); // tap = jump
+        // Tap: left half = left lane, right half = right lane, center = jump
+        const w = window.innerWidth;
+        if (tx < w * 0.33) this._doAction("left");
+        else if (tx > w * 0.67) this._doAction("right");
+        else this._doAction("jump");
       } else if (Math.abs(dx) > Math.abs(dy)) {
-        onDown(dx > 0 ? "d" : "a");
+        this._doAction(dx > 0 ? "right" : "left");
       } else {
-        onDown(dy > 0 ? "s" : "w");
+        this._doAction(dy > 0 ? "slide" : "jump");
       }
     }, { passive: true });
 
+    // On-screen mobile buttons. Bind pointerdown for instant response.
+    const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+    if (isTouch || window.innerWidth < 720) this.hud.touch.classList.add("on");
+    for (const b of this.hud.touch.querySelectorAll(".b")) {
+      const action = b.dataset.key;
+      b.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        this._doAction(action);
+        b.style.background = "rgba(255,255,255,.25)";
+        setTimeout(() => (b.style.background = ""), 100);
+      });
+    }
+
     $("beginBtn").addEventListener("click", () => this._begin());
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
+    $("resumeBtn").addEventListener("click", () => this._togglePause());
+
+    // Bio enable button on the start card
+    const bioBtn = $("bioEnableBtn");
+    if (bioBtn) {
+      bioBtn.addEventListener("click", async () => {
+        if (!window.Bio) return;
+        bioBtn.textContent = "Starting...";
+        bioBtn.disabled = true;
+        try {
+          await window.Bio.start({ rppg: true });
+          bioBtn.textContent = "On";
+        } catch (e) {
+          bioBtn.textContent = "Failed";
+        }
+      });
+    }
   }
 
   _bindBio() {
@@ -1089,22 +1107,24 @@ class Valhalla {
       window.Bio.on("rppgMetric", (m) => {
         if (m && typeof m.bpm === "number") {
           this.bpm = Math.round(m.bpm);
-          this.hud.bpmTxt.textContent = `${this.bpm} BPM`;
-          this.hud.bpmChip.classList.add("live");
+          this.hud.bpmTxt.textContent = `${this.bpm} bpm`;
+          this.hud.bioRow.classList.add("on");
         }
       });
       window.Bio.on("rppgStatus", (s) => {
         if (s.status === "off" || s.status === "error") {
-          this.hud.bpmChip.classList.remove("live");
-          this.hud.bpmTxt.textContent = "No HR";
+          this.hud.bioRow.classList.remove("on");
+        } else if (s.status === "live" || s.status === "warming") {
+          this.hud.bioRow.classList.add("on");
         }
       });
       window.Bio.on("stateChange", ({ state }) => {
         this.cognitiveState = state;
-        this.hud.stateTxt.textContent = state.charAt(0).toUpperCase() + state.slice(1);
-        this.hud.stateChip.className = "chip live " + state;
-        if (state === "flow" || state === "berserker" || state === "meditation" || state === "frantic") {
-          this._showBanner(state.toUpperCase(), state);
+        if (state && state !== "neutral") {
+          this.hud.stateTxt.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+          this.hud.stateChip.style.display = "";
+        } else {
+          this.hud.stateChip.style.display = "none";
         }
       });
       return true;
@@ -1129,34 +1149,14 @@ class Valhalla {
     Store.save(s);
   }
 
-  _updateLaneInd() {
-    for (let i = 0; i < this.hud.lanes.length; i++) {
-      this.hud.lanes[i].classList.toggle("active", i === this.lane);
-    }
-  }
-
-  _showBanner(text, cls = "") {
-    this.hud.banner.textContent = text;
-    this.hud.banner.style.color = ({
-      flow: "#9ec5ff", berserker: "#ff8070", meditation: "#a6f0bf",
-      frantic: "#ffc788", aroused: "#ff8070", calm: "#a6f0bf",
-      focused: "#9ec5ff",
-    }[cls]) || "#f3e0b8";
-    this.hud.banner.classList.add("show");
-    clearTimeout(this._bannerT);
-    this._bannerT = setTimeout(() => this.hud.banner.classList.remove("show"), 1600);
-  }
-
   _flash() {
-    this.hud.flash.classList.add("hit");
-    setTimeout(() => this.hud.flash.classList.remove("hit"), 320);
+    this.hud.flash.classList.add("on");
+    setTimeout(() => this.hud.flash.classList.remove("on"), 320);
   }
 
-  // ---------- Game flow ----------
   _begin() {
-    $("startOverlay").classList.add("hidden");
+    $("startOverlay").classList.add("hide");
     $("overOverlay").classList.remove("show");
-    const bb = $("bestBeat"); if (bb) bb.style.display = "none";
     this.lane = 1; this.targetLaneX = LANES[1];
     this.playerY = 0; this.playerVy = 0;
     this.sliding = false; this.slideTimer = 0;
@@ -1165,65 +1165,45 @@ class Valhalla {
     this.speed = BASE_SPEED;
     this._shakeAmp = 0; this._shakeT = 0;
     this._timeScale = 1; this._timeScaleTarget = 1;
-    this._updateLaneInd();
     this._showCombo();
     this._updateHUD();
-    // clear old obstacles
     for (const o of this.obstacles) this.scene.remove(o.mesh);
     for (const c of this.collectibles) this.scene.remove(c.mesh);
     this.obstacles = []; this.collectibles = [];
-    // Empty start zone — give the player ~3 seconds of pure world before the
-    // first wave. This is the "5-second hook": they see the world is beautiful
-    // and feel that controls respond before being challenged.
+    // First obstacle wave is ~55m ahead so the opening reads as world, not gauntlet.
     this._spawnZ = 55;
     this.running = true; this.over = false; this.paused = false;
     this.audio.ensure();
     this.audio.startWind();
     this.audio.startMusic();
-    // Open with an arrival shake — the world "wakes up"
-    this._shake(0.25, 0.4);
   }
 
   _gameOver() {
     if (this.over) return;
     this.over = true; this.running = false;
     this.audio.stopMusic();
-    // Capture pre-save best so we can compute delta
     const prev = Store.load();
     const prevBestScore = prev.bestScore || 0;
     const prevBestDist = prev.bestDist || 0;
     this._saveStats();
-    $("oScore").textContent = Math.floor(this.score).toLocaleString();
-    $("oDist").textContent = `${Math.round(this.distance)}m`;
+    const finalScore = Math.floor(this.score);
+    const finalDist = Math.round(this.distance);
+    $("oScore").textContent = finalScore.toLocaleString();
+    $("oDist").textContent = `${finalDist}m`;
     $("oMead").textContent = this.mead;
-    // "Beat your best by Xm" — the "one more run" hook. Show only on real PB.
     const bb = $("bestBeat");
-    if (Math.floor(this.score) > prevBestScore && prevBestScore > 0) {
-      bb.textContent = `★ NEW BEST · +${(Math.floor(this.score) - prevBestScore).toLocaleString()} over your record`;
-      bb.style.display = "block";
-      this._showBanner("NEW RECORD", "flow");
-    } else if (Math.round(this.distance) > prevBestDist && prevBestDist > 0) {
-      bb.textContent = `★ FURTHEST RUN · +${Math.round(this.distance) - prevBestDist}m`;
-      bb.style.display = "block";
-      this._showBanner("FURTHEST RUN", "flow");
+    if (finalScore > prevBestScore && prevBestScore > 0) {
+      bb.textContent = `New best  +${(finalScore - prevBestScore).toLocaleString()}`;
+      bb.classList.remove("none");
+    } else if (finalDist > prevBestDist && prevBestDist > 0) {
+      bb.textContent = `Furthest run  +${finalDist - prevBestDist}m`;
+      bb.classList.remove("none");
     } else if (prevBestScore > 0) {
-      const gap = prevBestScore - Math.floor(this.score);
-      bb.textContent = `${gap.toLocaleString()} points to your best`;
-      bb.style.display = "block";
-      this._showBanner("FALLEN", "berserker");
+      bb.textContent = `${(prevBestScore - finalScore).toLocaleString()} to your best`;
+      bb.classList.remove("none");
     } else {
-      bb.style.display = "none";
-      this._showBanner("FALLEN", "berserker");
+      bb.classList.add("none");
     }
-    // Tagline rotates so death never feels samey
-    const taglines = [
-      "The ravens take you home.",
-      "Odin saw. Odin remembers.",
-      "Even gods must rest.",
-      "Bifrost cracks open.",
-      "Your shield broke before your spirit.",
-    ];
-    $("overTagline").textContent = taglines[Math.floor(Math.random() * taglines.length)];
     $("overOverlay").classList.add("show");
     this._loadStats();
   }
@@ -1258,7 +1238,7 @@ class Valhalla {
       // overhead beam (must slide) on all lanes
       this._spawnBeam(zWorld);
     } else {
-      // empty wave — collectibles only
+      // empty wave - collectibles only
     }
     // collectibles
     const coinLane = (Math.random() * 3) | 0;
@@ -1332,7 +1312,7 @@ class Valhalla {
   }
 
   _spawnBeam(zWorld) {
-    // overhead horizontal beam — must slide
+    // overhead horizontal beam - must slide
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(LANES[2] - LANES[0] + 4, 0.5, 0.5),
       new THREE.MeshStandardMaterial({ color: 0x3a2614, roughness: 0.9, flatShading: true })
@@ -1385,9 +1365,7 @@ class Valhalla {
   _frame(now) {
     const realDt = Math.min(0.05, (now - this._lastT) / 1000);
     this._lastT = now;
-    // Smoothly ease toward the desired time scale (1 normally, 0.35 during
-    // rune slow-mo). The slow-mo creates an extended "this is great" beat
-    // that's hugely satisfying — classic juice.
+    // Ease toward the active time scale (1 normally, 0.35 during rune slow-mo).
     this._timeScale += (this._timeScaleTarget - this._timeScale) * Math.min(1, realDt * 8);
     const dt = realDt * this._timeScale;
     if (!this.paused) this._update(dt);
@@ -1397,7 +1375,7 @@ class Valhalla {
 
   _update(dt) {
     if (!this.running) {
-      // gentle parallax on title screen — drift snow + rotate ravens
+      // gentle parallax on title screen - drift snow + rotate ravens
       this._updateAmbient(dt);
       return;
     }
@@ -1405,7 +1383,7 @@ class Valhalla {
     // speed ramp; bio nudges
     let target = BASE_SPEED + Math.min(this.distance * 0.012, MAX_SPEED - BASE_SPEED);
     if (this.sprint) target *= 1.18;
-    // Bio influence: berserker → faster, meditation → slower, flow → smoother (multiplier on score)
+    // Bio influence: berserker -> faster, meditation -> slower, flow -> smoother (multiplier on score)
     if (this.cognitiveState === "berserker") target *= 1.12;
     else if (this.cognitiveState === "meditation") target *= 0.9;
     this.speed += (target - this.speed) * Math.min(1, dt * 2);
@@ -1461,7 +1439,7 @@ class Valhalla {
     this.shadowDisc.scale.setScalar(Math.max(0.4, 1 - this.playerY * 0.18));
     this.shadowDisc.material.opacity = Math.max(0.05, 0.35 - this.playerY * 0.04);
 
-    // Footprint trail — only stamp while grounded and running
+    // Footprint trail - only stamp while grounded and running
     if (this.playerY < 0.05 && !this.sliding && this.running) {
       this._fpAccum += this.speed * dt;
       // one footstep ~ every 0.9m of forward travel
@@ -1553,7 +1531,6 @@ class Valhalla {
         this.scene.remove(o.mesh);
         this.obstacles.splice(i, 1);
         if (o.lane === this.lane && o.type !== "beam") {
-          // Dodged something in our lane — combo up, with payoff
           this.combo++;
           this._showCombo();
           if (this.combo > 1) {
@@ -1561,9 +1538,7 @@ class Valhalla {
             this.score += bonus;
             this._popText(`+${bonus}`, "combo", (Math.random() - 0.5) * 80, -40);
           }
-          if (this.combo === 5) this._showBanner("STREAK", "focused");
-          if (this.combo === 10) this._showBanner("BERSERKER", "berserker");
-          if (this.combo === 20) { this._showBanner("RAGNARÖK", "berserker"); this._shake(0.6, 0.4); }
+          if (this.combo === 20) this._shake(0.6, 0.4);
         }
       }
     }
@@ -1588,9 +1563,7 @@ class Valhalla {
         if (c.type === "rune") {
           this.score += c.value;
           this.audio.collect();
-          this._showBanner("RUNE", "flow");
           this._popText(`+${c.value}`, "rune", 0, -20);
-          // The big payoff: short slow-mo + glory flash. Slot-machine reward.
           this._slowMo(0.35, 0.7);
           this.hud.glory.classList.add("on");
           setTimeout(() => this.hud.glory.classList.remove("on"), 350);
@@ -1641,9 +1614,6 @@ class Valhalla {
       this.player.visible = true;
     }
 
-    // zone label by distance
-    this._updateZone();
-
     this._updateHUD();
   }
 
@@ -1660,14 +1630,12 @@ class Valhalla {
 
   _takeHit() {
     this.lives--;
-    if (this.combo > 1) this._popText(`STREAK LOST`, "combo", 0, -60);
     this.combo = 0;
     this._showCombo();
     this.invuln = 1.4;
     this.audio.hit();
     this._flash();
     this._shake(0.55, 0.35);
-    this._showBanner("− ♥", "berserker");
     if (this.lives <= 0) this._gameOver();
   }
 
@@ -1762,26 +1730,10 @@ class Valhalla {
     }
   }
 
-  _updateZone() {
-    // Zones every ~250m
-    const idx = Math.floor(this.distance / 250);
-    if (idx !== this.lastZoneIdx) {
-      this.lastZoneIdx = idx;
-      const zones = [
-        "Mistfjord", "Wolfwood", "Bonepass", "Frostmere",
-        "Iron Reach", "Yggrasil's Shadow", "The Long Dark", "Bifrost",
-      ];
-      const name = zones[idx % zones.length];
-      this.hud.zone.textContent = name;
-      if (idx > 0) this._showBanner(name, "focused");
-    }
-  }
-
   _updateHUD() {
     this.hud.score.textContent = Math.floor(this.score).toLocaleString();
     this.hud.dist.textContent = `${Math.round(this.distance)}m`;
-    this.hud.mead.textContent = this.mead;
-    this.hud.lives.textContent = "♥".repeat(Math.max(0, this.lives)) || "—";
+    this.hud.lives.textContent = Math.max(0, this.lives);
   }
 
   _resize() {
@@ -1796,7 +1748,7 @@ class Valhalla {
   _render() { this.renderer.render(this.scene, this.camera); }
 }
 
-// Boot — modules are deferred, so DOM is already parsed when this runs.
+// Boot - modules are deferred, so DOM is already parsed when this runs.
 function boot() {
   try {
     window.__valhalla = new Valhalla();
@@ -1804,7 +1756,7 @@ function boot() {
   } catch (e) {
     console.error("[Valhalla] init failed", e);
     const ldr = $("loader");
-    if (ldr) ldr.innerHTML = `<div style='text-align:center;font-family:Inter,sans-serif;letter-spacing:0;text-transform:none;line-height:1.5'>Forging failed.<br><br><span style='font-size:11px;opacity:.7'>${(e && e.message) || e}</span><br><br><a href='./index.html' style='color:#f3e0b8'>← Back</a></div>`;
+    if (ldr) ldr.innerHTML = `<div style='text-align:center;line-height:1.5'>Failed to load.<br><br><span style='font-size:11px;opacity:.7'>${(e && e.message) || e}</span><br><br><a href='./index.html' style='color:#fff'>Back to menu</a></div>`;
   }
 }
 if (document.readyState === "loading") {
