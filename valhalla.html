@@ -40,21 +40,26 @@
     .stat.lives .val{color:#ff7070;font-size:20px}
     .row{display:flex;gap:8px}
 
-    /* Bio chip — only shown if a sensor is connected */
+    /* Bio chips — always visible. Faded when no sensor, bright when live. */
     .bio{
       position:absolute;top:calc(env(safe-area-inset-top,12px) + 78px);
-      right:12px;display:none;flex-direction:column;gap:6px;align-items:flex-end;
+      right:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;
+      pointer-events:auto;cursor:pointer;
     }
-    .bio.on{display:flex}
     .chip{
       background:rgba(10,13,18,.72);
       border:1px solid rgba(255,255,255,.08);
       border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;
       display:flex;align-items:center;gap:6px;
-      color:rgba(255,255,255,.85);
+      color:rgba(255,255,255,.45);
+      transition:color .2s,border-color .2s;
     }
-    .chip .dot{width:7px;height:7px;border-radius:50%;background:#30D158;
-      box-shadow:0 0 8px #30D158}
+    .chip .dot{
+      width:7px;height:7px;border-radius:50%;background:#555;
+      transition:background .2s,box-shadow .2s;
+    }
+    .bio.on .chip{ color:rgba(255,255,255,.92); border-color:rgba(48,209,88,.4) }
+    .bio.on .chip .dot{ background:#30D158; box-shadow:0 0 8px #30D158 }
 
     /* Mobile touch controls */
     .touch{
@@ -146,21 +151,33 @@
     }
     .start .controls-help b{color:#fff;font-weight:600}
     .start .bio-cta{
-      margin-top:12px;padding:14px;
-      background:rgba(59,108,219,.12);
-      border:1px solid rgba(59,108,219,.3);
-      border-radius:10px;
+      margin-top:14px;padding:16px;
+      background:linear-gradient(135deg,rgba(220,38,38,.10),rgba(251,191,36,.10));
+      border:1px solid rgba(251,191,36,.35);
+      border-radius:12px;
     }
-    .start .bio-cta .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
-    .start .bio-cta b{color:#fff;font-size:13px;font-weight:600}
-    .start .bio-cta p{font-size:12px;color:rgba(255,255,255,.7);line-height:1.45;margin:0}
+    .start .bio-cta .top{
+      display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;
+    }
+    .start .bio-cta .top b{color:#fff;font-size:14px;font-weight:700}
+    .start .bio-cta .sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+    .start .bio-cta ul{list-style:none;padding:0;margin:8px 0 10px;font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.55}
+    .start .bio-cta ul li{padding-left:18px;position:relative}
+    .start .bio-cta ul li::before{
+      content:"";position:absolute;left:4px;top:8px;width:6px;height:6px;border-radius:50%;background:#fbbf24;
+    }
+    .start .bio-cta .actions{display:flex;gap:8px;margin-top:10px}
     .start .bio-cta button{
-      flex:0 0 auto;background:rgba(255,255,255,.12);
+      flex:1;background:rgba(255,255,255,.12);
       border:1px solid rgba(255,255,255,.2);color:#fff;
-      padding:6px 14px;border-radius:8px;font:inherit;font-size:12px;
+      padding:9px 12px;border-radius:8px;font:inherit;font-size:12.5px;
       font-weight:600;cursor:pointer;
     }
+    .start .bio-cta button.primary{background:#fbbf24;color:#1a0e02;border-color:rgba(255,220,150,.6)}
+    .start .bio-cta button.primary:hover{background:#fcd34d}
     .start .bio-cta button:hover{background:rgba(255,255,255,.22)}
+    .start .bio-cta button.live{background:#10b981;color:#0a0d12;border-color:#10b981}
+    .start .bio-cta button:disabled{opacity:.5;cursor:default}
     .start .footer{
       margin-top:16px;text-align:center;
       font-size:12px;color:rgba(255,255,255,.4);
@@ -274,10 +291,15 @@
     }
     @keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
-    /* Hide the legacy 2D game's bio badge + panel on this page —
-       valhalla has its own bio UI in the start card and HUD. */
-    #bio-badge, #bio-panel, #bio-menu-sparkline, #bio-menu-ritual{
-      display:none !important;
+    /* Hide the older menu widgets — start card has its own intro */
+    #bio-menu-sparkline, #bio-menu-ritual{ display:none !important; }
+    /* Hide the bio badge while the start card is up (it overlaps the bio
+       value-prop block). Show it once the player begins. */
+    body:not(.playing) #bio-badge{ display:none !important; }
+    body:not(.playing) #bio-panel{ display:none !important; }
+    /* On mobile, lift the badge above the touch arrows during gameplay */
+    @media (max-width:719px){
+      body.playing #bio-badge{ bottom:calc(env(safe-area-inset-bottom,16px) + 150px) !important; }
     }
 
     /* Tablet / desktop tweaks */
@@ -330,8 +352,8 @@
       </div>
     </div>
 
-    <div class="bio" id="bioRow">
-      <div class="chip" id="bpmChip"><span class="dot"></span><span id="bpmTxt">-- bpm</span></div>
+    <div class="bio" id="bioRow" title="Tap to open biosignals">
+      <div class="chip" id="bpmChip"><span class="dot"></span><span id="bpmTxt">Bio off</span></div>
       <div class="chip" id="stateChip" style="display:none"><span class="dot"></span><span id="stateTxt">Neutral</span></div>
     </div>
 
@@ -385,10 +407,23 @@
 
       <div class="bio-cta" id="bioCta">
         <div class="top">
-          <b>Use your heart rate?</b>
-          <button id="bioEnableBtn">Enable</button>
+          <div>
+            <b>Biosignals</b>
+            <div class="sub">Powered by the Elata SDK. Off by default.</div>
+          </div>
         </div>
-        <p>Optional. The game reads your pulse from the webcam and adapts in real time.</p>
+        <ul>
+          <li>Heart rate (webcam) drives game intensity. Stay calm under pressure to score more.</li>
+          <li>EEG (Muse headband) tracks focus. Sharp mind unlocks Flow state: 2&times; score.</li>
+          <li>Combine both to detect Berserker and Flow live as you run.</li>
+        </ul>
+        <div class="actions">
+          <button id="bioHrBtn">Heart rate</button>
+          <button id="bioEegBtn">EEG</button>
+        </div>
+        <div class="sub" style="margin-top:8px">
+          Or click the BIO badge anytime to open full settings.
+        </div>
       </div>
 
       <div class="footer">v3D &middot; <a href="https://github.com/AMelhede/Viking-Game" target="_blank">github</a></div>

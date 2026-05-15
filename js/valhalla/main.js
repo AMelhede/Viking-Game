@@ -1084,21 +1084,38 @@ class Valhalla {
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
 
-    // Bio enable button on the start card
-    const bioBtn = $("bioEnableBtn");
-    if (bioBtn) {
-      bioBtn.addEventListener("click", async () => {
+    // Bio start-screen buttons. Each starts the corresponding sensor and
+    // reflects its status. Both are independent.
+    const wireBioBtn = (btn, key, label) => {
+      if (!btn) return;
+      btn.addEventListener("click", async () => {
         if (!window.Bio) return;
-        bioBtn.textContent = "Starting...";
-        bioBtn.disabled = true;
+        const opts = {}; opts[key] = true;
+        btn.textContent = "Starting...";
+        btn.disabled = true;
         try {
-          await window.Bio.start({ rppg: true });
-          bioBtn.textContent = "On";
+          const r = await window.Bio.start(opts);
+          if (r[key] && r[key].ok !== false) {
+            btn.textContent = `${label} on`;
+            btn.classList.add("live");
+          } else {
+            btn.textContent = `${label} failed`;
+            btn.disabled = false;
+          }
         } catch (e) {
-          bioBtn.textContent = "Failed";
+          btn.textContent = `${label} failed`;
+          btn.disabled = false;
         }
       });
-    }
+    };
+    wireBioBtn($("bioHrBtn"), "rppg", "Heart rate");
+    wireBioBtn($("bioEegBtn"), "eeg", "EEG");
+
+    // Clicking the HUD bio row opens the canonical bio panel (the badge handles the toggle).
+    this.hud.bioRow.addEventListener("click", () => {
+      const badge = document.getElementById("bio-badge");
+      if (badge) badge.click();
+    });
   }
 
   _bindBio() {
@@ -1114,15 +1131,36 @@ class Valhalla {
       window.Bio.on("rppgStatus", (s) => {
         if (s.status === "off" || s.status === "error") {
           this.hud.bioRow.classList.remove("on");
-        } else if (s.status === "live" || s.status === "warming") {
+          this.hud.bpmTxt.textContent = "Bio off";
+        } else if (s.status === "warming") {
+          this.hud.bioRow.classList.add("on");
+          this.hud.bpmTxt.textContent = "Warming up";
+        } else if (s.status === "live") {
           this.hud.bioRow.classList.add("on");
         }
       });
-      window.Bio.on("stateChange", ({ state }) => {
+      window.Bio.on("stateChange", ({ state, prev }) => {
         this.cognitiveState = state;
         if (state && state !== "neutral") {
-          this.hud.stateTxt.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+          const label = state.charAt(0).toUpperCase() + state.slice(1);
+          this.hud.stateTxt.textContent = label;
           this.hud.stateChip.style.display = "";
+          // Factual gameplay effect, not poetry. Surfaces the value prop:
+          // bio is actually doing something to the game.
+          const effects = {
+            flow: "Flow active. 2x score.",
+            berserker: "Berserker. +12% speed, +50% score.",
+            meditation: "Meditation. -10% speed.",
+            frantic: "Frantic.",
+            focused: "Focused. +40% score.",
+            aroused: "Charged. Faster.",
+            calm: "Calm. Steadier.",
+            distracted: "Distracted.",
+          };
+          const msg = effects[state];
+          if (msg && this.running && !this.over) {
+            this._showBioToast(msg);
+          }
         } else {
           this.hud.stateChip.style.display = "none";
         }
@@ -1130,6 +1168,29 @@ class Valhalla {
       return true;
     };
     if (!tryBind()) window.addEventListener("bio:ready", tryBind, { once: true });
+  }
+
+  _showBioToast(text) {
+    let host = this._bioToast;
+    if (!host) {
+      host = document.createElement("div");
+      host.style.cssText =
+        "position:fixed;top:160px;left:50%;transform:translateX(-50%);" +
+        "background:rgba(10,13,18,.92);color:#fff;font:600 13px/1.3 system-ui,sans-serif;" +
+        "padding:9px 16px;border-radius:999px;z-index:34;pointer-events:none;" +
+        "border:1px solid rgba(251,191,36,.45);box-shadow:0 6px 20px rgba(0,0,0,.4);" +
+        "opacity:0;transition:opacity .25s ease,transform .25s ease;";
+      document.body.appendChild(host);
+      this._bioToast = host;
+    }
+    host.textContent = text;
+    host.style.opacity = "1";
+    host.style.transform = "translateX(-50%) translateY(0)";
+    clearTimeout(this._bioToastT);
+    this._bioToastT = setTimeout(() => {
+      host.style.opacity = "0";
+      host.style.transform = "translateX(-50%) translateY(-6px)";
+    }, 2400);
   }
 
   _loadStats() {
@@ -1157,6 +1218,7 @@ class Valhalla {
   _begin() {
     $("startOverlay").classList.add("hide");
     $("overOverlay").classList.remove("show");
+    document.body.classList.add("playing");
     this.lane = 1; this.targetLaneX = LANES[1];
     this.playerY = 0; this.playerVy = 0;
     this.sliding = false; this.slideTimer = 0;
