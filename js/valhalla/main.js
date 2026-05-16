@@ -2528,15 +2528,45 @@ class Valhalla {
   _render() { this.renderer.render(this.scene, this.camera); }
 }
 
-// Boot - modules are deferred, so DOM is already parsed when this runs.
+// Boot. Modules are deferred so DOM is already parsed when this runs.
+function showFatal(html) {
+  const ldr = $("loader");
+  if (!ldr) return;
+  ldr.classList.remove("hide");
+  ldr.style.color = "#fff";
+  ldr.innerHTML = html;
+}
+
 function boot() {
+  // File-protocol detection. Opening index.html directly via double-click
+  // makes the URL file:/// which most browsers won't allow ES module import
+  // maps for. The page silently hangs on "Loading". Catch this up front
+  // and tell the user how to actually run the game.
+  if (location.protocol === "file:") {
+    showFatal(`
+      <div style="text-align:center;max-width:520px;line-height:1.6;padding:0 24px">
+        <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px">Run the start script</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:18px">
+          You opened the file directly. The game needs a local web server because the
+          biosignal sensors require a secure context (file:// is blocked).
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.55);background:rgba(255,255,255,.05);
+          padding:14px 18px;border-radius:10px;text-align:left;font-family:monospace">
+          <b style="color:#fff;font-family:inherit">Windows:</b> double-click <code>start-game.bat</code><br>
+          <b style="color:#fff;font-family:inherit">macOS/Linux:</b> run <code>./start-game.sh</code><br>
+          <b style="color:#fff;font-family:inherit">Or:</b> <code>node server.js</code> then open
+          <code>http://localhost:8000</code>
+        </div>
+      </div>
+    `);
+    return;
+  }
   try {
     window.__valhalla = new Valhalla();
     console.log("[Valhalla] booted");
   } catch (e) {
     console.error("[Valhalla] init failed", e);
-    const ldr = $("loader");
-    if (ldr) ldr.innerHTML = `<div style='text-align:center;line-height:1.5'>Failed to load.<br><br><span style='font-size:11px;opacity:.7'>${(e && e.message) || e}</span><br><br><a href='./index.html' style='color:#fff'>Back to menu</a></div>`;
+    showFatal(`<div style='text-align:center;line-height:1.5'>Failed to load.<br><br><span style='font-size:11px;opacity:.7'>${(e && e.message) || e}</span></div>`);
   }
 }
 if (document.readyState === "loading") {

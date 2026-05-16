@@ -347,6 +347,46 @@
   }
   </script>
   <script type="module" src="./js/bio/index.js?v=7"></script>
+  <!-- Inline fast-fail for file:// (won't reach main.js if module imports
+       fail). Sets a helpful loader message rather than hanging. -->
+  <script>
+    if (location.protocol === "file:") {
+      document.addEventListener("DOMContentLoaded", () => {
+        const ldr = document.getElementById("loader");
+        if (!ldr) return;
+        ldr.style.color = "#fff";
+        ldr.innerHTML = `
+          <div style="text-align:center;max-width:520px;line-height:1.6;padding:0 24px;font-family:system-ui,sans-serif">
+            <div style="font-size:18px;font-weight:600;margin-bottom:8px">Run the start script</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:18px">
+              You opened the file directly. The game needs a local web server.
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,.55);background:rgba(255,255,255,.05);padding:14px 18px;border-radius:10px;text-align:left;font-family:monospace">
+              <b style="color:#fff;font-family:inherit">Windows:</b> double-click <code>start-game.bat</code><br>
+              <b style="color:#fff;font-family:inherit">macOS/Linux:</b> run <code>./start-game.sh</code><br>
+              <b style="color:#fff;font-family:inherit">Or:</b> <code>node server.js</code> then open <code>http://localhost:8000</code>
+            </div>
+          </div>`;
+      });
+    }
+    // 10-second hard timeout: if main.js never replaces the loader (CDN
+    // blocked, network error, slow shader compile), show a real error.
+    setTimeout(() => {
+      const ldr = document.getElementById("loader");
+      if (!ldr || ldr.classList.contains("hide")) return;
+      if (!window.__valhalla) {
+        ldr.style.color = "#fff";
+        ldr.innerHTML = `
+          <div style="text-align:center;max-width:480px;line-height:1.6;padding:0 24px;font-family:system-ui,sans-serif">
+            <div style="font-size:16px;font-weight:600;margin-bottom:8px">Slow loading</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px">
+              Three.js may be blocked by your network. Try a hard refresh.
+            </div>
+            <button onclick="location.reload()" style="padding:10px 20px;border:1px solid rgba(255,255,255,.2);background:#fff;color:#0a0d12;border-radius:8px;cursor:pointer;font-weight:600">Reload</button>
+          </div>`;
+      }
+    }, 10000);
+  </script>
 </head>
 <body>
   <div class="loader" id="loader">Loading</div>
