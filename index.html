@@ -346,7 +346,11 @@
     }
   }
   </script>
-  <script type="module" src="./js/bio/index.js?v=7"></script>
+  <!-- IMPORTANT: do NOT add ?v= cache-busters here. Relative imports inside
+       bio/* don't include the query, so the browser would treat them as a
+       different module URL and evaluate the whole graph twice (8x with the
+       circular import chain). server.js already sends cache-control: no-cache. -->
+  <script type="module" src="./js/bio/index.js"></script>
   <!-- Inline fast-fail for file:// (won't reach main.js if module imports
        fail). Sets a helpful loader message rather than hanging. -->
   <script>
@@ -501,6 +505,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/valhalla/main.js?v=3"></script>
+  <script type="module" src="./js/valhalla/main.js"></script>
 </body>
 </html>
