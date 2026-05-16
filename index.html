@@ -103,8 +103,33 @@
       border-radius:4px;font:inherit;font-size:10.5px;color:#fff;
     }
 
+    /* Active powerup strip - top center under HUD */
+    .power-hud{
+      position:absolute;top:calc(env(safe-area-inset-top,12px) + 78px);
+      left:50%;transform:translateX(-50%);
+      display:flex;gap:8px;pointer-events:none;
+    }
+    .power-pill{
+      display:flex;align-items:center;gap:8px;
+      padding:6px 12px;border-radius:999px;
+      background:rgba(10,13,18,.78);
+      border:1px solid #fff;
+      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+      animation:ppin .25s cubic-bezier(.2,1,.4,1.4);
+    }
+    .power-pill .pwlabel{font-size:11px;font-weight:600;letter-spacing:.02em}
+    .power-pill .pwbar{
+      width:42px;height:3px;background:rgba(255,255,255,.15);
+      border-radius:2px;overflow:hidden;
+    }
+    .power-pill .pwfill{
+      display:block;height:100%;width:100%;border-radius:2px;
+      transition:width .12s linear;
+    }
+    @keyframes ppin{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+
     .combo{
-      position:absolute;top:90px;left:50%;transform:translateX(-50%);
+      position:absolute;top:120px;left:50%;transform:translateX(-50%);
       pointer-events:none;display:none;font-weight:700;font-size:42px;color:#fff;
       letter-spacing:-.02em;text-shadow:0 4px 30px rgba(255,255,255,.4);
     }
@@ -351,6 +376,8 @@
       <div class="chip" id="bpmChip"><span class="dot"></span><span id="bpmTxt">Bio off</span></div>
       <div class="chip" id="stateChip" style="display:none"><span class="dot"></span><span id="stateTxt">Neutral</span></div>
     </div>
+
+    <div class="power-hud" id="powerHud"></div>
 
     <div class="combo" id="combo"><span id="comboN">2</span>&times;</div>
 

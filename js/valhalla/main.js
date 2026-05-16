@@ -226,6 +226,15 @@ class Valhalla {
     this.scenery = [];         // decorative trees etc with z
     this.mountains = [];
 
+    // Active powerup state. Each value is seconds remaining; 0 = inactive.
+    this.power = {
+      shield: 0,       // invuln, pass through obstacles
+      speed: 0,        // +35% speed
+      mult: 0,         // x2 incoming score
+      magnet: 0,       // pulls mead toward player
+      ship: 0,         // riding longship, immune + flies above obstacles
+    };
+
     this.cognitiveState = "neutral";
     this.bpm = null;
 
@@ -1006,6 +1015,144 @@ class Valhalla {
     }, dur * 1000);
   }
 
+  // Powerups -----------------------------------------------------------
+  _activatePowerup(type, duration) {
+    this.power[type] = duration;
+    this.audio.collect();
+    const labels = {
+      shield: "SHIELD",
+      speed:  "SPEED",
+      mult:   "2x SCORE",
+      magnet: "MAGNET",
+      ship:   "LONGSHIP",
+    };
+    this._popText(labels[type] || type, "rune", 0, -30);
+    // Side-effects on activate
+    if (type === "ship") {
+      this._mountLongship();
+    } else if (type === "shield") {
+      this._addShieldGlow();
+    }
+    this._renderPowerHudOnce();
+  }
+
+  _onPowerupEnd(type) {
+    if (type === "ship") this._dismountLongship();
+    if (type === "shield") this._removeShieldGlow();
+    this._renderPowerHudOnce();
+  }
+
+  _addShieldGlow() {
+    if (this._shieldGlow) return;
+    const g = new THREE.Mesh(
+      new THREE.SphereGeometry(1.6, 18, 12),
+      new THREE.MeshBasicMaterial({
+        color: 0x6ab0ff, transparent: true, opacity: 0.18,
+        depthWrite: false, side: THREE.BackSide,
+      })
+    );
+    g.position.y = 1.1;
+    this.player.add(g);
+    this._shieldGlow = g;
+  }
+  _removeShieldGlow() {
+    if (this._shieldGlow) { this.player.remove(this._shieldGlow); this._shieldGlow = null; }
+  }
+
+  // Build a small longship under the player (longship powerup).
+  _mountLongship() {
+    if (this._longship) return;
+    const ship = new THREE.Group();
+    const hull = new THREE.Mesh(
+      new THREE.BoxGeometry(3.2, 0.6, 1.3),
+      new THREE.MeshStandardMaterial({ color: 0x4a2a14, roughness: 0.85, flatShading: true })
+    );
+    hull.position.y = -0.4;
+    ship.add(hull);
+    // Bow and stern lift the hull at the ends
+    for (const sign of [-1, 1]) {
+      const tip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.55, 0.9, 4),
+        new THREE.MeshStandardMaterial({ color: 0x4a2a14, roughness: 0.9, flatShading: true })
+      );
+      tip.position.set(sign * 1.65, -0.1, 0);
+      tip.rotation.z = sign * Math.PI / 2;
+      ship.add(tip);
+      // Dragon head
+      const head = new THREE.Mesh(
+        new THREE.ConeGeometry(0.18, 0.4, 4),
+        new THREE.MeshStandardMaterial({ color: 0x6e2018, flatShading: true, emissive: 0x401004, emissiveIntensity: 0.4 })
+      );
+      head.position.set(sign * 2.0, 0.35, 0);
+      head.rotation.z = sign * Math.PI / 2;
+      ship.add(head);
+    }
+    // Striped sail above
+    const mast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 2.2, 6),
+      new THREE.MeshStandardMaterial({ color: 0x2a1a10 })
+    );
+    mast.position.y = 1.1;
+    ship.add(mast);
+    for (let i = 0; i < 4; i++) {
+      const stripe = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.0, 0.4),
+        new THREE.MeshStandardMaterial({
+          color: i % 2 === 0 ? 0xd8d4c4 : 0xb83020,
+          side: THREE.DoubleSide, roughness: 0.9,
+        })
+      );
+      stripe.position.set(0, 0.5 + i * 0.4, 0);
+      stripe.rotation.y = Math.PI / 2;
+      ship.add(stripe);
+    }
+    ship.position.copy(this.player.position);
+    this.scene.add(ship);
+    this._longship = ship;
+    // Lift the player off the ground while riding
+    this._shipLift = 1.6;
+  }
+  _dismountLongship() {
+    if (this._longship) { this.scene.remove(this._longship); this._longship = null; }
+    this._shipLift = 0;
+  }
+
+  // HUD power strip ------------------------------------------------------
+  _renderPowerHudOnce() {
+    const host = $("powerHud");
+    if (!host) return;
+    const icons = { shield: "shield", speed: "bolt", mult: "2x", magnet: "magnet", ship: "ship" };
+    const labels = { shield: "Shield", speed: "Speed", mult: "2x score", magnet: "Magnet", ship: "Longship" };
+    const colors = { shield: "#3a82ff", speed: "#ffb020", mult: "#ffd066", magnet: "#ff5060", ship: "#c04020" };
+    host.innerHTML = "";
+    for (const k of Object.keys(this.power)) {
+      if (this.power[k] <= 0) continue;
+      const div = document.createElement("div");
+      div.className = "power-pill";
+      div.dataset.kind = k;
+      div.style.borderColor = colors[k];
+      div.innerHTML = `<span class="pwlabel" style="color:${colors[k]}">${labels[k]}</span>
+        <span class="pwbar"><span class="pwfill" style="background:${colors[k]}"></span></span>`;
+      host.appendChild(div);
+    }
+  }
+  _updatePowerHud(dt) {
+    const host = $("powerHud");
+    if (!host) return;
+    let needsRender = false;
+    for (const pill of host.children) {
+      const k = pill.dataset.kind;
+      if (!this.power[k] || this.power[k] <= 0) { needsRender = true; break; }
+      const fill = pill.querySelector(".pwfill");
+      const max = ({ shield:6, speed:5, mult:8, magnet:6, ship:6 })[k] || 5;
+      fill.style.width = `${Math.max(0, Math.min(1, this.power[k] / max)) * 100}%`;
+    }
+    // Re-render if any pill is stale or we have an active power without a pill
+    const activeKeys = Object.keys(this.power).filter(k => this.power[k] > 0);
+    if (activeKeys.length !== host.children.length) needsRender = true;
+    if (needsRender) this._renderPowerHudOnce();
+  }
+
   _doAction(action) {
     if (this.over || !this.running) return;
     switch (action) {
@@ -1261,6 +1408,11 @@ class Valhalla {
     this.speed = BASE_SPEED;
     this._shakeAmp = 0; this._shakeT = 0;
     this._timeScale = 1; this._timeScaleTarget = 1;
+    // Clear powerups
+    for (const k of Object.keys(this.power)) this.power[k] = 0;
+    this._removeShieldGlow();
+    this._dismountLongship();
+    this._renderPowerHudOnce();
     this._showCombo();
     this._updateHUD();
     for (const o of this.obstacles) {
@@ -1321,37 +1473,43 @@ class Valhalla {
   }
 
   _spawnWave(zWorld) {
-    // zWorld = world distance where this wave appears.
-    // We convert to scene Z (which scrolls toward the player).
-    // Internally we track each entity by an absolute "spawnAt" world distance,
-    // and compute its current scene z = (spawnAt - distance).
     const r = Math.random();
-    // pattern selection
-    const lanesAvail = [0, 1, 2];
-    if (r < 0.35) {
-      // single obstacle
-      const lane = lanesAvail[(Math.random() * 3) | 0];
+    if (r < 0.20) {
+      const lane = (Math.random() * 3) | 0;
       this._spawnObstacle(lane, zWorld);
-    } else if (r < 0.6) {
-      // two-lane wall (force one specific lane)
+    } else if (r < 0.34) {
       const safe = (Math.random() * 3) | 0;
       for (let i = 0; i < 3; i++) if (i !== safe) this._spawnObstacle(i, zWorld);
-    } else if (r < 0.8) {
-      // overhead beam (must slide) on all lanes
+    } else if (r < 0.45) {
       this._spawnBeam(zWorld);
+    } else if (r < 0.55) {
+      this._spawnFirePit((Math.random() * 3) | 0, zWorld);
+    } else if (r < 0.65) {
+      this._spawnRavens(zWorld);
     } else {
       // empty wave - collectibles only
     }
-    // collectibles
+
+    // Mead cluster in a single lane (arc or line)
     const coinLane = (Math.random() * 3) | 0;
     const coinCount = 3 + ((Math.random() * 4) | 0);
+    const arc = Math.random() < 0.3;
     for (let i = 0; i < coinCount; i++) {
-      this._spawnMead(coinLane, zWorld + i * 1.6);
+      const z = zWorld + i * 1.6;
+      const y = arc ? 1.2 + Math.sin(i / coinCount * Math.PI) * 1.8 : 1.2;
+      this._spawnMead(coinLane, z, y);
     }
-    // occasional rune (rare, big bonus)
-    if (Math.random() < 0.18) {
-      const lane = (Math.random() * 3) | 0;
-      this._spawnRune(lane, zWorld + 4);
+
+    // Rare rune
+    if (Math.random() < 0.16) {
+      this._spawnRune((Math.random() * 3) | 0, zWorld + 4);
+    }
+
+    // Powerup orbs: rare, one type per wave roughly every 4-5 waves
+    if (Math.random() < 0.22) {
+      const types = ["shield", "speed", "mult", "magnet", "ship"];
+      const t = types[(Math.random() * types.length) | 0];
+      this._spawnPowerup(t, (Math.random() * 3) | 0, zWorld + 6);
     }
   }
 
@@ -1374,97 +1532,163 @@ class Valhalla {
     const r = Math.random();
     let mesh, w, h, type;
     if (r < 0.34) {
-      // Boulder: dark stone cracked with hot orange lava streaks.
-      mesh = new THREE.Group();
-      const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(1.25, 0),
-        new THREE.MeshStandardMaterial({
-          color: 0x2a2a32, roughness: 0.95, flatShading: true,
-          emissive: 0x4a1010, emissiveIntensity: 0.35,
-        })
-      );
-      rock.position.y = 1.2;
-      rock.rotation.set(Math.random(), Math.random(), Math.random());
-      rock.castShadow = true;
-      mesh.add(rock);
-      for (let i = 0; i < 3; i++) {
-        const streak = new THREE.Mesh(
-          new THREE.BoxGeometry(0.14, 1.6, 0.14),
-          new THREE.MeshBasicMaterial({ color: 0xff7020 })
-        );
-        streak.position.set((Math.random() - 0.5) * 0.9, 1.2, 0.85 + Math.random() * 0.15);
-        streak.rotation.z = (Math.random() - 0.5) * 1.0;
-        mesh.add(streak);
-      }
-      w = 2.0; h = 2.0; type = "boulder";
-    } else if (r < 0.67) {
-      // Troll: tall dark silhouette, glowing red chest + eyes, single horn.
-      mesh = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6, 1.8, 1.0),
-        new THREE.MeshStandardMaterial({
-          color: 0x1a2418, roughness: 0.92, flatShading: true,
-          emissive: 0x2c0e0e, emissiveIntensity: 0.4,
-        })
-      );
-      body.position.y = 0.9;
-      body.castShadow = true;
-      mesh.add(body);
-      const chest = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.34, 0),
-        new THREE.MeshBasicMaterial({ color: 0xff2820 })
-      );
-      chest.position.set(0, 1.15, 0.55);
-      mesh.add(chest);
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(0.85, 0.7, 0.78),
-        new THREE.MeshStandardMaterial({
-          color: 0x1a2418, roughness: 0.9, flatShading: true,
-        })
-      );
-      head.position.y = 2.15;
-      head.castShadow = true;
-      mesh.add(head);
-      for (const dx of [-0.2, 0.2]) {
-        const eye = new THREE.Mesh(
-          new THREE.SphereGeometry(0.1, 8, 6),
-          new THREE.MeshBasicMaterial({ color: 0xff4020 })
-        );
-        eye.position.set(dx, 2.25, 0.4);
-        mesh.add(eye);
-      }
-      const horn = new THREE.Mesh(
-        new THREE.ConeGeometry(0.18, 0.65, 6),
-        new THREE.MeshStandardMaterial({ color: 0x383838, roughness: 0.5, flatShading: true })
-      );
-      horn.position.y = 2.75;
-      mesh.add(horn);
-      w = 1.7; h = 2.6; type = "troll";
-    } else {
-      // Ice wall: opaque bright cyan slab with jagged tip ridge.
+      // Boulder: ancient runestone. A weather-worn slab with carved norse
+      // runes glowing dim red. Reads as a single chunky silhouette.
       mesh = new THREE.Group();
       const slab = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6, 1.7, 0.55),
+        new THREE.BoxGeometry(1.6, 2.2, 0.55),
         new THREE.MeshStandardMaterial({
-          color: 0x9eddee, roughness: 0.25, metalness: 0.2,
-          flatShading: true, emissive: 0x4080a0, emissiveIntensity: 0.5,
+          color: 0x44484f, roughness: 1.0, flatShading: true,
         })
       );
-      slab.position.y = 0.85;
+      slab.position.y = 1.1;
       slab.castShadow = true;
       mesh.add(slab);
-      for (let i = -1; i <= 1; i++) {
-        const tip = new THREE.Mesh(
-          new THREE.ConeGeometry(0.32, 0.75, 4),
+      // Chipped top (smaller box rotated)
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 0.3, 0.6),
+        new THREE.MeshStandardMaterial({
+          color: 0x52565d, roughness: 1.0, flatShading: true,
+        })
+      );
+      cap.position.y = 2.3;
+      cap.rotation.z = (Math.random() - 0.5) * 0.15;
+      mesh.add(cap);
+      // Carved runes - thin glowing red bars in a column on the front face
+      for (let i = 0; i < 4; i++) {
+        const rune = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.08, 0.02),
+          new THREE.MeshBasicMaterial({ color: 0xff3010 })
+        );
+        rune.position.set(0, 0.45 + i * 0.4, 0.29);
+        rune.rotation.z = (i % 2 === 0 ? 1 : -1) * 0.18;
+        mesh.add(rune);
+      }
+      // Moss patches (small green box at base)
+      const moss = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.15, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x2c4a25, roughness: 0.95, flatShading: true })
+      );
+      moss.position.y = 0.08;
+      mesh.add(moss);
+      w = 1.8; h = 2.5; type = "boulder";
+    } else if (r < 0.67) {
+      // Troll: hunched humanoid carrying a club. Dark green-grey skin with
+      // glowing red eyes. Reads as a real creature not a cube.
+      mesh = new THREE.Group();
+      // Body - tapered torso (cone-ish via cylinder with different radii)
+      const torso = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.7, 1.4, 8),
+        new THREE.MeshStandardMaterial({
+          color: 0x2a3a2a, roughness: 0.9, flatShading: true,
+        })
+      );
+      torso.position.y = 0.95;
+      torso.castShadow = true;
+      mesh.add(torso);
+      // Head
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 8, 6),
+        new THREE.MeshStandardMaterial({
+          color: 0x35452f, roughness: 0.92, flatShading: true,
+        })
+      );
+      head.position.y = 1.95;
+      head.scale.set(1, 0.85, 1.1);
+      head.castShadow = true;
+      mesh.add(head);
+      // Jaw / mouth box poking forward
+      const jaw = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.25, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0x202c1c, flatShading: true })
+      );
+      jaw.position.set(0, 1.78, 0.25);
+      mesh.add(jaw);
+      // Tusks
+      for (const dx of [-0.12, 0.12]) {
+        const tusk = new THREE.Mesh(
+          new THREE.ConeGeometry(0.05, 0.22, 4),
+          new THREE.MeshStandardMaterial({ color: 0xeae0c4, flatShading: true })
+        );
+        tusk.position.set(dx, 1.7, 0.42);
+        tusk.rotation.x = Math.PI;
+        mesh.add(tusk);
+      }
+      // Eyes
+      for (const dx of [-0.16, 0.16]) {
+        const eye = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xff4020 })
+        );
+        eye.position.set(dx, 2.0, 0.36);
+        mesh.add(eye);
+      }
+      // Arms hanging down with a club
+      const armL = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.9, 0.22),
+        new THREE.MeshStandardMaterial({ color: 0x2a3a2a, flatShading: true })
+      );
+      armL.position.set(-0.6, 1.0, 0.05);
+      mesh.add(armL);
+      const armR = armL.clone();
+      armR.position.x = 0.6;
+      mesh.add(armR);
+      // Club - vertical knobby cylinder in right hand
+      const club = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.15, 0.22, 1.2, 7),
+        new THREE.MeshStandardMaterial({
+          color: 0x3a2614, roughness: 0.95, flatShading: true,
+          emissive: 0x2c1404, emissiveIntensity: 0.25,
+        })
+      );
+      club.position.set(0.62, 0.55, 0.2);
+      mesh.add(club);
+      // Knobs on the club
+      for (let i = 0; i < 4; i++) {
+        const knob = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08, 6, 4),
+          new THREE.MeshStandardMaterial({ color: 0x4a3018, flatShading: true })
+        );
+        knob.position.set(0.62 + (Math.random() - 0.5) * 0.1, 0.2 + i * 0.25, 0.2 + (Math.random() - 0.5) * 0.1);
+        mesh.add(knob);
+      }
+      w = 1.7; h = 2.4; type = "troll";
+    } else {
+      // Ice spikes: cluster of jagged crystals, no flat slab. Each spike
+      // glows blue from within, reads as growing out of the ground.
+      mesh = new THREE.Group();
+      // Cluster of 5 ice cones in a triangle pattern
+      const spikes = [
+        { x: -0.5, h: 1.6, r: 0.32 },
+        { x: 0.5, h: 1.8, r: 0.34 },
+        { x: 0, h: 2.4, r: 0.42 },
+        { x: -0.25, h: 1.2, r: 0.26 },
+        { x: 0.3, h: 1.0, r: 0.24 },
+      ];
+      for (const s of spikes) {
+        const spike = new THREE.Mesh(
+          new THREE.ConeGeometry(s.r, s.h, 5),
           new THREE.MeshStandardMaterial({
-            color: 0xcaecf3, roughness: 0.2, flatShading: true,
-            emissive: 0x6098b0, emissiveIntensity: 0.45,
+            color: 0xb0e0ee, roughness: 0.18, metalness: 0.3,
+            emissive: 0x4080a8, emissiveIntensity: 0.55,
+            flatShading: true,
           })
         );
-        tip.position.set(i * 0.46, 2.05, 0);
-        mesh.add(tip);
+        spike.position.set(s.x, s.h / 2, (Math.random() - 0.5) * 0.4);
+        spike.rotation.z = (Math.random() - 0.5) * 0.3;
+        spike.castShadow = true;
+        mesh.add(spike);
       }
-      w = 1.7; h = 2.4; type = "ice";
+      // Inner glow sphere for ambient light
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 8, 6),
+        new THREE.MeshBasicMaterial({
+          color: 0xb0e0ee, transparent: true, opacity: 0.35, depthWrite: false,
+        })
+      );
+      core.position.y = 0.5;
+      mesh.add(core);
+      w = 1.7; h = 2.5; type = "ice";
     }
     // Ground decal under the obstacle. Sits in world plane, not parented,
     // so we can scroll/fade it independently.
@@ -1528,7 +1752,7 @@ class Valhalla {
     });
   }
 
-  _spawnMead(lane, zWorld) {
+  _spawnMead(lane, zWorld, baseY = 1.2) {
     const grp = new THREE.Group();
     const horn = new THREE.Mesh(
       new THREE.ConeGeometry(0.22, 0.8, 8),
@@ -1542,15 +1766,14 @@ class Valhalla {
     );
     rim.position.y = 0.4;
     grp.add(rim);
-    // glow
     const glow = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 10, 8),
       new THREE.MeshBasicMaterial({ color: 0xffd066, transparent: true, opacity: 0.18, depthWrite: false })
     );
     grp.add(glow);
-    grp.position.set(LANES[lane], 1.2, zWorld);
+    grp.position.set(LANES[lane], baseY, zWorld);
     this.scene.add(grp);
-    this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "mead", ang: 0, value: 5 });
+    this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "mead", ang: 0, value: 25, baseY });
   }
 
   _spawnRune(lane, zWorld) {
@@ -1563,7 +1786,186 @@ class Valhalla {
     );
     mesh.position.set(LANES[lane], 1.6, zWorld);
     this.scene.add(mesh);
-    this.collectibles.push({ mesh, lane, spawnAt: zWorld, type: "rune", ang: 0, value: 100 });
+    this.collectibles.push({ mesh, lane, spawnAt: zWorld, type: "rune", ang: 0, value: 100, baseY: 1.6 });
+  }
+
+  // Powerup orbs. Each is a colored glowing sphere with a halo + small icon
+  // shape inside, hovering above the path. Picking one up activates the
+  // corresponding buff for 5-8 seconds.
+  _spawnPowerup(type, lane, zWorld) {
+    const PUSPECS = {
+      shield:  { color: 0x3a82ff, halo: 0x9ec5ff, value: 6.0, sym: "shield" },
+      speed:   { color: 0xffb020, halo: 0xffe080, value: 5.0, sym: "bolt" },
+      mult:    { color: 0xffd066, halo: 0xfff2c8, value: 8.0, sym: "star" },
+      magnet:  { color: 0xff5060, halo: 0xff9aa0, value: 6.0, sym: "magnet" },
+      ship:    { color: 0xc04020, halo: 0xff8050, value: 6.0, sym: "ship" },
+    };
+    const spec = PUSPECS[type];
+    const grp = new THREE.Group();
+    // Core orb
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 14, 10),
+      new THREE.MeshStandardMaterial({
+        color: spec.color, roughness: 0.25, metalness: 0.6,
+        emissive: spec.color, emissiveIntensity: 0.95,
+      })
+    );
+    grp.add(core);
+    // Halo
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.78, 12, 8),
+      new THREE.MeshBasicMaterial({ color: spec.halo, transparent: true, opacity: 0.22, depthWrite: false })
+    );
+    grp.add(halo);
+    // Icon symbol inside the orb (small white shape that reads at distance)
+    let icon;
+    if (spec.sym === "shield") {
+      icon = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.16, 0.16, 0.05, 16),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      icon.rotation.x = Math.PI / 2;
+    } else if (spec.sym === "bolt") {
+      icon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.4, 0.08),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      icon.rotation.z = 0.5;
+    } else if (spec.sym === "star") {
+      icon = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.18, 0),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+    } else if (spec.sym === "magnet") {
+      icon = new THREE.Group();
+      const a = new THREE.Mesh(
+        new THREE.TorusGeometry(0.16, 0.06, 6, 12, Math.PI),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+      a.rotation.z = -Math.PI / 2;
+      icon.add(a);
+    } else { // ship
+      icon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.08, 0.14),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      );
+    }
+    icon.position.z = 0.05;
+    grp.add(icon);
+    grp.position.set(LANES[lane], 1.6, zWorld);
+    this.scene.add(grp);
+    this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "powerup",
+      pwType: type, value: spec.value, ang: 0, baseY: 1.6 });
+  }
+
+  // Fire pit: a low burning hazard occupying one lane. Must JUMP over it.
+  _spawnFirePit(lane, zWorld) {
+    const grp = new THREE.Group();
+    // Charred base
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.95, 1.05, 0.2, 12),
+      new THREE.MeshStandardMaterial({ color: 0x16100c, roughness: 1.0, flatShading: true })
+    );
+    base.position.y = 0.1;
+    grp.add(base);
+    // Logs
+    for (let i = 0; i < 3; i++) {
+      const log = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.1, 1.0, 6),
+        new THREE.MeshStandardMaterial({ color: 0x2a1808, roughness: 0.9, flatShading: true,
+          emissive: 0xff4020, emissiveIntensity: 0.4 })
+      );
+      log.rotation.z = Math.PI / 2;
+      log.rotation.y = i * Math.PI / 3;
+      log.position.y = 0.25;
+      grp.add(log);
+    }
+    // Flames: stacked tetrahedra with orange/red colors and emissive glow
+    const flames = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const h = 0.7 + i * 0.18;
+      const r = 0.5 - i * 0.08;
+      const flame = new THREE.Mesh(
+        new THREE.TetrahedronGeometry(r, 0),
+        new THREE.MeshBasicMaterial({
+          color: i < 2 ? 0xff4810 : i < 4 ? 0xffa030 : 0xffe070,
+          transparent: true, opacity: 0.85, fog: true,
+        })
+      );
+      flame.position.y = h;
+      flame.userData.basePhase = Math.random() * Math.PI * 2;
+      flames.add(flame);
+    }
+    grp.add(flames);
+    grp.userData.flames = flames;
+    // Ember light
+    const fireLight = new THREE.PointLight(0xff5520, 1.2, 8, 2);
+    fireLight.position.y = 0.8;
+    grp.add(fireLight);
+    grp.position.set(LANES[lane], 0, zWorld);
+    this.scene.add(grp);
+
+    const decal = this._makeGroundDecal(0xff4020, 1.3);
+    decal.position.set(LANES[lane], 0.06, zWorld);
+    this.scene.add(decal);
+
+    this.obstacles.push({
+      mesh: grp, lane, spawnAt: zWorld, type: "fire",
+      w: 1.9, h: 0.6, slidable: false, decal,
+    });
+  }
+
+  // Swooping ravens: 3 dark birds at chest/head height that span lanes.
+  // Player must SLIDE to avoid them. Acts like the hazard bar but is alive
+  // looking.
+  _spawnRavens(zWorld) {
+    const grp = new THREE.Group();
+    const span = 12;
+    for (let i = -2; i <= 2; i++) {
+      const bird = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.5, flatShading: true })
+      );
+      body.scale.z = 1.6;
+      bird.add(body);
+      // Wings
+      for (const side of [-1, 1]) {
+        const wing = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.04, 0.18),
+          new THREE.MeshStandardMaterial({ color: 0x141422, roughness: 0.6, flatShading: true })
+        );
+        wing.position.set(side * 0.35, 0.04, 0);
+        wing.rotation.z = side * 0.3;
+        wing.userData.side = side;
+        wing.userData.phase = Math.random() * Math.PI * 2;
+        bird.add(wing);
+      }
+      // Glowing eye
+      const eye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0xff3010 })
+      );
+      eye.position.set(0.08, 0.06, 0.32);
+      bird.add(eye);
+      bird.position.set(i * 2.4, 1.85, i * 0.3);
+      bird.userData.phase = Math.random() * Math.PI * 2;
+      grp.add(bird);
+    }
+    grp.position.z = zWorld;
+    this.scene.add(grp);
+
+    const decals = [];
+    for (let li = 0; li < 3; li++) {
+      const d = this._makeGroundDecal(0xff4020, 0.95);
+      d.position.set(LANES[li], 0.06, zWorld);
+      this.scene.add(d);
+      decals.push(d);
+    }
+    this.obstacles.push({
+      mesh: grp, lane: -1, spawnAt: zWorld, type: "ravens",
+      w: 999, h: 0.55, slidable: true, yMin: 1.5, decal: decals,
+    });
   }
 
   // ---------- Frame ----------
@@ -1588,19 +1990,31 @@ class Valhalla {
     // speed ramp; bio nudges
     let target = BASE_SPEED + Math.min(this.distance * 0.012, MAX_SPEED - BASE_SPEED);
     if (this.sprint) target *= 1.18;
-    // Bio influence: berserker -> faster, meditation -> slower, flow -> smoother (multiplier on score)
     if (this.cognitiveState === "berserker") target *= 1.12;
     else if (this.cognitiveState === "meditation") target *= 0.9;
+    // Powerup-driven speed multipliers
+    if (this.power.speed > 0) target *= 1.35;
+    if (this.power.ship > 0) target *= 1.25;
     this.speed += (target - this.speed) * Math.min(1, dt * 2);
+
+    // Tick down active powerups
+    for (const k of Object.keys(this.power)) {
+      if (this.power[k] > 0) {
+        this.power[k] = Math.max(0, this.power[k] - dt);
+        if (this.power[k] === 0) this._onPowerupEnd(k);
+      }
+    }
+    this._updatePowerHud(dt);
 
     // forward distance
     this.distance += this.speed * dt;
 
-    // score gain (boosted by combo, flow)
+    // score multipliers stack: bio state + combo + 2x powerup
     const flowMul = (this.cognitiveState === "flow") ? 2.0 :
                     (this.cognitiveState === "focused") ? 1.4 :
                     (this.cognitiveState === "berserker") ? 1.5 : 1.0;
-    this.score += dt * this.speed * 0.6 * (1 + this.combo * 0.05) * flowMul;
+    const powerMul = this.power.mult > 0 ? 2.0 : 1.0;
+    this.score += dt * this.speed * 0.6 * (1 + this.combo * 0.05) * flowMul * powerMul;
 
     // lane lerp
     const px = this.player.position.x;
@@ -1610,7 +2024,15 @@ class Valhalla {
     this.playerVy -= GRAVITY * dt;
     this.playerY += this.playerVy * dt;
     if (this.playerY < 0) { this.playerY = 0; this.playerVy = 0; }
-    this.player.position.y = this.playerY;
+    // Longship lifts the player up while riding
+    const lift = this._shipLift || 0;
+    this.player.position.y = this.playerY + lift;
+    // Move longship under player
+    if (this._longship) {
+      this._longship.position.x = this.player.position.x;
+      this._longship.position.z = this.player.position.z;
+      this._longship.position.y = lift - 0.4 + Math.sin(performance.now() * 0.003) * 0.08;
+    }
 
     // slide
     if (this.sliding) {
@@ -1733,10 +2155,43 @@ class Valhalla {
         }
       }
       if (o.type === "troll") o.mesh.rotation.y = Math.sin(performance.now() * 0.003) * 0.2;
-      if (!this.invuln && Math.abs(sz) < 1.0) {
+      // Animate fire flames
+      if (o.type === "fire" && o.mesh.userData.flames) {
+        const flameTime = performance.now() * 0.006;
+        for (let f = 0; f < o.mesh.userData.flames.children.length; f++) {
+          const flame = o.mesh.userData.flames.children[f];
+          flame.rotation.y = flameTime + flame.userData.basePhase;
+          flame.scale.set(
+            0.8 + Math.sin(flameTime * 1.3 + flame.userData.basePhase) * 0.2,
+            0.85 + Math.sin(flameTime + flame.userData.basePhase) * 0.25,
+            0.8 + Math.cos(flameTime * 1.1 + flame.userData.basePhase) * 0.2
+          );
+        }
+      }
+      // Animate ravens (wings flapping, slight horizontal drift)
+      if (o.type === "ravens") {
+        const rt = performance.now() * 0.01;
+        for (const bird of o.mesh.children) {
+          bird.position.y = 1.85 + Math.sin(rt + bird.userData.phase) * 0.12;
+          for (const w of bird.children) {
+            if (w.userData.side !== undefined) {
+              w.rotation.z = w.userData.side * (0.3 + Math.sin(rt * 2 + w.userData.phase) * 0.6);
+            }
+          }
+        }
+      }
+      // Collision: shield or longship grants invulnerability and busts the
+      // obstacle on contact for combo credit instead of damage.
+      const invul = this.invuln > 0 || this.power.shield > 0 || this.power.ship > 0;
+      if (Math.abs(sz) < 1.0) {
         const hit = this._hitsPlayer(o);
-        if (hit) {
+        if (hit && !invul) {
           this._takeHit();
+          o.spawnAt = this.distance - 100;
+        } else if (hit && invul) {
+          // Bust through: pop a "BUST" text, count as dodge
+          this._popText("BUST", "rune", 0, -30);
+          this._shake(0.25, 0.18);
           o.spawnAt = this.distance - 100;
         }
       }
@@ -1747,7 +2202,8 @@ class Valhalla {
           else this.scene.remove(o.decal);
         }
         this.obstacles.splice(i, 1);
-        if (o.lane === this.lane && o.type !== "beam") {
+        const inLane = o.lane === this.lane || o.type === "beam" || o.type === "ravens";
+        if (inLane && o.type !== "beam" && o.type !== "ravens") {
           this.combo++;
           this._showCombo();
           if (this.combo > 1) {
@@ -1764,15 +2220,27 @@ class Valhalla {
     for (let i = this.collectibles.length - 1; i >= 0; i--) {
       const c = this.collectibles[i];
       const sz = c.spawnAt - this.distance;
+      let cx = LANES[c.lane];
+      // Magnet: pull mead horizontally toward player when within ~6m ahead
+      if (this.power.magnet > 0 && c.type === "mead" && sz > -2 && sz < 8) {
+        const targetX = this.player.position.x;
+        cx = LANES[c.lane] + (targetX - LANES[c.lane]) * Math.min(1, (8 - sz) / 8);
+        c.mesh.position.x = cx;
+      } else {
+        c.mesh.position.x = LANES[c.lane];
+      }
       c.mesh.position.z = sz;
       c.ang += dt * 3;
       c.mesh.rotation.y = c.ang;
-      c.mesh.position.y = (c.type === "rune" ? 1.6 : 1.2) + Math.sin(c.ang * 1.3) * 0.12;
-      if (Math.abs(sz) < 0.9 && Math.abs(this.player.position.x - LANES[c.lane]) < 1.2 &&
+      const baseY = c.baseY != null ? c.baseY : (c.type === "rune" ? 1.6 : 1.2);
+      c.mesh.position.y = baseY + Math.sin(c.ang * 1.3) * 0.12;
+      // Collision: tighter for mead (no magnet snap unless close), normal for others
+      const xDist = Math.abs(this.player.position.x - cx);
+      if (Math.abs(sz) < 0.9 && xDist < 1.2 &&
           this.playerY < 2.4 && this.playerY > -0.2) {
         if (c.type === "mead") {
           this.mead++;
-          const gain = 25;
+          const gain = this.power.mult > 0 ? 50 : 25;
           this.score += gain;
           this.audio.collect();
           this._popText(`+${gain}`, "gold", (Math.random() - 0.5) * 60, 0);
@@ -1784,6 +2252,9 @@ class Valhalla {
           this._slowMo(0.35, 0.7);
           this.hud.glory.classList.add("on");
           setTimeout(() => this.hud.glory.classList.remove("on"), 350);
+        }
+        if (c.type === "powerup") {
+          this._activatePowerup(c.pwType, c.value);
         }
         this.scene.remove(c.mesh);
         this.collectibles.splice(i, 1);
