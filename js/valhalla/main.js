@@ -361,9 +361,7 @@ class Valhalla {
   }
 
   _buildSkyExtras() {
-    // Visible sun disc + halo, placed in the sky direction. Pure visual
-    // anchor - gives the eye something to read as "that's the sun".
-    const sunGeo = new THREE.SphereGeometry(12, 16, 12);
+    const sunGeo = new THREE.SphereGeometry(14, 16, 12);
     const sunMat = new THREE.MeshBasicMaterial({
       color: 0xfff6d8, fog: false, transparent: true, opacity: 0.98,
       depthWrite: false,
@@ -372,15 +370,49 @@ class Valhalla {
     this.sunDisc.position.copy(this.sunPos).multiplyScalar(600);
     this.scene.add(this.sunDisc);
 
-    // Diffuse halo around the sun
-    const haloGeo = new THREE.SphereGeometry(48, 16, 12);
+    const haloGeo = new THREE.SphereGeometry(60, 16, 12);
     const haloMat = new THREE.MeshBasicMaterial({
-      color: 0xffe9b0, fog: false, transparent: true, opacity: 0.22,
+      color: 0xffe9b0, fog: false, transparent: true, opacity: 0.26,
       depthWrite: false,
     });
     this.sunHalo = new THREE.Mesh(haloGeo, haloMat);
     this.sunHalo.position.copy(this.sunPos).multiplyScalar(600);
     this.scene.add(this.sunHalo);
+
+    // Volumetric god ray: long cone pointing FROM the sun direction TOWARD
+    // the player area, semi-transparent additive. Reads as light shafts
+    // breaking through the cold air. This is the single biggest atmospheric
+    // upgrade we can do without a real volumetric shader.
+    const rayCone = new THREE.Mesh(
+      new THREE.ConeGeometry(60, 320, 24, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xffe9a8, transparent: true, opacity: 0.10,
+        side: THREE.DoubleSide, depthWrite: false, fog: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    // Orient cone tip at sun direction; base hangs down toward ground.
+    const sunDir = this.sunPos.clone().normalize();
+    rayCone.position.copy(sunDir).multiplyScalar(180);
+    rayCone.lookAt(0, -40, 60);
+    rayCone.rotateX(Math.PI / 2);
+    this.scene.add(rayCone);
+    this.godRay = rayCone;
+
+    // Secondary fainter shaft for depth
+    const ray2 = new THREE.Mesh(
+      new THREE.ConeGeometry(120, 380, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xfff0c4, transparent: true, opacity: 0.04,
+        side: THREE.DoubleSide, depthWrite: false, fog: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
+    ray2.position.copy(sunDir).multiplyScalar(170);
+    ray2.lookAt(0, -40, 60);
+    ray2.rotateX(Math.PI / 2);
+    this.scene.add(ray2);
+    this.godRay2 = ray2;
   }
 
   _buildLights() {
@@ -412,15 +444,23 @@ class Valhalla {
   }
 
   _buildGround() {
-    // Six tiled ground chunks with displaced vertices for relief.
-    const segW = 24, segL = 32;
+    // Higher tessellation so per-vertex displacement reads as actual snow
+    // microrelief, not flat plane with paint. 40x52 segs = ~2000 verts
+    // per chunk - still cheap.
+    const segW = 40, segL = 52;
     const geo = new THREE.PlaneGeometry(GROUND_WIDTH, CHUNK_LENGTH, segW, segL);
     geo.rotateX(-Math.PI / 2);
 
-    // Vertex colors: snow on the path band, mossy/rock further out
+    // Procedural noise texture for the snow surface. Repeated across the
+    // plane, this gives the ground actual visual detail under the sun
+    // without needing an asset download. Tiles seamlessly.
+    const tex = this._makeSnowTexture();
     const snowMat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.95, metalness: 0.0,
-      flatShading: true,
+      vertexColors: true, roughness: 0.88, metalness: 0.0,
+      flatShading: false,
+      map: tex,
+      bumpMap: tex,
+      bumpScale: 0.18,
     });
 
     this.chunkGeo = geo;
@@ -431,6 +471,43 @@ class Valhalla {
       this.chunks.push(chunk);
       this.scene.add(chunk.mesh);
     }
+  }
+
+  _makeSnowTexture() {
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    // Base off-white snow color
+    ctx.fillStyle = "#e8edf2";
+    ctx.fillRect(0, 0, size, size);
+    // Multi-frequency noise: speckle of cool greys + faint blues for crystal
+    // detail. Renders as a soft micro-noise texture that reads as snow grain.
+    const img = ctx.getImageData(0, 0, size, size);
+    const d = img.data;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const idx = (y * size + x) * 4;
+        const n = fbm(x * 0.06, y * 0.06) * 0.7 + fbm(x * 0.25, y * 0.25) * 0.3;
+        const v = 220 + n * 35;
+        const blue = 235 + n * 20;
+        d[idx]     = v;
+        d[idx + 1] = v + 2;
+        d[idx + 2] = blue;
+        d[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    // Scatter sparkles (tiny brighter dots) for sunlit ice crystals
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    for (let i = 0; i < 90; i++) {
+      ctx.fillRect((Math.random() * size) | 0, (Math.random() * size) | 0, 1, 1);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(8, 8);
+    tex.anisotropy = 4;
+    return tex;
   }
 
   _makeChunk(zStart) {
@@ -1505,10 +1582,13 @@ class Valhalla {
       this._spawnRune((Math.random() * 3) | 0, zWorld + 4);
     }
 
-    // Powerup orbs: rare, one type per wave roughly every 4-5 waves
-    if (Math.random() < 0.22) {
-      const types = ["shield", "speed", "mult", "magnet", "ship"];
-      const t = types[(Math.random() * types.length) | 0];
+    // Powerup orbs: rare. Invuln-style powers (shield, ship) only after
+    // ~80m so the player gets a chance to die early and the game has stakes.
+    if (Math.random() < 0.08) {
+      const safePool = this.distance < 80
+        ? ["speed", "mult", "magnet"]
+        : ["shield", "speed", "mult", "magnet", "ship"];
+      const t = safePool[(Math.random() * safePool.length) | 0];
       this._spawnPowerup(t, (Math.random() * 3) | 0, zWorld + 6);
     }
   }
@@ -2093,8 +2173,10 @@ class Valhalla {
     }
 
     // camera follow with subtle sway
-    const camTargetX = this.player.position.x * 0.4 + Math.sin(t * 0.3) * 0.15;
-    const camTargetY = 4.0 + Math.sin(t * 0.25) * 0.08 + this.playerY * 0.15;
+    // Running cam bob: bigger amplitude tied to speed. Sells motion.
+    const bobAmp = 0.08 + Math.min(0.18, (this.speed - BASE_SPEED) * 0.005);
+    const camTargetX = this.player.position.x * 0.4 + Math.sin(t * 0.3) * 0.18;
+    const camTargetY = 4.0 + Math.sin(t * 1.6) * bobAmp + this.playerY * 0.15;
     this.camera.position.x += (camTargetX - this.camera.position.x) * Math.min(1, dt * 4);
     this.camera.position.y += (camTargetY - this.camera.position.y) * Math.min(1, dt * 4);
     this.camera.position.z = -11.5;
@@ -2180,18 +2262,20 @@ class Valhalla {
           }
         }
       }
-      // Collision: shield or longship grants invulnerability and busts the
-      // obstacle on contact for combo credit instead of damage.
+      // Collision window scales with speed so high-speed frames don't tunnel
+      // through obstacles. Minimum 1m, otherwise 1.5 frames worth of travel.
+      const hitWindow = Math.max(1.0, this.speed * dt * 1.5);
       const invul = this.invuln > 0 || this.power.shield > 0 || this.power.ship > 0;
-      if (Math.abs(sz) < 1.0) {
+      if (Math.abs(sz) < hitWindow && !o._consumed) {
         const hit = this._hitsPlayer(o);
         if (hit && !invul) {
           this._takeHit();
+          o._consumed = true;
           o.spawnAt = this.distance - 100;
         } else if (hit && invul) {
-          // Bust through: pop a "BUST" text, count as dodge
           this._popText("BUST", "rune", 0, -30);
           this._shake(0.25, 0.18);
+          o._consumed = true;
           o.spawnAt = this.distance - 100;
         }
       }
@@ -2272,6 +2356,9 @@ class Valhalla {
 
     // mountain ring follows the player slowly so they always feel distant
     this.mountainRing.position.z = this.distance;
+    // god rays follow the player so the light shaft is always present
+    if (this.godRay) this.godRay.position.z = this.distance;
+    if (this.godRay2) this.godRay2.position.z = this.distance;
     // skew water to follow distance
     this.water[0].position.z = this.distance + VIEW_DEPTH / 2;
     this.water[1].position.z = this.distance + VIEW_DEPTH / 2;
@@ -2307,12 +2394,17 @@ class Valhalla {
 
   _hitsPlayer(o) {
     const px = this.player.position.x;
-    if (o.type === "beam") {
-      // overhead beam: hits unless we're sliding (low) or fully airborne above 2m? must SLIDE.
+    // Row-spanning hazards at chest height: must slide.
+    if (o.type === "beam" || o.type === "ravens") {
       return !this.sliding;
     }
+    // Single-lane hazards: must be in different lane or jumped high enough.
     if (Math.abs(px - LANES[o.lane]) > (o.w * 0.5 + 0.55)) return false;
-    if (this.playerY > o.h - 0.3) return false; // jumped over
+    // Fire pit is ground-level: jump clears it.
+    if (o.type === "fire") {
+      return this.playerY < 0.9;
+    }
+    if (this.playerY > o.h - 0.3) return false;
     return true;
   }
 
