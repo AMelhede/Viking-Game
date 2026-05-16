@@ -1538,6 +1538,21 @@ class Valhalla {
     }
     this._fpIdx = 0;
     this._fpAccum = 0;
+
+    // Bio aura — a soft glowing sphere wrapped around the player whose
+    // colour is driven by the cognitive state. Starts invisible; comes
+    // on the moment a biosignal is active. This is the player's visible
+    // proof that the body/mind is actually doing something to the game.
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0,
+      depthWrite: false, side: THREE.BackSide,
+    });
+    const bioAura = new THREE.Mesh(new THREE.SphereGeometry(1.5, 18, 12), auraMat);
+    bioAura.position.y = 1.1;
+    grp.add(bioAura);
+    this._bioAura = bioAura;
+    this._bioAuraTargetColor = new THREE.Color(0xffffff);
+    this._bioAuraTargetOpacity = 0;
   }
 
   _buildSnow() {
@@ -1659,6 +1674,72 @@ class Valhalla {
       this.hud.mult.className = "mult on " + state;
     } else {
       this.hud.mult.className = "mult";
+    }
+    // Bio aura colour + intensity per state. Targets are eased toward in
+    // _updateBioAura each frame so transitions are smooth, not jarring.
+    const PALETTE = {
+      flow:        { hex: 0xa0ecff, opacity: 0.42 },  // cyan-white — peak performance
+      berserker:   { hex: 0xff6048, opacity: 0.55 },  // red — rage
+      focused:     { hex: 0xa0c0ff, opacity: 0.32 },  // calm blue — locked-in
+      meditation:  { hex: 0x70e8a8, opacity: 0.28 },  // soft green — restorative
+      frantic:     { hex: 0xff80e0, opacity: 0.42 },  // magenta — chaotic
+      aroused:     { hex: 0xffb060, opacity: 0.32 },  // orange — charged
+      calm:        { hex: 0x80d0e0, opacity: 0.22 },  // pale cyan — at peace
+      distracted:  { hex: 0x808898, opacity: 0.18 },  // grey — drift
+      neutral:     { hex: 0xffffff, opacity: 0.00 },  // off
+    };
+    const p = PALETTE[state] || PALETTE.neutral;
+    if (this._bioAura) {
+      this._bioAuraTargetColor.setHex(p.hex);
+      // No aura on the menu; only when actually playing.
+      this._bioAuraTargetOpacity = this.running ? p.opacity : 0;
+    }
+    // Body-level CSS class drives the full-screen vignette tint.
+    if (state && state !== "neutral") {
+      document.body.dataset.bioState = state;
+    } else {
+      delete document.body.dataset.bioState;
+    }
+    // Brief screen flash on state CHANGE (not on every refresh).
+    if (state && state !== "neutral" && state !== this._lastFlashedState) {
+      this._lastFlashedState = state;
+      this._bioStateFlash(p.hex);
+    } else if (!state || state === "neutral") {
+      this._lastFlashedState = null;
+    }
+  }
+
+  // One-shot fullscreen colour flash when bio cognitive state changes.
+  // Uses a CSS-driven overlay (added once, reused) so it doesn't burn GC.
+  _bioStateFlash(hex) {
+    let el = this._bioFlashEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:33;"
+        + "opacity:0;transition:opacity .22s ease;mix-blend-mode:screen;";
+      document.body.appendChild(el);
+      this._bioFlashEl = el;
+    }
+    const css = "#" + ("000000" + hex.toString(16)).slice(-6);
+    el.style.background = `radial-gradient(ellipse at center,${css}55 0%,${css}10 60%,transparent 100%)`;
+    el.style.opacity = "1";
+    clearTimeout(this._bioFlashT);
+    this._bioFlashT = setTimeout(() => { el.style.opacity = "0"; }, 280);
+  }
+
+  // Ease bio aura colour + opacity toward targets each frame so state
+  // changes feel like a breath, not a flicker. Called from _update.
+  _updateBioAura(dt) {
+    if (!this._bioAura) return;
+    const mat = this._bioAura.material;
+    // Opacity ease.
+    mat.opacity += (this._bioAuraTargetOpacity - mat.opacity) * Math.min(1, dt * 3);
+    // Colour ease — Color.lerp gives perceptual mid-tones.
+    mat.color.lerp(this._bioAuraTargetColor, Math.min(1, dt * 2.5));
+    // Subtle breathing pulse at ~0.4 Hz so the aura feels alive.
+    if (this._bioAuraTargetOpacity > 0.01) {
+      const pulse = 1 + Math.sin(performance.now() * 0.0025) * 0.06;
+      this._bioAura.scale.setScalar(pulse);
     }
   }
 
@@ -2295,6 +2376,9 @@ class Valhalla {
     this._spawnZ = 55;
     // Reset hostile-spawn cooldown so the very first wave isn't gated.
     this._lastHardZ = -999;
+    // Refresh bio aura with the current state so it shows on this run too
+    // (cognitive state survives game-over, only the visible aura clears).
+    this._updateMultiplier(this.cognitiveState);
     this.running = true; this.over = false; this.paused = false;
     this.audio.ensure();
     this.audio.startWind();
@@ -2989,6 +3073,7 @@ class Valhalla {
     }
     this._updatePowerHud(dt);
     this._updateGodPowers(dt);
+    this._updateBioAura(dt);
 
     // forward distance
     this.distance += this.speed * dt;
