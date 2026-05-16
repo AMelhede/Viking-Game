@@ -246,14 +246,13 @@ class Valhalla {
     window.addEventListener("resize", () => this._resize());
     this._resize();
 
-    // Render one frame synchronously, then hide the loader. If we wait for
-    // rAF the page can paint the (still-visible) loader over our rendered
-    // scene and the user sees nothing.
     this._renderOnce();
+    // Hide loader using the actual CSS class ("hide", not "hidden") so the
+    // fade transition fires. Then remove the element after the fade.
     const ldr = $("loader");
     if (ldr) {
-      ldr.classList.add("hidden");
-      setTimeout(() => ldr.remove(), 700);
+      ldr.classList.add("hide");
+      setTimeout(() => ldr.remove(), 500);
     }
 
     // Score popper container (DOM-based floating text)
