@@ -32,105 +32,425 @@ const Store = {
 
 const $ = (id) => document.getElementById(id);
 
-// ---------------- Audio ----------------
+// ---------------- NorseAudio ----------------
+// Procedural audio for Valhalla. No samples — everything synthesized in
+// WebAudio. The aim is to sound like you've actually been transported to
+// the Viking Age: longhall acoustics, lur horn carrying across a fjord,
+// frame drum and skald-chant over a smoke-fire. Reverb is a cheap multi-
+// tap delay with feedback (no impulse response). Music is built from
+// layered procedural instruments:
+//
+//   Lur            — long brass-like signal horn. 3 detuned saws through
+//                    a sweeping lowpass with 5.2 Hz vibrato in sustain.
+//   Tagelharpa     — bowed Sami lyre. 2 detuned saws through a bandpass,
+//                    plus quiet high-passed pink noise for bow friction.
+//   Frame drum     — sine kick (90→32 Hz) + filtered noise skin slap.
+//   Throat chant   — sawtooth + 6 harmonics through three vowel formants.
+//   Animal horn    — short FM tone for bell/blessing pickups.
+//
+// Modal centre: D Phrygian (D Eb F G A Bb C). The flat-2nd gives the
+// "Northern" minor flavour without sounding like generic minor.
 class Audio {
   constructor() {
     this.muted = localStorage.getItem("valhalla.muted") === "true";
     this.ctx = null;
     this.master = null;
+    this.wet = null;
     this.windNode = null;
-    this.musicLoop = null;
+    this.musicTimer = null;
+    this.ambientTimer = null;
     this._beat = 0;
+    this._noiseBuf = null;
+    this._pinkBuf = null;
   }
+
   ensure() {
     if (this.ctx) return;
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.5;
+      this.master.gain.value = this.muted ? 0 : 0.42;
       this.master.connect(this.ctx.destination);
+
+      // Cheap stone-hall reverb: 4 delay taps fed back through one delay,
+      // then lowpassed for warmth. Sounds like a longhall without needing
+      // an impulse-response file.
+      const wet = this.ctx.createGain();
+      wet.gain.value = 0.32;
+      const sum = this.ctx.createGain(); sum.gain.value = 1;
+      const taps = [
+        { time: 0.053, gain: 0.55 },
+        { time: 0.117, gain: 0.38 },
+        { time: 0.231, gain: 0.26 },
+        { time: 0.453, gain: 0.16 },
+      ];
+      for (const t of taps) {
+        const d = this.ctx.createDelay(0.6);
+        d.delayTime.value = t.time;
+        const g = this.ctx.createGain(); g.gain.value = t.gain;
+        wet.connect(d); d.connect(g); g.connect(sum);
+      }
+      const feedback = this.ctx.createDelay(0.6);
+      feedback.delayTime.value = 0.31;
+      const fbGain = this.ctx.createGain();
+      fbGain.gain.value = 0.40;
+      sum.connect(feedback); feedback.connect(fbGain); fbGain.connect(sum);
+      const wetLP = this.ctx.createBiquadFilter();
+      wetLP.type = "lowpass"; wetLP.frequency.value = 2200;
+      sum.connect(wetLP); wetLP.connect(this.master);
+      this.wet = wet;
+
+      // Pre-build noise buffers (cheap, reused).
+      this._pinkBuf = this._makePinkBuffer(2);
+      this._noiseBuf = this._makeWhiteBuffer(0.5);
     } catch (e) { console.warn("[Valhalla] audio init failed", e); }
   }
+
   setMuted(m) {
     this.muted = m;
     localStorage.setItem("valhalla.muted", String(m));
-    if (this.master) this.master.gain.linearRampToValueAtTime(m ? 0 : 0.5, this.ctx.currentTime + 0.2);
+    if (this.master) this.master.gain.linearRampToValueAtTime(m ? 0 : 0.42, this.ctx.currentTime + 0.2);
   }
+
+  // --- noise helpers ---------------------------------------------------
+  _makeWhiteBuffer(sec) {
+    const len = Math.floor(this.ctx.sampleRate * sec);
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+  // Voss-McCartney pink noise — much warmer than white for wind/breath.
+  _makePinkBuffer(sec) {
+    const len = Math.floor(this.ctx.sampleRate * sec);
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + w * 0.0555179;
+      b1 = 0.99332 * b1 + w * 0.0750759;
+      b2 = 0.96900 * b2 + w * 0.1538520;
+      b3 = 0.86650 * b3 + w * 0.3104856;
+      b4 = 0.55000 * b4 + w * 0.5329522;
+      b5 = -0.7616 * b5 - w * 0.0168980;
+      d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
+      b6 = w * 0.115926;
+    }
+    return buf;
+  }
+  _noiseSrc(pink = true) {
+    const src = this.ctx.createBufferSource();
+    src.buffer = pink ? this._pinkBuf : this._noiseBuf;
+    src.loop = true;
+    return src;
+  }
+
+  // Send a node both dry to master and an attenuated copy to the reverb.
+  _send(node, wetAmt = 0.35) {
+    node.connect(this.master);
+    if (this.wet && wetAmt > 0) {
+      const w = this.ctx.createGain(); w.gain.value = wetAmt;
+      node.connect(w); w.connect(this.wet);
+    }
+  }
+
+  // --- instruments -----------------------------------------------------
+  // Lur horn: long, brass-like, used historically by Vikings to signal
+  // across fjords. Three detuned saws through a lowpass that opens on
+  // attack (~70ms) and closes through sustain, with 5.2 Hz vibrato.
+  _lur(when, freq, dur, vol = 0.16) {
+    const ctx = this.ctx;
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(180, when);
+    lp.frequency.linearRampToValueAtTime(1800, when + 0.07);
+    lp.frequency.linearRampToValueAtTime(900, when + Math.max(0.2, dur * 0.8));
+    lp.Q.value = 0.7;
+    const oscs = [];
+    for (const det of [-9, 0, 8]) {
+      const o = ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = freq;
+      o.detune.value = det;
+      o.connect(lp);
+      oscs.push(o);
+    }
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 5.2;
+    const vibG = ctx.createGain();
+    vibG.gain.value = 6;
+    vib.connect(vibG);
+    for (const o of oscs) vibG.connect(o.detune);
+    lp.connect(out);
+    this._send(out, 0.45);
+    out.gain.setValueAtTime(0.0001, when);
+    out.gain.exponentialRampToValueAtTime(vol, when + 0.08);
+    out.gain.linearRampToValueAtTime(vol * 0.82, when + Math.max(0.12, dur * 0.7));
+    out.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    for (const o of oscs) { o.start(when); o.stop(when + dur + 0.05); }
+    vib.start(when); vib.stop(when + dur + 0.05);
+  }
+
+  // Tagelharpa: bowed lyre with woody resonance. Two detuned saws through
+  // a bandpass at ~2.4× freq, plus quiet high-passed pink noise to model
+  // horsehair-on-string friction.
+  _tagelharpa(when, freq, dur, vol = 0.12) {
+    const ctx = this.ctx;
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = Math.max(450, freq * 2.4);
+    bp.Q.value = 2.4;
+    for (const det of [-4, 4]) {
+      const o = ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = freq;
+      o.detune.value = det;
+      o.connect(bp);
+      o.start(when); o.stop(when + dur + 0.05);
+    }
+    const noise = this._noiseSrc(true);
+    const nhp = ctx.createBiquadFilter();
+    nhp.type = "highpass"; nhp.frequency.value = 2400;
+    const ng = ctx.createGain();
+    ng.gain.value = vol * 0.08;
+    noise.connect(nhp); nhp.connect(ng); ng.connect(out);
+    noise.start(when); noise.stop(when + dur + 0.05);
+
+    bp.connect(out);
+    this._send(out, 0.55);
+    out.gain.setValueAtTime(0.0001, when);
+    out.gain.exponentialRampToValueAtTime(vol, when + 0.05);
+    out.gain.linearRampToValueAtTime(vol * 0.7, when + dur * 0.7);
+    out.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  }
+
+  // Frame drum: sine kick (90→32 Hz) for body + filtered noise burst for
+  // the skin slap. Heavy reverb send for that hall thud.
+  _drum(when, vol = 0.4) {
+    const ctx = this.ctx;
+    const k = ctx.createOscillator();
+    const kg = ctx.createGain();
+    k.type = "sine";
+    k.frequency.setValueAtTime(95, when);
+    k.frequency.exponentialRampToValueAtTime(32, when + 0.18);
+    kg.gain.setValueAtTime(0.0001, when);
+    kg.gain.exponentialRampToValueAtTime(vol, when + 0.005);
+    kg.gain.exponentialRampToValueAtTime(0.0001, when + 0.32);
+    k.connect(kg);
+    this._send(kg, 0.4);
+    k.start(when); k.stop(when + 0.4);
+    const n = this._noiseSrc(false);
+    const nbp = ctx.createBiquadFilter();
+    nbp.type = "bandpass"; nbp.frequency.value = 900; nbp.Q.value = 1.2;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, when);
+    ng.gain.exponentialRampToValueAtTime(vol * 0.45, when + 0.003);
+    ng.gain.exponentialRampToValueAtTime(0.0001, when + 0.08);
+    n.connect(nbp); nbp.connect(ng);
+    this._send(ng, 0.5);
+    n.start(when); n.stop(when + 0.12);
+  }
+
+  // Throat chant / overtone singing. Saw fundamental + 5 harmonics piped
+  // through three parallel bandpass "formants" tuned to a vowel. Subtle
+  // vibrato on the fundamental.
+  _chant(when, root, dur, vol = 0.10, vowel = "o") {
+    const ctx = this.ctx;
+    const VOWELS = {
+      o: [570, 840, 2410], a: [700, 1220, 2600], u: [300, 870, 2240],
+    };
+    const F = VOWELS[vowel] || VOWELS.o;
+    const out = ctx.createGain(); out.gain.value = 0;
+    const formants = F.map(freq => {
+      const f = ctx.createBiquadFilter();
+      f.type = "bandpass"; f.frequency.value = freq; f.Q.value = 8;
+      f.connect(out);
+      return f;
+    });
+    const oscs = [];
+    for (let h = 1; h <= 6; h++) {
+      const o = ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = root * h;
+      const g = ctx.createGain();
+      g.gain.value = 1 / (h * 0.8 + 1);
+      o.connect(g);
+      for (const f of formants) g.connect(f);
+      oscs.push(o);
+    }
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 4.1;
+    const vibG = ctx.createGain(); vibG.gain.value = root * 0.008;
+    vib.connect(vibG); vibG.connect(oscs[0].frequency);
+
+    this._send(out, 0.6);
+    out.gain.setValueAtTime(0.0001, when);
+    out.gain.exponentialRampToValueAtTime(vol, when + 0.45);
+    out.gain.linearRampToValueAtTime(vol * 0.85, when + dur * 0.65);
+    out.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    for (const o of oscs) { o.start(when); o.stop(when + dur + 0.05); }
+    vib.start(when); vib.stop(when + dur + 0.05);
+  }
+
+  // Animal-horn bell via 2-op FM. Bright, transient, ringing.
+  _bell(when, freq, dur = 0.9, vol = 0.16) {
+    const ctx = this.ctx;
+    const carr = ctx.createOscillator();
+    carr.type = "sine";
+    carr.frequency.value = freq;
+    const mod = ctx.createOscillator();
+    mod.type = "sine";
+    mod.frequency.value = freq * 1.43;
+    const modG = ctx.createGain();
+    modG.gain.setValueAtTime(freq * 2.2, when);
+    modG.gain.exponentialRampToValueAtTime(freq * 0.2, when + dur);
+    mod.connect(modG); modG.connect(carr.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    carr.connect(g);
+    this._send(g, 0.7);
+    carr.start(when); carr.stop(when + dur + 0.05);
+    mod.start(when); mod.stop(when + dur + 0.05);
+  }
+
+  // --- ambient bed -----------------------------------------------------
   startWind() {
     this.ensure();
     if (!this.ctx || this.windNode) return;
-    const bufSize = 2 * this.ctx.sampleRate;
-    const noise = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-    const out = noise.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < bufSize; i++) {
-      const w = Math.random() * 2 - 1;
-      // pink-ish noise for wind
-      last = 0.985 * last + 0.015 * w;
-      out[i] = last * 3.5;
-    }
-    const src = this.ctx.createBufferSource();
-    src.buffer = noise;
-    src.loop = true;
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 380;
-    filter.Q.value = 0.6;
-    const g = this.ctx.createGain();
-    g.gain.value = 0.18;
-    src.connect(filter); filter.connect(g); g.connect(this.master);
-    src.start();
-    this.windNode = { src, filter, g };
-    // gentle LFO on filter cutoff for breathing wind
+    const noise = this._noiseSrc(true);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 380; lp.Q.value = 0.5;
+    const g = this.ctx.createGain(); g.gain.value = 0.10;
+    noise.connect(lp); lp.connect(g);
+    this._send(g, 0.3);
+    noise.start();
+    this.windNode = { noise, lp, g };
     setInterval(() => {
-      if (!this.windNode) return;
+      if (!this.windNode || !this.ctx) return;
       const t = this.ctx.currentTime;
-      const target = 280 + Math.random() * 220;
-      this.windNode.filter.frequency.linearRampToValueAtTime(target, t + 1.4);
-    }, 1400);
+      const target = 220 + Math.random() * 260;
+      this.windNode.lp.frequency.linearRampToValueAtTime(target, t + 1.6);
+      this.windNode.g.gain.linearRampToValueAtTime(0.07 + Math.random() * 0.07, t + 1.6);
+    }, 1600);
   }
+
+  // Distant raven calls and ocean wash on a loose interval (8–24s).
+  _scheduleAmbient() {
+    const tick = () => {
+      if (!this.ctx) return;
+      if (!this.muted) {
+        const when = this.ctx.currentTime + 0.05;
+        if (Math.random() < 0.55) this._raven(when, 0.05);
+        else this._wave(when);
+      }
+      this.ambientTimer = setTimeout(tick, 8000 + Math.random() * 16000);
+    };
+    this.ambientTimer = setTimeout(tick, 6000 + Math.random() * 6000);
+  }
+
+  // Raven caw: 2–3 quick filtered-noise bursts with downward pitch sweep.
+  _raven(when, vol = 0.06) {
+    const ctx = this.ctx;
+    const count = 2 + (Math.random() < 0.4 ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      const t = when + i * 0.18;
+      const n = this._noiseSrc(false);
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.setValueAtTime(900 + Math.random() * 200, t);
+      bp.frequency.exponentialRampToValueAtTime(380, t + 0.14);
+      bp.Q.value = 12;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      n.connect(bp); bp.connect(g);
+      this._send(g, 0.7);
+      n.start(t); n.stop(t + 0.18);
+    }
+  }
+
+  // Distant wave wash: pink noise through lowpass with a slow swell.
+  _wave(when) {
+    const ctx = this.ctx;
+    const n = this._noiseSrc(true);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 600;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.045, when + 1.2);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 3.0);
+    n.connect(lp); lp.connect(g);
+    this._send(g, 0.5);
+    n.start(when); n.stop(when + 3.2);
+  }
+
+  // --- music loop ------------------------------------------------------
+  // D Phrygian (D Eb F G A Bb C). A long lur drone, frame-drum heartbeat,
+  // tagelharpa melodic phrase, and a chant on alternating loops.
   startMusic() {
     this.ensure();
-    if (!this.ctx || this.musicLoop) return;
-    // simple Norse drone: low Aeolian motif
-    const notes = [110, 110, 130.81, 146.83, 130.81, 110, 98, 110]; // A2 A2 C3 D3 C3 A2 G2 A2
-    const beatMs = 720;
-    const playBeat = () => {
-      if (!this.musicLoop) return;
-      const t = this.ctx.currentTime;
-      const f = notes[this._beat % notes.length];
-      // drum
-      const drumOsc = this.ctx.createOscillator();
-      const drumG = this.ctx.createGain();
-      drumOsc.type = "sine";
-      drumOsc.frequency.setValueAtTime(80, t);
-      drumOsc.frequency.exponentialRampToValueAtTime(35, t + 0.18);
-      drumG.gain.setValueAtTime(0.0001, t);
-      drumG.gain.exponentialRampToValueAtTime(0.45, t + 0.005);
-      drumG.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-      drumOsc.connect(drumG); drumG.connect(this.master);
-      drumOsc.start(t); drumOsc.stop(t + 0.42);
-      // horn drone
-      const o = this.ctx.createOscillator();
-      const og = this.ctx.createGain();
-      const lp = this.ctx.createBiquadFilter();
-      lp.type = "lowpass"; lp.frequency.value = 900;
-      o.type = "sawtooth";
-      o.frequency.setValueAtTime(f, t);
-      og.gain.setValueAtTime(0.0001, t);
-      og.gain.exponentialRampToValueAtTime(0.06, t + 0.08);
-      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.62);
-      o.connect(lp); lp.connect(og); og.connect(this.master);
-      o.start(t); o.stop(t + 0.65);
+    if (!this.ctx || this.musicTimer) return;
+    if (!this.ambientTimer) this._scheduleAmbient();
+
+    const ROOT = 73.42;                                  // D2
+    // Just-intonation-ish ratios for the Phrygian degrees.
+    const SCALE = { D:1, Eb:1.0667, F:1.1852, G:1.3333, A:1.5, Bb:1.6, C:1.7778 };
+    const BEAT = 0.60;
+    const BAR  = BEAT * 4;
+    const LOOP = BAR * 4;
+
+    // Drum on every beat, with off-beat ghost hits — frame-drum dum-tek.
+    const DRUM = [0, 1.5, 2, 3.5, 4, 5.5, 6, 7.5, 8, 9.5, 10, 11.5, 12, 13.5, 14, 15.5];
+    const MELODY = [
+      [0,   "F",  1.5],
+      [2,   "G",  1.5],
+      [4,   "A",  2.0],
+      [6,   "G",  1.5],
+      [8,   "F",  1.0],
+      [9,   "Eb", 1.0],
+      [10,  "D",  2.5],
+      [13,  "F",  1.5],
+      [14.5,"D",  1.5],
+    ];
+    const playLoop = () => {
+      if (!this.musicTimer) return;
+      const t0 = this.ctx.currentTime + 0.05;
+      // Long lur drone holding the root for the whole loop.
+      this._lur(t0, ROOT, LOOP, 0.09);
+      // Tagelharpa melody, octave up.
+      for (const [b, deg, dur] of MELODY) {
+        this._tagelharpa(t0 + b * BEAT, ROOT * 2 * SCALE[deg], dur * BEAT, 0.11);
+      }
+      // Frame drum.
+      for (const b of DRUM) {
+        const accent = (b % 4 === 0);
+        this._drum(t0 + b * BEAT, accent ? 0.48 : 0.30);
+      }
+      // Chant enters every other loop on the root, vowel-shifting.
+      if ((this._beat % 2) === 1) {
+        this._chant(t0 + 4 * BEAT, ROOT * 2, 8 * BEAT, 0.075, this._beat % 4 === 1 ? "o" : "a");
+      }
       this._beat++;
     };
-    this.musicLoop = setInterval(playBeat, beatMs);
-    playBeat();
+    playLoop();
+    this.musicTimer = setInterval(playLoop, LOOP * 1000);
   }
+
   stopMusic() {
-    if (this.musicLoop) { clearInterval(this.musicLoop); this.musicLoop = null; }
+    if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; }
   }
-  blip(freq = 880, dur = 0.12, type = "triangle", gain = 0.12) {
+
+  // --- one-shots / SFX -------------------------------------------------
+  // Back-compat: short sweep tone. Kept so any existing callers still work.
+  blip(freq = 880, dur = 0.12, type = "triangle", vol = 0.12) {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;
     const o = this.ctx.createOscillator();
@@ -138,26 +458,308 @@ class Audio {
     o.type = type; o.frequency.setValueAtTime(freq, t);
     o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * 0.6), t + dur);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(this.master);
     o.start(t); o.stop(t + dur + 0.02);
   }
-  jump() { this.blip(620, 0.18, "triangle", 0.16); }
-  collect() { this.blip(1200, 0.14, "sine", 0.18); setTimeout(() => this.blip(1600, 0.12, "sine", 0.12), 60); }
-  hit() {
+
+  // Boot stomp on packed earth + cloth swoosh.
+  jump() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const k = this.ctx.createOscillator();
+    const kg = this.ctx.createGain();
+    k.type = "sine";
+    k.frequency.setValueAtTime(140, t);
+    k.frequency.exponentialRampToValueAtTime(55, t + 0.06);
+    kg.gain.setValueAtTime(0.0001, t);
+    kg.gain.exponentialRampToValueAtTime(0.18, t + 0.004);
+    kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+    k.connect(kg); kg.connect(this.master);
+    k.start(t); k.stop(t + 0.14);
+    const n = this._noiseSrc(true);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 1400; bp.Q.value = 1.2;
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.07, t + 0.02);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+    n.connect(bp); bp.connect(ng); ng.connect(this.master);
+    n.start(t); n.stop(t + 0.15);
+  }
+
+  // Leather scrape across packed snow.
+  slide() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const n = this._noiseSrc(true);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 700; bp.Q.value = 4;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.10, t + 0.02);
+    g.gain.linearRampToValueAtTime(0.06, t + 0.16);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+    n.connect(bp); bp.connect(g); g.connect(this.master);
+    n.start(t); n.stop(t + 0.34);
+  }
+
+  // Snow crunch lane-change tick — short, sharp, quiet.
+  laneChange() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const n = this._noiseSrc(false);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 3800; bp.Q.value = 6;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    n.connect(bp); bp.connect(g); g.connect(this.master);
+    n.start(t); n.stop(t + 0.06);
+  }
+
+  // Mead pickup: wooden tap then short low gurgle.
+  collect() {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;
     const o = this.ctx.createOscillator();
+    const og = this.ctx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(420, t);
+    o.frequency.exponentialRampToValueAtTime(280, t + 0.05);
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.10, t + 0.004);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+    o.connect(og); this._send(og, 0.3);
+    o.start(t); o.stop(t + 0.12);
+    const t2 = t + 0.05;
+    const n = this._noiseSrc(true);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.Q.value = 8;
+    bp.frequency.setValueAtTime(180, t2);
+    bp.frequency.linearRampToValueAtTime(320, t2 + 0.12);
     const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t2);
+    g.gain.exponentialRampToValueAtTime(0.05, t2 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t2 + 0.18);
+    n.connect(bp); bp.connect(g); g.connect(this.master);
+    n.start(t2); n.stop(t2 + 0.2);
+  }
+
+  // Rune pickup: animal-horn bell + sub-bass swell.
+  collectRune() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._bell(t, 660, 1.1, 0.16);
+    this._bell(t + 0.02, 990, 0.9, 0.09);
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(60, t);
+    o.frequency.exponentialRampToValueAtTime(120, t + 0.45);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    o.connect(g); this._send(g, 0.5);
+    o.start(t); o.stop(t + 0.6);
+  }
+
+  // Hit: wooden shield crack + low body impact.
+  hit() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const n = this._noiseSrc(false);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 1800;
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.22, t + 0.004);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+    n.connect(hp); hp.connect(ng); this._send(ng, 0.5);
+    n.start(t); n.stop(t + 0.12);
+    const o = this.ctx.createOscillator();
+    const og = this.ctx.createGain();
     o.type = "sawtooth";
     o.frequency.setValueAtTime(160, t);
-    o.frequency.exponentialRampToValueAtTime(40, t + 0.45);
+    o.frequency.exponentialRampToValueAtTime(36, t + 0.5);
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.28, t + 0.008);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 700;
+    o.connect(lp); lp.connect(og); this._send(og, 0.6);
+    o.start(t); o.stop(t + 0.6);
+  }
+
+  // Death: low descending lur wail with heavy reverb.
+  death() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const out = this.ctx.createGain(); out.gain.value = 0;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 1400;
+    for (const det of [-10, 0, 9]) {
+      const o = this.ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(220, t);
+      o.frequency.exponentialRampToValueAtTime(55, t + 1.4);
+      o.detune.value = det;
+      o.connect(lp);
+      o.start(t); o.stop(t + 1.6);
+    }
+    lp.connect(out);
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(0.28, t + 0.08);
+    out.gain.linearRampToValueAtTime(0.22, t + 0.9);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+    this._send(out, 0.7);
+  }
+
+  // Tiny faint thunder rumble for Mjölnir auto-strikes during the buff.
+  thunderTick() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    const n = this._noiseSrc(false);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 600;
+    const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-    o.connect(g); g.connect(this.master);
-    o.start(t); o.stop(t + 0.55);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    n.connect(hp); hp.connect(g); this._send(g, 0.6);
+    n.start(t); n.stop(t + 0.2);
+  }
+
+  // --- god power activation sounds -------------------------------------
+  // One signature gesture per god, played the moment the orb is picked up.
+  power(god) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    switch (god) {
+      case "tyr": {
+        // Shield bash + horn fanfare (war + horn = Tyr).
+        const n = this._noiseSrc(false);
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = "bandpass"; bp.frequency.value = 2400; bp.Q.value = 3;
+        const ng = this.ctx.createGain();
+        ng.gain.setValueAtTime(0.0001, t);
+        ng.gain.exponentialRampToValueAtTime(0.16, t + 0.003);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
+        n.connect(bp); bp.connect(ng); this._send(ng, 0.7);
+        n.start(t); n.stop(t + 0.22);
+        this._lur(t + 0.04, 220, 0.7, 0.15);
+        this._lur(t + 0.20, 293.66, 0.6, 0.15);
+        break;
+      }
+      case "sleipnir": {
+        // 4 hoofbeats + wind whoosh (Odin's 8-legged horse).
+        for (let i = 0; i < 4; i++) {
+          const ti = t + i * 0.08;
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(140 - i * 8, ti);
+          o.frequency.exponentialRampToValueAtTime(50, ti + 0.07);
+          g.gain.setValueAtTime(0.0001, ti);
+          g.gain.exponentialRampToValueAtTime(0.20, ti + 0.003);
+          g.gain.exponentialRampToValueAtTime(0.0001, ti + 0.10);
+          o.connect(g); this._send(g, 0.4);
+          o.start(ti); o.stop(ti + 0.12);
+        }
+        const n = this._noiseSrc(true);
+        const bp = this.ctx.createBiquadFilter();
+        bp.type = "bandpass"; bp.frequency.value = 1100; bp.Q.value = 1;
+        const ng = this.ctx.createGain();
+        ng.gain.setValueAtTime(0.0001, t);
+        ng.gain.exponentialRampToValueAtTime(0.10, t + 0.12);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+        n.connect(bp); bp.connect(ng); ng.connect(this.master);
+        n.start(t); n.stop(t + 0.6);
+        break;
+      }
+      case "bragi": {
+        // Harp arpeggio + open-vowel chant (god of poetry, immortalised deeds).
+        const root = 220;
+        const steps = [1, 1.1852, 1.3333, 1.5, 1.7778];
+        for (let i = 0; i < steps.length; i++) {
+          this._bell(t + i * 0.06, root * steps[i] * 2, 0.6, 0.09);
+        }
+        this._chant(t + 0.4, 220, 0.7, 0.09, "a");
+        break;
+      }
+      case "freja": {
+        // Bell + "ah" + high shimmer (Freja wept tears of red gold).
+        this._bell(t, 880, 1.0, 0.14);
+        this._chant(t + 0.05, 330, 1.1, 0.09, "a");
+        for (let i = 0; i < 4; i++) {
+          this._bell(t + 0.10 + i * 0.07, 1320 + i * 220, 0.5, 0.045);
+        }
+        break;
+      }
+      case "skidbladnir": {
+        // Dragon roar + creaking wood (Freyr's magical longship).
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const lp = this.ctx.createBiquadFilter();
+        lp.type = "lowpass"; lp.frequency.value = 600;
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(60, t);
+        o.frequency.linearRampToValueAtTime(120, t + 0.4);
+        o.frequency.exponentialRampToValueAtTime(45, t + 0.9);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.30, t + 0.06);
+        g.gain.linearRampToValueAtTime(0.20, t + 0.5);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
+        o.connect(lp); lp.connect(g); this._send(g, 0.6);
+        o.start(t); o.stop(t + 1.0);
+        this._tagelharpa(t + 0.05, 120, 0.4, 0.10);
+        break;
+      }
+      case "mjolnir": {
+        // THUNDERCLAP — broadband noise + sub-bass shock + bell ring.
+        const n = this._noiseSrc(false);
+        const hp = this.ctx.createBiquadFilter();
+        hp.type = "highpass"; hp.frequency.value = 300;
+        const ng = this.ctx.createGain();
+        ng.gain.setValueAtTime(0.0001, t);
+        ng.gain.exponentialRampToValueAtTime(0.45, t + 0.002);
+        ng.gain.exponentialRampToValueAtTime(0.08, t + 0.2);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        n.connect(hp); hp.connect(ng); this._send(ng, 0.9);
+        n.start(t); n.stop(t + 0.95);
+        const o = this.ctx.createOscillator();
+        const og = this.ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(80, t);
+        o.frequency.exponentialRampToValueAtTime(30, t + 0.6);
+        og.gain.setValueAtTime(0.0001, t);
+        og.gain.exponentialRampToValueAtTime(0.40, t + 0.005);
+        og.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+        o.connect(og); og.connect(this.master);
+        o.start(t); o.stop(t + 0.75);
+        this._bell(t + 0.05, 440, 1.2, 0.10);
+        break;
+      }
+      case "odin": {
+        // Two near raven caws + low ominous drone swell.
+        this._raven(t, 0.10);
+        this._raven(t + 0.45, 0.08);
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = "sawtooth";
+        o.frequency.value = 73.42 / 2;
+        const lp = this.ctx.createBiquadFilter();
+        lp.type = "lowpass"; lp.frequency.value = 240;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.18, t + 0.4);
+        g.gain.linearRampToValueAtTime(0.12, t + 1.0);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+        o.connect(lp); lp.connect(g); this._send(g, 0.8);
+        o.start(t); o.stop(t + 1.6);
+        break;
+      }
+    }
   }
 }
 
@@ -226,14 +828,19 @@ class Valhalla {
     this.scenery = [];         // decorative trees etc with z
     this.mountains = [];
 
-    // Active powerup state. Each value is seconds remaining; 0 = inactive.
+    // Active powerup state — each value is seconds remaining; 0 = inactive.
+    // Internal keys are slot names; user-facing labels are Norse gods/relics.
     this.power = {
-      shield: 0,       // invuln, pass through obstacles
-      speed: 0,        // +35% speed
-      mult: 0,         // x2 incoming score
-      magnet: 0,       // pulls mead toward player
-      ship: 0,         // riding longship, immune + flies above obstacles
+      shield: 0,  // Tyr's Aegis     — invuln (god of war, sacrificed his hand)
+      speed:  0,  // Sleipnir         — Odin's 8-legged steed, gallop speed
+      mult:   0,  // Bragi's Saga     — god of poetry, x2 score
+      magnet: 0,  // Freja's Tears    — pulls mead (she wept tears of gold)
+      ship:   0,  // Skíðblaðnir      — Freyr's magical longship, flight
+      thor:   0,  // Mjölnir          — Thor's hammer, lightning clears obstacles
+      odin:   0,  // Huginn & Muninn  — Odin's ravens, foresight (slow-mo)
     };
+    // Per-power max durations, used by HUD pill fill calculations.
+    this.powerMax = { shield: 6, speed: 5, mult: 8, magnet: 6, ship: 6, thor: 4.5, odin: 6 };
 
     this.cognitiveState = "neutral";
     this.bpm = null;
@@ -1093,22 +1700,36 @@ class Valhalla {
   }
 
   // Powerups -----------------------------------------------------------
+  // Each "powerup" is a blessing from a Norse god. Internal slot names
+  // (shield, speed, mult, magnet, ship, thor, odin) stay terse for the
+  // game loop; user-facing names are the gods/relics themselves.
   _activatePowerup(type, duration) {
     this.power[type] = duration;
-    this.audio.collect();
     const labels = {
-      shield: "SHIELD",
-      speed:  "SPEED",
-      mult:   "2x SCORE",
-      magnet: "MAGNET",
-      ship:   "LONGSHIP",
+      shield: "TYR'S AEGIS",
+      speed:  "SLEIPNIR'S GALLOP",
+      mult:   "BRAGI'S SAGA",
+      magnet: "FREJA'S TEARS",
+      ship:   "SKÍÐBLAÐNIR",
+      thor:   "MJÖLNIR",
+      odin:   "HUGINN & MUNINN",
     };
+    const SOUND_FOR = {
+      shield: "tyr", speed: "sleipnir", mult: "bragi", magnet: "freja",
+      ship: "skidbladnir", thor: "mjolnir", odin: "odin",
+    };
+    this.audio.power(SOUND_FOR[type] || "tyr");
     this._popText(labels[type] || type, "rune", 0, -30);
-    // Side-effects on activate
-    if (type === "ship") {
-      this._mountLongship();
-    } else if (type === "shield") {
-      this._addShieldGlow();
+
+    // Visual side-effects on activate.
+    if (type === "ship") this._mountLongship();
+    else if (type === "shield") this._addShieldGlow();
+    else if (type === "thor") this._addThorAura();
+    else if (type === "odin") {
+      this._addOdinRavens();
+      // Odin's ravens grant foresight: time slows for the full duration.
+      // Hook into the existing _slowMo mechanism so the vignette also fires.
+      this._slowMo(0.55, duration);
     }
     this._renderPowerHudOnce();
   }
@@ -1116,7 +1737,160 @@ class Valhalla {
   _onPowerupEnd(type) {
     if (type === "ship") this._dismountLongship();
     if (type === "shield") this._removeShieldGlow();
+    if (type === "thor")   this._removeThorAura();
+    if (type === "odin")   this._removeOdinRavens();
     this._renderPowerHudOnce();
+  }
+
+  // Thor's hammer aura: floating Mjölnir + crackling lightning bolts.
+  _addThorAura() {
+    if (this._thorAura) return;
+    const group = new THREE.Group();
+    // Mjölnir head: short flat box.
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.32, 0.30),
+      new THREE.MeshStandardMaterial({
+        color: 0x808890, roughness: 0.4, metalness: 0.9,
+        emissive: 0x6080ff, emissiveIntensity: 0.6, flatShading: true,
+      })
+    );
+    head.position.y = 0.3;
+    group.add(head);
+    // Short handle below head.
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.07, 0.55, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4a2810, roughness: 0.9, flatShading: true })
+    );
+    handle.position.y = -0.05;
+    group.add(handle);
+    // Lightning "sparks" — four thin emissive boxes that we'll spin per frame.
+    const sparks = [];
+    for (let i = 0; i < 4; i++) {
+      const s = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.7, 0.04),
+        new THREE.MeshBasicMaterial({
+          color: 0xc0d8ff, transparent: true, opacity: 0.85,
+          depthWrite: false,
+        })
+      );
+      s.userData.phase = i * Math.PI / 2;
+      group.add(s);
+      sparks.push(s);
+    }
+    group.position.y = 2.6;
+    this.player.add(group);
+    this._thorAura = { group, sparks, t: 0 };
+  }
+  _removeThorAura() {
+    if (!this._thorAura) return;
+    this.player.remove(this._thorAura.group);
+    this._thorAura = null;
+  }
+
+  // Odin's ravens: Huginn (thought) + Muninn (memory) circle the player's
+  // head. Cheap diamond silhouettes — black with very subtle gold rim.
+  _addOdinRavens() {
+    if (this._odinRavens) return;
+    const group = new THREE.Group();
+    for (let i = 0; i < 2; i++) {
+      const bird = new THREE.Group();
+      // Body
+      const body = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.16, 0),
+        new THREE.MeshStandardMaterial({
+          color: 0x121418, roughness: 0.7,
+          emissive: 0x40484a, emissiveIntensity: 0.4, flatShading: true,
+        })
+      );
+      bird.add(body);
+      // Wings — two thin planes that flap on the wing axis.
+      for (const side of [-1, 1]) {
+        const wing = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.30, 0.10),
+          new THREE.MeshStandardMaterial({
+            color: 0x0a0c10, roughness: 0.9, side: THREE.DoubleSide, flatShading: true,
+          })
+        );
+        wing.position.x = side * 0.18;
+        wing.userData.side = side;
+        bird.add(wing);
+      }
+      bird.userData.phase = i * Math.PI;
+      group.add(bird);
+    }
+    group.position.y = 2.4;
+    this.player.add(group);
+    this._odinRavens = { group, t: 0 };
+  }
+  _removeOdinRavens() {
+    if (!this._odinRavens) return;
+    this.player.remove(this._odinRavens.group);
+    this._odinRavens = null;
+  }
+
+  // Lightning strike at a world position — vertical jagged beam that
+  // flashes white-blue then fades over ~0.35s. Used by Mjölnir to
+  // visualise each auto-strike. Cheap two-segment plane, no shaders.
+  _lightningStrike(worldPos, lane) {
+    const bolt = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xeaf0ff, transparent: true, opacity: 1.0, depthWrite: false,
+    });
+    // Two stacked thin tall planes, slightly offset & rotated for "jagged" feel.
+    for (let i = 0; i < 2; i++) {
+      const seg = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 6), mat.clone());
+      seg.position.y = 3 + (i === 1 ? 0.3 : 0);
+      seg.position.x = i === 1 ? 0.18 : -0.06;
+      seg.rotation.z = (i === 0 ? -0.12 : 0.18);
+      bolt.add(seg);
+    }
+    bolt.position.set(LANES[lane], 0, worldPos.z);
+    this.scene.add(bolt);
+    // Fade + remove.
+    const start = performance.now();
+    const fade = () => {
+      const t = (performance.now() - start) / 350;
+      if (t >= 1) { this.scene.remove(bolt); return; }
+      for (const seg of bolt.children) seg.material.opacity = 1 - t;
+      requestAnimationFrame(fade);
+    };
+    requestAnimationFrame(fade);
+    if (this.audio) this.audio.thunderTick();
+    this._shake(0.2, 0.12);
+  }
+
+  // Per-frame god-power visual update — spin Mjölnir sparks, orbit ravens.
+  // Called from _update with the time-scaled dt.
+  _updateGodPowers(dt) {
+    if (this._thorAura) {
+      this._thorAura.t += dt;
+      this._thorAura.group.rotation.y = this._thorAura.t * 4;
+      // Each spark sweeps around the hammer head with a flicker.
+      for (const s of this._thorAura.sparks) {
+        const p = this._thorAura.t * 6 + s.userData.phase;
+        s.position.set(Math.cos(p) * 0.55, 0.3, Math.sin(p) * 0.55);
+        s.rotation.z = p;
+        s.material.opacity = 0.55 + Math.random() * 0.45;
+      }
+    }
+    if (this._odinRavens) {
+      this._odinRavens.t += dt;
+      const t = this._odinRavens.t;
+      const birds = this._odinRavens.group.children;
+      for (let i = 0; i < birds.length; i++) {
+        const b = birds[i];
+        const ang = t * 1.8 + b.userData.phase;
+        b.position.set(Math.cos(ang) * 1.2, Math.sin(t * 2 + i) * 0.15, Math.sin(ang) * 1.2);
+        b.rotation.y = -ang + Math.PI / 2;
+        // Flap wings — children index 1+ are wings.
+        for (let w = 1; w < b.children.length; w++) {
+          const wing = b.children[w];
+          if (wing.userData.side !== undefined) {
+            wing.rotation.y = wing.userData.side * (0.5 + Math.sin(t * 18 + i) * 0.6);
+          }
+        }
+      }
+    }
   }
 
   _addShieldGlow() {
@@ -1198,9 +1972,18 @@ class Valhalla {
   _renderPowerHudOnce() {
     const host = $("powerHud");
     if (!host) return;
-    const icons = { shield: "shield", speed: "bolt", mult: "2x", magnet: "magnet", ship: "ship" };
-    const labels = { shield: "Shield", speed: "Speed", mult: "2x score", magnet: "Magnet", ship: "Longship" };
-    const colors = { shield: "#3a82ff", speed: "#ffb020", mult: "#ffd066", magnet: "#ff5060", ship: "#c04020" };
+    const labels = {
+      shield: "Tyr's Aegis",       speed:  "Sleipnir",
+      mult:   "Bragi's Saga",      magnet: "Freja's Tears",
+      ship:   "Skíðblaðnir",       thor:   "Mjölnir",
+      odin:   "Huginn & Muninn",
+    };
+    const colors = {
+      shield: "#c8a040",  speed:  "#c8d8e8",
+      mult:   "#ffd066",  magnet: "#ff6090",
+      ship:   "#c04020",  thor:   "#9ec0ff",
+      odin:   "#a8b0d0",
+    };
     host.innerHTML = "";
     for (const k of Object.keys(this.power)) {
       if (this.power[k] <= 0) continue;
@@ -1221,10 +2004,9 @@ class Valhalla {
       const k = pill.dataset.kind;
       if (!this.power[k] || this.power[k] <= 0) { needsRender = true; break; }
       const fill = pill.querySelector(".pwfill");
-      const max = ({ shield:6, speed:5, mult:8, magnet:6, ship:6 })[k] || 5;
+      const max = this.powerMax[k] || 5;
       fill.style.width = `${Math.max(0, Math.min(1, this.power[k] / max)) * 100}%`;
     }
-    // Re-render if any pill is stale or we have an active power without a pill
     const activeKeys = Object.keys(this.power).filter(k => this.power[k] > 0);
     if (activeKeys.length !== host.children.length) needsRender = true;
     if (needsRender) this._renderPowerHudOnce();
@@ -1234,10 +2016,10 @@ class Valhalla {
     if (this.over || !this.running) return;
     switch (action) {
       case "left":
-        if (this.lane > 0) { this.lane--; this.targetLaneX = LANES[this.lane]; this.audio.blip(420, 0.06, "triangle", 0.08); }
+        if (this.lane > 0) { this.lane--; this.targetLaneX = LANES[this.lane]; this.audio.laneChange(); }
         break;
       case "right":
-        if (this.lane < 2) { this.lane++; this.targetLaneX = LANES[this.lane]; this.audio.blip(420, 0.06, "triangle", 0.08); }
+        if (this.lane < 2) { this.lane++; this.targetLaneX = LANES[this.lane]; this.audio.laneChange(); }
         break;
       case "jump":
         if (this.playerY <= 0.001 && !this.sliding) {
@@ -1247,6 +2029,7 @@ class Valhalla {
       case "slide":
         if (this.playerY <= 0.001 && !this.sliding) {
           this.sliding = true; this.slideTimer = SLIDE_DURATION;
+          this.audio.slide();
         }
         break;
     }
@@ -1485,10 +2268,14 @@ class Valhalla {
     this.speed = BASE_SPEED;
     this._shakeAmp = 0; this._shakeT = 0;
     this._timeScale = 1; this._timeScaleTarget = 1;
-    // Clear powerups
+    // Clear powerups + tear down any visual auras still attached to the
+    // player from the previous run (Aegis glow, longship, Mjölnir aura,
+    // Odin's ravens).
     for (const k of Object.keys(this.power)) this.power[k] = 0;
     this._removeShieldGlow();
     this._dismountLongship();
+    this._removeThorAura();
+    this._removeOdinRavens();
     this._renderPowerHudOnce();
     this._showCombo();
     this._updateHUD();
@@ -1513,6 +2300,7 @@ class Valhalla {
     if (this.over) return;
     this.over = true; this.running = false;
     this.audio.stopMusic();
+    this.audio.death();
     const prev = Store.load();
     const prevBestScore = prev.bestScore || 0;
     const prevBestDist = prev.bestDist || 0;
@@ -1582,13 +2370,16 @@ class Valhalla {
       this._spawnRune((Math.random() * 3) | 0, zWorld + 4);
     }
 
-    // Powerup orbs: rare. Invuln-style powers (shield, ship) only after
-    // ~80m so the player gets a chance to die early and the game has stakes.
+    // God-blessing orbs. Pools grow as the player travels further into
+    // Valhalla — early stretch only grants the lighter blessings so the
+    // run still has stakes; the great relics (Mjölnir, Skíðblaðnir,
+    // Huginn & Muninn) appear once you've proven yourself.
     if (Math.random() < 0.08) {
-      const safePool = this.distance < 80
-        ? ["speed", "mult", "magnet"]
-        : ["shield", "speed", "mult", "magnet", "ship"];
-      const t = safePool[(Math.random() * safePool.length) | 0];
+      let pool;
+      if (this.distance < 80) pool = ["speed", "mult", "magnet"];
+      else if (this.distance < 220) pool = ["shield", "speed", "mult", "magnet", "ship"];
+      else pool = ["shield", "speed", "mult", "magnet", "ship", "thor", "odin"];
+      const t = pool[(Math.random() * pool.length) | 0];
       this._spawnPowerup(t, (Math.random() * 3) | 0, zWorld + 6);
     }
   }
@@ -1873,12 +2664,16 @@ class Valhalla {
   // shape inside, hovering above the path. Picking one up activates the
   // corresponding buff for 5-8 seconds.
   _spawnPowerup(type, lane, zWorld) {
+    // Each god/relic gets a distinct orb colour and icon. Values are
+    // active-duration seconds (must match this.powerMax).
     const PUSPECS = {
-      shield:  { color: 0x3a82ff, halo: 0x9ec5ff, value: 6.0, sym: "shield" },
-      speed:   { color: 0xffb020, halo: 0xffe080, value: 5.0, sym: "bolt" },
-      mult:    { color: 0xffd066, halo: 0xfff2c8, value: 8.0, sym: "star" },
-      magnet:  { color: 0xff5060, halo: 0xff9aa0, value: 6.0, sym: "magnet" },
-      ship:    { color: 0xc04020, halo: 0xff8050, value: 6.0, sym: "ship" },
+      shield:  { color: 0xc8a040, halo: 0xffe098, value: 6.0, sym: "shield" },     // Tyr — iron/gold
+      speed:   { color: 0xc8d8e8, halo: 0xf0f6ff, value: 5.0, sym: "hoof" },       // Sleipnir — silver wind
+      mult:    { color: 0xffd066, halo: 0xfff2c8, value: 8.0, sym: "rune" },       // Bragi — parchment gold
+      magnet:  { color: 0xff6090, halo: 0xffc0d0, value: 6.0, sym: "tear" },       // Freja — rose gold
+      ship:    { color: 0xc04020, halo: 0xff8050, value: 6.0, sym: "ship" },       // Skíðblaðnir — dragon red
+      thor:    { color: 0x9ec0ff, halo: 0xe0e8ff, value: 4.5, sym: "hammer" },     // Mjölnir — lightning blue
+      odin:    { color: 0x6878a8, halo: 0xa8b0d0, value: 6.0, sym: "ravens" },     // Odin — twilight indigo
     };
     const spec = PUSPECS[type];
     const grp = new THREE.Group();
@@ -1897,38 +2692,48 @@ class Valhalla {
       new THREE.MeshBasicMaterial({ color: spec.halo, transparent: true, opacity: 0.22, depthWrite: false })
     );
     grp.add(halo);
-    // Icon symbol inside the orb (small white shape that reads at distance)
+    // Icon symbol inside the orb — small white silhouette that reads at
+    // distance even when the player is sprinting. One shape per god/relic.
+    const W = new THREE.MeshBasicMaterial({ color: 0xffffff });
     let icon;
-    if (spec.sym === "shield") {
-      icon = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.16, 0.05, 16),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
-      icon.rotation.x = Math.PI / 2;
-    } else if (spec.sym === "bolt") {
-      icon = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 0.4, 0.08),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
-      icon.rotation.z = 0.5;
-    } else if (spec.sym === "star") {
-      icon = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.18, 0),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
-    } else if (spec.sym === "magnet") {
+    if (spec.sym === "shield") {                      // Tyr — round shield with boss
       icon = new THREE.Group();
-      const a = new THREE.Mesh(
-        new THREE.TorusGeometry(0.16, 0.06, 6, 12, Math.PI),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
-      a.rotation.z = -Math.PI / 2;
-      icon.add(a);
-    } else { // ship
-      icon = new THREE.Mesh(
-        new THREE.BoxGeometry(0.4, 0.08, 0.14),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      );
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), W);
+      disc.rotation.x = Math.PI / 2;
+      icon.add(disc);
+      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), W);
+      boss.position.z = 0.05;
+      icon.add(boss);
+    } else if (spec.sym === "hoof") {                 // Sleipnir — galloping hoofprint (kite)
+      icon = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 4), W);
+      icon.rotation.x = Math.PI / 2;
+    } else if (spec.sym === "rune") {                 // Bragi — rune-stone (vertical bar with cross)
+      icon = new THREE.Group();
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.38, 0.06), W);
+      icon.add(bar);
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.06), W);
+      icon.add(cross);
+    } else if (spec.sym === "tear") {                 // Freja — tear-drop
+      icon = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.32, 12), W);
+    } else if (spec.sym === "ship") {                 // Skíðblaðnir — longship silhouette
+      icon = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.14), W);
+    } else if (spec.sym === "hammer") {               // Mjölnir — boxy hammer head + short handle
+      icon = new THREE.Group();
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.20, 0.18), W);
+      head.position.y = 0.07;
+      icon.add(head);
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.06), W);
+      handle.position.y = -0.13;
+      icon.add(handle);
+    } else if (spec.sym === "ravens") {               // Odin — two stacked diamond birds
+      icon = new THREE.Group();
+      for (let i = 0; i < 2; i++) {
+        const b = new THREE.Mesh(new THREE.OctahedronGeometry(0.10, 0), W);
+        b.position.set(i === 0 ? -0.10 : 0.10, i === 0 ? 0.08 : -0.06, 0);
+        icon.add(b);
+      }
+    } else {                                          // default fallback — diamond
+      icon = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), W);
     }
     icon.position.z = 0.05;
     grp.add(icon);
@@ -2085,6 +2890,7 @@ class Valhalla {
       }
     }
     this._updatePowerHud(dt);
+    this._updateGodPowers(dt);
 
     // forward distance
     this.distance += this.speed * dt;
@@ -2262,10 +3068,26 @@ class Valhalla {
           }
         }
       }
+      // Mjölnir — while Thor's hammer is in your grasp, any obstacle that
+      // enters the 25m forward strike-cone is destroyed by lightning before
+      // it can touch you. Plays a faint thunder rumble + bonus score, and
+      // flags the obstacle as consumed so the standard collision branch
+      // below treats it as cleared.
+      if (this.power.thor > 0 && !o._consumed && sz > -1 && sz < 25
+          && o.type !== "beam" && o.type !== "ravens") {
+        this._lightningStrike(o.mesh.position.clone(), o.lane);
+        this.score += 15;
+        o._consumed = true;
+        o.spawnAt = this.distance - 100;
+      }
       // Collision window scales with speed so high-speed frames don't tunnel
       // through obstacles. Minimum 1m, otherwise 1.5 frames worth of travel.
       const hitWindow = Math.max(1.0, this.speed * dt * 1.5);
-      const invul = this.invuln > 0 || this.power.shield > 0 || this.power.ship > 0;
+      // Tyr's Aegis (shield), Skíðblaðnir (ship), and Mjölnir (thor) all
+      // grant invulnerability. Huginn & Muninn (odin) gives foresight via
+      // slow-mo only — the player still has to dodge.
+      const invul = this.invuln > 0 || this.power.shield > 0
+                 || this.power.ship > 0  || this.power.thor > 0;
       if (Math.abs(sz) < hitWindow && !o._consumed) {
         const hit = this._hitsPlayer(o);
         if (hit && !invul) {
@@ -2331,7 +3153,7 @@ class Valhalla {
         }
         if (c.type === "rune") {
           this.score += c.value;
-          this.audio.collect();
+          this.audio.collectRune();
           this._popText(`+${c.value}`, "rune", 0, -20);
           this._slowMo(0.35, 0.7);
           this.hud.glory.classList.add("on");
