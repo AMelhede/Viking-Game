@@ -2286,10 +2286,15 @@ class Valhalla {
         else this.scene.remove(o.decal);
       }
     }
-    for (const c of this.collectibles) this.scene.remove(c.mesh);
+    for (const c of this.collectibles) {
+      this.scene.remove(c.mesh);
+      if (c.decal) this.scene.remove(c.decal);
+    }
     this.obstacles = []; this.collectibles = [];
     // First obstacle wave is ~55m ahead so the opening reads as world, not gauntlet.
     this._spawnZ = 55;
+    // Reset hostile-spawn cooldown so the very first wave isn't gated.
+    this._lastHardZ = -999;
     this.running = true; this.over = false; this.paused = false;
     this.audio.ensure();
     this.audio.startWind();
@@ -2338,31 +2343,52 @@ class Valhalla {
   }
 
   _spawnWave(zWorld) {
+    // Pattern-safety rules. Some hazards are unavoidable if you can't
+    // react in time to the previous one:
+    //   - beam / ravens need a slide
+    //   - fire pit needs a jump
+    //   - 2-lane block needs a lane change
+    // Track the z of the last "must-act" hazard and refuse to spawn another
+    // within 14m so the player always has time to reset their stance.
+    this._lastHardZ = this._lastHardZ || -999;
+    const tooCloseToHard = (zWorld - this._lastHardZ) < 14;
+
     const r = Math.random();
     if (r < 0.20) {
+      // Single-lane obstacle — easy to dodge, no cooldown needed.
       const lane = (Math.random() * 3) | 0;
       this._spawnObstacle(lane, zWorld);
-    } else if (r < 0.34) {
+    } else if (r < 0.34 && !tooCloseToHard) {
+      // Two-lane block (one safe lane). Hard — gate by cooldown.
       const safe = (Math.random() * 3) | 0;
       for (let i = 0; i < 3; i++) if (i !== safe) this._spawnObstacle(i, zWorld);
-    } else if (r < 0.45) {
+      this._lastHardZ = zWorld;
+    } else if (r < 0.45 && !tooCloseToHard) {
+      // Slide-under beam — gate by cooldown.
       this._spawnBeam(zWorld);
-    } else if (r < 0.55) {
+      this._lastHardZ = zWorld;
+    } else if (r < 0.55 && !tooCloseToHard) {
+      // Jump-over fire pit — gate by cooldown.
       this._spawnFirePit((Math.random() * 3) | 0, zWorld);
-    } else if (r < 0.65) {
+      this._lastHardZ = zWorld;
+    } else if (r < 0.65 && !tooCloseToHard) {
+      // Slide-under ravens — gate by cooldown.
       this._spawnRavens(zWorld);
+      this._lastHardZ = zWorld;
     } else {
-      // empty wave - collectibles only
+      // Empty wave or cooldown — collectibles only.
     }
 
-    // Mead cluster in a single lane (arc or line)
+    // Mead cluster in a single lane (arc or line). First horn in the
+    // cluster gets a soft gold ground decal so the player can spot the
+    // loot lane from far off.
     const coinLane = (Math.random() * 3) | 0;
     const coinCount = 3 + ((Math.random() * 4) | 0);
     const arc = Math.random() < 0.3;
     for (let i = 0; i < coinCount; i++) {
       const z = zWorld + i * 1.6;
       const y = arc ? 1.2 + Math.sin(i / coinCount * Math.PI) * 1.8 : 1.2;
-      this._spawnMead(coinLane, z, y);
+      this._spawnMead(coinLane, z, y, i === 0);
     }
 
     // Rare rune
@@ -2384,18 +2410,25 @@ class Valhalla {
     }
   }
 
-  // Each obstacle has a saturated emissive color so it reads against snow,
-  // and a red ground-ring decal directly under it so the player sees the
-  // threatened lane before reacting.
-  _makeGroundDecal(color = 0xff3030, radius = 1.0) {
+  // Ground markers tell the player at-a-glance what a lane is about to do:
+  //   red ring  = DANGER (obstacle, beam, fire, ravens)
+  //   gold ring = REWARD (mead cluster, rune)
+  //   gods-coloured ring = god blessing (powerup)
+  // All decals pulse so peripheral vision picks them up even at speed.
+  _makeGroundDecal(color = 0xff3030, radius = 1.0, danger = true) {
     const m = new THREE.Mesh(
-      new THREE.RingGeometry(radius * 0.65, radius, 24),
+      new THREE.RingGeometry(radius * 0.55, radius * 1.05, 28),
       new THREE.MeshBasicMaterial({
-        color, transparent: true, opacity: 0.55, depthWrite: false,
+        color, transparent: true, opacity: danger ? 0.85 : 0.65, depthWrite: false,
         side: THREE.DoubleSide, fog: false,
       })
     );
     m.rotation.x = -Math.PI / 2;
+    // Tag so the per-frame decal pulser knows how aggressively to throb.
+    m.userData.danger = danger;
+    m.userData.phase = Math.random() * Math.PI * 2;
+    if (!this._allDecals) this._allDecals = [];
+    this._allDecals.push(m);
     return m;
   }
 
@@ -2561,9 +2594,9 @@ class Valhalla {
       mesh.add(core);
       w = 1.7; h = 2.5; type = "ice";
     }
-    // Ground decal under the obstacle. Sits in world plane, not parented,
-    // so we can scroll/fade it independently.
-    const decal = this._makeGroundDecal(0xff2820, 1.15);
+    // Big red danger ring on the ground so the threatened lane is impossible
+    // to miss even in peripheral vision. Pulses every frame (see _update).
+    const decal = this._makeGroundDecal(0xff2818, 1.5, true);
     decal.position.set(LANES[lane], 0.06, zWorld);
     this.scene.add(decal);
 
@@ -2623,7 +2656,7 @@ class Valhalla {
     });
   }
 
-  _spawnMead(lane, zWorld, baseY = 1.2) {
+  _spawnMead(lane, zWorld, baseY = 1.2, leadDecal = false) {
     const grp = new THREE.Group();
     const horn = new THREE.Mesh(
       new THREE.ConeGeometry(0.22, 0.8, 8),
@@ -2644,54 +2677,74 @@ class Valhalla {
     grp.add(glow);
     grp.position.set(LANES[lane], baseY, zWorld);
     this.scene.add(grp);
-    this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "mead", ang: 0, value: 25, baseY });
+    // Only the first mead in a cluster gets a decal — otherwise we'd
+    // litter the path. The cluster is one "loot lane" event.
+    let decal = null;
+    if (leadDecal) {
+      decal = this._makeGroundDecal(0xffc060, 0.8, false);
+      decal.position.set(LANES[lane], 0.06, zWorld);
+      this.scene.add(decal);
+    }
+    this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "mead", ang: 0, value: 25, baseY, decal });
   }
 
   _spawnRune(lane, zWorld) {
     const mesh = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.5, 0),
+      new THREE.OctahedronGeometry(0.55, 0),
       new THREE.MeshStandardMaterial({
         color: 0x9adfff, roughness: 0.2, metalness: 0.3,
-        emissive: 0x1c8db8, emissiveIntensity: 0.9,
+        emissive: 0x1c8db8, emissiveIntensity: 1.2,
       })
     );
     mesh.position.set(LANES[lane], 1.6, zWorld);
     this.scene.add(mesh);
-    this.collectibles.push({ mesh, lane, spawnAt: zWorld, type: "rune", ang: 0, value: 100, baseY: 1.6 });
+    // Cyan reward ring so runes are obviously not-a-threat from afar.
+    const decal = this._makeGroundDecal(0x60d0ff, 1.0, false);
+    decal.position.set(LANES[lane], 0.06, zWorld);
+    this.scene.add(decal);
+    this.collectibles.push({ mesh, lane, spawnAt: zWorld, type: "rune", ang: 0, value: 100, baseY: 1.6, decal });
   }
 
   // Powerup orbs. Each is a colored glowing sphere with a halo + small icon
   // shape inside, hovering above the path. Picking one up activates the
   // corresponding buff for 5-8 seconds.
   _spawnPowerup(type, lane, zWorld) {
-    // Each god/relic gets a distinct orb colour and icon. Values are
-    // active-duration seconds (must match this.powerMax).
+    // Each god/relic gets a distinct orb colour, icon, and shouted name.
+    // `label` is the literal text rendered on the floating banner above
+    // the orb so the player knows exactly what they're about to pick up.
     const PUSPECS = {
-      shield:  { color: 0xc8a040, halo: 0xffe098, value: 6.0, sym: "shield" },     // Tyr — iron/gold
-      speed:   { color: 0xc8d8e8, halo: 0xf0f6ff, value: 5.0, sym: "hoof" },       // Sleipnir — silver wind
-      mult:    { color: 0xffd066, halo: 0xfff2c8, value: 8.0, sym: "rune" },       // Bragi — parchment gold
-      magnet:  { color: 0xff6090, halo: 0xffc0d0, value: 6.0, sym: "tear" },       // Freja — rose gold
-      ship:    { color: 0xc04020, halo: 0xff8050, value: 6.0, sym: "ship" },       // Skíðblaðnir — dragon red
-      thor:    { color: 0x9ec0ff, halo: 0xe0e8ff, value: 4.5, sym: "hammer" },     // Mjölnir — lightning blue
-      odin:    { color: 0x6878a8, halo: 0xa8b0d0, value: 6.0, sym: "ravens" },     // Odin — twilight indigo
+      shield:  { color: 0xc8a040, halo: 0xffe098, value: 6.0, sym: "shield", label: "TYR'S AEGIS" },
+      speed:   { color: 0xc8d8e8, halo: 0xf0f6ff, value: 5.0, sym: "hoof",   label: "SLEIPNIR" },
+      mult:    { color: 0xffd066, halo: 0xfff2c8, value: 8.0, sym: "rune",   label: "BRAGI'S SAGA" },
+      magnet:  { color: 0xff6090, halo: 0xffc0d0, value: 6.0, sym: "tear",   label: "FREJA'S TEARS" },
+      ship:    { color: 0xc04020, halo: 0xff8050, value: 6.0, sym: "ship",   label: "SKÍÐBLAÐNIR" },
+      thor:    { color: 0x9ec0ff, halo: 0xe0e8ff, value: 4.5, sym: "hammer", label: "MJÖLNIR" },
+      odin:    { color: 0x6878a8, halo: 0xa8b0d0, value: 6.0, sym: "ravens", label: "HUGINN & MUNINN" },
     };
     const spec = PUSPECS[type];
     const grp = new THREE.Group();
-    // Core orb
+    // Core orb — larger and brighter than before. These are gifts of the
+    // gods; they should be unmissable.
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.42, 14, 10),
+      new THREE.SphereGeometry(0.55, 16, 12),
       new THREE.MeshStandardMaterial({
         color: spec.color, roughness: 0.25, metalness: 0.6,
-        emissive: spec.color, emissiveIntensity: 0.95,
+        emissive: spec.color, emissiveIntensity: 1.3,
       })
     );
     grp.add(core);
-    // Halo
+    // Halo — larger and slightly more opaque.
     const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(0.78, 12, 8),
-      new THREE.MeshBasicMaterial({ color: spec.halo, transparent: true, opacity: 0.22, depthWrite: false })
+      new THREE.SphereGeometry(1.05, 14, 10),
+      new THREE.MeshBasicMaterial({ color: spec.halo, transparent: true, opacity: 0.32, depthWrite: false })
     );
     grp.add(halo);
+    // Floating name banner — Canvas sprite. Names the relic so the player
+    // can decide whether to grab it or not. Always faces the camera.
+    const banner = this._makeTextSprite(spec.label, spec.halo);
+    banner.position.y = 1.3;
+    banner.scale.set(2.4, 0.6, 1);
+    grp.add(banner);
     // Icon symbol inside the orb — small white silhouette that reads at
     // distance even when the player is sprinting. One shape per god/relic.
     const W = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -2739,8 +2792,53 @@ class Valhalla {
     grp.add(icon);
     grp.position.set(LANES[lane], 1.6, zWorld);
     this.scene.add(grp);
+    // Reward decal — the god's halo colour on the ground, so the player can
+    // distinguish at a glance from the red danger rings.
+    const rewardDecal = this._makeGroundDecal(spec.halo, 1.3, false);
+    rewardDecal.position.set(LANES[lane], 0.06, zWorld);
+    this.scene.add(rewardDecal);
     this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "powerup",
-      pwType: type, value: spec.value, ang: 0, baseY: 1.6 });
+      pwType: type, value: spec.value, ang: 0, baseY: 1.6, decal: rewardDecal });
+  }
+
+  // Canvas-rendered text sprite. Three.js has no native text — we draw the
+  // label to a 2D canvas, wrap it in a CanvasTexture, then put it on a
+  // Sprite that always faces the camera. Used for floating powerup names.
+  _makeTextSprite(text, accent = 0xffffff) {
+    const cv = document.createElement("canvas");
+    cv.width = 512; cv.height = 128;
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    // Pill background for legibility against snow/sky.
+    ctx.fillStyle = "rgba(10, 13, 18, 0.78)";
+    const r = 28;
+    ctx.beginPath();
+    ctx.moveTo(r, 18);
+    ctx.lineTo(cv.width - r, 18);
+    ctx.quadraticCurveTo(cv.width - 4, 18, cv.width - 4, 18 + r);
+    ctx.lineTo(cv.width - 4, cv.height - 18 - r);
+    ctx.quadraticCurveTo(cv.width - 4, cv.height - 18, cv.width - r, cv.height - 18);
+    ctx.lineTo(r, cv.height - 18);
+    ctx.quadraticCurveTo(4, cv.height - 18, 4, cv.height - 18 - r);
+    ctx.lineTo(4, 18 + r);
+    ctx.quadraticCurveTo(4, 18, r, 18);
+    ctx.closePath();
+    ctx.fill();
+    // Accent rim in the god's halo colour.
+    const cssColor = "#" + ("000000" + accent.toString(16)).slice(-6);
+    ctx.strokeStyle = cssColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Label.
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 44px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, cv.width / 2, cv.height / 2);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+    return new THREE.Sprite(mat);
   }
 
   // Fire pit: a low burning hazard occupying one lane. Must JUMP over it.
@@ -3080,9 +3178,11 @@ class Valhalla {
         o._consumed = true;
         o.spawnAt = this.distance - 100;
       }
-      // Collision window scales with speed so high-speed frames don't tunnel
-      // through obstacles. Minimum 1m, otherwise 1.5 frames worth of travel.
-      const hitWindow = Math.max(1.0, this.speed * dt * 1.5);
+      // Collision window scales with speed to avoid tunnelling at high
+      // speed, but is HARD-CAPPED at 2m so a stutter / GC pause / hidden
+      // tab does not produce a 9m hitbox that registers as "random death".
+      // Min 1m, max 2m. Most frames at 60 FPS are 0.34–0.48m.
+      const hitWindow = Math.max(1.0, Math.min(2.0, this.speed * dt * 1.5));
       // Tyr's Aegis (shield), Skíðblaðnir (ship), and Mjölnir (thor) all
       // grant invulnerability. Huginn & Muninn (odin) gives foresight via
       // slow-mo only — the player still has to dodge.
@@ -3140,6 +3240,13 @@ class Valhalla {
       c.mesh.rotation.y = c.ang;
       const baseY = c.baseY != null ? c.baseY : (c.type === "rune" ? 1.6 : 1.2);
       c.mesh.position.y = baseY + Math.sin(c.ang * 1.3) * 0.12;
+      // Reward decals scroll with the collectible. Use a separate (slower,
+      // softer) pulse so they're distinguishable from the red danger rings.
+      if (c.decal) {
+        c.decal.position.z = sz;
+        c.decal.position.x = LANES[c.lane];
+        c.decal.material.opacity = 0.45 + Math.abs(Math.sin(performance.now() * 0.004 + c.ang)) * 0.3;
+      }
       // Collision: tighter for mead (no magnet snap unless close), normal for others
       const xDist = Math.abs(this.player.position.x - cx);
       if (Math.abs(sz) < 0.9 && xDist < 1.2 &&
@@ -3163,9 +3270,11 @@ class Valhalla {
           this._activatePowerup(c.pwType, c.value);
         }
         this.scene.remove(c.mesh);
+        if (c.decal) this.scene.remove(c.decal);
         this.collectibles.splice(i, 1);
       } else if (sz < -8) {
         this.scene.remove(c.mesh);
+        if (c.decal) this.scene.remove(c.decal);
         this.collectibles.splice(i, 1);
       }
     }
