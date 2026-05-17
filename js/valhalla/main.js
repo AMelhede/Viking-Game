@@ -130,32 +130,21 @@ class Audio {
       this.master.gain.value = this.muted ? 0 : 0.42;
       this.master.connect(this.ctx.destination);
 
-      // Cheap stone-hall reverb: 4 delay taps fed back through one delay,
-      // then lowpassed for warmth. Sounds like a longhall without needing
-      // an impulse-response file.
+      // Reverb: single delay + filtered feedback. The previous 4-tap
+      // network was double CPU for marginal acoustic benefit — a single
+      // delay with feedback through a lowpass actually models a real
+      // hall response perfectly well and halves the audio node count.
       const wet = this.ctx.createGain();
       wet.gain.value = 0.32;
-      const sum = this.ctx.createGain(); sum.gain.value = 1;
-      const taps = [
-        { time: 0.053, gain: 0.55 },
-        { time: 0.117, gain: 0.38 },
-        { time: 0.231, gain: 0.26 },
-        { time: 0.453, gain: 0.16 },
-      ];
-      for (const t of taps) {
-        const d = this.ctx.createDelay(0.6);
-        d.delayTime.value = t.time;
-        const g = this.ctx.createGain(); g.gain.value = t.gain;
-        wet.connect(d); d.connect(g); g.connect(sum);
-      }
-      const feedback = this.ctx.createDelay(0.6);
-      feedback.delayTime.value = 0.31;
+      const delay = this.ctx.createDelay(0.6);
+      delay.delayTime.value = 0.18;
       const fbGain = this.ctx.createGain();
-      fbGain.gain.value = 0.40;
-      sum.connect(feedback); feedback.connect(fbGain); fbGain.connect(sum);
+      fbGain.gain.value = 0.55;
       const wetLP = this.ctx.createBiquadFilter();
       wetLP.type = "lowpass"; wetLP.frequency.value = 2200;
-      sum.connect(wetLP); wetLP.connect(this.master);
+      wet.connect(delay); delay.connect(wetLP); wetLP.connect(fbGain);
+      fbGain.connect(delay);
+      wetLP.connect(this.master);
       this.wet = wet;
 
       // Pre-build noise buffers (cheap, reused).
@@ -1907,11 +1896,10 @@ class Valhalla {
     // 2. FAR flakes - many small, drifting in middle distance for depth.
 
     // Close layer (~camera-relative volume in front of player).
-    // Now 120 (was 350 originally, 200 last round). _driftSnow loops
-    // over these every frame and mutates the position buffer, so this
-    // is a direct CPU win.
+    // Down to 80 (orig 350). _driftSnow loops over them every frame
+    // mutating positions — every cut here is direct CPU savings.
     {
-      const count = 120;
+      const count = 80;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -2337,28 +2325,115 @@ class Valhalla {
     bossLabel.position.set(0, 12, 0);
     bossLabel.scale.set(6, 1.5, 1);
     grp.add(bossLabel);
-    // Track so we can scroll it with the world + remove after passing.
-    this._bossActor = { mesh: grp, spawnAt: ahead, type };
-    // Curated obstacle pattern for the encounter — 4 hazards, well-spaced.
-    // Pattern starts a bit beyond the boss mesh so the player has time
-    // to spot the boss and brace before the first hazard hits.
-    const patternZ = ahead + 12;
+
+    // Boss has HP. Player damages it by surviving hazards in the encounter
+    // pattern, collecting runes during the fight, and being in Flow state
+    // (the bio path to victory). Valkyrie is the only non-combat boss —
+    // she gives a blessing, doesn't fight.
+    const HP_BY_TYPE = { jotunn: 100, surtr: 130, valkyrie: 1 };
+    const hpMax = HP_BY_TYPE[type] || 100;
+
+    // HP bar — two stacked planes (background + foreground fill).
+    // Floats above the boss as a sprite so it always faces camera.
+    const hpBg = new THREE.Mesh(
+      new THREE.PlaneGeometry(5.0, 0.35),
+      new THREE.MeshBasicMaterial({ color: 0x100804, transparent: true, opacity: 0.85, depthWrite: false })
+    );
+    hpBg.position.set(0, 10.6, 0);
+    grp.add(hpBg);
+    const hpFill = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.85, 0.22),
+      new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.95, depthWrite: false })
+    );
+    hpFill.position.set(0, 10.6, 0.01);
+    grp.add(hpFill);
+
+    // Track everything we need for the per-frame fight loop.
+    this._bossActor = {
+      mesh: grp, spawnAt: ahead, type,
+      hp: hpMax, hpMax,
+      hpFill, hpFillBaseWidth: 4.85,
+      defeated: false, escaped: false,
+      // For the slow rocking idle animation.
+      idle: 0,
+    };
+
+    // Curated obstacle pattern. Each successfully-dodged obstacle inside
+    // this encounter applies damage in the per-frame collision branch
+    // (see _update — checks o.encounterBoss).
+    const patternZ = ahead + 14;
+    const tag = (o) => { if (o) o.encounterBoss = true; };
     if (type === "jotunn") {
-      // Three boulder forces — lane pressure
-      this._spawnObstacle(0, patternZ);
-      this._spawnObstacle(2, patternZ + 14);
-      this._spawnObstacle(1, patternZ + 28);
+      tag(this._spawnObstacleAt(0, patternZ));
+      tag(this._spawnObstacleAt(2, patternZ + 12));
+      tag(this._spawnObstacleAt(1, patternZ + 24));
+      tag(this._spawnObstacleAt(0, patternZ + 36));
+      tag(this._spawnObstacleAt(2, patternZ + 48));
     } else if (type === "surtr") {
-      // Two beams + one fire pit — slide-jump rhythm
-      this._spawnBeam(patternZ);
-      this._spawnFirePit(1, patternZ + 16);
-      this._spawnBeam(patternZ + 30);
+      this._spawnBeam(patternZ);            tag(this.obstacles[this.obstacles.length - 1]);
+      this._spawnFirePit(1, patternZ + 14); tag(this.obstacles[this.obstacles.length - 1]);
+      this._spawnBeam(patternZ + 28);       tag(this.obstacles[this.obstacles.length - 1]);
+      this._spawnFirePit(0, patternZ + 42); tag(this.obstacles[this.obstacles.length - 1]);
     } else if (type === "valkyrie") {
-      // Loot run — runes only, no hazards
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 5; i++) {
         this._spawnRune(i % 3, patternZ + i * 8);
       }
+      // No combat — kill her HP immediately so we don't show a bar.
+      this._bossActor.hpMax = 0;
+      hpBg.visible = false; hpFill.visible = false;
     }
+  }
+
+  // _spawnObstacle but returns the obstacle record so the boss code can
+  // tag it as part of an encounter.
+  _spawnObstacleAt(lane, zWorld) {
+    this._spawnObstacle(lane, zWorld);
+    return this.obstacles[this.obstacles.length - 1];
+  }
+
+  // Called when the player successfully dodges/jumps/slides an obstacle
+  // tagged with encounterBoss. Damages the active boss; if HP hits 0
+  // triggers the death sequence + big reward.
+  _damageBoss(amount, source) {
+    const b = this._bossActor;
+    if (!b || b.defeated || b.escaped || b.hpMax <= 0) return;
+    b.hp = Math.max(0, b.hp - amount);
+    // Update HP bar fill width.
+    if (b.hpFill) {
+      const pct = b.hp / b.hpMax;
+      b.hpFill.scale.x = Math.max(0.001, pct);
+      // Flash brighter on hit.
+      b.hpFill.material.color.setHex(0xff8030);
+      setTimeout(() => { if (b.hpFill) b.hpFill.material.color.setHex(0xff3030); }, 120);
+    }
+    // Floating damage number near the boss.
+    this._popText(`-${amount}`, "rune", 0, -50);
+    if (b.hp <= 0) this._killBoss(source);
+  }
+
+  _killBoss(source) {
+    const b = this._bossActor;
+    if (!b || b.defeated) return;
+    b.defeated = true;
+    // Big reward scaling with biome cycle.
+    const reward = 1000 + this.biomeCycle * 500;
+    this.score += reward;
+    this._popText(`${b.type.toUpperCase()} SLAIN +${reward}`, "rune", 0, -40);
+    this._shake(0.9, 0.6);
+    this.hud.glory.classList.add("on");
+    setTimeout(() => this.hud.glory.classList.remove("on"), 600);
+    if (this.audio?.power) this.audio.power("mjolnir");
+    // Death animation — boss tilts and falls. Real removal happens
+    // when the per-frame update sees defeated + far enough behind.
+    b.fallTimer = 0;
+  }
+
+  _bossEscaped() {
+    const b = this._bossActor;
+    if (!b || b.escaped) return;
+    b.escaped = true;
+    if (b.hpFill) b.hpFill.visible = false;
+    this._popText(`${b.type.toUpperCase()} ESCAPES`, "combo", 0, -20);
   }
 
   // Ease bio aura colour + opacity toward targets each frame so state
@@ -3043,15 +3118,22 @@ class Valhalla {
   }
 
   // Drive the body.bio-live CSS flag. The nudge pill in the corner
-  // ("⚡ Enable camera or Muse → 2× score") shows by default and gets
-  // hidden once either sensor reaches live OR warming, so the player
-  // knows the moment they've turned on the system.
+  // hides immediately once any sensor activates. Additionally, after
+  // the player has seen it once on a successful run start we hide it
+  // permanently for that session — "rich in the background" means
+  // we shouldn't keep nagging.
   _refreshBioLiveFlag() {
     if (!window.Bio || typeof window.Bio.status !== "function") return;
     const s = window.Bio.status();
     const active = (s.rppg === "live" || s.rppg === "warming"
                  || s.eeg  === "live" || s.eeg  === "warming");
     document.body.classList.toggle("bio-live", !!active);
+  }
+  // Called from _begin to suppress the nudge on subsequent runs once
+  // the player has seen it. Sessionscoped so it returns on reload.
+  _markNudgeSeen() {
+    if (this._nudgeSeen) document.body.classList.add("bio-live");
+    this._nudgeSeen = true;
   }
 
   _showBioToast(text) {
@@ -3141,6 +3223,7 @@ class Valhalla {
     // Refresh bio aura with the current state so it shows on this run too
     // (cognitive state survives game-over, only the visible aura clears).
     this._updateMultiplier(this.cognitiveState);
+    this._markNudgeSeen();
     // Reset biome back to Midgard. Snap fog/sky to Midgard colours so the
     // first biome transition is dramatic from a clean slate.
     this.biomeIdx = 0;
@@ -3286,14 +3369,14 @@ class Valhalla {
       this._spawnRune((Math.random() * 3) | 0, zWorld + 4);
     }
 
-    // God-blessing orbs. Pools grow as the player travels further into
-    // Valhalla — early stretch only grants the lighter blessings so the
-    // run still has stakes; the great relics (Mjölnir, Skíðblaðnir,
-    // Huginn & Muninn) appear once you've proven yourself.
-    if (Math.random() < 0.08) {
+    // God-blessing orbs. Triples the previous spawn rate (8% → 24%)
+    // and unlocks the great relics much earlier — the user-reported
+    // "no powerups" issue was just rarity. Now you see one every
+    // ~3-4 waves which is ~60-80m apart.
+    if (Math.random() < 0.24) {
       let pool;
-      if (this.distance < 80) pool = ["speed", "mult", "magnet"];
-      else if (this.distance < 220) pool = ["shield", "speed", "mult", "magnet", "ship"];
+      if (this.distance < 60) pool = ["speed", "mult", "magnet"];
+      else if (this.distance < 150) pool = ["shield", "speed", "mult", "magnet", "ship", "thor"];
       else pool = ["shield", "speed", "mult", "magnet", "ship", "thor", "odin"];
       const t = pool[(Math.random() * pool.length) | 0];
       this._spawnPowerup(t, (Math.random() * 3) | 0, zWorld + 6);
@@ -3500,16 +3583,14 @@ class Valhalla {
     this.obstacles.push({ mesh, lane, spawnAt: zWorld, type, w, h, slidable: false, action: "dodge", decal });
   }
 
-  // Attaches a floating action label sprite ("JUMP" / "SLIDE" / "DODGE")
-  // above an obstacle so the player knows the verb at a glance — no
-  // memorising shapes. Sprite scales with depth automatically (it's a
-  // billboarded plane), so it stays readable from far and large up close.
+  // Action labels (JUMP/SLIDE/DODGE) were tutorial scaffolding that
+  // broke immersion. The player learns the verbs in 2-3 tries and after
+  // that the floating words are just noise. Disabled — keep the
+  // function as a no-op so existing call sites still work but emit
+  // nothing. The colour-coded ground rings + obstacle silhouettes
+  // already telegraph the action clearly enough.
   _addActionLabel(parent, text, yOffset = 2.5, accent = 0xff8040) {
-    const sprite = this._makeTextSprite(text, accent);
-    sprite.position.set(0, yOffset, 0);
-    sprite.scale.set(2.2, 0.55, 1);
-    parent.add(sprite);
-    return sprite;
+    return null;
   }
 
   _spawnBeam(zWorld) {
@@ -3681,12 +3762,10 @@ class Valhalla {
       new THREE.MeshBasicMaterial({ color: spec.halo, transparent: true, opacity: 0.32, depthWrite: false })
     );
     grp.add(halo);
-    // Floating name banner — Canvas sprite. Names the relic so the player
-    // can decide whether to grab it or not. Always faces the camera.
-    const banner = this._makeTextSprite(spec.label, spec.halo);
-    banner.position.y = 1.3;
-    banner.scale.set(2.4, 0.6, 1);
-    grp.add(banner);
+    // Powerup name banners removed — they made the world feel like a
+    // tutorial. The orb's distinct halo colour + icon silhouette is
+    // enough to identify the relic. The pickup announcement (big
+    // floating text on activate) is when the player learns the name.
     // Icon symbol inside the orb — small white silhouette that reads at
     // distance even when the player is sprinting. One shape per god/relic.
     const W = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -3944,12 +4023,31 @@ class Valhalla {
       return;
     }
 
-    // speed ramp; bio nudges
+    // Speed ramp + BIO MODULATION (the centrepiece).
+    // The base ramp is the same as before. Then bio directly modulates:
+    //   - Heart rate: each BPM above 70 bumps speed by 0.6%, capped at
+    //     +30% (so 120 BPM = +30% speed, which is the "panic / berserker
+    //     fast" feeling — and you'll lose if you can't calm down)
+    //   - Cognitive state: flow halves the speed bump (you stay in
+    //     control), meditation gives a 10% slow.
+    //   - Powerup: speed gives +35%, ship +25%.
+    // The HR bump is the most visceral bio→gameplay link: the player
+    // can FEEL their pulse making the game harder, and they have to
+    // calm down to win. That's the addictive thesis-pump loop.
     let target = BASE_SPEED + Math.min(this.distance * 0.012, MAX_SPEED - BASE_SPEED);
+    if (this.bpm && this.bpm > 70) {
+      const over = Math.min(50, this.bpm - 70);              // 0..50 bpm over
+      let bump = 1 + over * 0.006;                            // up to +30%
+      // Flow keeps the player in control even when HR rises.
+      if (this.cognitiveState === "flow") bump = 1 + (bump - 1) * 0.5;
+      target *= bump;
+      this._bioSpeedBump = bump;                              // expose for HUD
+    } else {
+      this._bioSpeedBump = 1;
+    }
     if (this.sprint) target *= 1.18;
     if (this.cognitiveState === "berserker") target *= 1.12;
     else if (this.cognitiveState === "meditation") target *= 0.9;
-    // Powerup-driven speed multipliers
     if (this.power.speed > 0) target *= 1.35;
     if (this.power.ship > 0) target *= 1.25;
     this.speed += (target - this.speed) * Math.min(1, dt * 2);
@@ -3976,15 +4074,51 @@ class Valhalla {
         m.position.x = Math.sin(t * 0.7 + i) * 8;
       }
     }
-    // Boss mesh scrolls with the world; remove once well behind the player.
+    // Boss actor — scrolls with the world, idles, fights, dies.
     if (this._bossActor) {
-      const sz = this._bossActor.spawnAt - this.distance;
-      this._bossActor.mesh.position.z = sz;
-      // Subtle idle motion so they feel alive
-      this._bossActor.mesh.position.y = Math.sin(performance.now() * 0.0015) * 0.2;
-      if (sz < -25) {
-        this.scene.remove(this._bossActor.mesh);
-        this._bossActor = null;
+      const b = this._bossActor;
+      const sz = b.spawnAt - this.distance;
+      b.mesh.position.z = sz;
+
+      if (b.defeated) {
+        // Death sequence: tilt forward + drop + fade out over 1.6s.
+        b.fallTimer = (b.fallTimer || 0) + dt;
+        const fall = Math.min(1, b.fallTimer / 1.6);
+        b.mesh.rotation.x = -fall * 1.4;
+        b.mesh.position.y = -fall * 4;
+        if (b.hpFill) b.hpFill.visible = false;
+        // Cleanup once well past + faded out.
+        if (fall >= 1 && sz < -10) {
+          this.scene.remove(b.mesh);
+          this._bossActor = null;
+        }
+      } else {
+        // Idle: subtle bob + sway.
+        b.idle += dt;
+        b.mesh.position.y = Math.sin(b.idle * 1.2) * 0.18;
+        b.mesh.rotation.y = Math.sin(b.idle * 0.6) * 0.04;
+
+        // BIO DAMAGE: being in Flow state during a fight ticks damage
+        // continuously (5/s). This is the "your physiology helps you
+        // beat bosses" loop the user asked for. Berserker = 3/s.
+        if (this.cognitiveState === "flow")        this._damageBoss(5 * dt, "flow");
+        else if (this.cognitiveState === "berserker") this._damageBoss(3 * dt, "berserker");
+
+        // Boss escapes if it scrolls 20m past the player still alive.
+        if (sz < -20 && !b.escaped) this._bossEscaped();
+        if (sz < -30) {
+          this.scene.remove(b.mesh);
+          this._bossActor = null;
+        }
+      }
+
+      // HP bar billboards toward camera — quick LookAt every frame.
+      if (b.hpFill && !b.defeated) {
+        // Keep the fill anchored to its own left edge so it shrinks
+        // from the right (visual: hp depleting).
+        const w = b.hpFillBaseWidth;
+        const pct = Math.max(0.001, b.hp / b.hpMax);
+        b.hpFill.position.x = -(w * (1 - pct)) * 0.5;
       }
     }
 
@@ -4217,6 +4351,15 @@ class Valhalla {
           }
           if (this.combo === 20) this._shake(0.6, 0.4);
         }
+        // BOSS DAMAGE: a successfully-dodged encounter obstacle deals
+        // its damage value (default 25). Bigger hazards = more damage.
+        // The check is "obstacle scrolled past safely without being
+        // consumed by collision", i.e. the player survived it.
+        if (o.encounterBoss && !o._consumed) {
+          const dmg = o.type === "beam" || o.type === "ravens" ? 30
+                    : o.type === "fire" ? 22 : 18;
+          this._damageBoss(dmg, "dodge");
+        }
       }
     }
 
@@ -4269,6 +4412,11 @@ class Valhalla {
           this._slowMo(0.35, 0.7);
           this.hud.glory.classList.add("on");
           setTimeout(() => this.hud.glory.classList.remove("on"), 350);
+          // Runes hit the active boss HARD — they're the player's main
+          // ranged attack during a fight.
+          if (this._bossActor && !this._bossActor.defeated) {
+            this._damageBoss(40, "rune");
+          }
         }
         if (c.type === "powerup") {
           this._activatePowerup(c.pwType, c.value);
