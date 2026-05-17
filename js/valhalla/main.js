@@ -23,17 +23,20 @@ const MAX_SPEED = 60;
 // semitone offset for the music loop so each realm has its own modal
 // flavour without rewriting the melody. `boss` names the entrance
 // encounter that fires at the start of each biome (after Midgard).
+// 250m each so you actually see realm transitions in a typical run.
+// At BASE_SPEED 22 m/s that's first transition in ~11s — visible even
+// for a brand new player who only manages 1-2 obstacles.
 const BIOMES = [
-  { name: "Midgard",    length: 500, fog: 0xc4d2dc,
+  { name: "Midgard",    length: 250, fog: 0xc4d2dc,
     sky: [0x9cb6cc, 0xc2d2dd, 0xdee7ec, 0xc4d2dc], pitch: 0,
     boss: null },
-  { name: "Jötunheim",  length: 500, fog: 0x9ab8d0,
+  { name: "Jötunheim",  length: 250, fog: 0x9ab8d0,
     sky: [0x6a8aaa, 0x9ab8d0, 0xc8dceb, 0x9ab8d0], pitch: -2,
     boss: "jotunn" },
-  { name: "Muspelheim", length: 500, fog: 0xc06840,
+  { name: "Muspelheim", length: 250, fog: 0xc06840,
     sky: [0x602010, 0xb04020, 0xe88040, 0xc06840], pitch: 1,
     boss: "surtr" },
-  { name: "Asgard",     length: 500, fog: 0xe8c878,
+  { name: "Asgard",     length: 250, fog: 0xe8c878,
     sky: [0xb08038, 0xe8b860, 0xffe8b0, 0xe8c878], pitch: 4,
     boss: "valkyrie" },
 ];
@@ -1832,6 +1835,7 @@ class Valhalla {
       this.audio.setBiomePitch(b.pitch);
     }
     this._showBiomeBanner(b.name);
+    this._updateBiomeChip();
     // Score reward for crossing — scales with cycle count.
     const reward = 300 + this.biomeCycle * 200;
     this.score += reward;
@@ -1839,6 +1843,34 @@ class Valhalla {
     // Spawn the entrance encounter — a giant boss mesh that scrolls past
     // and a curated obstacle pattern. Skips Midgard (the spawn realm).
     if (b.boss) this._spawnBoss(b.boss);
+  }
+
+  // Persistent realm chip in the HUD top-bar so the player always knows
+  // which realm they're in (the banner is transient — this is the
+  // permanent indicator).
+  _updateBiomeChip() {
+    let el = this._biomeChipEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;top:env(safe-area-inset-top,12px);left:50%;" +
+        "transform:translateX(-50%);z-index:11;pointer-events:none;" +
+        "background:rgba(10,13,18,.7);border:1px solid rgba(255,255,255,.12);" +
+        "border-radius:999px;padding:6px 14px;" +
+        "font:700 11px/1 system-ui,sans-serif;letter-spacing:.18em;" +
+        "text-transform:uppercase;color:#fff;backdrop-filter:blur(14px);" +
+        "-webkit-backdrop-filter:blur(14px);" +
+        "transition:opacity .25s ease,color .4s ease,border-color .4s ease";
+      document.body.appendChild(el);
+      this._biomeChipEl = el;
+    }
+    const b = BIOMES[this.biomeIdx];
+    // Realm-specific accent so the chip itself tints with the biome.
+    const accent = "#" + ("000000" + b.fog.toString(16)).slice(-6);
+    el.textContent = b.name + (this.biomeCycle > 0 ? `  ×${this.biomeCycle + 1}` : "");
+    el.style.color = accent;
+    el.style.borderColor = accent + "70";
+    el.style.opacity = this.running ? "1" : "0";
   }
 
   _showBiomeBanner(name) {
@@ -2435,60 +2467,145 @@ class Valhalla {
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
 
+    // Bio buttons live-mirror sensor status. Previous version was a one-
+    // shot setter: button said "On" forever based on the start() return,
+    // even after the sensor went to error / off. That caused the
+    // "camera turned off automatically" complaint — the chip in the HUD
+    // updated correctly but the menu button kept lying. Now the button
+    // text is driven by the actual sensor state via the Bio event bus.
     const wireBioBtn = (btn, key) => {
       if (!btn) return;
-      // Cache the original button text for "reset on failure" UX.
       const originalText = btn.textContent;
-      btn.addEventListener("click", async () => {
-        if (!window.Bio) { btn.textContent = "Unavailable"; return; }
-        const opts = {}; opts[key] = true;
-        btn.textContent = key === "eeg" ? "Pairing…" : "Requesting…";
-        btn.disabled = true;
-        btn.classList.remove("error", "live");
-        try {
-          const r = await window.Bio.start(opts);
-          const result = r[key];
-          if (result && result.ok !== false) {
+      // Cached message so a status="off" event after a known error keeps
+      // the error text visible until the auto-reset fires.
+      let lastErrorMsg = null;
+
+      const setVisualState = (status, detail) => {
+        btn.classList.remove("error", "live", "warming");
+        switch (status) {
+          case "live":
             btn.textContent = "On";
             btn.classList.add("live");
-          } else {
-            // Surface the human message from the sensor wrapper so the
-            // user knows what to fix (timeout, no device, blocked perm).
-            // Fallback to "Failed" if no message was provided.
-            const msg = result?.message || result?.reason || "Failed";
+            btn.disabled = false;
+            btn.title = detail || "Live";
+            lastErrorMsg = null;
+            break;
+          case "warming":
+            btn.textContent = key === "eeg" ? "Pairing…" : "Warming…";
+            btn.classList.add("warming");
+            btn.disabled = true;
+            btn.title = detail || "Warming up";
+            lastErrorMsg = null;
+            break;
+          case "error": {
+            const msg = detail || "Failed";
             btn.textContent = msg.length > 32 ? msg.slice(0, 30) + "…" : msg;
             btn.title = msg;
             btn.classList.add("error");
             btn.disabled = false;
-            // Reset the label back to "Enable" after a few seconds so the
-            // button remains usable for retry.
+            lastErrorMsg = msg;
+            // Auto-restore to "Enable" after 6s so retry is one click.
             setTimeout(() => {
-              if (btn.classList.contains("error")) {
+              if (btn.classList.contains("error") && lastErrorMsg === msg) {
                 btn.textContent = originalText;
                 btn.classList.remove("error");
+                btn.title = "";
+                lastErrorMsg = null;
               }
-            }, 5000);
+            }, 6000);
+            break;
           }
-        } catch (e) {
-          // Final fallback — wrapper should normally catch its own errors,
-          // but if anything thrown bubbles up we still want a usable button.
-          const msg = e?.message || "Failed";
-          console.warn("[Valhalla] bio start threw", e);
-          btn.textContent = msg.length > 32 ? msg.slice(0, 30) + "…" : msg;
-          btn.title = msg;
-          btn.classList.add("error");
-          btn.disabled = false;
-          setTimeout(() => {
-            if (btn.classList.contains("error")) {
+          case "unsupported":
+            btn.textContent = "Unavailable";
+            btn.classList.add("error");
+            btn.disabled = true;
+            btn.title = detail || "Not supported in this browser";
+            break;
+          default:
+            // "off" — only revert if we don't have an active error message
+            if (!lastErrorMsg) {
               btn.textContent = originalText;
-              btn.classList.remove("error");
+              btn.disabled = false;
+              btn.title = "";
             }
-          }, 5000);
+        }
+      };
+
+      // Subscribe to live status events the moment Bio is ready, so the
+      // button keeps mirroring sensor state for the whole session.
+      const subscribe = () => {
+        if (!window.Bio) return false;
+        window.Bio.on(`${key === "rppg" ? "rppg" : "eeg"}Status`, ({ status, detail }) => {
+          setVisualState(status, detail);
+        });
+        // Reflect any state the sensor is already in (e.g. if Bio booted
+        // mid-stream from a previous session).
+        const s = window.Bio.status?.()?.[key];
+        if (s) setVisualState(s);
+        return true;
+      };
+      if (!subscribe()) window.addEventListener("bio:ready", subscribe, { once: true });
+
+      btn.addEventListener("click", async () => {
+        if (!window.Bio) { btn.textContent = "Unavailable"; return; }
+        // If already live and the user clicks again, toggle OFF.
+        if (btn.classList.contains("live")) {
+          try {
+            if (key === "rppg") await window.Bio.stopRppg();
+            else                await window.Bio.stopEeg();
+          } catch (e) { console.warn("[Valhalla] bio stop threw", e); }
+          return;
+        }
+        const opts = {}; opts[key] = true;
+        // Optimistic UI — the warming status event will land in ~50ms.
+        setVisualState("warming");
+        try {
+          const r = await window.Bio.start(opts);
+          const result = r[key];
+          if (!(result && result.ok !== false)) {
+            const msg = result?.message || result?.reason || "Failed";
+            setVisualState("error", msg);
+          }
+          // On success, the rppgStatus/eegStatus event will move us
+          // through warming → live. Nothing to do here.
+        } catch (e) {
+          console.warn("[Valhalla] bio start threw", e);
+          setVisualState("error", e?.message || "Failed");
         }
       });
     };
     wireBioBtn($("bioHrBtn"), "rppg");
     wireBioBtn($("bioEegBtn"), "eeg");
+
+    // Detect Web Bluetooth availability at boot and surface the most
+    // common failure modes up front so the player doesn't click "Pair"
+    // only to get a generic browser error. Most users on Safari / iOS /
+    // Firefox simply can't use the EEG path — better to say that than
+    // let them keep trying.
+    const hint = $("bioBleHint");
+    const eegBtn = $("bioEegBtn");
+    if (hint && eegBtn) {
+      if (typeof navigator === "undefined" || !navigator.bluetooth) {
+        const ua = (typeof navigator !== "undefined" ? navigator.userAgent : "") || "";
+        let msg = "Your browser doesn't support Web Bluetooth — try Chrome or Edge on desktop.";
+        if (/iPhone|iPad|iPod/.test(ua))                msg = "iOS doesn't allow Web Bluetooth. Open this on Chrome/Edge desktop to pair a Muse.";
+        else if (/Firefox/.test(ua))                    msg = "Firefox doesn't support Web Bluetooth yet. Use Chrome or Edge to pair a Muse.";
+        else if (/Safari/.test(ua) && !/Chrome/.test(ua)) msg = "Safari doesn't support Web Bluetooth. Use Chrome or Edge to pair a Muse.";
+        hint.textContent = msg;
+        hint.style.display = "block";
+        eegBtn.disabled = true;
+        eegBtn.title = msg;
+      } else if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+        hint.textContent = "Web Bluetooth requires HTTPS or localhost. Run start-game.bat / node server.js — don't double-click index.html.";
+        hint.style.display = "block";
+        eegBtn.disabled = true;
+      } else {
+        // BLE is supported. Show a quick checklist as a soft pre-flight
+        // hint so the user knows what to do BEFORE clicking Pair.
+        hint.innerHTML = "<b>Before pairing:</b> turn your Muse on (LED solid), unpair it from your phone or Muse app, and have Bluetooth enabled on your computer. Then click Pair and pick the Muse from the browser dialog.";
+        hint.style.display = "block";
+      }
+    }
 
     // Clicking the HUD bio row when no sensor is on quick-starts the heart-rate sensor.
     this.hud.bioRow.addEventListener("click", () => {
@@ -2675,6 +2792,12 @@ class Valhalla {
       this._bossActor = null;
     }
     this.running = true; this.over = false; this.paused = false;
+    // Open the run with the MIDGARD banner so the player sees the realm
+    // system exists even before the first transition fires. Order matters:
+    // set `running = true` BEFORE _updateBiomeChip so the chip's opacity
+    // resolves to 1.
+    this._showBiomeBanner(BIOMES[0].name);
+    this._updateBiomeChip();
     this.audio.ensure();
     this.audio.startWind();
     this.audio.startMusic();
@@ -2685,6 +2808,7 @@ class Valhalla {
     this.over = true; this.running = false;
     this.audio.stopMusic();
     this.audio.death();
+    if (this._biomeChipEl) this._biomeChipEl.style.opacity = "0";
     const prev = Store.load();
     const prevBestScore = prev.bestScore || 0;
     const prevBestDist = prev.bestDist || 0;
@@ -2733,6 +2857,13 @@ class Valhalla {
   }
 
   _spawnWave(zWorld) {
+    // First 100m of a fresh run is a grace zone: collectibles only, no
+    // hazards at all. The player gets to land in the world, see the HUD,
+    // grab some mead, and watch the first realm transition fire at 250m
+    // before anything tries to kill them. This is what "addictive" needs
+    // — the first 5 seconds have to feel like discovery, not punishment.
+    const inGrace = this.distance < 100;
+
     // Pattern-safety rules. Some hazards are unavoidable if you can't
     // react in time to the previous one:
     //   - beam / ravens need a slide
@@ -2741,10 +2872,10 @@ class Valhalla {
     // Track the z of the last "must-act" hazard and refuse to spawn another
     // within 14m so the player always has time to reset their stance.
     this._lastHardZ = this._lastHardZ || -999;
-    const tooCloseToHard = (zWorld - this._lastHardZ) < 14;
+    const tooCloseToHard = (zWorld - this._lastHardZ) < 14 || inGrace;
 
     const r = Math.random();
-    if (r < 0.20) {
+    if (r < 0.20 && !inGrace) {
       // Single-lane obstacle — easy to dodge, no cooldown needed.
       const lane = (Math.random() * 3) | 0;
       this._spawnObstacle(lane, zWorld);
