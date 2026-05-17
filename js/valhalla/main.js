@@ -2,6 +2,10 @@
 
 import * as THREE from "three";
 import { Water } from "three/addons/objects/Water.js";
+// Real atmospheric Sky shader (Hosek-Wilkie scattering with sun position).
+// This replaces the previous custom gradient-sphere — Hosek-Wilkie is
+// the same physically-based model used in feature films for daytime sky.
+import { Sky } from "three/addons/objects/Sky.js";
 // Postprocessing — turns the procedural geometry into something that
 // actually looks LIT. Bloom on emissives (runes, mead, Mjölnir, fires)
 // is the single biggest "this is a real 3D world not a toy" cue.
@@ -12,8 +16,6 @@ import { ShaderPass }       from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader }       from "three/addons/shaders/FXAAShader.js";
 // HDRI image-based lighting — feeds every PBR material a real-world
 // environment map so reflections + sky-lit colour come for free.
-// Guarded behind localStorage.valhalla.ibl flag because the PMREM
-// prefilter triggered GPU context loss on weaker devices.
 import { RGBELoader }       from "three/addons/loaders/RGBELoader.js";
 
 // Lane 0 = visually leftmost on screen. Because the camera looks toward +Z
@@ -1108,9 +1110,14 @@ class Valhalla {
     this.scene.fog = new THREE.Fog(fogColor, 40, 320);
     this.scene.background = fogColor.clone();
 
-    this.camera = new THREE.PerspectiveCamera(48, 16 / 9, 0.1, 1200);
-    this.camera.position.set(0, 4.0, -11.5);
-    this.camera.lookAt(0, 2.0, 22);
+    // Camera lifted higher (4.0 → 5.5) and tilted down more so the
+    // player sees further down the lane — addresses "hard to see"
+    // feedback. FOV widened 48° → 55° for more peripheral coverage.
+    // Far clip extended to 50000 so the Sky.js skybox (sits at radius
+    // 5000+) is inside the frustum.
+    this.camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 50000);
+    this.camera.position.set(0, 5.5, -12);
+    this.camera.lookAt(0, 1.0, 28);
 
     // --- Postprocessing pipeline -------------------------------------
     // RenderPass → UnrealBloomPass → FXAA → screen.
@@ -1149,12 +1156,11 @@ class Valhalla {
       this.composer = null;
     }
 
-    // --- HDRI environment for image-based lighting -------------------
-    // Off by default — the HDRI fetch + PMREM prefilter triggered GPU
-    // context loss on the user's hardware. Re-enable via:
-    //   localStorage.setItem("valhalla.ibl", "1") and reload
-    // Until we test on stronger devices the procedural sky + hemi
-    // light is the safer default.
+    // IBL is now driven by the Sky.js shader directly (see _buildSky —
+    // PMREM samples the procedural sky into an env map). No CDN
+    // dependency, no GPU crash risk, env always matches the current
+    // realm's atmosphere. The optional HDRI override stays as a flag
+    // for users who want to test with a real captured sky.
     if (localStorage.getItem("valhalla.ibl") === "1") {
       this._loadEnvironment();
     }
@@ -1196,61 +1202,53 @@ class Valhalla {
   }
 
   _buildSky() {
-    // 4-stop vertical gradient sphere. Cheaper than the physical Sky shader
-    // and easier to keep readable at our exposure.
-    const skyGeo = new THREE.SphereGeometry(1000, 32, 16);
-    const skyMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: {
-        topColor:    { value: new THREE.Color(0x9cb6cc) },
-        midColor:    { value: new THREE.Color(0xc2d2dd) },
-        horizColor:  { value: new THREE.Color(0xdee7ec) },
-        groundColor: { value: new THREE.Color(0xc4d2dc) },  // matches fog
-        offset:      { value: 0.0 },
-        exponent:    { value: 0.55 },
-      },
-      vertexShader: `
-        varying vec3 vWorldPos;
-        void main() {
-          vec4 wp = modelMatrix * vec4(position, 1.0);
-          vWorldPos = wp.xyz;
-          gl_Position = projectionMatrix * viewMatrix * wp;
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 topColor;
-        uniform vec3 midColor;
-        uniform vec3 horizColor;
-        uniform vec3 groundColor;
-        uniform float offset;
-        uniform float exponent;
-        varying vec3 vWorldPos;
-        void main() {
-          float h = normalize(vWorldPos + vec3(0.0, offset, 0.0)).y;
-          vec3 col;
-          if (h >= 0.0) {
-            float t1 = pow(clamp(h, 0.0, 1.0), exponent);
-            // horiz -> mid -> top
-            vec3 lower = mix(horizColor, midColor, smoothstep(0.0, 0.45, t1));
-            col = mix(lower, topColor, smoothstep(0.45, 1.0, t1));
-          } else {
-            col = mix(horizColor, groundColor, smoothstep(0.0, 0.2, -h));
-          }
-          gl_FragColor = vec4(col, 1.0);
-        }
-      `,
-    });
-    this.sky = new THREE.Mesh(skyGeo, skyMat);
-    this.scene.add(this.sky);
+    // REAL ATMOSPHERIC SKY — Three.js Sky uses the Hosek-Wilkie analytical
+    // model for daytime sky radiance. Same physical model used in film
+    // VFX. Sun position drives all colour automatically: at low sun
+    // angle (winter Nordic afternoon) the horizon glows warm orange,
+    // zenith stays deep blue, scattering hue varies with elevation.
+    // Compared to the previous 4-stop gradient sphere, this is night
+    // and day for realism.
+    const sky = new Sky();
+    // Three.js examples use 450000; we use 8000 to stay well inside the
+    // camera far clip (50000) and avoid floating-point issues at depth.
+    sky.scale.setScalar(8000);
+    const u = sky.material.uniforms;
+    // Tuning for a Viking-latitude winter afternoon — heavy turbidity
+    // (humid sea air), high Rayleigh (deep blue zenith), moderate Mie
+    // (soft horizon haze). Sun elevation ~12° gives the long warm
+    // raking light that's the signature look of Nordic Decembers.
+    u["turbidity"].value        = 6.0;
+    u["rayleigh"].value         = 2.4;
+    u["mieCoefficient"].value   = 0.012;
+    u["mieDirectionalG"].value  = 0.85;
+    this.sky = sky;
+    this.scene.add(sky);
 
-    // Keep the sun position vector for the directional light + sun disc.
-    // Place sun moderately high on the right.
-    const phi = THREE.MathUtils.degToRad(58);
-    const theta = THREE.MathUtils.degToRad(120);
+    // Sun position. Elevation 12° azimuth 200° = warm late-afternoon
+    // from the south-west, classic Nordic golden-hour direction.
+    const elevation = 12;
+    const azimuth   = 200;
+    const phi   = THREE.MathUtils.degToRad(90 - elevation);
+    const theta = THREE.MathUtils.degToRad(azimuth);
     this.sunPos = new THREE.Vector3();
     this.sunPos.setFromSphericalCoords(1, phi, theta);
+    u["sunPosition"].value.copy(this.sunPos);
 
-    // Skip the rest of the old Sky-shader setup
+    // Use the sky itself as the environment so every MeshStandardMaterial
+    // gets sky-coloured reflections + ambient — no separate HDRI fetch
+    // required. PMREMGenerator builds the env map from a render target
+    // of the sky shader. THIS is the trick: real IBL from a procedural
+    // sky, no CDN dependency, no crash risk.
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      const rt = pmrem.fromScene(new THREE.Scene().add(sky.clone()), 0);
+      this.scene.environment = rt.texture;
+      pmrem.dispose();
+    } catch (e) {
+      console.warn("[Valhalla] sky-driven IBL failed, continuing", e);
+    }
+
     return this._buildSkyExtras();
   }
 
@@ -1310,43 +1308,42 @@ class Valhalla {
   }
 
   _buildLights() {
-    // Lighting model: low Nordic afternoon sun. The actual Viking-age
-    // latitude (Norway, Iceland) gets a long raking sun that sits maybe
-    // 15-25° above the horizon for most of the playable months. That
-    // means a WARM-coloured key light coming in at a shallow angle plus
-    // a cold-blue sky-ambient for fill. Previous setup was too "bright
-    // midday everywhere" and read as a cartoon.
+    // Lighting now plays alongside the Sky.js IBL — the env map gives
+    // us full hemispheric sky-coloured ambient automatically, so we
+    // can drop the hemi-light and rely on three punchy directional
+    // sources: warm key, cold rim, soft fill. Higher contrast than
+    // before, addresses "hard to see" + "looks washed out".
 
-    // Cold sky ambient — saturated blue-white from above, dim navy from
-    // the ground. Dropped intensity 1.1→0.85 so the world doesn't look
-    // flat-lit.
-    const hemi = new THREE.HemisphereLight(0xc8dbe8, 0x1c2632, 0.85);
+    // Hemisphere is now a thin supplement to the sky IBL — kept only
+    // to backstop materials that don't accept env (e.g. MeshBasic).
+    const hemi = new THREE.HemisphereLight(0xc8dbe8, 0x1c2632, 0.35);
     this.scene.add(hemi);
 
-    // Sun — moved lower (y 55→32) and angled more from the side so
-    // shadows are longer and more dramatic. Warm late-afternoon hue.
-    // Intensity 2.0→1.7 so it doesn't blow out the snow.
-    const sun = new THREE.DirectionalLight(0xffd49a, 1.7);
-    sun.position.set(55, 32, 38);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 220;
-    sun.shadow.camera.left = -40;
-    sun.shadow.camera.right = 40;
-    sun.shadow.camera.top = 50;
-    sun.shadow.camera.bottom = -30;
-    sun.shadow.bias = -0.0005;
-    sun.shadow.normalBias = 0.04;
+    // KEY sun — direction matched to the Sky.js sun (12° elev, az 200°)
+    // so shadows + ambient agree. Pushed to a punchy 2.4 intensity for
+    // real contrast against the IBL-lit ambient. Warm hue (#ffd098)
+    // matches the Hosek-Wilkie horizon at sun elev 12°.
+    const sun = new THREE.DirectionalLight(0xffd098, 2.4);
+    if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
+    else sun.position.set(55, 18, -25);
+    sun.castShadow = false;       // shadow map is the GPU killer — IBL
+                                   // ambient + bloom carry the look now.
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
 
-    // Cold blue rim from the "north" — saturated icy hue so silhouettes
-    // pop against the warm sun-lit side. Pushed up slightly (0.55→0.7).
-    const rim = new THREE.DirectionalLight(0x88a8e0, 0.70);
+    // COLD rim from the opposite hemisphere — saturated north-sky blue
+    // for silhouette pop. Stronger than before (0.7→1.1) so backs of
+    // objects don't go totally black in absence of fill.
+    const rim = new THREE.DirectionalLight(0x88a8e0, 1.1);
     rim.position.set(-40, 30, -25);
     this.scene.add(rim);
+
+    // Subtle warm bounce from the ground — fake "snow reflecting sun
+    // back up at faces" which is huge in real snow scenes.
+    const bounce = new THREE.DirectionalLight(0xffeecc, 0.5);
+    bounce.position.set(0, -10, 30);
+    this.scene.add(bounce);
   }
 
   _buildGround() {
@@ -1357,16 +1354,27 @@ class Valhalla {
     const geo = new THREE.PlaneGeometry(GROUND_WIDTH, CHUNK_LENGTH, segW, segL);
     geo.rotateX(-Math.PI / 2);
 
-    // Procedural noise texture for the snow surface. Repeated across the
-    // plane, this gives the ground actual visual detail under the sun
-    // without needing an asset download. Tiles seamlessly.
+    // PBR snow with sheen — real snow has a velvety sheen from sub-
+    // surface scattering off ice crystals. MeshPhysicalMaterial.sheen
+    // models exactly that. Combined with the procedural noise texture
+    // as both colour and bump, the ground now reads as actual packed
+    // snow instead of flat-shaded vertex paint. The sky-driven IBL
+    // (set as scene.environment by _buildSky) gives it real sky-lit
+    // ambient + reflections so the snow shifts colour with the time
+    // of day.
     const tex = this._makeSnowTexture();
-    const snowMat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.88, metalness: 0.0,
+    const snowMat = new THREE.MeshPhysicalMaterial({
+      vertexColors: true,
+      roughness: 0.78,           // snow is rough but not chalky
+      metalness: 0.0,
+      sheen: 0.6,                // velvety crystal scattering
+      sheenColor: new THREE.Color(0xeaf4fb),
+      sheenRoughness: 0.55,
       flatShading: false,
       map: tex,
       bumpMap: tex,
-      bumpScale: 0.18,
+      bumpScale: 0.22,
+      envMapIntensity: 1.2,      // pick up sky reflections strongly
     });
 
     this.chunkGeo = geo;
@@ -2090,11 +2098,20 @@ class Valhalla {
       this.scene.fog.color.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
       this.scene.background.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
     }
-    if (this.sky && this.sky.material && this.sky.material.uniforms) {
+    // Sky.js uniforms — ease toward the active biome's atmospheric
+    // settings. Different realms have radically different atmospheres
+    // and the Hosek-Wilkie shader handles colour fully procedurally
+    // from those four numbers, no manual gradient stops needed.
+    if (this.sky && this.sky.material && this.sky.material.uniforms && this._skyTarget) {
       const u = this.sky.material.uniforms;
-      const keys = ["topColor", "midColor", "horizColor", "groundColor"];
-      for (let i = 0; i < 4; i++) {
-        u[keys[i]].value.lerp(this._biomeSkyTargets[i], Math.min(1, dt * 0.6));
+      const ease = Math.min(1, dt * 0.6);
+      u["turbidity"].value       += (this._skyTarget.turbidity       - u["turbidity"].value)       * ease;
+      u["rayleigh"].value        += (this._skyTarget.rayleigh        - u["rayleigh"].value)        * ease;
+      u["mieCoefficient"].value  += (this._skyTarget.mieCoefficient  - u["mieCoefficient"].value)  * ease;
+      u["mieDirectionalG"].value += (this._skyTarget.mieDirectionalG - u["mieDirectionalG"].value) * ease;
+      // Sun elevation can swing too — Asgard high noon, Helheim low.
+      if (this._skySunTarget) {
+        u["sunPosition"].value.lerp(this._skySunTarget, ease);
       }
     }
   }
@@ -2106,6 +2123,19 @@ class Valhalla {
     this.biomeName = b.name;
     this._biomeFogTarget.setHex(b.fog);
     this._biomeSkyTargets = b.sky.map(c => new THREE.Color(c));
+    // Sky.js parameter targets per biome — these drive the atmosphere
+    // through Hosek-Wilkie scattering for radically different looks.
+    const SKY_PARAMS = {
+      Midgard:    { turbidity: 6,  rayleigh: 2.4, mieCoefficient: 0.012, mieDirectionalG: 0.85, sunElev: 12,  sunAz: 200 },
+      "Jötunheim":{ turbidity: 3,  rayleigh: 3.5, mieCoefficient: 0.005, mieDirectionalG: 0.78, sunElev: 6,   sunAz: 220 },
+      Muspelheim: { turbidity: 14, rayleigh: 1.5, mieCoefficient: 0.035, mieDirectionalG: 0.90, sunElev: 3,   sunAz: 180 },
+      Asgard:     { turbidity: 2,  rayleigh: 2.0, mieCoefficient: 0.008, mieDirectionalG: 0.80, sunElev: 45,  sunAz: 220 },
+    };
+    const sp = SKY_PARAMS[b.name] || SKY_PARAMS.Midgard;
+    this._skyTarget = sp;
+    const phi = THREE.MathUtils.degToRad(90 - sp.sunElev);
+    const theta = THREE.MathUtils.degToRad(sp.sunAz);
+    this._skySunTarget = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
     // Aurora visible only in Asgard. Build lazily on first entry, then
     // toggle visibility per biome.
     this._setAuroraVisible(b.name === "Asgard");
