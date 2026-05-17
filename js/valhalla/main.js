@@ -2,6 +2,19 @@
 
 import * as THREE from "three";
 import { Water } from "three/addons/objects/Water.js";
+// Postprocessing — turns the procedural geometry into something that
+// actually looks LIT. Bloom on emissives (runes, mead, Mjölnir, fires)
+// is the single biggest "this is a real 3D world not a toy" cue.
+import { EffectComposer }   from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass }       from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass }  from "three/addons/postprocessing/UnrealBloomPass.js";
+import { ShaderPass }       from "three/addons/postprocessing/ShaderPass.js";
+import { FXAAShader }       from "three/addons/shaders/FXAAShader.js";
+// HDRI image-based lighting — feeds every PBR material a real-world
+// environment map so reflections + sky-lit colour come for free.
+// Guarded behind localStorage.valhalla.ibl flag because the PMREM
+// prefilter triggered GPU context loss on weaker devices.
+import { RGBELoader }       from "three/addons/loaders/RGBELoader.js";
 
 // Lane 0 = visually leftmost on screen. Because the camera looks toward +Z
 // with default up = +Y, the camera's right vector is -X, so world +X appears
@@ -957,12 +970,9 @@ class Valhalla {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
-    // Shadows disabled — they cost a full extra scene draw per frame
-    // (the shadow map pass), pulled FPS down hard on the user's hardware,
-    // and at this art style add limited visual return. The player's
-    // shadow disc + obstacle ground decals carry "grounded in the
-    // world" feel cheaply.
+    // Slightly under-exposed key so the warm sun pop reads as light,
+    // not blowout. Bloom adds the apparent highlight on top.
+    this.renderer.toneMappingExposure = 0.95;
     this.renderer.shadowMap.enabled = false;
 
     this.scene = new THREE.Scene();
@@ -978,6 +988,85 @@ class Valhalla {
     this.camera = new THREE.PerspectiveCamera(48, 16 / 9, 0.1, 1200);
     this.camera.position.set(0, 4.0, -11.5);
     this.camera.lookAt(0, 2.0, 22);
+
+    // --- Postprocessing pipeline -------------------------------------
+    // RenderPass → UnrealBloomPass → FXAA → screen.
+    // Bloom is tuned so only material values > 0.85 actually bleed —
+    // strong on runes / mead / Mjölnir / Surtr's sword / aurora, but
+    // doesn't wash out the snow.
+    try {
+      const w = window.innerWidth, h = window.innerHeight;
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.setPixelRatio(this.renderer.getPixelRatio());
+      this.composer.setSize(w, h);
+
+      const renderPass = new RenderPass(this.scene, this.camera);
+      this.composer.addPass(renderPass);
+
+      // UnrealBloomPass(resolution, strength, radius, threshold)
+      const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.65, 0.55, 0.85);
+      this.composer.addPass(bloom);
+      this.bloomPass = bloom;
+
+      // FXAA for cheap anti-aliasing on top of the post chain. MSAA
+      // doesn't survive the composer pipeline cleanly so we re-add AA
+      // here. Negligible perf cost.
+      const fxaa = new ShaderPass(FXAAShader);
+      fxaa.material.uniforms["resolution"].value.set(
+        1 / (w * this.renderer.getPixelRatio()),
+        1 / (h * this.renderer.getPixelRatio())
+      );
+      this.composer.addPass(fxaa);
+      this.fxaaPass = fxaa;
+    } catch (e) {
+      console.warn("[Valhalla] postprocessing init failed — falling back", e);
+      this.composer = null;
+    }
+
+    // --- HDRI environment for image-based lighting -------------------
+    // Off by default — the HDRI fetch + PMREM prefilter triggered GPU
+    // context loss on the user's hardware. Re-enable via:
+    //   localStorage.setItem("valhalla.ibl", "1") and reload
+    // Until we test on stronger devices the procedural sky + hemi
+    // light is the safer default.
+    if (localStorage.getItem("valhalla.ibl") === "1") {
+      this._loadEnvironment();
+    }
+
+    // --- WebGL context-loss handler ----------------------------------
+    // If the GPU driver kills our context (happens on weaker hardware
+    // when bloom + shaders + HDRI all push the limits), make sure the
+    // page doesn't lock up. Prevent default so the browser will try to
+    // restore it; on restore, the composer needs a re-render.
+    this.canvas.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      console.warn("[Valhalla] WebGL context lost — waiting for restore");
+    }, false);
+    this.canvas.addEventListener("webglcontextrestored", () => {
+      console.warn("[Valhalla] WebGL context restored");
+      // Three.js auto-rebuilds materials/textures on restore, but
+      // re-render once to kick the composer back to life.
+      this._renderOnce();
+    }, false);
+  }
+
+  _loadEnvironment() {
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      pmrem.compileEquirectangularShader();
+      const loader = new RGBELoader();
+      const url = "https://threejs.org/examples/textures/equirectangular/quarry_01_1k.hdr";
+      loader.load(url, (tex) => {
+        const env = pmrem.fromEquirectangular(tex).texture;
+        this.scene.environment = env;
+        tex.dispose();
+        pmrem.dispose();
+      }, undefined, (err) => {
+        console.warn("[Valhalla] HDRI load failed — IBL disabled", err);
+      });
+    } catch (e) {
+      console.warn("[Valhalla] PMREM setup failed", e);
+    }
   }
 
   _buildSky() {
@@ -1461,48 +1550,57 @@ class Valhalla {
   _buildPlayer() {
     const grp = new THREE.Group();
 
-    // Undyed wool tunic — muted oatmeal/linen so it reads as period-
-    // correct cloth, not a cartoon red shirt. Real Viking-era textile
-    // pigments were earthy: madder root, woad, walnut hulls.
+    // Body silhouette upgraded from stacked boxes to capsule + cone
+    // geometry. CapsuleGeometry is just a cylinder with hemispheres on
+    // both ends — gives a continuous shoulder-to-hip volume that reads
+    // as a real human torso instead of "minecraft figure". Materials
+    // stay non-emissive earthy wool (madder/woad/walnut palette).
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.8, 1.0, 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: true })
+      new THREE.CapsuleGeometry(0.36, 0.65, 6, 14),
+      new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: false })
     );
-    body.position.y = 1.0;
-    body.castShadow = true;
+    body.position.y = 1.05;
     grp.add(body);
 
-    // Over-tunic / surcoat in slightly darker wool tones.
+    // Over-tunic / surcoat — a slightly wider lower band in darker wool.
     const tunic = new THREE.Mesh(
-      new THREE.BoxGeometry(0.84, 0.55, 0.58),
-      new THREE.MeshStandardMaterial({ color: 0x36281c, roughness: 0.95, flatShading: true })
+      new THREE.CylinderGeometry(0.40, 0.46, 0.45, 14),
+      new THREE.MeshStandardMaterial({ color: 0x36281c, roughness: 0.95, flatShading: false })
     );
-    tunic.position.y = 0.7;
-    tunic.castShadow = true;
+    tunic.position.y = 0.62;
     grp.add(tunic);
 
-    // Belt
+    // Tooled leather belt — torus reads as a real cinched belt.
     const belt = new THREE.Mesh(
-      new THREE.BoxGeometry(0.86, 0.12, 0.6),
-      new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 0.6 })
+      new THREE.TorusGeometry(0.42, 0.06, 8, 18),
+      new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 0.55, metalness: 0.25 })
     );
-    belt.position.y = 0.95;
+    belt.rotation.x = Math.PI / 2;
+    belt.position.y = 0.85;
     grp.add(belt);
-
-    // Head
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55, 0.55, 0.55),
-      new THREE.MeshStandardMaterial({ color: 0xd9b78a, roughness: 0.8, flatShading: true })
+    // Iron belt buckle.
+    const buckle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.10, 0.03),
+      new THREE.MeshStandardMaterial({ color: 0x6c707a, metalness: 0.85, roughness: 0.4 })
     );
+    buckle.position.set(0, 0.85, 0.42);
+    grp.add(buckle);
+
+    // Head — sphere, slightly elongated, weathered skin tone.
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.30, 18, 14),
+      new THREE.MeshStandardMaterial({ color: 0xcfa07b, roughness: 0.7, flatShading: false })
+    );
+    head.scale.set(0.95, 1.08, 1.0);
     head.position.y = 1.78;
-    head.castShadow = true;
     grp.add(head);
 
-    // Beard (red)
+    // Auburn beard — capsule shape so it actually wraps the jaw.
     const beard = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.32, 0.25),
-      new THREE.MeshStandardMaterial({ color: 0x9c4a1d, roughness: 0.95, flatShading: true })
+      new THREE.CapsuleGeometry(0.16, 0.10, 4, 10),
+      new THREE.MeshStandardMaterial({ color: 0x6a3214, roughness: 0.95, flatShading: false })
     );
+    beard.scale.set(1.4, 1.0, 0.7);
     beard.position.set(0, 1.55, 0.18);
     grp.add(beard);
 
@@ -1531,26 +1629,37 @@ class Valhalla {
     noseGuard.position.set(0, 1.84, 0.30);
     grp.add(noseGuard);
 
-    // Arms — same muted wool as the body so the figure reads as one
-    // garment, not a costume.
-    const armMat = new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: true });
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.78, 0.22), armMat);
-    armL.position.set(-0.5, 1.05, 0);
-    armL.castShadow = true;
+    // Arms — capsules so shoulders + elbows + hands read as one volume.
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: false });
+    const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.55, 4, 10), armMat);
+    armL.position.set(-0.48, 1.05, 0);
     grp.add(armL);
     const armR = armL.clone();
-    armR.position.x = 0.5;
+    armR.position.x = 0.48;
     grp.add(armR);
 
-    // Legs
-    const legMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.95, flatShading: true });
-    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.7, 0.28), legMat);
-    legL.position.set(-0.18, 0.35, 0);
-    legL.castShadow = true;
+    // Trouser legs — capsules in darker wool / oiled leather tone.
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.95, flatShading: false });
+    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.5, 4, 10), legMat);
+    legL.position.set(-0.18, 0.4, 0);
     grp.add(legL);
     const legR = legL.clone();
     legR.position.x = 0.18;
     grp.add(legR);
+    // Cross-bound leg wraps (winningas) — three thin dark stripes per
+    // shin so the legs read as Viking-age dress.
+    const wrapMat = new THREE.MeshStandardMaterial({ color: 0x0e0805, roughness: 1.0 });
+    for (const lx of [-0.18, 0.18]) {
+      for (let i = 0; i < 3; i++) {
+        const wrap = new THREE.Mesh(
+          new THREE.TorusGeometry(0.15, 0.018, 6, 14),
+          wrapMat
+        );
+        wrap.rotation.x = Math.PI / 2;
+        wrap.position.set(lx, 0.20 + i * 0.10, 0);
+        grp.add(wrap);
+      }
+    }
 
     // Axe in right hand
     const axeHandle = new THREE.Mesh(
@@ -1872,6 +1981,9 @@ class Valhalla {
     this.biomeName = b.name;
     this._biomeFogTarget.setHex(b.fog);
     this._biomeSkyTargets = b.sky.map(c => new THREE.Color(c));
+    // Aurora visible only in Asgard. Build lazily on first entry, then
+    // toggle visibility per biome.
+    this._setAuroraVisible(b.name === "Asgard");
     // Re-pitch the music loop to the biome's modal centre.
     if (this.audio && typeof this.audio.setBiomePitch === "function") {
       this.audio.setBiomePitch(b.pitch);
@@ -1890,6 +2002,64 @@ class Valhalla {
   // Persistent realm chip in the HUD top-bar so the player always knows
   // which realm they're in (the banner is transient — this is the
   // permanent indicator).
+  // Aurora borealis — two huge curved ribbon planes above the player,
+  // animated via a custom shader. Built lazily on first Asgard entry
+  // and shown/hidden via setVisible. Uses additive blending + emissive
+  // colours > 1.0 so the bloom pass turns it into real sky-light.
+  _setAuroraVisible(visible) {
+    if (!this._aurora && visible) this._buildAurora();
+    if (this._aurora) {
+      for (const m of this._aurora) m.visible = visible;
+    }
+  }
+
+  _buildAurora() {
+    this._aurora = [];
+    // Custom GLSL was causing shader-link failures on some GPUs.
+    // Safer approach: two large MeshBasicMaterial planes with vertex
+    // colours baked into a curved geometry, plus mild additive blend
+    // and a slow per-frame UV scroll via texture rotation. No custom
+    // shader, no risk of compile error.
+    const palettes = [
+      { hex: 0x40ffb0 },   // jade green
+      { hex: 0xa060ff },   // violet pink
+    ];
+    for (let i = 0; i < 2; i++) {
+      const geo = new THREE.PlaneGeometry(260, 70, 60, 8);
+      const pos = geo.attributes.position;
+      // Bake vertex colours: bright in middle band, dark at top/bottom.
+      const colors = new Float32Array(pos.count * 3);
+      const c = new THREE.Color(palettes[i].hex);
+      for (let v = 0; v < pos.count; v++) {
+        const x = pos.getX(v);
+        const yn = (pos.getY(v) / 35 + 1) * 0.5; // 0..1 vertical
+        // Curve the plane so it drapes like a ribbon.
+        pos.setZ(v, Math.sin(x * 0.014) * 14);
+        const band = Math.min(1, Math.max(0, 1 - Math.abs(yn - 0.55) * 2.4));
+        colors[v * 3]     = c.r * band * 2.2;
+        colors[v * 3 + 1] = c.g * band * 2.2;
+        colors[v * 3 + 2] = c.b * band * 2.2;
+      }
+      geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      pos.needsUpdate = true;
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        transparent: true, opacity: 0.75,
+        depthWrite: false, side: THREE.DoubleSide, fog: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(0, 75 + i * 22, 170);
+      mesh.rotation.y = i === 0 ? 0.18 : -0.22;
+      mesh.visible = false;
+      mesh.userData.basePhase = i;
+      this.scene.add(mesh);
+      this._aurora.push(mesh);
+    }
+  }
+
   _updateBiomeChip() {
     let el = this._biomeChipEl;
     if (!el) {
@@ -3309,12 +3479,16 @@ class Valhalla {
     cap.position.y = 1.65;
     cap.rotation.z = 0.07;
     grp.add(cap);
-    // Three runic etchings stacked on the front face — thin emissive bars
-    // so the stone reads as "magic" without being a glowing crystal.
+    // Three runic etchings stacked on the front face. MeshStandard with
+    // a strong emissiveIntensity so the bloom pass picks them up as
+    // real magical light spilling off the stone.
     for (let i = 0; i < 3; i++) {
       const rune = new THREE.Mesh(
         new THREE.BoxGeometry(0.28, 0.05, 0.03),
-        new THREE.MeshBasicMaterial({ color: 0x9adfff })
+        new THREE.MeshStandardMaterial({
+          color: 0x9adfff, emissive: 0x60c0ff, emissiveIntensity: 2.4,
+          roughness: 0.4, metalness: 0.1,
+        })
       );
       rune.position.set(0, 0.55 + i * 0.32, 0.12);
       rune.rotation.z = (i % 2 === 0 ? 0.18 : -0.18);
@@ -3354,13 +3528,13 @@ class Valhalla {
     };
     const spec = PUSPECS[type];
     const grp = new THREE.Group();
-    // Core orb — larger and brighter than before. These are gifts of the
-    // gods; they should be unmissable.
+    // Core orb — gift of the gods. Strong emissive so the bloom pass
+    // turns it into a real lantern of divine light, not a flat sphere.
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 16, 12),
+      new THREE.SphereGeometry(0.55, 18, 14),
       new THREE.MeshStandardMaterial({
-        color: spec.color, roughness: 0.25, metalness: 0.6,
-        emissive: spec.color, emissiveIntensity: 1.3,
+        color: spec.color, roughness: 0.18, metalness: 0.7,
+        emissive: spec.color, emissiveIntensity: 2.6,
       })
     );
     grp.add(core);
@@ -3494,16 +3668,25 @@ class Valhalla {
       log.position.y = 0.25;
       grp.add(log);
     }
-    // Flames: stacked tetrahedra with orange/red colors and emissive glow
+    // Flames — stacked tetrahedra. Material is BasicMaterial in HDR
+    // colour space (values > 1) so the bloom pass picks them up as
+    // real fire light spilling everywhere around the pit, not flat
+    // triangle decals. Each tier uses progressively brighter values.
     const flames = new THREE.Group();
+    const FLAME_HDR = [
+      new THREE.Color(2.4, 0.6, 0.15),  // deepest red-orange
+      new THREE.Color(3.0, 1.0, 0.25),
+      new THREE.Color(3.4, 1.8, 0.55),  // amber peak
+      new THREE.Color(3.0, 2.4, 1.0),
+      new THREE.Color(2.6, 2.4, 1.4),   // yellow-white tip
+    ];
     for (let i = 0; i < 5; i++) {
       const h = 0.7 + i * 0.18;
       const r = 0.5 - i * 0.08;
       const flame = new THREE.Mesh(
         new THREE.TetrahedronGeometry(r, 0),
         new THREE.MeshBasicMaterial({
-          color: i < 2 ? 0xff4810 : i < 4 ? 0xffa030 : 0xffe070,
-          transparent: true, opacity: 0.85, fog: true,
+          color: FLAME_HDR[i], transparent: true, opacity: 0.9, fog: true,
         })
       );
       flame.position.y = h;
@@ -3636,6 +3819,17 @@ class Valhalla {
     this._updateGodPowers(dt);
     this._updateBioAura(dt);
     this._updateBiome(dt);
+    // Aurora ribbons — gentle drift / sway. No shader uniforms now;
+    // we just rotate them subtly so the curtains look alive.
+    if (this._aurora) {
+      const t = performance.now() * 0.0004;
+      for (let i = 0; i < this._aurora.length; i++) {
+        const m = this._aurora[i];
+        if (!m.visible) continue;
+        m.rotation.z = Math.sin(t + i * 1.2) * 0.06;
+        m.position.x = Math.sin(t * 0.7 + i) * 8;
+      }
+    }
     // Boss mesh scrolls with the world; remove once well behind the player.
     if (this._bossActor) {
       const sz = this._bossActor.spawnAt - this.distance;
@@ -4117,10 +4311,28 @@ class Valhalla {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    if (this.composer) {
+      this.composer.setSize(w, h);
+      if (this.fxaaPass) {
+        this.fxaaPass.material.uniforms["resolution"].value.set(
+          1 / (w * this.renderer.getPixelRatio()),
+          1 / (h * this.renderer.getPixelRatio())
+        );
+      }
+    }
   }
 
-  _renderOnce() { this.renderer.render(this.scene, this.camera); }
-  _render() { this.renderer.render(this.scene, this.camera); }
+  // Use the post-processed composer when available so bloom + AA hit
+  // every frame. Falls back to direct renderer.render if the composer
+  // failed to init (browser without WebGL2, etc).
+  _renderOnce() {
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
+  _render() {
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
 }
 
 // Boot. Modules are deferred so DOM is already parsed when this runs.

@@ -31,7 +31,8 @@
       "Bash(git commit -m 'ui rewrite: plain copy, mobile buttons, drop Norse/AI ornament *)",
       "Bash(findstr /v vendor)",
       "Bash(awk 'NR>=85 && NR<=90 {printf \"%d: %s\\\\n\", NR, $0}' \"C:\\\\Users\\\\andre\\\\Downloads\\\\Viking Game\\\\.claude\\\\worktrees\\\\admiring-hopper-eb7368\\\\js\\\\bio\\\\ui.js\")",
-      "Bash(git ls-remote *)"
+      "Bash(git ls-remote *)",
+      "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('parse OK'\\)\\).catch\\(e=>console.error\\('parse FAIL:', e.message\\)\\)\")"
     ]
   }
 }
