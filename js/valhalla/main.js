@@ -17,6 +17,12 @@ import { FXAAShader }       from "three/addons/shaders/FXAAShader.js";
 // HDRI image-based lighting — feeds every PBR material a real-world
 // environment map so reflections + sky-lit colour come for free.
 import { RGBELoader }       from "three/addons/loaders/RGBELoader.js";
+// Real rigged GLB character loading. The Soldier.glb hosted on
+// threejs.org/examples is a CC0 rigged human with built-in walk/run
+// animations — when it loads it replaces the capsule player and gives
+// the world its single biggest "this is real not a toy" cue.
+import { GLTFLoader }       from "three/addons/loaders/GLTFLoader.js";
+import { SkeletonUtils }    from "three/addons/utils/SkeletonUtils.js";
 
 // Lane 0 = visually leftmost on screen. Because the camera looks toward +Z
 // with default up = +Y, the camera's right vector is -X, so world +X appears
@@ -1134,10 +1140,10 @@ class Valhalla {
       this.composer.addPass(renderPass);
 
       // UnrealBloomPass(resolution, strength, radius, threshold).
-      // Bloom buffer at HALF resolution (w/2, h/2) cuts the bloom-pass
-      // GPU cost ~75% with no perceptible visual difference — bloom is
-      // a low-frequency effect, full-res buffer is overkill.
-      const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.5, h * 0.5), 0.65, 0.55, 0.85);
+      // Bloom buffer at HALF resolution + strength bumped 0.65 → 0.85
+      // now that the IBL ambient doesn't double-count brightness —
+      // the highlights need more punch to read against the lit world.
+      const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.5, h * 0.5), 0.85, 0.6, 0.82);
       this.composer.addPass(bloom);
       this.bloomPass = bloom;
 
@@ -1845,10 +1851,27 @@ class Valhalla {
     shieldBoss.position.set(0, 1.05, -0.36);
     grp.add(shieldBoss);
 
-    // Save references for animation
+    // Save references for animation. `procPlayer` holds the procedural
+    // mesh assembly we just built — it's the placeholder shown until
+    // the real GLB rigged character loads from CDN. Same parent group
+    // is reused so all the bio aura / shield glow / Mjölnir aura code
+    // keeps working without any rewire.
     this.player = grp;
+    this.procPlayer = new THREE.Group();
+    // Move all the existing procedural children into procPlayer so we
+    // can hide/show that whole sub-tree atomically when the GLB lands.
+    while (grp.children.length > 0) {
+      this.procPlayer.add(grp.children[0]);
+    }
+    grp.add(this.procPlayer);
     this.playerParts = { armL, armR, legL, legR, head, helmet, body };
     this.scene.add(grp);
+
+    // Kick off async load of the real character. Game runs with the
+    // procedural placeholder until this resolves; on success we swap
+    // the GLB in and hide the placeholder. If the load fails (CDN
+    // down, CORS, etc), we just stay with the procedural figure.
+    this._loadRealPlayer();
 
     // Player shadow disc (cheap)
     const shadowDisc = new THREE.Mesh(
@@ -1894,6 +1917,75 @@ class Valhalla {
     this._bioAura = bioAura;
     this._bioAuraTargetColor = new THREE.Color(0xffffff);
     this._bioAuraTargetOpacity = 0;
+  }
+
+  // Async-load a real rigged 3D human from threejs.org's CC0 model
+  // library and swap him in for the procedural capsule placeholder.
+  // Soldier.glb is a complete human with built-in walk/run/idle
+  // animations — once it lands the player goes from "stack of
+  // capsules" to "actual person", which is the single biggest
+  // "looks like real Earth" upgrade available without an asset
+  // pipeline of our own.
+  _loadRealPlayer() {
+    const URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
+    try {
+      const loader = new GLTFLoader();
+      loader.load(URL, (gltf) => {
+        try {
+          const model = SkeletonUtils.clone(gltf.scene);
+          // Soldier.glb is ~1.8 units tall facing -Z. Our procedural
+          // player is ~2.0 tall facing +Z. Scale + rotate to match.
+          model.scale.setScalar(1.05);
+          model.rotation.y = Math.PI;            // face forward (+Z)
+          // Make every mesh in the model accept the sky-driven IBL
+          // env so it lights consistently with the rest of the scene.
+          model.traverse((o) => {
+            if (o.isMesh) {
+              o.material.envMapIntensity = 1.0;
+              o.frustumCulled = false;           // never cull our hero
+            }
+          });
+          // Hide the procedural placeholder, add the real character.
+          if (this.procPlayer) this.procPlayer.visible = false;
+          this.player.add(model);
+          this._realPlayer = model;
+          // Set up animation mixer + grab the Run clip (Soldier has
+          // Idle/Walk/Run baked in). We'll switch clips dynamically
+          // later (idle on menu, run while playing).
+          this._mixer = new THREE.AnimationMixer(model);
+          const clips = gltf.animations || [];
+          const findClip = (name) => clips.find(c =>
+            c.name.toLowerCase().includes(name.toLowerCase()));
+          this._anims = {
+            idle: findClip("Idle"),
+            walk: findClip("Walk"),
+            run:  findClip("Run"),
+          };
+          this._setPlayerAnim("run");
+          console.log("[Valhalla] real player model loaded");
+        } catch (e) {
+          console.warn("[Valhalla] GLB swap-in failed, keeping procedural", e);
+        }
+      }, undefined, (err) => {
+        console.warn("[Valhalla] real player model load failed (using procedural)", err);
+      });
+    } catch (e) {
+      console.warn("[Valhalla] GLTFLoader setup failed", e);
+    }
+  }
+
+  // Switch the active animation clip on the real player. Cross-fades
+  // smoothly between previous and new clip so transitions don't pop.
+  _setPlayerAnim(name) {
+    if (!this._mixer || !this._anims) return;
+    const clip = this._anims[name];
+    if (!clip) return;
+    const next = this._mixer.clipAction(clip);
+    next.reset().setEffectiveWeight(1).play();
+    if (this._activeAnim && this._activeAnim !== next) {
+      this._activeAnim.crossFadeTo(next, 0.25, false);
+    }
+    this._activeAnim = next;
   }
 
   _buildSnow() {
@@ -4093,6 +4185,12 @@ class Valhalla {
     this._updateGodPowers(dt);
     this._updateBioAura(dt);
     this._updateBiome(dt);
+    // Drive the real character's animation mixer. Speed scales with
+    // game speed so legs cycle in sync with apparent motion.
+    if (this._mixer) {
+      const animSpeed = Math.max(0.5, this.speed / BASE_SPEED);
+      this._mixer.update(dt * animSpeed);
+    }
     // Aurora ribbons — gentle drift / sway. No shader uniforms now;
     // we just rotate them subtly so the curtains look alive.
     if (this._aurora) {
@@ -4238,16 +4336,24 @@ class Valhalla {
       if (sceneZ < -16) fp.visible = false;
     }
 
-    // camera follow with subtle sway
-    // Running cam bob: bigger amplitude tied to speed. Sells motion.
-    const bobAmp = 0.08 + Math.min(0.18, (this.speed - BASE_SPEED) * 0.005);
-    const camTargetX = this.player.position.x * 0.4 + Math.sin(t * 0.3) * 0.18;
-    const camTargetY = 4.0 + Math.sin(t * 1.6) * bobAmp + this.playerY * 0.15;
+    // Camera follow with VISCERAL motion. Two synced oscillators:
+    //   - Vertical "footfall" bob at 2× the leg-cycle frequency,
+    //     amplitude scaling with run speed. This is the single
+    //     biggest "I'm actually moving" cue.
+    //   - Horizontal sway at half the bob freq for a natural swing.
+    // Frequencies derived from gait research: ~2 Hz footfall at jog
+    // speed, ~3 Hz at sprint. Scaling speed/BASE → freq matches that.
+    const gaitFreq = 2.0 + Math.min(1.5, (this.speed - BASE_SPEED) * 0.04);
+    const bobAmp   = 0.08 + Math.min(0.22, (this.speed - BASE_SPEED) * 0.007);
+    const swayAmp  = 0.10 + Math.min(0.12, (this.speed - BASE_SPEED) * 0.003);
+    const phase = performance.now() * 0.001 * gaitFreq * Math.PI;
+    const camTargetX = this.player.position.x * 0.4 + Math.sin(phase * 0.5) * swayAmp;
+    const camTargetY = 5.3 + Math.abs(Math.sin(phase)) * bobAmp + this.playerY * 0.12;
     this.camera.position.x += (camTargetX - this.camera.position.x) * Math.min(1, dt * 4);
     this.camera.position.y += (camTargetY - this.camera.position.y) * Math.min(1, dt * 4);
-    this.camera.position.z = -11.5;
+    this.camera.position.z = -12;
 
-    // Trauma-based camera shake (decays, applied as offset)
+    // Trauma-based camera shake (decays, applied as offset).
     let shakeX = 0, shakeY = 0;
     if (this._shakeT > 0) {
       this._shakeT -= dt;
@@ -4259,7 +4365,11 @@ class Valhalla {
     }
     this.camera.position.x += shakeX;
     this.camera.position.y += shakeY;
-    this.camera.lookAt(this.player.position.x * 0.6 + shakeX * 0.5, 1.7 + this.playerY * 0.4 + shakeY * 0.5, 22);
+    this.camera.lookAt(
+      this.player.position.x * 0.6 + shakeX * 0.5,
+      1.0 + this.playerY * 0.4 + shakeY * 0.5,
+      28
+    );
 
     // sun follows camera-ish
     this.sun.position.set(this.player.position.x * 0.5 + 50, 80, this.distance + 30);
