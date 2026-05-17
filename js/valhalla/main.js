@@ -11,9 +11,15 @@ const GROUND_WIDTH = 60;
 const CHUNK_LENGTH = 60;
 const CHUNK_COUNT = 6;
 const VIEW_DEPTH = CHUNK_LENGTH * CHUNK_COUNT;
-const JUMP_VELOCITY = 12;
+// Peak jump height = v²/(2g). With v=16, g=30 → peak 4.27m, up + down ≈
+// 1.07s aloft. Previous v=12 → peak 2.4m which was lower than the
+// tallest obstacles (ice 2.5m, boulder 2.2m), so jumps "didn't work"
+// even when the player was doing the right thing. Player-reported bug:
+// "u cannot even surpass obstacles by jumping omg". Fixed by giving
+// the jump real headroom.
+const JUMP_VELOCITY = 16;
 const GRAVITY = 30;
-const SLIDE_DURATION = 0.32;
+const SLIDE_DURATION = 0.36;
 const BASE_SPEED = 22;
 const MAX_SPEED = 60;
 
@@ -23,20 +29,22 @@ const MAX_SPEED = 60;
 // semitone offset for the music loop so each realm has its own modal
 // flavour without rewriting the melody. `boss` names the entrance
 // encounter that fires at the start of each biome (after Midgard).
-// 250m each so you actually see realm transitions in a typical run.
-// At BASE_SPEED 22 m/s that's first transition in ~11s — visible even
-// for a brand new player who only manages 1-2 obstacles.
+// 120m each so realms cycle within a normal 30s run. At BASE_SPEED
+// 22 m/s that's first transition in ~5.5s — Midgard is brief on
+// purpose so the player sees Jötunheim's icy palette + JÖTUNN boss
+// within their first attempts. Boss spawns 30m ahead so they meet
+// the boss within ~1.5s of the entrance banner firing.
 const BIOMES = [
-  { name: "Midgard",    length: 250, fog: 0xc4d2dc,
+  { name: "Midgard",    length: 120, fog: 0xc4d2dc,
     sky: [0x9cb6cc, 0xc2d2dd, 0xdee7ec, 0xc4d2dc], pitch: 0,
     boss: null },
-  { name: "Jötunheim",  length: 250, fog: 0x9ab8d0,
+  { name: "Jötunheim",  length: 120, fog: 0x9ab8d0,
     sky: [0x6a8aaa, 0x9ab8d0, 0xc8dceb, 0x9ab8d0], pitch: -2,
     boss: "jotunn" },
-  { name: "Muspelheim", length: 250, fog: 0xc06840,
+  { name: "Muspelheim", length: 120, fog: 0xc06840,
     sky: [0x602010, 0xb04020, 0xe88040, 0xc06840], pitch: 1,
     boss: "surtr" },
-  { name: "Asgard",     length: 250, fog: 0xe8c878,
+  { name: "Asgard",     length: 120, fog: 0xe8c878,
     sky: [0xb08038, 0xe8b860, 0xffe8b0, 0xe8c878], pitch: 4,
     boss: "valkyrie" },
 ];
@@ -950,8 +958,12 @@ class Valhalla {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Shadows disabled — they cost a full extra scene draw per frame
+    // (the shadow map pass), pulled FPS down hard on the user's hardware,
+    // and at this art style add limited visual return. The player's
+    // shadow disc + obstacle ground decals carry "grounded in the
+    // world" feel cheaply.
+    this.renderer.shadowMap.enabled = false;
 
     this.scene = new THREE.Scene();
     // Fog matches the sky horizon. Denser and closer than before (40→320
@@ -1649,10 +1661,11 @@ class Valhalla {
     // 2. FAR flakes - many small, drifting in middle distance for depth.
 
     // Close layer (~camera-relative volume in front of player).
-    // Reduced 350→200 — the close flakes were the biggest GC source
-    // because their positions are touched every frame in _driftSnow.
+    // Now 120 (was 350 originally, 200 last round). _driftSnow loops
+    // over these every frame and mutates the position buffer, so this
+    // is a direct CPU win.
     {
-      const count = 200;
+      const count = 120;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -1669,11 +1682,10 @@ class Valhalla {
       this.scene.add(this.snowClose);
     }
 
-    // Far layer (volumetric drift). Reduced 1800→900 — far flakes are
-    // small enough that the eye doesn't notice the halving, but it cuts
-    // _driftSnow's per-frame loop in half.
+    // Far layer (volumetric drift). 1800 → 900 → now 500. Far flakes
+    // are so small the eye really doesn't register the count.
     {
-      const count = 900;
+      const count = 500;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 140;
@@ -1932,7 +1944,9 @@ class Valhalla {
   // tuned to the boss's specialty (lane-pressure, slide-walls, fly-bys).
   // Surviving the pattern is the implicit win condition.
   _spawnBoss(type) {
-    const ahead = this.distance + 70;
+    // 30m ahead at BASE_SPEED 22 = ~1.4s after banner fires. Player
+    // immediately sees the boss looming.
+    const ahead = this.distance + 30;
     const grp = new THREE.Group();
     let label = "BOSS";
     if (type === "jotunn") {
@@ -2019,7 +2033,9 @@ class Valhalla {
     // Track so we can scroll it with the world + remove after passing.
     this._bossActor = { mesh: grp, spawnAt: ahead, type };
     // Curated obstacle pattern for the encounter — 4 hazards, well-spaced.
-    const patternZ = ahead - 20;
+    // Pattern starts a bit beyond the boss mesh so the player has time
+    // to spot the boss and brace before the first hazard hits.
+    const patternZ = ahead + 12;
     if (type === "jotunn") {
       // Three boulder forces — lane pressure
       this._spawnObstacle(0, patternZ);
@@ -2682,6 +2698,10 @@ class Valhalla {
         } else if (s.status === "live") {
           this.hud.bioRow.classList.add("on");
         }
+        this._refreshBioLiveFlag();
+      });
+      window.Bio.on("eegStatus", (s) => {
+        this._refreshBioLiveFlag();
       });
       window.Bio.on("stateChange", ({ state, prev }) => {
         this.cognitiveState = state;
@@ -2713,6 +2733,18 @@ class Valhalla {
       return true;
     };
     if (!tryBind()) window.addEventListener("bio:ready", tryBind, { once: true });
+  }
+
+  // Drive the body.bio-live CSS flag. The nudge pill in the corner
+  // ("⚡ Enable camera or Muse → 2× score") shows by default and gets
+  // hidden once either sensor reaches live OR warming, so the player
+  // knows the moment they've turned on the system.
+  _refreshBioLiveFlag() {
+    if (!window.Bio || typeof window.Bio.status !== "function") return;
+    const s = window.Bio.status();
+    const active = (s.rppg === "live" || s.rppg === "warming"
+                 || s.eeg  === "live" || s.eeg  === "warming");
+    document.body.classList.toggle("bio-live", !!active);
   }
 
   _showBioToast(text) {
@@ -3154,7 +3186,23 @@ class Valhalla {
     mesh.position.x = LANES[lane];
     mesh.position.z = zWorld;
     this.scene.add(mesh);
-    this.obstacles.push({ mesh, lane, spawnAt: zWorld, type, w, h, slidable: false, decal });
+    // Action label floating above so the player knows what to do.
+    // Single-lane obstacles are dodge-by-lane-change (yellow). The jump
+    // mechanic exists if they're brave but DODGE is the canonical play.
+    this._addActionLabel(mesh, "DODGE", h + 1.0, 0xffd040);
+    this.obstacles.push({ mesh, lane, spawnAt: zWorld, type, w, h, slidable: false, action: "dodge", decal });
+  }
+
+  // Attaches a floating action label sprite ("JUMP" / "SLIDE" / "DODGE")
+  // above an obstacle so the player knows the verb at a glance — no
+  // memorising shapes. Sprite scales with depth automatically (it's a
+  // billboarded plane), so it stays readable from far and large up close.
+  _addActionLabel(parent, text, yOffset = 2.5, accent = 0xff8040) {
+    const sprite = this._makeTextSprite(text, accent);
+    sprite.position.set(0, yOffset, 0);
+    sprite.scale.set(2.2, 0.55, 1);
+    parent.add(sprite);
+    return sprite;
   }
 
   _spawnBeam(zWorld) {
@@ -3201,9 +3249,12 @@ class Valhalla {
       this.scene.add(d);
       decals.push(d);
     }
+    // SLIDE label floating above the centre of the beam. Red accent so
+    // it visually matches the bar's "danger" colour.
+    this._addActionLabel(grp, "SLIDE", 3.0, 0xff3030);
     this.obstacles.push({
       mesh: grp, lane: -1, spawnAt: zWorld, type: "beam",
-      w: 999, h: 0.55, slidable: true, yMin: 1.6, decal: decals,
+      w: 999, h: 0.55, slidable: true, yMin: 1.6, action: "slide", decal: decals,
     });
   }
 
@@ -3472,9 +3523,11 @@ class Valhalla {
     decal.position.set(LANES[lane], 0.06, zWorld);
     this.scene.add(decal);
 
+    // JUMP label — orange accent matches the fire colour.
+    this._addActionLabel(grp, "JUMP", 3.0, 0xff9020);
     this.obstacles.push({
       mesh: grp, lane, spawnAt: zWorld, type: "fire",
-      w: 1.9, h: 0.6, slidable: false, decal,
+      w: 1.9, h: 0.6, slidable: false, action: "jump", decal,
     });
   }
 
@@ -3525,9 +3578,11 @@ class Valhalla {
       this.scene.add(d);
       decals.push(d);
     }
+    // SLIDE label — same red as the beam since the verb is identical.
+    this._addActionLabel(grp, "SLIDE", 3.5, 0xff3030);
     this.obstacles.push({
       mesh: grp, lane: -1, spawnAt: zWorld, type: "ravens",
-      w: 999, h: 0.55, slidable: true, yMin: 1.5, decal: decals,
+      w: 999, h: 0.55, slidable: true, yMin: 1.5, action: "slide", decal: decals,
     });
   }
 

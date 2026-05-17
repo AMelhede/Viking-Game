@@ -30,7 +30,8 @@
       "Bash(ls \"C:\\\\Users\\\\andre\\\\.claude\\\\projects\\\\C--Users-andre-Downloads-Viking-Game\\\\memory\" 2>&1)",
       "Bash(git commit -m 'ui rewrite: plain copy, mobile buttons, drop Norse/AI ornament *)",
       "Bash(findstr /v vendor)",
-      "Bash(awk 'NR>=85 && NR<=90 {printf \"%d: %s\\\\n\", NR, $0}' \"C:\\\\Users\\\\andre\\\\Downloads\\\\Viking Game\\\\.claude\\\\worktrees\\\\admiring-hopper-eb7368\\\\js\\\\bio\\\\ui.js\")"
+      "Bash(awk 'NR>=85 && NR<=90 {printf \"%d: %s\\\\n\", NR, $0}' \"C:\\\\Users\\\\andre\\\\Downloads\\\\Viking Game\\\\.claude\\\\worktrees\\\\admiring-hopper-eb7368\\\\js\\\\bio\\\\ui.js\")",
+      "Bash(git ls-remote *)"
     ]
   }
 }
