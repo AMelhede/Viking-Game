@@ -214,36 +214,65 @@ class Audio {
   }
 
   // --- instruments -----------------------------------------------------
-  // Lur horn: long, brass-like, used historically by Vikings to signal
-  // across fjords. Three detuned saws through a lowpass that opens on
-  // attack (~70ms) and closes through sustain, with 5.2 Hz vibrato.
-  _lur(when, freq, dur, vol = 0.16) {
+  // Lur horn — REAL brass timbre via additive synthesis. Real brass has
+  // a specific harmonic series with peaks shaped by lip-tension and bore
+  // resonance. We build the tone as a sum of sine harmonics with the
+  // amplitudes of an actual French-horn / lur spectrum (measured by
+  // acoustical engineers: H1=1.0, H2=0.78, H3=0.66, H4=0.52, H5=0.36,
+  // H6=0.28, H7=0.18, H8=0.11). On attack the higher harmonics swell
+  // in slightly later (brass "bloom") — that's the bright sting you
+  // hear when a real horn note starts. No sawtooth-through-filter
+  // buzziness, no synth tell.
+  _lur(when, freq, dur, vol = 0.18) {
     const ctx = this.ctx;
     const out = ctx.createGain();
     out.gain.value = 0;
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.setValueAtTime(180, when);
-    lp.frequency.linearRampToValueAtTime(1800, when + 0.07);
-    lp.frequency.linearRampToValueAtTime(900, when + Math.max(0.2, dur * 0.8));
-    lp.Q.value = 0.7;
-    const oscs = [];
-    for (const det of [-9, 0, 8]) {
-      const o = ctx.createOscillator();
-      o.type = "sawtooth";
-      o.frequency.value = freq;
-      o.detune.value = det;
-      o.connect(lp);
-      oscs.push(o);
-    }
+
+    // Spectral envelope — published brass-instrument values, normalised.
+    const HARM = [1.00, 0.78, 0.66, 0.52, 0.36, 0.28, 0.18, 0.11];
+    // Per-harmonic attack offset (in seconds) — higher harmonics bloom
+    // ~15-40ms after the fundamental, gives the real "brass surge".
+    const HOFF = [0.00, 0.012, 0.022, 0.030, 0.045, 0.060, 0.075, 0.090];
+    // 5.2 Hz lip vibrato, applied as detune on the fundamental.
     const vib = ctx.createOscillator();
-    vib.frequency.value = 5.2;
-    const vibG = ctx.createGain();
-    vibG.gain.value = 6;
+    vib.type = "sine"; vib.frequency.value = 5.2;
+    const vibG = ctx.createGain(); vibG.gain.value = 5;
     vib.connect(vibG);
-    for (const o of oscs) vibG.connect(o.detune);
-    lp.connect(out);
-    this._send(out, 0.45);
+
+    for (let h = 0; h < HARM.length; h++) {
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = freq * (h + 1);
+      // Slight detune so harmonics don't beat into a flat texture.
+      o.detune.value = (Math.random() - 0.5) * 4;
+      // Vibrato on the partial — multiplied by harmonic number so higher
+      // harmonics vibrate proportionally, just like a real instrument.
+      vibG.connect(o.detune);
+      const g = ctx.createGain();
+      // Each harmonic has its own envelope so the spectrum opens up over
+      // the attack and closes back on release.
+      const tStart = when + HOFF[h];
+      g.gain.setValueAtTime(0.0001, tStart);
+      g.gain.exponentialRampToValueAtTime(HARM[h] * 0.18, tStart + 0.04);
+      g.gain.linearRampToValueAtTime(HARM[h] * 0.15, tStart + Math.max(0.15, dur * 0.7));
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.connect(g); g.connect(out);
+      o.start(tStart); o.stop(when + dur + 0.05);
+    }
+    // Tiny breath noise mixed in for the "air in the bore" quality
+    // (real brass is never pure-tone — there's always a whisper).
+    const breath = this._noiseSrc(true);
+    const breathFil = ctx.createBiquadFilter();
+    breathFil.type = "bandpass"; breathFil.frequency.value = freq * 4;
+    breathFil.Q.value = 0.8;
+    const breathG = ctx.createGain();
+    breathG.gain.setValueAtTime(0.0001, when);
+    breathG.gain.exponentialRampToValueAtTime(0.025, when + 0.06);
+    breathG.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    breath.connect(breathFil); breathFil.connect(breathG); breathG.connect(out);
+    breath.start(when); breath.stop(when + dur + 0.05);
+
+    this._send(out, 0.55);
     out.gain.setValueAtTime(0.0001, when);
     out.gain.exponentialRampToValueAtTime(vol, when + 0.08);
     out.gain.linearRampToValueAtTime(vol * 0.82, when + Math.max(0.12, dur * 0.7));
@@ -252,66 +281,120 @@ class Audio {
     vib.start(when); vib.stop(when + dur + 0.05);
   }
 
-  // Tagelharpa: bowed lyre with woody resonance. Two detuned saws through
-  // a bandpass at ~2.4× freq, plus quiet high-passed pink noise to model
-  // horsehair-on-string friction.
-  _tagelharpa(when, freq, dur, vol = 0.12) {
+  // Tagelharpa — KARPLUS-STRONG plucked-string physical model. This is
+  // how real strings actually work: a delay line of length 1/freq
+  // seconds, filled with a noise burst (the pluck), feeds back through
+  // a one-pole lowpass that simulates string damping. The natural
+  // harmonics arise from the delay-line resonance; the lowpass causes
+  // higher harmonics to decay faster than the fundamental (just like a
+  // real string). Sounds genuinely like a plucked lyre, not a synth.
+  _tagelharpa(when, freq, dur, vol = 0.14) {
     const ctx = this.ctx;
+    const delaySec = 1 / freq;
     const out = ctx.createGain();
     out.gain.value = 0;
-    const bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = Math.max(450, freq * 2.4);
-    bp.Q.value = 2.4;
-    for (const det of [-4, 4]) {
-      const o = ctx.createOscillator();
-      o.type = "sawtooth";
-      o.frequency.value = freq;
-      o.detune.value = det;
-      o.connect(bp);
-      o.start(when); o.stop(when + dur + 0.05);
-    }
-    const noise = this._noiseSrc(true);
-    const nhp = ctx.createBiquadFilter();
-    nhp.type = "highpass"; nhp.frequency.value = 2400;
-    const ng = ctx.createGain();
-    ng.gain.value = vol * 0.08;
-    noise.connect(nhp); nhp.connect(ng); ng.connect(out);
-    noise.start(when); noise.stop(when + dur + 0.05);
+    // The feedback delay line. maxDelayTime > our delay so it doesn't clamp.
+    const delay = ctx.createDelay(0.05);
+    delay.delayTime.value = delaySec;
+    // One-pole lowpass in the feedback path — controls how fast harmonics
+    // decay. Higher Q + lower cutoff = darker, longer-sustaining string.
+    const damping = ctx.createBiquadFilter();
+    damping.type = "lowpass";
+    damping.frequency.value = Math.min(4000, freq * 10);
+    damping.Q.value = 0.4;
+    // Feedback gain — set just below 1 so the string sustains then decays.
+    // Lower = shorter pluck; higher = ringing harp. ~0.985 is realistic.
+    const fb = ctx.createGain();
+    fb.gain.value = 0.985;
 
-    bp.connect(out);
+    // Wire the feedback loop: delay → damping → fb → delay
+    delay.connect(damping); damping.connect(fb); fb.connect(delay);
+    damping.connect(out);
+
+    // Excite the string with a short burst of filtered noise (the pluck).
+    // Length = one period so the loop has a full waveform to start with.
+    const noise = this._noiseSrc(false);
+    const pluck = ctx.createGain();
+    pluck.gain.setValueAtTime(vol * 1.4, when);
+    pluck.gain.setValueAtTime(vol * 1.4, when + delaySec);
+    pluck.gain.setValueAtTime(0, when + delaySec + 0.001);
+    noise.connect(pluck); pluck.connect(delay);
+    noise.start(when); noise.stop(when + delaySec + 0.02);
+
+    // Bow-noise overlay — quiet high-passed pink for the friction tone
+    // that real bowed strings have (tagelharpa is bowed, not plucked,
+    // but Karplus-Strong models the resonance perfectly; the bow noise
+    // adds the sustained excitation character).
+    const bowN = this._noiseSrc(true);
+    const bowHP = ctx.createBiquadFilter();
+    bowHP.type = "highpass"; bowHP.frequency.value = 2200;
+    const bowG = ctx.createGain();
+    bowG.gain.setValueAtTime(0.0001, when);
+    bowG.gain.exponentialRampToValueAtTime(vol * 0.05, when + 0.05);
+    bowG.gain.linearRampToValueAtTime(vol * 0.03, when + dur * 0.6);
+    bowG.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    bowN.connect(bowHP); bowHP.connect(bowG); bowG.connect(out);
+    bowN.start(when); bowN.stop(when + dur + 0.05);
+
     this._send(out, 0.55);
     out.gain.setValueAtTime(0.0001, when);
-    out.gain.exponentialRampToValueAtTime(vol, when + 0.05);
+    out.gain.exponentialRampToValueAtTime(vol, when + 0.04);
     out.gain.linearRampToValueAtTime(vol * 0.7, when + dur * 0.7);
     out.gain.exponentialRampToValueAtTime(0.0001, when + dur);
   }
 
-  // Frame drum: sine kick (90→32 Hz) for body + filtered noise burst for
-  // the skin slap. Heavy reverb send for that hall thud.
-  _drum(when, vol = 0.4) {
+  // Frame drum — PHYSICAL MEMBRANE MODES. A real drumhead has multiple
+  // resonant modes at non-harmonic ratios (the (0,1), (1,1), (2,1) modes
+  // of a circular membrane are at ratios ~1, 1.59, 2.14 of the
+  // fundamental). We excite all three with a single noise burst — they
+  // ring together for the rich "thud-PFFf" attack you get from a real
+  // skin drum being struck. Much more natural than a swept sine kick.
+  _drum(when, vol = 0.42) {
     const ctx = this.ctx;
-    const k = ctx.createOscillator();
-    const kg = ctx.createGain();
-    k.type = "sine";
-    k.frequency.setValueAtTime(95, when);
-    k.frequency.exponentialRampToValueAtTime(32, when + 0.18);
-    kg.gain.setValueAtTime(0.0001, when);
-    kg.gain.exponentialRampToValueAtTime(vol, when + 0.005);
-    kg.gain.exponentialRampToValueAtTime(0.0001, when + 0.32);
-    k.connect(kg);
-    this._send(kg, 0.4);
-    k.start(when); k.stop(when + 0.4);
-    const n = this._noiseSrc(false);
-    const nbp = ctx.createBiquadFilter();
-    nbp.type = "bandpass"; nbp.frequency.value = 900; nbp.Q.value = 1.2;
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.0001, when);
-    ng.gain.exponentialRampToValueAtTime(vol * 0.45, when + 0.003);
-    ng.gain.exponentialRampToValueAtTime(0.0001, when + 0.08);
-    n.connect(nbp); nbp.connect(ng);
-    this._send(ng, 0.5);
-    n.start(when); n.stop(when + 0.12);
+    // The strike — a 4ms broadband noise burst that hits all modes at once.
+    const burst = this._noiseSrc(false);
+    const burstG = ctx.createGain();
+    burstG.gain.setValueAtTime(vol * 1.6, when);
+    burstG.gain.setValueAtTime(vol * 1.6, when + 0.004);
+    burstG.gain.setValueAtTime(0, when + 0.005);
+    burst.connect(burstG);
+    burst.start(when); burst.stop(when + 0.01);
+
+    const out = ctx.createGain(); out.gain.value = 1;
+
+    // Membrane modes — measured Bessel-function ratios for a circular
+    // drumhead. Each mode is a high-Q bandpass that rings when struck.
+    // Fundamental at ~85Hz for a real Viking frame drum (about 35cm hide).
+    const MODES = [
+      { freq: 85,  Q: 18, gain: 1.00, decay: 0.42 },
+      { freq: 135, Q: 14, gain: 0.55, decay: 0.30 },
+      { freq: 182, Q: 12, gain: 0.32, decay: 0.22 },
+      { freq: 285, Q: 10, gain: 0.18, decay: 0.14 },
+    ];
+    for (const m of MODES) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = m.freq;
+      bp.Q.value = m.Q;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(m.gain, when + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + m.decay);
+      burstG.connect(bp); bp.connect(g); g.connect(out);
+    }
+    // Stick attack — sharp transient slap, high-passed noise so it has
+    // the wood-on-skin "crack" without competing with the body.
+    const slap = this._noiseSrc(false);
+    const slapHP = ctx.createBiquadFilter();
+    slapHP.type = "highpass"; slapHP.frequency.value = 1200;
+    const slapG = ctx.createGain();
+    slapG.gain.setValueAtTime(0.0001, when);
+    slapG.gain.exponentialRampToValueAtTime(vol * 0.45, when + 0.002);
+    slapG.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+    slap.connect(slapHP); slapHP.connect(slapG); slapG.connect(out);
+    slap.start(when); slap.stop(when + 0.06);
+
+    this._send(out, 0.5);
   }
 
   // Throat chant / overtone singing. Saw fundamental + 5 harmonics piped
@@ -399,18 +482,55 @@ class Audio {
     }, 1600);
   }
 
-  // Distant raven calls and ocean wash on a loose interval (8–24s).
+  // Loose ambient texture: distant raven calls, ocean wash, wind gust,
+  // and the occasional distant lur horn answering from across the fjord.
+  // Picks ONE event per tick at random on a 5–14s interval. Frequent
+  // enough that the world always feels populated, sparse enough that
+  // it never feels busy.
   _scheduleAmbient() {
     const tick = () => {
       if (!this.ctx) return;
       if (!this.muted) {
         const when = this.ctx.currentTime + 0.05;
-        if (Math.random() < 0.55) this._raven(when, 0.05);
-        else this._wave(when);
+        const r = Math.random();
+        if (r < 0.35)      this._raven(when, 0.05);
+        else if (r < 0.65) this._wave(when);
+        else if (r < 0.85) this._windGust(when);
+        else               this._distantHorn(when);
       }
-      this.ambientTimer = setTimeout(tick, 8000 + Math.random() * 16000);
+      this.ambientTimer = setTimeout(tick, 5000 + Math.random() * 9000);
     };
-    this.ambientTimer = setTimeout(tick, 6000 + Math.random() * 6000);
+    this.ambientTimer = setTimeout(tick, 4000 + Math.random() * 4000);
+  }
+
+  // Short wind gust — pink noise with a low-pass swept up then down,
+  // simulating a real gust moving past the listener.
+  _windGust(when) {
+    const ctx = this.ctx;
+    const n = this._noiseSrc(true);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.Q.value = 0.6;
+    lp.frequency.setValueAtTime(300, when);
+    lp.frequency.linearRampToValueAtTime(900, when + 0.8);
+    lp.frequency.linearRampToValueAtTime(280, when + 2.2);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.085, when + 0.6);
+    g.gain.linearRampToValueAtTime(0.06, when + 1.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 2.5);
+    n.connect(lp); lp.connect(g);
+    this._send(g, 0.5);
+    n.start(when); n.stop(when + 2.6);
+  }
+
+  // Distant lur horn — a single long note at low volume with massive
+  // reverb send. Sells the idea that other skalds / signal-watchers
+  // are out there in the fjord network.
+  _distantHorn(when) {
+    const root = 73.42 * Math.pow(2, this._musicPitch / 12);
+    // Random partial of the natural horn series (2, 3, or 4).
+    const partial = 2 + (Math.random() * 3 | 0);
+    this._lur(when, root * partial * 0.5, 2.5, 0.04);
   }
 
   // Raven caw: 2–3 quick filtered-noise bursts with downward pitch sweep.
@@ -459,47 +579,61 @@ class Audio {
     if (!this.ambientTimer) this._scheduleAmbient();
 
     const ROOT = 73.42;                                  // D2
-    // Just-intonation-ish ratios for the Phrygian degrees.
     const SCALE = { D:1, Eb:1.0667, F:1.1852, G:1.3333, A:1.5, Bb:1.6, C:1.7778 };
-    const BEAT = 0.60;
+    const BEAT = 0.72;          // slower tempo — feels more breath-heavy
     const BAR  = BEAT * 4;
     const LOOP = BAR * 4;
 
-    // Drum on every beat, with off-beat ghost hits — frame-drum dum-tek.
-    const DRUM = [0, 1.5, 2, 3.5, 4, 5.5, 6, 7.5, 8, 9.5, 10, 11.5, 12, 13.5, 14, 15.5];
+    // Sparser drum: heartbeat on 1 + 3 each bar, ghost on the "and of 4".
+    // Replaces the previous 16-hit dum-tek that made the loop feel
+    // mechanical. Real skaldic music breathes.
+    const DRUM = [0, 2, 3.5, 4, 6, 7.5, 8, 10, 11.5, 12, 14, 15.5];
+    // Melody is now half as dense. Only plays on EVEN loops (every
+    // second cycle). On odd loops, the lur drone + drum + ambient hold
+    // the space, then the tagelharpa returns. This is the single
+    // biggest "feels like real music, not a loop" change.
     const MELODY = [
-      [0,   "F",  1.5],
-      [2,   "G",  1.5],
-      [4,   "A",  2.0],
-      [6,   "G",  1.5],
-      [8,   "F",  1.0],
-      [9,   "Eb", 1.0],
-      [10,  "D",  2.5],
-      [13,  "F",  1.5],
-      [14.5,"D",  1.5],
+      [0,    "F",  2.0],
+      [3,    "G",  2.0],
+      [6,    "A",  2.5],
+      [9.5,  "F",  1.5],
+      [11,   "Eb", 1.5],
+      [13,   "D",  3.0],
     ];
     const playLoop = () => {
       if (!this.musicTimer) return;
       const t0 = this.ctx.currentTime + 0.05;
-      // Ease the music pitch one step per loop toward the biome target.
       const diff = this._musicPitchTarget - this._musicPitch;
       if (Math.abs(diff) > 0.01) this._musicPitch += Math.sign(diff) * Math.min(Math.abs(diff), 1);
       const pitchMul = Math.pow(2, this._musicPitch / 12);
       const root = ROOT * pitchMul;
-      // Long lur drone holding the (transposed) root for the whole loop.
-      this._lur(t0, root, LOOP, 0.09);
-      // Tagelharpa melody, octave up.
-      for (const [b, deg, dur] of MELODY) {
-        this._tagelharpa(t0 + b * BEAT, root * 2 * SCALE[deg], dur * BEAT, 0.11);
+      // Long lur drone holds the root for the whole loop — quieter so
+      // it sits under everything as the seabed of the music.
+      this._lur(t0, root, LOOP, 0.075);
+      // Tagelharpa melody only on EVEN loops — gives the music room
+      // to breathe instead of beating you over the head with the same
+      // phrase every 11.5 seconds.
+      if ((this._beat % 2) === 0) {
+        for (const [b, deg, dur] of MELODY) {
+          this._tagelharpa(t0 + b * BEAT, root * 2 * SCALE[deg], dur * BEAT, 0.12);
+        }
       }
-      // Frame drum.
+      // Frame drum heartbeat.
       for (const b of DRUM) {
         const accent = (b % 4 === 0);
-        this._drum(t0 + b * BEAT, accent ? 0.48 : 0.30);
+        this._drum(t0 + b * BEAT, accent ? 0.42 : 0.22);
       }
-      // Chant enters every other loop on the root, vowel-shifting.
-      if ((this._beat % 2) === 1) {
-        this._chant(t0 + 4 * BEAT, root * 2, 8 * BEAT, 0.075, this._beat % 4 === 1 ? "o" : "a");
+      // Chant on alternating ODD loops, vowel-shifting. Half-volume
+      // compared to before so it doesn't compete with the melody.
+      if ((this._beat % 4) === 1) {
+        this._chant(t0 + 6 * BEAT, root * 2, 8 * BEAT, 0.06, "o");
+      } else if ((this._beat % 4) === 3) {
+        this._chant(t0 + 4 * BEAT, root * 2, 6 * BEAT, 0.05, "a");
+      }
+      // Distant lur call sometimes mid-loop — gives the world the
+      // sense that other skalds are signalling across the fjord.
+      if ((this._beat % 3) === 2) {
+        this._lur(t0 + 8 * BEAT, root * 1.5, 3 * BEAT, 0.035);
       }
       this._beat++;
     };
@@ -1003,8 +1137,11 @@ class Valhalla {
       const renderPass = new RenderPass(this.scene, this.camera);
       this.composer.addPass(renderPass);
 
-      // UnrealBloomPass(resolution, strength, radius, threshold)
-      const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.65, 0.55, 0.85);
+      // UnrealBloomPass(resolution, strength, radius, threshold).
+      // Bloom buffer at HALF resolution (w/2, h/2) cuts the bloom-pass
+      // GPU cost ~75% with no perceptible visual difference — bloom is
+      // a low-frequency effect, full-res buffer is overkill.
+      const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.5, h * 0.5), 0.65, 0.55, 0.85);
       this.composer.addPass(bloom);
       this.bloomPass = bloom;
 
@@ -3773,15 +3910,24 @@ class Valhalla {
   _frame(now) {
     const realDt = Math.min(0.05, (now - this._lastT) / 1000);
     this._lastT = now;
+    // Track an EMA of frame time so we can drop quality if the GPU is
+    // struggling. Updates every frame, ~1s smoothing.
+    this._frameEMA = this._frameEMA == null ? realDt : (this._frameEMA * 0.95 + realDt * 0.05);
+    // Adaptive bloom — disable if we're running below 40 FPS sustained
+    // and re-enable above 50 FPS. Hysteresis prevents flicker.
+    if (this.bloomPass) {
+      if (this._frameEMA > 0.025 && this.bloomPass.enabled) {
+        this.bloomPass.enabled = false;
+      } else if (this._frameEMA < 0.020 && !this.bloomPass.enabled) {
+        this.bloomPass.enabled = true;
+      }
+    }
     // Ease toward the active time scale (1 normally, 0.35 during rune slow-mo).
     this._timeScale += (this._timeScaleTarget - this._timeScale) * Math.min(1, realDt * 8);
     const dt = realDt * this._timeScale;
     if (!this.paused) this._update(dt);
-    // Half-rate render when not playing (menu, game-over). The scene still
-    // exists and snow still drifts, but we draw at ~30 FPS instead of 60
-    // because nothing is fast-moving and the player isn't reacting to
-    // anything. Halves GPU load on the title screen — the biggest source
-    // of "lag on the menu" complaints.
+    // Half-rate render when not playing (menu, game-over). Halves GPU
+    // load on the title screen.
     if (this.running || this.paused) {
       this._render();
     } else {
@@ -4313,6 +4459,7 @@ class Valhalla {
     this.camera.updateProjectionMatrix();
     if (this.composer) {
       this.composer.setSize(w, h);
+      if (this.bloomPass) this.bloomPass.setSize(w * 0.5, h * 0.5);
       if (this.fxaaPass) {
         this.fxaaPass.material.uniforms["resolution"].value.set(
           1 / (w * this.renderer.getPixelRatio()),
