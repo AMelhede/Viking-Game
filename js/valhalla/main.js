@@ -940,7 +940,10 @@ class Valhalla {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas, antialias: true, powerPreference: "high-performance",
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Cap at 1.5 instead of 2 — on a retina display this cuts rendered
+    // pixels by 44% with barely-noticeable sharpness loss because the
+    // scene is low-poly / flat-shaded already. Biggest single perf win.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -1612,9 +1615,11 @@ class Valhalla {
     //    feels static.
     // 2. FAR flakes - many small, drifting in middle distance for depth.
 
-    // Close layer (~camera-relative volume in front of player)
+    // Close layer (~camera-relative volume in front of player).
+    // Reduced 350→200 — the close flakes were the biggest GC source
+    // because their positions are touched every frame in _driftSnow.
     {
-      const count = 350;
+      const count = 200;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -1631,9 +1636,11 @@ class Valhalla {
       this.scene.add(this.snowClose);
     }
 
-    // Far layer (existing volumetric drift)
+    // Far layer (volumetric drift). Reduced 1800→900 — far flakes are
+    // small enough that the eye doesn't notice the halving, but it cuts
+    // _driftSnow's per-frame loop in half.
     {
-      const count = 1800;
+      const count = 900;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 140;
@@ -2680,10 +2687,21 @@ class Valhalla {
   // ---------- Spawning ----------
   _spawnAhead(dt) {
     if (!this.running) return;
-    // spawn a wave roughly every 12-22m of forward distance
+    // Wave interval scales with distance for a smoother ramp:
+    //   0 – 150m  : 22 – 32m (gentle intro, learn the controls)
+    //   150 – 400m: 18 – 26m (busier)
+    //   400m+     : 14 – 22m (full pressure)
+    // The Round 3 hard-hazard cooldown still gates unavoidable patterns,
+    // but this puts overall density on a real ramp instead of dropping
+    // a new player straight into the deep end.
     while (this._spawnZ < this.distance + VIEW_DEPTH * 0.7) {
       this._spawnWave(this._spawnZ);
-      this._spawnZ += 14 + Math.random() * 10;
+      const d = this.distance;
+      let minGap, jitter;
+      if (d < 150)      { minGap = 22; jitter = 10; }
+      else if (d < 400) { minGap = 18; jitter = 8;  }
+      else              { minGap = 14; jitter = 8;  }
+      this._spawnZ += minGap + Math.random() * jitter;
     }
   }
 
@@ -3304,7 +3322,17 @@ class Valhalla {
     this._timeScale += (this._timeScaleTarget - this._timeScale) * Math.min(1, realDt * 8);
     const dt = realDt * this._timeScale;
     if (!this.paused) this._update(dt);
-    this._render();
+    // Half-rate render when not playing (menu, game-over). The scene still
+    // exists and snow still drifts, but we draw at ~30 FPS instead of 60
+    // because nothing is fast-moving and the player isn't reacting to
+    // anything. Halves GPU load on the title screen — the biggest source
+    // of "lag on the menu" complaints.
+    if (this.running || this.paused) {
+      this._render();
+    } else {
+      this._idleFrame = (this._idleFrame || 0) + 1;
+      if ((this._idleFrame & 1) === 0) this._render();
+    }
     requestAnimationFrame(this._frame);
   }
 
