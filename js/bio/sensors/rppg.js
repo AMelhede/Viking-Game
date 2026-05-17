@@ -53,13 +53,29 @@ export class RppgSensor {
 
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, frameRate: { ideal: 30 } },
-        audio: false,
-      });
+      // 30s timeout on the permission dialog — Safari/iOS will hang the
+      // promise forever if the prompt is dismissed by clicking outside.
+      stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, frameRate: { ideal: 30 } },
+          audio: false,
+        }),
+        new Promise((_, reject) => setTimeout(
+          () => reject(Object.assign(new Error("Camera prompt timed out"), { name: "TimeoutError" })),
+          30000
+        )),
+      ]);
     } catch (e) {
-      this._setStatus("error", `Camera denied (${e?.name || "error"})`);
-      return { ok: false, reason: "permission" };
+      const reason = e?.name === "NotAllowedError"   ? "permission_denied"
+                   : e?.name === "NotFoundError"     ? "no_camera"
+                   : e?.name === "TimeoutError"      ? "timeout"
+                   : "permission";
+      const msg = reason === "permission_denied" ? "Camera blocked — click the lock icon to re-allow"
+                : reason === "no_camera"         ? "No camera detected"
+                : reason === "timeout"           ? "Camera prompt timed out — try again"
+                                                 : `Camera denied (${e?.name || "error"})`;
+      this._setStatus("error", msg);
+      return { ok: false, reason, message: msg };
     }
     this._stream = stream;
     this._video = createHiddenVideo(stream);
@@ -67,28 +83,40 @@ export class RppgSensor {
     this._setStatus("warming", "Locking on heart rate…");
 
     try {
-      this._session = await createRppgSession({
-        video: this._video,
-        backend: "wasm",
-        // "auto": SDK loads MediaPipe FaceMesh from CDN for face-ROI tracking
-        // (better BPM accuracy). If CDN is blocked / offline / fails, the SDK
-        // automatically falls back to whole-frame averaging — no error.
-        // Set window.__ELATA_DISABLE_FACEMESH = true to force whole-frame mode.
-        faceMesh: "auto",
-        wasmJsUrl: WASM_JS_URL,
-        wasmBinaryUrl: WASM_BIN_URL,
-        sampleRate: 30,
-        windowSec: 10,
-      });
+      // 20s timeout on session init — if the WASM fetch hangs (offline /
+      // CDN blocked) we'd otherwise spin forever with no feedback.
+      this._session = await Promise.race([
+        createRppgSession({
+          video: this._video,
+          backend: "wasm",
+          // "auto": SDK loads MediaPipe FaceMesh from CDN for face-ROI tracking
+          // (better BPM accuracy). If CDN is blocked / offline / fails, the SDK
+          // automatically falls back to whole-frame averaging — no error.
+          // Set window.__ELATA_DISABLE_FACEMESH = true to force whole-frame mode.
+          faceMesh: "auto",
+          wasmJsUrl: WASM_JS_URL,
+          wasmBinaryUrl: WASM_BIN_URL,
+          sampleRate: 30,
+          windowSec: 10,
+        }),
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error("WASM/MediaPipe load timed out — check your network")),
+          20000
+        )),
+      ]);
     } catch (e) {
       console.warn("[Bio] rPPG session init failed", e);
       this._teardownStream();
-      this._setStatus("error", `Sensor init failed: ${e?.message || "unknown"}`);
-      return { ok: false, reason: "init", error: e };
+      const msg = `Sensor init failed: ${e?.message || "unknown"}`;
+      this._setStatus("error", msg);
+      return { ok: false, reason: "init", error: e, message: msg };
     }
 
     this._goodSamples = 0;
-    this._pollHandle = setInterval(() => this._poll(), POLL_MS);
+    // Wrap _poll in try/catch so one bad frame doesn't kill the run.
+    this._pollHandle = setInterval(() => {
+      try { this._poll(); } catch (e) { console.warn("[Bio] rPPG poll threw", e); }
+    }, POLL_MS);
     return { ok: true };
   }
 

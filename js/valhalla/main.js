@@ -2437,26 +2437,53 @@ class Valhalla {
 
     const wireBioBtn = (btn, key) => {
       if (!btn) return;
+      // Cache the original button text for "reset on failure" UX.
+      const originalText = btn.textContent;
       btn.addEventListener("click", async () => {
         if (!window.Bio) { btn.textContent = "Unavailable"; return; }
         const opts = {}; opts[key] = true;
-        btn.textContent = "Starting";
+        btn.textContent = key === "eeg" ? "Pairing…" : "Requesting…";
         btn.disabled = true;
         btn.classList.remove("error", "live");
         try {
           const r = await window.Bio.start(opts);
-          if (r[key] && r[key].ok !== false) {
+          const result = r[key];
+          if (result && result.ok !== false) {
             btn.textContent = "On";
             btn.classList.add("live");
           } else {
-            btn.textContent = "Failed";
+            // Surface the human message from the sensor wrapper so the
+            // user knows what to fix (timeout, no device, blocked perm).
+            // Fallback to "Failed" if no message was provided.
+            const msg = result?.message || result?.reason || "Failed";
+            btn.textContent = msg.length > 32 ? msg.slice(0, 30) + "…" : msg;
+            btn.title = msg;
             btn.classList.add("error");
             btn.disabled = false;
+            // Reset the label back to "Enable" after a few seconds so the
+            // button remains usable for retry.
+            setTimeout(() => {
+              if (btn.classList.contains("error")) {
+                btn.textContent = originalText;
+                btn.classList.remove("error");
+              }
+            }, 5000);
           }
         } catch (e) {
-          btn.textContent = "Failed";
+          // Final fallback — wrapper should normally catch its own errors,
+          // but if anything thrown bubbles up we still want a usable button.
+          const msg = e?.message || "Failed";
+          console.warn("[Valhalla] bio start threw", e);
+          btn.textContent = msg.length > 32 ? msg.slice(0, 30) + "…" : msg;
+          btn.title = msg;
           btn.classList.add("error");
           btn.disabled = false;
+          setTimeout(() => {
+            if (btn.classList.contains("error")) {
+              btn.textContent = originalText;
+              btn.classList.remove("error");
+            }
+          }, 5000);
         }
       });
     };

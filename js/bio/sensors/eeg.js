@@ -55,20 +55,41 @@ export class EegSensor {
           athenaDecoderFactory: () => new AthenaWasmDecoder(),
         },
       });
-      this._transport.onStatus = (s) => this._handleTransportStatus(s);
-      this._transport.onFrame = (f) => this._handleFrame(f);
+      this._transport.onStatus = (s) => { try { this._handleTransportStatus(s); } catch (err) { console.warn("[Bio] EEG status handler threw", err); } };
+      this._transport.onFrame  = (f) => { try { this._handleFrame(f); } catch (err) { console.warn("[Bio] EEG frame handler threw", err); } };
 
-      await this._transport.startStreaming();
+      // Hard 45-second timeout on the pairing handshake. Web Bluetooth has
+      // no native timeout — if the user dismisses the pair dialog or never
+      // selects a device, the promise stays pending forever and the
+      // calling button is stuck on "Starting". Race against a timer.
+      await Promise.race([
+        this._transport.startStreaming(),
+        new Promise((_, reject) => setTimeout(
+          () => reject(Object.assign(new Error("Pairing timed out — pick the Muse in the device picker"), { code: "timeout" })),
+          45000
+        )),
+      ]);
     } catch (e) {
       console.warn("[Bio] Muse connect failed", e);
-      const reason = (e && e.code) ? e.code : (e?.name === "NotFoundError" ? "no_device" : "connect_failed");
-      const msg = reason === "no_device" ? "No Muse selected" : `Connect failed: ${e?.message || reason}`;
+      const reason = (e && e.code) ? e.code
+                   : (e?.name === "NotFoundError" ? "no_device"
+                   : (e?.name === "SecurityError" ? "insecure"
+                   : "connect_failed"));
+      // Human-readable reason. The button gets this text so the user knows
+      // what to fix rather than just seeing "Failed".
+      const msg = reason === "no_device" ? "No Muse selected — try again"
+                : reason === "timeout"   ? "Pairing timed out — pick the Muse"
+                : reason === "insecure"  ? "Web Bluetooth needs HTTPS / localhost"
+                                         : `Connect failed: ${e?.message || reason}`;
+      // Best-effort cleanup so a follow-up retry has a clean slate.
+      try { await this._transport?.stop?.(); } catch {}
+      try { await this._transport?.disconnect?.(); } catch {}
       this._teardown();
       this._setStatus("error", msg);
-      return { ok: false, reason };
+      return { ok: false, reason, message: msg };
     }
 
-    this._emitHandle = setInterval(() => this._emit(), EMIT_MS);
+    this._emitHandle = setInterval(() => { try { this._emit(); } catch (err) { console.warn("[Bio] EEG emit threw", err); } }, EMIT_MS);
     return { ok: true };
   }
 
