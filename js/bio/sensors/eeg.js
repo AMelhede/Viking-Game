@@ -47,9 +47,12 @@ export class EegSensor {
       return { ok: false, reason: "unsupported" };
     }
 
-    this._setStatus("warming", "Pairing Muse…");
-
-    try {
+    // Inner pairing routine — builds a fresh transport, races against a
+    // 45s timeout, returns or throws. We call it up to twice because
+    // BLE_START_FAILED is often transient (Muse's stream-start command
+    // can fail right after pairing and succeed on a clean retry).
+    const attempt = async (attemptLabel) => {
+      this._setStatus("warming", attemptLabel);
       this._transport = new BleTransport({
         deviceOptions: {
           athenaDecoderFactory: () => new AthenaWasmDecoder(),
@@ -57,11 +60,6 @@ export class EegSensor {
       });
       this._transport.onStatus = (s) => { try { this._handleTransportStatus(s); } catch (err) { console.warn("[Bio] EEG status handler threw", err); } };
       this._transport.onFrame  = (f) => { try { this._handleFrame(f); } catch (err) { console.warn("[Bio] EEG frame handler threw", err); } };
-
-      // Hard 45-second timeout on the pairing handshake. Web Bluetooth has
-      // no native timeout — if the user dismisses the pair dialog or never
-      // selects a device, the promise stays pending forever and the
-      // calling button is stuck on "Starting". Race against a timer.
       await Promise.race([
         this._transport.startStreaming(),
         new Promise((_, reject) => setTimeout(
@@ -69,6 +67,30 @@ export class EegSensor {
           45000
         )),
       ]);
+    };
+
+    try {
+      try {
+        await attempt("Pairing Muse…");
+      } catch (e1) {
+        // BLE_START_FAILED = pairing completed but the stream-start
+        // command on the Muse's control characteristic failed. This
+        // happens fairly often on the first try because the headband's
+        // BLE state can be stale from a previous session. Tear the
+        // transport down and try ONE clean reconnect. Most "Failed to
+        // start BLE streaming" errors clear here.
+        const isStartFailed = e1?.code === "BLE_START_FAILED"
+                          || /failed to start ble streaming/i.test(String(e1?.message || ""));
+        if (!isStartFailed) throw e1;
+        console.warn("[Bio] Muse start failed — retrying once", e1);
+        try { await this._transport?.stop?.(); } catch {}
+        try { await this._transport?.disconnect?.(); } catch {}
+        this._transport = null;
+        // Brief pause so the Muse releases the previous GATT session
+        // cleanly before we re-attempt.
+        await new Promise(r => setTimeout(r, 700));
+        await attempt("Retrying Muse stream…");
+      }
     } catch (e) {
       console.warn("[Bio] Muse connect failed", e);
       const reason = (e && e.code) ? e.code
@@ -80,6 +102,7 @@ export class EegSensor {
       const msg = reason === "no_device" ? "No Muse selected — try again"
                 : reason === "timeout"   ? "Pairing timed out — pick the Muse"
                 : reason === "insecure"  ? "Web Bluetooth needs HTTPS / localhost"
+                : reason === "BLE_START_FAILED" ? "Stream start failed — power-cycle your Muse (hold button 5s) and retry"
                                          : `Connect failed: ${e?.message || reason}`;
       // Best-effort cleanup so a follow-up retry has a clean slate.
       try { await this._transport?.stop?.(); } catch {}

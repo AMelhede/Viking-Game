@@ -954,9 +954,13 @@ class Valhalla {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
-    // Fog color matches the sky horizon so distant geometry blends in.
+    // Fog matches the sky horizon. Denser and closer than before (40→320
+    // vs the old 60→520) so distant geometry actually fades into haze —
+    // sells "weather and air between me and the mountains" instead of
+    // looking like flat painted backdrops. Atmospheric perspective is
+    // the single biggest signal the brain uses to read realism.
     const fogColor = new THREE.Color(0xc4d2dc);
-    this.scene.fog = new THREE.Fog(fogColor, 60, 520);
+    this.scene.fog = new THREE.Fog(fogColor, 40, 320);
     this.scene.background = fogColor.clone();
 
     this.camera = new THREE.PerspectiveCamera(48, 16 / 9, 0.1, 1200);
@@ -1079,13 +1083,24 @@ class Valhalla {
   }
 
   _buildLights() {
-    // Hemi + sun balanced for exposure = 1.0 (gradient-sky build).
-    // Hemi is the dominant fill so snow reads bright; sun adds raking warmth.
-    const hemi = new THREE.HemisphereLight(0xe8eff5, 0x32404e, 1.1);
+    // Lighting model: low Nordic afternoon sun. The actual Viking-age
+    // latitude (Norway, Iceland) gets a long raking sun that sits maybe
+    // 15-25° above the horizon for most of the playable months. That
+    // means a WARM-coloured key light coming in at a shallow angle plus
+    // a cold-blue sky-ambient for fill. Previous setup was too "bright
+    // midday everywhere" and read as a cartoon.
+
+    // Cold sky ambient — saturated blue-white from above, dim navy from
+    // the ground. Dropped intensity 1.1→0.85 so the world doesn't look
+    // flat-lit.
+    const hemi = new THREE.HemisphereLight(0xc8dbe8, 0x1c2632, 0.85);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff0d2, 2.0);
-    sun.position.set(60, 55, 40);
+    // Sun — moved lower (y 55→32) and angled more from the side so
+    // shadows are longer and more dramatic. Warm late-afternoon hue.
+    // Intensity 2.0→1.7 so it doesn't blow out the snow.
+    const sun = new THREE.DirectionalLight(0xffd49a, 1.7);
+    sun.position.set(55, 32, 38);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 1;
@@ -1100,8 +1115,9 @@ class Valhalla {
     this.scene.add(sun);
     this.scene.add(sun.target);
 
-    // Cool blue rim from the "north" - makes silhouettes pop against the fog
-    const rim = new THREE.DirectionalLight(0x8aa8c8, 0.55);
+    // Cold blue rim from the "north" — saturated icy hue so silhouettes
+    // pop against the warm sun-lit side. Pushed up slightly (0.55→0.7).
+    const rim = new THREE.DirectionalLight(0x88a8e0, 0.70);
     rim.position.set(-40, 30, -25);
     this.scene.add(rim);
   }
@@ -1433,19 +1449,21 @@ class Valhalla {
   _buildPlayer() {
     const grp = new THREE.Group();
 
-    // Cloak / body
+    // Undyed wool tunic — muted oatmeal/linen so it reads as period-
+    // correct cloth, not a cartoon red shirt. Real Viking-era textile
+    // pigments were earthy: madder root, woad, walnut hulls.
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(0.8, 1.0, 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x6e3220, roughness: 0.85, flatShading: true })
+      new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: true })
     );
     body.position.y = 1.0;
     body.castShadow = true;
     grp.add(body);
 
-    // Tunic detail
+    // Over-tunic / surcoat in slightly darker wool tones.
     const tunic = new THREE.Mesh(
       new THREE.BoxGeometry(0.84, 0.55, 0.58),
-      new THREE.MeshStandardMaterial({ color: 0x3d2a1a, roughness: 0.9, flatShading: true })
+      new THREE.MeshStandardMaterial({ color: 0x36281c, roughness: 0.95, flatShading: true })
     );
     tunic.position.y = 0.7;
     tunic.castShadow = true;
@@ -1476,34 +1494,34 @@ class Valhalla {
     beard.position.set(0, 1.55, 0.18);
     grp.add(beard);
 
-    // Helmet (iron grey + horns)
+    // Helmet — historically-accurate spangenhelm style. NO HORNS (the
+    // horned-helmet image is a 19th-century Wagner-opera invention; no
+    // Viking-age helmet ever had them). Weathered iron with a centre
+    // ridge and a nose-guard for that real-world Norse silhouette.
     const helmet = new THREE.Mesh(
-      new THREE.SphereGeometry(0.36, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x4a4d52, roughness: 0.4, metalness: 0.6, flatShading: true })
+      new THREE.SphereGeometry(0.36, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.55, metalness: 0.7, flatShading: true })
     );
     helmet.position.y = 2.02;
     helmet.castShadow = true;
     grp.add(helmet);
-    const noseGuard = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.32, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0x5a5d62, metalness: 0.6, roughness: 0.4 })
+    // Centre ridge band — iron strip running front-to-back across the crown.
+    const helmRidge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.04, 0.74),
+      new THREE.MeshStandardMaterial({ color: 0x2a2d32, roughness: 0.4, metalness: 0.8 })
     );
-    noseGuard.position.set(0, 1.82, 0.28);
+    helmRidge.position.y = 2.22;
+    grp.add(helmRidge);
+    const noseGuard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, 0.30, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x3a3d42, metalness: 0.7, roughness: 0.55 })
+    );
+    noseGuard.position.set(0, 1.84, 0.30);
     grp.add(noseGuard);
-    // horns
-    for (const dir of [-1, 1]) {
-      const horn = new THREE.Mesh(
-        new THREE.ConeGeometry(0.09, 0.55, 6),
-        new THREE.MeshStandardMaterial({ color: 0xe8e1c8, roughness: 0.6, flatShading: true })
-      );
-      horn.position.set(dir * 0.32, 2.16, 0);
-      horn.rotation.z = dir * -0.7;
-      horn.rotation.x = -0.2;
-      grp.add(horn);
-    }
 
-    // Arms
-    const armMat = new THREE.MeshStandardMaterial({ color: 0x6e3220, roughness: 0.9, flatShading: true });
+    // Arms — same muted wool as the body so the figure reads as one
+    // garment, not a costume.
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: true });
     const armL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.78, 0.22), armMat);
     armL.position.set(-0.5, 1.05, 0);
     armL.castShadow = true;
@@ -1538,24 +1556,36 @@ class Valhalla {
     axeHead.rotation.z = -0.3;
     grp.add(axeHead);
 
-    // shield on back
+    // Shield on back — weathered linden-wood planks with iron rim and
+    // iron boss. Wood pigment is desaturated ochre, not the cartoonish
+    // red it was previously (Viking shields WERE often painted, but
+    // saturated arcade-red reads as "game prop" not "weathered gear").
     const shield = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.45, 0.45, 0.06, 16),
-      new THREE.MeshStandardMaterial({ color: 0x9c2a26, roughness: 0.7 })
+      new THREE.CylinderGeometry(0.45, 0.45, 0.06, 18),
+      new THREE.MeshStandardMaterial({ color: 0x6a4528, roughness: 0.95, flatShading: true })
     );
     shield.rotation.x = Math.PI / 2;
     shield.position.set(0, 1.05, -0.32);
     grp.add(shield);
+    // Plank seams — three thin dark stripes across the face for texture.
+    for (let i = -1; i <= 1; i++) {
+      const seam = new THREE.Mesh(
+        new THREE.BoxGeometry(0.86, 0.018, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0x1d130a, roughness: 1.0 })
+      );
+      seam.position.set(0, 1.05 + i * 0.18, -0.36);
+      grp.add(seam);
+    }
     const shieldRim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.45, 0.04, 6, 24),
-      new THREE.MeshStandardMaterial({ color: 0x2a2018, metalness: 0.7, roughness: 0.5 })
+      new THREE.TorusGeometry(0.46, 0.035, 6, 28),
+      new THREE.MeshStandardMaterial({ color: 0x1a1208, metalness: 0.65, roughness: 0.55 })
     );
     shieldRim.rotation.x = Math.PI / 2;
     shieldRim.position.set(0, 1.05, -0.32);
     grp.add(shieldRim);
     const shieldBoss = new THREE.Mesh(
-      new THREE.SphereGeometry(0.08, 8, 6),
-      new THREE.MeshStandardMaterial({ color: 0xd0bb70, metalness: 0.8, roughness: 0.3 })
+      new THREE.SphereGeometry(0.09, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4a4d52, metalness: 0.8, roughness: 0.5 })
     );
     shieldBoss.position.set(0, 1.05, -0.36);
     grp.add(shieldBoss);
@@ -3179,23 +3209,20 @@ class Valhalla {
 
   _spawnMead(lane, zWorld, baseY = 1.2, leadDecal = false) {
     const grp = new THREE.Group();
+    // Drinking horn — bone/ivory tone, NO emissive (a horn doesn't glow).
+    // Slight metallic on the iron rim only.
     const horn = new THREE.Mesh(
-      new THREE.ConeGeometry(0.22, 0.8, 8),
-      new THREE.MeshStandardMaterial({ color: 0xd9a04a, roughness: 0.4, metalness: 0.5, emissive: 0x553014, emissiveIntensity: 0.4 })
+      new THREE.ConeGeometry(0.22, 0.8, 10),
+      new THREE.MeshStandardMaterial({ color: 0xe2cda3, roughness: 0.65, flatShading: true })
     );
     horn.rotation.z = Math.PI;
     grp.add(horn);
     const rim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.22, 0.04, 6, 14),
-      new THREE.MeshStandardMaterial({ color: 0xf0c878, metalness: 0.8, roughness: 0.3 })
+      new THREE.TorusGeometry(0.22, 0.04, 6, 16),
+      new THREE.MeshStandardMaterial({ color: 0x3a2d1c, metalness: 0.7, roughness: 0.55 })
     );
     rim.position.y = 0.4;
     grp.add(rim);
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 10, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffd066, transparent: true, opacity: 0.18, depthWrite: false })
-    );
-    grp.add(glow);
     grp.position.set(LANES[lane], baseY, zWorld);
     this.scene.add(grp);
     // Only the first mead in a cluster gets a decal — otherwise we'd
@@ -3210,20 +3237,52 @@ class Valhalla {
   }
 
   _spawnRune(lane, zWorld) {
-    const mesh = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.55, 0),
+    // Carved standing runestone — weathered grey granite slab with three
+    // faintly-glowing etched runes. Far more "ancient Norse holy site"
+    // than the previous cartoon cyan crystal that just floated in midair.
+    const grp = new THREE.Group();
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 1.6, 0.22),
       new THREE.MeshStandardMaterial({
-        color: 0x9adfff, roughness: 0.2, metalness: 0.3,
-        emissive: 0x1c8db8, emissiveIntensity: 1.2,
+        color: 0x6e7480, roughness: 1.0, flatShading: true,
       })
     );
-    mesh.position.set(LANES[lane], 1.6, zWorld);
-    this.scene.add(mesh);
-    // Cyan reward ring so runes are obviously not-a-threat from afar.
+    slab.position.y = 0.8;
+    slab.castShadow = true;
+    grp.add(slab);
+    // Slight chipped cap, rotated to look weather-worn.
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.14, 0.26),
+      new THREE.MeshStandardMaterial({ color: 0x7a8088, roughness: 1.0, flatShading: true })
+    );
+    cap.position.y = 1.65;
+    cap.rotation.z = 0.07;
+    grp.add(cap);
+    // Three runic etchings stacked on the front face — thin emissive bars
+    // so the stone reads as "magic" without being a glowing crystal.
+    for (let i = 0; i < 3; i++) {
+      const rune = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.05, 0.03),
+        new THREE.MeshBasicMaterial({ color: 0x9adfff })
+      );
+      rune.position.set(0, 0.55 + i * 0.32, 0.12);
+      rune.rotation.z = (i % 2 === 0 ? 0.18 : -0.18);
+      grp.add(rune);
+    }
+    // Mossy base ring so the stone doesn't read as floating.
+    const moss = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.08, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0x2a3a22, roughness: 1.0, flatShading: true })
+    );
+    moss.position.y = 0.04;
+    grp.add(moss);
+    grp.position.set(LANES[lane], 0, zWorld);
+    this.scene.add(grp);
+    // Cyan reward ring so runestones are obviously not-a-threat from afar.
     const decal = this._makeGroundDecal(0x60d0ff, 1.0, false);
     decal.position.set(LANES[lane], 0.06, zWorld);
     this.scene.add(decal);
-    this.collectibles.push({ mesh, lane, spawnAt: zWorld, type: "rune", ang: 0, value: 100, baseY: 1.6, decal });
+    this.collectibles.push({ mesh: grp, lane, spawnAt: zWorld, type: "rune", ang: 0, value: 100, baseY: 0, decal });
   }
 
   // Powerup orbs. Each is a colored glowing sphere with a halo + small icon
@@ -3781,9 +3840,15 @@ class Valhalla {
       }
       c.mesh.position.z = sz;
       c.ang += dt * 3;
-      c.mesh.rotation.y = c.ang;
-      const baseY = c.baseY != null ? c.baseY : (c.type === "rune" ? 1.6 : 1.2);
-      c.mesh.position.y = baseY + Math.sin(c.ang * 1.3) * 0.12;
+      // Runestones are heavy carved granite — they don't spin or hover.
+      // Everything else (mead horns, powerup orbs) gets the magical bob.
+      if (c.type !== "rune") {
+        c.mesh.rotation.y = c.ang;
+        const baseY = c.baseY != null ? c.baseY : 1.2;
+        c.mesh.position.y = baseY + Math.sin(c.ang * 1.3) * 0.12;
+      } else {
+        c.mesh.position.y = 0;
+      }
       // Reward decals scroll with the collectible. Use a separate (slower,
       // softer) pulse so they're distinguishable from the red danger rings.
       if (c.decal) {
