@@ -17,6 +17,30 @@ const SLIDE_DURATION = 0.32;
 const BASE_SPEED = 22;
 const MAX_SPEED = 60;
 
+// Norse cosmology biome cycle. Distance ranges are absolute metres from
+// run start; after the last range the cycle wraps so the run never ends.
+// `fog`+`sky` colours drive the per-frame palette ease. `pitch` is a
+// semitone offset for the music loop so each realm has its own modal
+// flavour without rewriting the melody. `boss` names the entrance
+// encounter that fires at the start of each biome (after Midgard).
+const BIOMES = [
+  { name: "Midgard",    length: 500, fog: 0xc4d2dc,
+    sky: [0x9cb6cc, 0xc2d2dd, 0xdee7ec, 0xc4d2dc], pitch: 0,
+    boss: null },
+  { name: "Jötunheim",  length: 500, fog: 0x9ab8d0,
+    sky: [0x6a8aaa, 0x9ab8d0, 0xc8dceb, 0x9ab8d0], pitch: -2,
+    boss: "jotunn" },
+  { name: "Muspelheim", length: 500, fog: 0xc06840,
+    sky: [0x602010, 0xb04020, 0xe88040, 0xc06840], pitch: 1,
+    boss: "surtr" },
+  { name: "Asgard",     length: 500, fog: 0xe8c878,
+    sky: [0xb08038, 0xe8b860, 0xffe8b0, 0xe8c878], pitch: 4,
+    boss: "valkyrie" },
+];
+// Total cycle length — after this the player loops back to Midgard
+// with biomeCycle++ for the score modifier.
+const BIOME_CYCLE_LENGTH = BIOMES.reduce((s, b) => s + b.length, 0);
+
 const STORE_KEY = "valhalla.v1";
 
 // ---------------- Storage ----------------
@@ -62,6 +86,16 @@ class Audio {
     this._beat = 0;
     this._noiseBuf = null;
     this._pinkBuf = null;
+    // Biome-driven semitone offset applied to the music root. Eased over
+    // a few loops so biome transitions don't hard-cut the key.
+    this._musicPitch = 0;
+    this._musicPitchTarget = 0;
+  }
+
+  // Called by the game when the biome changes. Smoothly retunes the
+  // melody to the realm's modal centre (Phrygian still, just transposed).
+  setBiomePitch(semitones) {
+    this._musicPitchTarget = semitones || 0;
   }
 
   ensure() {
@@ -423,11 +457,16 @@ class Audio {
     const playLoop = () => {
       if (!this.musicTimer) return;
       const t0 = this.ctx.currentTime + 0.05;
-      // Long lur drone holding the root for the whole loop.
-      this._lur(t0, ROOT, LOOP, 0.09);
+      // Ease the music pitch one step per loop toward the biome target.
+      const diff = this._musicPitchTarget - this._musicPitch;
+      if (Math.abs(diff) > 0.01) this._musicPitch += Math.sign(diff) * Math.min(Math.abs(diff), 1);
+      const pitchMul = Math.pow(2, this._musicPitch / 12);
+      const root = ROOT * pitchMul;
+      // Long lur drone holding the (transposed) root for the whole loop.
+      this._lur(t0, root, LOOP, 0.09);
       // Tagelharpa melody, octave up.
       for (const [b, deg, dur] of MELODY) {
-        this._tagelharpa(t0 + b * BEAT, ROOT * 2 * SCALE[deg], dur * BEAT, 0.11);
+        this._tagelharpa(t0 + b * BEAT, root * 2 * SCALE[deg], dur * BEAT, 0.11);
       }
       // Frame drum.
       for (const b of DRUM) {
@@ -436,7 +475,7 @@ class Audio {
       }
       // Chant enters every other loop on the root, vowel-shifting.
       if ((this._beat % 2) === 1) {
-        this._chant(t0 + 4 * BEAT, ROOT * 2, 8 * BEAT, 0.075, this._beat % 4 === 1 ? "o" : "a");
+        this._chant(t0 + 4 * BEAT, root * 2, 8 * BEAT, 0.075, this._beat % 4 === 1 ? "o" : "a");
       }
       this._beat++;
     };
@@ -844,6 +883,17 @@ class Valhalla {
 
     this.cognitiveState = "neutral";
     this.bpm = null;
+
+    // Biome / realm tracking. We walk through Midgard → Jötunheim →
+    // Muspelheim → Asgard, then loop. Each biome runs ~500m; transitions
+    // ease fog/sky/music over ~2s and fire a boss encounter (except
+    // Midgard which is the spawn realm).
+    this.biomeIdx = 0;
+    this.biomeName = BIOMES[0].name;
+    this.biomeCycle = 0;       // number of full loops through all biomes
+    this._biomeFogColor = new THREE.Color(BIOMES[0].fog);
+    this._biomeFogTarget = new THREE.Color(BIOMES[0].fog);
+    this._biomeSkyTargets = BIOMES[0].sky.map(c => new THREE.Color(c));
 
     this._initThree();
     this._buildSky();
@@ -1727,6 +1777,198 @@ class Valhalla {
     this._bioFlashT = setTimeout(() => { el.style.opacity = "0"; }, 280);
   }
 
+  // --- biomes / realms ------------------------------------------------
+  // Map an absolute run distance to a biome index. The biome cycle wraps
+  // so the run is endless; each loop bumps biomeCycle for scoring later.
+  _currentBiomeIndex(distance) {
+    const inCycle = ((distance % BIOME_CYCLE_LENGTH) + BIOME_CYCLE_LENGTH) % BIOME_CYCLE_LENGTH;
+    let acc = 0;
+    for (let i = 0; i < BIOMES.length; i++) {
+      acc += BIOMES[i].length;
+      if (inCycle < acc) return i;
+    }
+    return 0;
+  }
+
+  // Ease scene colours toward the active biome's palette each frame.
+  // Detects biome transitions and fires the entrance encounter.
+  _updateBiome(dt) {
+    if (!this.running) return;
+    const cycle = Math.floor(this.distance / BIOME_CYCLE_LENGTH);
+    if (cycle !== this.biomeCycle) this.biomeCycle = cycle;
+    const idx = this._currentBiomeIndex(this.distance);
+    if (idx !== this.biomeIdx) this._transitionBiome(idx);
+    // Lerp fog colour toward target. Sky shader uniforms get the same
+    // treatment so the gradient eases too.
+    if (this.scene.fog) {
+      this.scene.fog.color.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
+      this.scene.background.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
+    }
+    if (this.sky && this.sky.material && this.sky.material.uniforms) {
+      const u = this.sky.material.uniforms;
+      const keys = ["topColor", "midColor", "horizColor", "groundColor"];
+      for (let i = 0; i < 4; i++) {
+        u[keys[i]].value.lerp(this._biomeSkyTargets[i], Math.min(1, dt * 0.6));
+      }
+    }
+  }
+
+  _transitionBiome(newIdx) {
+    const prev = this.biomeIdx;
+    this.biomeIdx = newIdx;
+    const b = BIOMES[newIdx];
+    this.biomeName = b.name;
+    this._biomeFogTarget.setHex(b.fog);
+    this._biomeSkyTargets = b.sky.map(c => new THREE.Color(c));
+    // Re-pitch the music loop to the biome's modal centre.
+    if (this.audio && typeof this.audio.setBiomePitch === "function") {
+      this.audio.setBiomePitch(b.pitch);
+    }
+    this._showBiomeBanner(b.name);
+    // Score reward for crossing — scales with cycle count.
+    const reward = 300 + this.biomeCycle * 200;
+    this.score += reward;
+    this._popText(`+${reward}`, "gold", 0, -50);
+    // Spawn the entrance encounter — a giant boss mesh that scrolls past
+    // and a curated obstacle pattern. Skips Midgard (the spawn realm).
+    if (b.boss) this._spawnBoss(b.boss);
+  }
+
+  _showBiomeBanner(name) {
+    let el = this._biomeBannerEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);" +
+        "font:800 38px/1 'Cinzel',serif;color:#fff;letter-spacing:.08em;" +
+        "text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.8),0 0 18px rgba(255,255,255,.4);" +
+        "pointer-events:none;z-index:36;opacity:0;transition:opacity .6s ease,transform .6s ease;" +
+        "text-align:center;line-height:1.2";
+      document.body.appendChild(el);
+      this._biomeBannerEl = el;
+    }
+    el.innerHTML = `<div style="font-size:13px;font-weight:600;letter-spacing:.2em;opacity:.7;margin-bottom:6px">ENTERING</div>${name}`;
+    el.style.opacity = "1";
+    el.style.transform = "translate(-50%, -50%) translateY(0)";
+    clearTimeout(this._biomeBannerT);
+    this._biomeBannerT = setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transform = "translate(-50%, -50%) translateY(-18px)";
+    }, 2600);
+  }
+
+  // Boss encounter. A large character mesh appears ~80m ahead and scrolls
+  // past the player as the world moves. The mesh is decorative — the
+  // actual "encounter" is a curated obstacle pattern spawned alongside,
+  // tuned to the boss's specialty (lane-pressure, slide-walls, fly-bys).
+  // Surviving the pattern is the implicit win condition.
+  _spawnBoss(type) {
+    const ahead = this.distance + 70;
+    const grp = new THREE.Group();
+    let label = "BOSS";
+    if (type === "jotunn") {
+      label = "JÖTUNN";
+      // Frost giant — towering blocky humanoid in pale-blue.
+      const skin = new THREE.MeshStandardMaterial({
+        color: 0x9eb8d0, roughness: 0.85, flatShading: true,
+        emissive: 0x304050, emissiveIntensity: 0.25,
+      });
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(3.5, 5, 2.2), skin);
+      torso.position.y = 4.2; grp.add(torso);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), skin);
+      head.position.y = 7.7; grp.add(head);
+      for (const sx of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.2), skin);
+        arm.position.set(sx * 2.4, 4.5, 0); grp.add(arm);
+      }
+      for (const sx of [-0.7, 0.7]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.6, 1.4), skin);
+        leg.position.set(sx, 1.4, 0); grp.add(leg);
+      }
+      // Frost crown
+      for (let i = 0; i < 5; i++) {
+        const spike = new THREE.Mesh(
+          new THREE.ConeGeometry(0.3, 1.2, 6),
+          new THREE.MeshStandardMaterial({ color: 0xe8f4ff, flatShading: true, emissive: 0x80a0c0, emissiveIntensity: 0.3 })
+        );
+        spike.position.set((i - 2) * 0.45, 9, 0); grp.add(spike);
+      }
+      grp.position.set(0, 0, ahead);
+    } else if (type === "surtr") {
+      label = "SURTR";
+      // Fire jötunn — dark stone body with molten cracks.
+      const stone = new THREE.MeshStandardMaterial({
+        color: 0x301810, roughness: 1.0, flatShading: true,
+        emissive: 0xff4010, emissiveIntensity: 0.8,
+      });
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(3.5, 5, 2.2), stone);
+      torso.position.y = 4.2; grp.add(torso);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), stone);
+      head.position.y = 7.7; grp.add(head);
+      // Flaming sword raised overhead
+      const sword = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 6, 0.4),
+        new THREE.MeshBasicMaterial({ color: 0xffb030, transparent: true, opacity: 0.95 })
+      );
+      sword.position.set(0, 11, 0); grp.add(sword);
+      const swordGlow = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 6.6, 1.2),
+        new THREE.MeshBasicMaterial({ color: 0xff4010, transparent: true, opacity: 0.35, depthWrite: false })
+      );
+      swordGlow.position.set(0, 11, 0); grp.add(swordGlow);
+      grp.position.set(0, 0, ahead);
+    } else if (type === "valkyrie") {
+      label = "VALKYRIE";
+      // Winged blessing — not a fight. Golden silhouette with outspread wings.
+      const gold = new THREE.MeshStandardMaterial({
+        color: 0xf0d090, roughness: 0.3, metalness: 0.8,
+        emissive: 0xffb060, emissiveIntensity: 0.6,
+      });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3, 0.8), gold);
+      body.position.y = 6.5; grp.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8), gold);
+      head.position.y = 8.5; grp.add(head);
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(
+          new THREE.PlaneGeometry(4, 2),
+          new THREE.MeshStandardMaterial({ color: 0xfff0c0, side: THREE.DoubleSide, emissive: 0xfff0c0, emissiveIntensity: 0.5 })
+        );
+        wing.position.set(sx * 2, 7, 0);
+        wing.rotation.y = sx * 0.4;
+        grp.add(wing);
+      }
+      grp.position.set(0, 0, ahead);
+      // Valkyrie blesses the player: a 5s 3x score multiplier window.
+      this._activatePowerup("mult", 5);
+    }
+    this.scene.add(grp);
+    // Banner mesh above the boss naming them.
+    const bossLabel = this._makeTextSprite(label, 0xffd060);
+    bossLabel.position.set(0, 12, 0);
+    bossLabel.scale.set(6, 1.5, 1);
+    grp.add(bossLabel);
+    // Track so we can scroll it with the world + remove after passing.
+    this._bossActor = { mesh: grp, spawnAt: ahead, type };
+    // Curated obstacle pattern for the encounter — 4 hazards, well-spaced.
+    const patternZ = ahead - 20;
+    if (type === "jotunn") {
+      // Three boulder forces — lane pressure
+      this._spawnObstacle(0, patternZ);
+      this._spawnObstacle(2, patternZ + 14);
+      this._spawnObstacle(1, patternZ + 28);
+    } else if (type === "surtr") {
+      // Two beams + one fire pit — slide-jump rhythm
+      this._spawnBeam(patternZ);
+      this._spawnFirePit(1, patternZ + 16);
+      this._spawnBeam(patternZ + 30);
+    } else if (type === "valkyrie") {
+      // Loot run — runes only, no hazards
+      for (let i = 0; i < 4; i++) {
+        this._spawnRune(i % 3, patternZ + i * 8);
+      }
+    }
+  }
+
   // Ease bio aura colour + opacity toward targets each frame so state
   // changes feel like a breath, not a flicker. Called from _update.
   _updateBioAura(dt) {
@@ -2379,6 +2621,25 @@ class Valhalla {
     // Refresh bio aura with the current state so it shows on this run too
     // (cognitive state survives game-over, only the visible aura clears).
     this._updateMultiplier(this.cognitiveState);
+    // Reset biome back to Midgard. Snap fog/sky to Midgard colours so the
+    // first biome transition is dramatic from a clean slate.
+    this.biomeIdx = 0;
+    this.biomeCycle = 0;
+    this.biomeName = BIOMES[0].name;
+    this._biomeFogTarget.setHex(BIOMES[0].fog);
+    this._biomeSkyTargets = BIOMES[0].sky.map(c => new THREE.Color(c));
+    if (this.scene.fog) {
+      this.scene.fog.color.setHex(BIOMES[0].fog);
+      this.scene.background.setHex(BIOMES[0].fog);
+    }
+    if (this.audio && typeof this.audio.setBiomePitch === "function") {
+      this.audio.setBiomePitch(0);
+    }
+    // Tear down any boss actor left over from the previous run.
+    if (this._bossActor) {
+      this.scene.remove(this._bossActor.mesh);
+      this._bossActor = null;
+    }
     this.running = true; this.over = false; this.paused = false;
     this.audio.ensure();
     this.audio.startWind();
@@ -3074,6 +3335,18 @@ class Valhalla {
     this._updatePowerHud(dt);
     this._updateGodPowers(dt);
     this._updateBioAura(dt);
+    this._updateBiome(dt);
+    // Boss mesh scrolls with the world; remove once well behind the player.
+    if (this._bossActor) {
+      const sz = this._bossActor.spawnAt - this.distance;
+      this._bossActor.mesh.position.z = sz;
+      // Subtle idle motion so they feel alive
+      this._bossActor.mesh.position.y = Math.sin(performance.now() * 0.0015) * 0.2;
+      if (sz < -25) {
+        this.scene.remove(this._bossActor.mesh);
+        this._bossActor = null;
+      }
+    }
 
     // forward distance
     this.distance += this.speed * dt;
