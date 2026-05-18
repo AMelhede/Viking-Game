@@ -1495,22 +1495,49 @@ class Valhalla {
     const tmp = new THREE.Object3D();
 
     const TREE_COUNT = 140;
-    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.22, 1.4, 5);
-    trunkGeo.translate(0, 0.7, 0);
-    const lowGeo = new THREE.ConeGeometry(1.3, 1.5, 6);
-    lowGeo.translate(0, 1.4 + 0.45, 0);
-    const midGeo = new THREE.ConeGeometry(1.0, 1.5, 6);
-    midGeo.translate(0, 1.4 + 0.85 + 0.45, 0);
-    const topGeo = new THREE.ConeGeometry(0.7, 1.5, 6);
-    topGeo.translate(0, 1.4 + 1.7 + 0.45, 0);
-    const capGeo = new THREE.ConeGeometry(0.4, 0.5, 6);
+    // Trunk now uses a LatheGeometry from a tapered+jagged profile —
+    // breaks the perfect cylinder silhouette that screamed "procedural".
+    // Slight bark roughness on the radius gives the trunk a real edge
+    // contour when backlit.
+    const trunkPoints = [];
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7;
+      const baseR = 0.22 - t * 0.06;            // tapers from 0.22 → 0.16
+      const jitter = (Math.sin(i * 1.7) + Math.cos(i * 2.3)) * 0.012;
+      trunkPoints.push(new THREE.Vector2(Math.max(0.05, baseR + jitter), t * 1.5));
+    }
+    const trunkGeo = new THREE.LatheGeometry(trunkPoints, 8);
+    // Foliage cones get per-vertex displacement so each instance still
+    // shares one geometry but no longer looks like a perfect cone.
+    // Noise applied at build time, baked into vertex positions.
+    const noisyCone = (radius, height, segs) => {
+      const g = new THREE.ConeGeometry(radius, height, segs);
+      const pos = g.attributes.position;
+      for (let v = 0; v < pos.count; v++) {
+        const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+        // Don't displace the tip (creates a clean point) or the very
+        // bottom edge (keeps the base ring tidy).
+        if (Math.abs(y - height / 2) < 0.05 || Math.abs(y + height / 2) < 0.05) continue;
+        const n = Math.sin(x * 11.2 + z * 7.4) * 0.06 + Math.cos(y * 5.1) * 0.04;
+        pos.setXYZ(v, x + n * x, y, z + n * z);
+      }
+      pos.needsUpdate = true;
+      g.computeVertexNormals();
+      return g;
+    };
+    const lowGeo = noisyCone(1.3, 1.5, 8);  lowGeo.translate(0, 1.4 + 0.45, 0);
+    const midGeo = noisyCone(1.0, 1.5, 8);  midGeo.translate(0, 1.4 + 0.85 + 0.45, 0);
+    const topGeo = noisyCone(0.7, 1.5, 8);  topGeo.translate(0, 1.4 + 1.7 + 0.45, 0);
+    const capGeo = new THREE.ConeGeometry(0.4, 0.5, 8);
     capGeo.translate(0, 1.4 + 3.0, 0);
 
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x32200f, roughness: 0.95, flatShading: true });
-    const lowMat = new THREE.MeshStandardMaterial({ color: 0x1a3221, roughness: 0.92, flatShading: true });
-    const midMat = new THREE.MeshStandardMaterial({ color: 0x244430, roughness: 0.9, flatShading: true });
-    const topMat = new THREE.MeshStandardMaterial({ color: 0x2c5440, roughness: 0.88, flatShading: true });
-    const capMat = new THREE.MeshStandardMaterial({ color: 0xf3f6f8, roughness: 0.4, flatShading: true });
+    // Slight variation between layers so the canopy reads as 3 distinct
+    // tone bands of needles (real conifers have this exact look).
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x2e1c0c, roughness: 0.95, flatShading: false });
+    const lowMat = new THREE.MeshStandardMaterial({ color: 0x18301f, roughness: 0.92, flatShading: true });
+    const midMat = new THREE.MeshStandardMaterial({ color: 0x223e2c, roughness: 0.88, flatShading: true });
+    const topMat = new THREE.MeshStandardMaterial({ color: 0x305a44, roughness: 0.82, flatShading: true });
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xf6f9fc, roughness: 0.35, flatShading: true });
 
     const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, TREE_COUNT);
     const lows = new THREE.InstancedMesh(lowGeo, lowMat, TREE_COUNT);
@@ -1518,21 +1545,26 @@ class Valhalla {
     const tops = new THREE.InstancedMesh(topGeo, topMat, TREE_COUNT);
     const caps = new THREE.InstancedMesh(capGeo, capMat, TREE_COUNT);
     for (const m of [trunks, lows, mids, tops, caps]) {
-      m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
+      m.castShadow = false; m.receiveShadow = false; m.frustumCulled = false;
     }
 
     for (let i = 0; i < TREE_COUNT; i++) {
       const side = Math.random() < 0.5 ? -1 : 1;
-      // Two bands: close-forest (8-24) and far-forest (24-55). Far band gets
-      // smaller and more drift, so it reads as receding into haze.
       const farBand = Math.random() < 0.55;
       const x = side * (farBand ? 24 + Math.random() * 31 : 8 + Math.random() * 16);
       const z = zStart + Math.random() * CHUNK_LENGTH;
-      const scale = (farBand ? 1.1 : 0.85) + Math.random() * 0.9;
+      // Non-uniform scale per instance: independent height + girth
+      // variance. Real conifer stands have huge variance in both axes
+      // and that's the single visual cue that turns "field of clones"
+      // into "real forest". Slight tilt rotation too (wind-shaped).
+      const baseS = (farBand ? 1.1 : 0.85) + Math.random() * 0.9;
+      const heightMul = 0.7 + Math.random() * 0.6;   // 0.7-1.3
+      const girthMul = 0.75 + Math.random() * 0.5;   // 0.75-1.25
+      const tilt = (Math.random() - 0.5) * 0.12;
       const y = groundHeight(x, z) - 0.1;
       tmp.position.set(x, y, z);
-      tmp.rotation.set(0, Math.random() * Math.PI * 2, 0);
-      tmp.scale.setScalar(scale);
+      tmp.rotation.set(tilt, Math.random() * Math.PI * 2, tilt * 0.5);
+      tmp.scale.set(baseS * girthMul, baseS * heightMul, baseS * girthMul);
       tmp.updateMatrix();
       trunks.setMatrixAt(i, tmp.matrix);
       lows.setMatrixAt(i, tmp.matrix);
@@ -1547,20 +1579,40 @@ class Valhalla {
     caps.instanceMatrix.needsUpdate = true;
     decor.add(trunks, lows, mids, tops, caps);
 
-    // Rocks - also instanced.
-    const ROCK_COUNT = 22;
-    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x676d75, roughness: 0.96, flatShading: true });
+    // Rocks — vertex-displaced icosahedron, much more organic than the
+    // perfect dodecahedron. Each instance gets a unique random rotation
+    // so the same geometry reads as a hundred different rocks.
+    const ROCK_COUNT = 26;
+    const rockGeo = new THREE.IcosahedronGeometry(1, 1);
+    const rPos = rockGeo.attributes.position;
+    for (let v = 0; v < rPos.count; v++) {
+      const x = rPos.getX(v), y = rPos.getY(v), z = rPos.getZ(v);
+      const n = Math.sin(x * 4.7 + z * 3.1) * 0.18
+              + Math.cos(y * 5.3 + x * 2.2) * 0.14
+              + (Math.random() - 0.5) * 0.08;
+      const l = Math.sqrt(x * x + y * y + z * z);
+      const f = 1 + n;
+      rPos.setXYZ(v, x / l * f, y / l * f, z / l * f);
+    }
+    rPos.needsUpdate = true;
+    rockGeo.computeVertexNormals();
+    const rockMat = new THREE.MeshStandardMaterial({
+      color: 0x5f656e, roughness: 0.98, flatShading: true,
+    });
     const rocks = new THREE.InstancedMesh(rockGeo, rockMat, ROCK_COUNT);
-    rocks.castShadow = true; rocks.receiveShadow = true; rocks.frustumCulled = false;
+    rocks.castShadow = false; rocks.receiveShadow = false; rocks.frustumCulled = false;
     for (let i = 0; i < ROCK_COUNT; i++) {
       const side = Math.random() < 0.5 ? -1 : 1;
       const x = side * (6.5 + Math.random() * 26);
       const z = zStart + Math.random() * CHUNK_LENGTH;
+      // Non-uniform rock scale — boulders are oblate not spherical.
       const r = 0.5 + Math.random() * 1.6;
-      tmp.position.set(x, groundHeight(x, z) + r * 0.25, z);
-      tmp.rotation.set(Math.random(), Math.random(), Math.random());
-      tmp.scale.setScalar(r);
+      const sx = r * (0.7 + Math.random() * 0.6);
+      const sy = r * (0.5 + Math.random() * 0.7);
+      const sz = r * (0.7 + Math.random() * 0.6);
+      tmp.position.set(x, groundHeight(x, z) + sy * 0.4, z);
+      tmp.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI * 2, Math.random() * Math.PI);
+      tmp.scale.set(sx, sy, sz);
       tmp.updateMatrix();
       rocks.setMatrixAt(i, tmp.matrix);
     }
