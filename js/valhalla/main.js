@@ -21,8 +21,12 @@ import { RGBELoader }       from "three/addons/loaders/RGBELoader.js";
 // threejs.org/examples is a CC0 rigged human with built-in walk/run
 // animations — when it loads it replaces the capsule player and gives
 // the world its single biggest "this is real not a toy" cue.
+// NOTE: Three.js r160's SkeletonUtils exports individual functions
+// (clone, retargetClip, ...), NOT a `SkeletonUtils` object. Importing
+// the wrong symbol previously broke the entire module load (game
+// wouldn't start at all). We only load Soldier once and never clone
+// him, so the import was unnecessary in the first place — removed.
 import { GLTFLoader }       from "three/addons/loaders/GLTFLoader.js";
-import { SkeletonUtils }    from "three/addons/utils/SkeletonUtils.js";
 
 // Lane 0 = visually leftmost on screen. Because the camera looks toward +Z
 // with default up = +Y, the camera's right vector is -X, so world +X appears
@@ -1241,18 +1245,23 @@ class Valhalla {
     this.sunPos.setFromSphericalCoords(1, phi, theta);
     u["sunPosition"].value.copy(this.sunPos);
 
-    // Use the sky itself as the environment so every MeshStandardMaterial
-    // gets sky-coloured reflections + ambient — no separate HDRI fetch
-    // required. PMREMGenerator builds the env map from a render target
-    // of the sky shader. THIS is the trick: real IBL from a procedural
-    // sky, no CDN dependency, no crash risk.
-    try {
-      const pmrem = new THREE.PMREMGenerator(this.renderer);
-      const rt = pmrem.fromScene(new THREE.Scene().add(sky.clone()), 0);
-      this.scene.environment = rt.texture;
-      pmrem.dispose();
-    } catch (e) {
-      console.warn("[Valhalla] sky-driven IBL failed, continuing", e);
+    // Sky-driven IBL is opt-in. PMREMGenerator + cloned Sky shader
+    // crashed the GPU context for some users (similar to the HDRI
+    // path in round 9). The IBL is a "nice to have" — the warm sun
+    // + cold rim + warm bounce lighting setup in _buildLights already
+    // gives good contrast without it. Enable via:
+    //   localStorage.setItem("valhalla.sky_ibl", "1") and reload
+    if (localStorage.getItem("valhalla.sky_ibl") === "1") {
+      try {
+        const pmrem = new THREE.PMREMGenerator(this.renderer);
+        const tmpScene = new THREE.Scene();
+        tmpScene.add(sky.clone());
+        const rt = pmrem.fromScene(tmpScene, 0);
+        this.scene.environment = rt.texture;
+        pmrem.dispose();
+      } catch (e) {
+        console.warn("[Valhalla] sky-driven IBL failed, continuing", e);
+      }
     }
 
     return this._buildSkyExtras();
@@ -1932,7 +1941,11 @@ class Valhalla {
       const loader = new GLTFLoader();
       loader.load(URL, (gltf) => {
         try {
-          const model = SkeletonUtils.clone(gltf.scene);
+          // Use gltf.scene directly. We never load Soldier twice, so
+          // we don't need SkeletonUtils.clone — that was only required
+          // when re-using a rigged model. Direct use preserves the
+          // bone bindings the AnimationMixer needs.
+          const model = gltf.scene;
           // Soldier.glb is ~1.8 units tall facing -Z. Our procedural
           // player is ~2.0 tall facing +Z. Scale + rotate to match.
           model.scale.setScalar(1.05);
