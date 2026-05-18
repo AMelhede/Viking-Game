@@ -2210,6 +2210,41 @@ class Valhalla {
     }
   }
 
+  // TAB info panel — info on demand. The always-visible HUD shows only
+  // distance + lives + active powers + biome banner; everything else
+  // (score, BPM, state, controls, legend) lives in this panel. Press
+  // TAB to open/close. Auto-pauses gameplay while open so the player
+  // can read at their own pace.
+  _toggleInfoPanel() {
+    const open = !document.body.classList.contains("info-open");
+    if (open) {
+      // Populate fields fresh on open.
+      const $$ = (id) => document.getElementById(id);
+      $$("infoBiome").textContent = this.biomeName + (this.biomeCycle > 0 ? "  ·  ×" + (this.biomeCycle + 1) : "");
+      $$("infoDist").textContent  = Math.round(this.distance) + " m";
+      $$("infoScore").textContent = Math.floor(this.score).toLocaleString();
+      $$("infoBpm").textContent   = this.bpm ? this.bpm + " bpm" : "—";
+      $$("infoState").textContent = this.cognitiveState && this.cognitiveState !== "neutral"
+        ? (this.cognitiveState.charAt(0).toUpperCase() + this.cognitiveState.slice(1))
+        : "—";
+      // Auto-pause if playing.
+      if (this.running && !this.over && !this.paused) {
+        this._wasPlayingBeforeInfo = true;
+        this.paused = true;
+      } else {
+        this._wasPlayingBeforeInfo = false;
+      }
+      document.body.classList.add("info-open");
+    } else {
+      document.body.classList.remove("info-open");
+      if (this._wasPlayingBeforeInfo) {
+        this.paused = false;
+        this._wasPlayingBeforeInfo = false;
+        this._lastT = performance.now();   // skip the pause delta
+      }
+    }
+  }
+
   // Heartbeat pulse — paces a soft visual pulse to the player's BPM so
   // the world physically beats with their body. The rPPG sensor reports
   // BPM ~4×/sec, not per-beat, so we INFER the next-beat timing from
@@ -2423,23 +2458,21 @@ class Valhalla {
     if (!el) {
       el = document.createElement("div");
       el.style.cssText =
-        "position:fixed;top:env(safe-area-inset-top,12px);left:50%;" +
+        // Cinzel inscription, no card, just text. Centred top.
+        "position:fixed;top:calc(env(safe-area-inset-top,18px) + 4px);left:50%;" +
         "transform:translateX(-50%);z-index:11;pointer-events:none;" +
-        "background:rgba(10,13,18,.7);border:1px solid rgba(255,255,255,.12);" +
-        "border-radius:999px;padding:6px 14px;" +
-        "font:700 11px/1 system-ui,sans-serif;letter-spacing:.18em;" +
-        "text-transform:uppercase;color:#fff;backdrop-filter:blur(14px);" +
-        "-webkit-backdrop-filter:blur(14px);" +
-        "transition:opacity .25s ease,color .4s ease,border-color .4s ease";
+        "font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;" +
+        "text-transform:uppercase;text-shadow:0 2px 14px rgba(0,0,0,.9);" +
+        "transition:opacity .4s ease,color .5s ease";
       document.body.appendChild(el);
       this._biomeChipEl = el;
     }
     const b = BIOMES[this.biomeIdx];
-    // Realm-specific accent so the chip itself tints with the biome.
-    const accent = "#" + ("000000" + b.fog.toString(16)).slice(-6);
-    el.textContent = b.name + (this.biomeCycle > 0 ? `  ×${this.biomeCycle + 1}` : "");
-    el.style.color = accent;
-    el.style.borderColor = accent + "70";
+    el.textContent = b.name + (this.biomeCycle > 0 ? "  ·  ×" + (this.biomeCycle + 1) : "");
+    // Bronze stays constant across realms — keeps the inscription
+    // legible regardless of fog colour. Realm identity comes from
+    // the actual sky + fog colour shift, not the text colour.
+    el.style.color = "rgba(201,165,92,0.86)";
     el.style.opacity = this.running ? "1" : "0";
   }
 
@@ -3074,7 +3107,8 @@ class Valhalla {
     };
     window.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
-      if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
+      if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright", "tab"].includes(k)) e.preventDefault();
+      if (k === "tab") { this._toggleInfoPanel(); return; }
       if (keys.has(k)) return;
       keys.add(k);
       if (k === "shift") { this.sprint = true; return; }
@@ -3489,6 +3523,12 @@ class Valhalla {
     // resolves to 1.
     this._showBiomeBanner(BIOMES[0].name);
     this._updateBiomeChip();
+    // Cinematic HUD: fade out the controls hint after 6s and the
+    // legend after 20s of fresh play. Both reappear via TAB.
+    const hint = document.querySelector(".hint");
+    const legend = document.getElementById("legend");
+    if (hint)   { hint.classList.remove("faded");   clearTimeout(this._hintFadeT);   this._hintFadeT   = setTimeout(() => hint.classList.add("faded"), 6000); }
+    if (legend) { legend.classList.remove("faded"); clearTimeout(this._legendFadeT); this._legendFadeT = setTimeout(() => legend.classList.add("faded"), 20000); }
     this.audio.ensure();
     this.audio.startWind();
     this.audio.startMusic();

@@ -23,22 +23,33 @@
     body.playing .hud{opacity:1;visibility:visible}
     .hud > *{pointer-events:auto}
 
+    /* Cinematic HUD — looks like rune carvings on parchment, not phone-
+       app chips. Bronze on dark, Cinzel serif, no chunky cards. The
+       only ALWAYS-VISIBLE elements are distance and lives. Score, BPM,
+       state, controls, legend all live behind TAB. */
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&display=swap');
+
     .topbar{
-      position:absolute;top:env(safe-area-inset-top,12px);left:12px;right:12px;
-      display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
+      position:absolute;top:env(safe-area-inset-top,18px);left:0;right:0;
+      display:flex;justify-content:space-between;align-items:flex-start;
+      padding:0 26px;pointer-events:none;
     }
-    .stat{
-      background:rgba(10,13,18,.7);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:10px;padding:9px 14px;min-width:78px;
-      backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    /* Distance — quiet bronze inscription in the top-left, no card. */
+    .stat.dist{
+      font:600 14px/1 'Cinzel',serif;letter-spacing:.16em;
+      color:rgba(201,165,92,.78);text-transform:uppercase;
     }
-    .stat .lbl{font-size:9.5px;font-weight:500;color:rgba(255,255,255,.5);
-      text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}
-    .stat .val{font-size:22px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
-    .stat.score .val{color:#fff}
-    .stat.dist .val{color:#fff}
-    .stat.lives .val{color:#ff6868;font-size:20px}
+    .stat.dist .lbl{display:none}
+    .stat.dist .val{font:700 32px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.02em;
+      text-shadow:0 2px 18px rgba(0,0,0,.85);margin-top:4px;display:block}
+    /* Lives — three faint runes (bottom of life lost = dimmer) in top-right. */
+    .stat.lives{
+      font:700 26px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.18em;
+      text-shadow:0 2px 18px rgba(0,0,0,.85);
+    }
+    .stat.lives .lbl{display:none}
+    /* Hide the score panel by default — info-on-demand via TAB. */
+    .stat.score{display:none}
     .row{display:flex;gap:8px}
 
     .stat.score{position:relative}
@@ -79,60 +90,68 @@
     body[data-bio-state="calm"]::after      {background:radial-gradient(ellipse at center,rgba(128,208,224,0) 30%,rgba(128,208,224,.26) 100%)}
     body[data-bio-state="distracted"]::after{background:radial-gradient(ellipse at center,rgba(128,136,152,0) 30%,rgba(128,136,152,.24) 100%)}
 
-    /* Visual-language legend — bottom-left, in-game only. Teaches
-       the four ring-colour meanings. Compact pill, fade in on play. */
+    /* Legend — only shown for the first 20s of a run (auto-fades),
+       then hidden. Bronze Cinzel inscription style, not chip-pill.
+       Toggle back via TAB (the info panel includes it). */
     .legend{
-      position:fixed;left:14px;bottom:env(safe-area-inset-bottom,72px);
+      position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,16px) + 18px);
       z-index:12;pointer-events:none;
-      display:flex;gap:14px;align-items:center;
-      background:rgba(10,13,18,.7);border:1px solid rgba(255,255,255,.10);
-      color:rgba(255,255,255,.82);font:600 10.5px/1 system-ui,sans-serif;
-      padding:7px 12px;border-radius:999px;letter-spacing:.04em;
-      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-      opacity:0;transition:opacity .4s ease;
+      display:flex;gap:18px;align-items:center;
+      font:600 11px/1 'Cinzel',serif;letter-spacing:.18em;
+      color:rgba(201,165,92,.78);text-transform:uppercase;
+      text-shadow:0 2px 12px rgba(0,0,0,.85);
+      opacity:0;transition:opacity 1.6s ease;
     }
     body.playing .legend{opacity:1}
-    .legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
-      margin-right:6px;vertical-align:-1px;box-shadow:0 0 6px currentColor}
+    body.playing .legend.faded{opacity:0}
+    .legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+      margin-right:7px;vertical-align:-1px;box-shadow:0 0 6px currentColor}
     .legend span{display:inline-flex;align-items:center}
 
-    /* Bio-off nudge in-game: a small pill in the bottom-right reminds
-       the player that flipping on a sensor doubles score. Disappears
-       once a sensor is live. */
-    .bionudge{
-      position:fixed;right:14px;bottom:env(safe-area-inset-bottom,72px);
-      z-index:12;pointer-events:none;
-      background:rgba(10,13,18,.78);border:1px solid rgba(251,191,36,.45);
-      color:#fbbf24;font:600 11.5px/1.3 system-ui,sans-serif;
-      padding:8px 14px;border-radius:999px;letter-spacing:.04em;
-      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-      opacity:0;transform:translateY(8px);
-      transition:opacity .4s ease,transform .4s ease;
-      max-width:240px;text-align:center;
-    }
-    body.playing .bionudge{opacity:1;transform:translateY(0);
-      animation:bionudgePulse 3.4s ease-in-out infinite}
-    body.bio-live .bionudge{opacity:0!important;animation:none}
-    @keyframes bionudgePulse{
-      0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,0)}
-      50%   {box-shadow:0 0 0 6px rgba(251,191,36,.18)}
-    }
+    /* Bio nudge — REMOVED from always-visible. */
+    .bionudge{display:none}
 
-    .bio{
-      position:absolute;top:calc(env(safe-area-inset-top,12px) + 78px);
-      right:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;
-      pointer-events:auto;cursor:pointer;
+    /* TAB info panel — full info-on-demand. Hidden by default; shown
+       when player presses TAB or clicks the distance reading. Reveals
+       Score, BPM, cognitive state, controls, legend, current realm.
+       Cinzel-styled parchment look, not a generic dialog. */
+    .infopanel{
+      position:fixed;inset:0;z-index:60;pointer-events:none;
+      display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(ellipse at center,rgba(10,13,18,.6) 0%,rgba(10,13,18,.92) 100%);
+      opacity:0;transition:opacity .25s ease;
     }
-    .chip{
-      background:rgba(10,13,18,.7);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:500;
-      display:flex;align-items:center;gap:7px;color:rgba(255,255,255,.45);
-      transition:color .2s,border-color .2s;
+    body.info-open .infopanel{opacity:1;pointer-events:auto}
+    .infopanel .card{
+      max-width:520px;width:90%;padding:36px 38px;
+      background:rgba(20,16,10,.78);border:1px solid rgba(201,165,92,.34);
+      box-shadow:0 30px 80px rgba(0,0,0,.7);border-radius:4px;
+      color:#e6dac0;font:14px/1.6 'Cinzel',serif;
     }
-    .chip .dot{width:6px;height:6px;border-radius:50%;background:#555;transition:background .2s,box-shadow .2s}
-    .bio.on .chip{color:rgba(255,255,255,.95);border-color:rgba(48,209,88,.45)}
-    .bio.on .chip .dot{background:#30D158;box-shadow:0 0 8px #30D158}
+    .infopanel .card h3{
+      font:700 15px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      color:#c9a55c;margin:0 0 18px;border-bottom:1px solid rgba(201,165,92,.2);padding-bottom:12px;
+    }
+    .infopanel .row{display:flex;justify-content:space-between;margin:6px 0;letter-spacing:.06em;}
+    .infopanel .row .k{color:rgba(230,218,192,.6);text-transform:uppercase;font-size:11px}
+    .infopanel .row .v{color:#e6dac0;font-weight:600;font-variant-numeric:tabular-nums}
+    .infopanel .ctrls{margin-top:22px;font-size:11.5px;color:rgba(230,218,192,.7);
+      letter-spacing:.14em;text-transform:uppercase}
+    .infopanel .ctrls kbd{display:inline-block;padding:1px 6px;margin:0 3px;
+      border:1px solid rgba(201,165,92,.45);border-radius:2px;font:inherit;
+      font-size:10.5px;color:#c9a55c;letter-spacing:0;background:transparent}
+    .infopanel .leg{margin-top:18px;display:flex;flex-wrap:wrap;gap:12px;
+      font-size:11px;color:rgba(230,218,192,.7);letter-spacing:.14em;text-transform:uppercase}
+    .infopanel .leg .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+      margin-right:7px;vertical-align:-1px;box-shadow:0 0 6px currentColor}
+    .infopanel .hint-line{margin-top:18px;font-size:10.5px;color:rgba(230,218,192,.4);
+      text-align:center;letter-spacing:.2em;text-transform:uppercase}
+
+    /* Bio chips — hidden by default. The player aura (in-world) IS
+       the indicator that bio is active. Bio details reappear in the
+       TAB info panel. */
+    .bio{display:none}
+    .chip{display:none}
 
     .touch{
       position:absolute;bottom:env(safe-area-inset-bottom,16px);left:0;right:0;
@@ -155,41 +174,50 @@
     .touch .left .pad{grid-template-columns:64px 64px}
     .touch .right .pad{grid-template-columns:64px}
 
+    /* Controls hint — fades out 6s into the first run, never returns
+       (re-show via TAB info panel). Bronze Cinzel inscription style,
+       not chunky kbd boxes. */
     .hint{
-      position:absolute;left:12px;bottom:env(safe-area-inset-bottom,12px);
-      font-size:11.5px;color:rgba(255,255,255,.42);line-height:1.6;
-      pointer-events:none;
+      position:absolute;left:24px;bottom:calc(env(safe-area-inset-bottom,12px) + 4px);
+      font:500 10.5px/1.7 'Cinzel',serif;
+      color:rgba(201,165,92,.62);letter-spacing:.18em;text-transform:uppercase;
+      pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.85);
+      transition:opacity 1.6s ease;
     }
+    .hint.faded{opacity:0}
     .hint kbd{
-      display:inline-block;padding:1.5px 6px;margin:0 1px;
-      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
-      border-radius:4px;font:inherit;font-size:10.5px;color:#fff;
+      display:inline-block;padding:0 4px;margin:0 2px;
+      background:transparent;border:1px solid rgba(201,165,92,.4);
+      border-radius:2px;font:inherit;font-size:10px;color:#c9a55c;letter-spacing:0;
     }
 
-    /* Active powerup strip - top center under HUD */
+    /* Active powerup strip — also Cinzel inscription style. No more
+       pill-cards. Sits below the distance reading. Only visible when
+       a power is active. */
     .power-hud{
-      position:absolute;top:calc(env(safe-area-inset-top,12px) + 78px);
-      left:50%;transform:translateX(-50%);
-      display:flex;gap:8px;pointer-events:none;
+      position:absolute;top:calc(env(safe-area-inset-top,18px) + 60px);
+      left:24px;
+      display:flex;flex-direction:column;gap:6px;pointer-events:none;
     }
     .power-pill{
-      display:flex;align-items:center;gap:8px;
-      padding:6px 12px;border-radius:999px;
-      background:rgba(10,13,18,.78);
-      border:1px solid #fff;
-      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-      animation:ppin .25s cubic-bezier(.2,1,.4,1.4);
+      display:flex;align-items:center;gap:10px;
+      padding:0;background:transparent;border:none;
+      animation:ppin .35s ease;
     }
-    .power-pill .pwlabel{font-size:11px;font-weight:600;letter-spacing:.02em}
+    .power-pill .pwlabel{
+      font:600 11px/1 'Cinzel',serif;letter-spacing:.16em;
+      color:#c9a55c;text-transform:uppercase;
+      text-shadow:0 2px 12px rgba(0,0,0,.85);
+    }
     .power-pill .pwbar{
-      width:42px;height:3px;background:rgba(255,255,255,.15);
-      border-radius:2px;overflow:hidden;
+      width:60px;height:2px;background:rgba(201,165,92,.18);
+      border-radius:1px;overflow:hidden;
     }
     .power-pill .pwfill{
-      display:block;height:100%;width:100%;border-radius:2px;
+      display:block;height:100%;width:100%;border-radius:1px;
       transition:width .12s linear;
     }
-    @keyframes ppin{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+    @keyframes ppin{0%{transform:translateX(-8px);opacity:0}100%{transform:translateX(0);opacity:1}}
 
     .combo{
       position:absolute;top:120px;left:50%;transform:translateX(-50%);
@@ -496,14 +524,36 @@
        body.bio-live once any sensor goes live. -->
   <div class="bionudge" id="bioNudge">⚡ Enable camera or Muse → 2× score</div>
 
-  <!-- Visual-language legend — bottom-left, only shown in-game.
-       Teaches the four ground-ring colours explicitly so the player
-       never has to guess what an orb is. Tiny, pure CSS, no JS. -->
+  <!-- Visual-language legend — bottom-left, only shown for first
+       20s of a fresh run. Reachable any time via TAB. -->
   <div class="legend" id="legend">
     <span><span class="dot" style="background:#ff2818"></span>Dodge</span>
     <span><span class="dot" style="background:#ffd066"></span>Gift</span>
     <span><span class="dot" style="background:#60d0ff"></span>Rune</span>
     <span><span class="dot" style="background:#ffc060"></span>Mead</span>
+  </div>
+
+  <!-- TAB info panel — info on demand. Hidden by default. -->
+  <div class="infopanel" id="infopanel">
+    <div class="card">
+      <h3>Skald's Tally</h3>
+      <div class="row"><span class="k">Realm</span><span class="v" id="infoBiome">Midgard</span></div>
+      <div class="row"><span class="k">Distance</span><span class="v" id="infoDist">0 m</span></div>
+      <div class="row"><span class="k">Score</span><span class="v" id="infoScore">0</span></div>
+      <div class="row"><span class="k">Heart Rate</span><span class="v" id="infoBpm">—</span></div>
+      <div class="row"><span class="k">State</span><span class="v" id="infoState">—</span></div>
+      <div class="leg">
+        <span><span class="dot" style="background:#ff2818"></span>Dodge</span>
+        <span><span class="dot" style="background:#ffd066"></span>Gift</span>
+        <span><span class="dot" style="background:#60d0ff"></span>Rune</span>
+        <span><span class="dot" style="background:#ffc060"></span>Mead</span>
+      </div>
+      <div class="ctrls">
+        <kbd>A</kbd> <kbd>D</kbd> Lane &nbsp; <kbd>Space</kbd> Jump &nbsp;
+        <kbd>S</kbd> Slide &nbsp; <kbd>P</kbd> Pause
+      </div>
+      <div class="hint-line">Tab to close</div>
+    </div>
   </div>
 
   <div class="hud" id="hud">
