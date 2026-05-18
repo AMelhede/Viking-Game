@@ -34,23 +34,29 @@
       display:flex;justify-content:space-between;align-items:flex-start;
       padding:0 26px;pointer-events:none;
     }
-    /* Distance — quiet bronze inscription in the top-left, no card. */
-    .stat.dist{
-      font:600 14px/1 'Cinzel',serif;letter-spacing:.16em;
-      color:rgba(201,165,92,.78);text-transform:uppercase;
+    /* Top-left stat block: SCORE on top, DISTANCE under it. Both Cinzel
+       bronze, no card, look like inscriptions. Score is back because
+       the user explicitly asked for it — gamification feedback matters
+       even with a cinematic look. */
+    .stat{
+      font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;
+      color:rgba(201,165,92,.62);text-transform:uppercase;
+      margin-bottom:14px;
     }
-    .stat.dist .lbl{display:none}
-    .stat.dist .val{font:700 32px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.02em;
-      text-shadow:0 2px 18px rgba(0,0,0,.85);margin-top:4px;display:block}
-    /* Lives — three faint runes (bottom of life lost = dimmer) in top-right. */
+    .stat .lbl{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.28em;
+      color:rgba(201,165,92,.55)}
+    .stat .val{font:700 30px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.02em;
+      text-shadow:0 2px 18px rgba(0,0,0,.85);display:block}
+    /* Lives — bronze inscription top-right. */
     .stat.lives{
       font:700 26px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.18em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);
     }
     .stat.lives .lbl{display:none}
-    /* Hide the score panel by default — info-on-demand via TAB. */
-    .stat.score{display:none}
-    .row{display:flex;gap:8px}
+    .stat.score{display:block}
+    .stat.score .val{font-size:34px}
+    .stat.dist .val{font-size:22px;color:rgba(201,165,92,.85)}
+    .row{display:flex;flex-direction:column;gap:0}
 
     .stat.score{position:relative}
     .stat.score .mult{
@@ -90,22 +96,23 @@
     body[data-bio-state="calm"]::after      {background:radial-gradient(ellipse at center,rgba(128,208,224,0) 30%,rgba(128,208,224,.26) 100%)}
     body[data-bio-state="distracted"]::after{background:radial-gradient(ellipse at center,rgba(128,136,152,0) 30%,rgba(128,136,152,.24) 100%)}
 
-    /* Legend — only shown for the first 20s of a run (auto-fades),
-       then hidden. Bronze Cinzel inscription style, not chip-pill.
-       Toggle back via TAB (the info panel includes it). */
+    /* Legend — bigger, readable, still atmospheric. The earlier
+       Cinzel-small was a misjudgement; user couldn't read it. Now
+       14px with .10em spacing, bigger 10px dots with stronger glow. */
     .legend{
-      position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,16px) + 18px);
+      position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,16px) + 26px);
       z-index:12;pointer-events:none;
-      display:flex;gap:18px;align-items:center;
-      font:600 11px/1 'Cinzel',serif;letter-spacing:.18em;
-      color:rgba(201,165,92,.78);text-transform:uppercase;
-      text-shadow:0 2px 12px rgba(0,0,0,.85);
+      display:flex;gap:22px;align-items:center;
+      font:600 13px/1 'Cinzel',serif;letter-spacing:.10em;
+      color:#e6dac0;text-transform:uppercase;
+      text-shadow:0 2px 14px rgba(0,0,0,.95);
       opacity:0;transition:opacity 1.6s ease;
     }
     body.playing .legend{opacity:1}
     body.playing .legend.faded{opacity:0}
-    .legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
-      margin-right:7px;vertical-align:-1px;box-shadow:0 0 6px currentColor}
+    .legend .dot{display:inline-block;width:11px;height:11px;border-radius:50%;
+      margin-right:9px;vertical-align:-1px;
+      box-shadow:0 0 10px currentColor,0 0 2px rgba(0,0,0,.8)}
     .legend span{display:inline-flex;align-items:center}
 
     /* Bio nudge — REMOVED from always-visible. */
@@ -174,21 +181,23 @@
     .touch .left .pad{grid-template-columns:64px 64px}
     .touch .right .pad{grid-template-columns:64px}
 
-    /* Controls hint — fades out 6s into the first run, never returns
-       (re-show via TAB info panel). Bronze Cinzel inscription style,
-       not chunky kbd boxes. */
+    /* Controls hint — readable, atmospheric. Only the actual ARROW
+       controls (which work in the game) are shown — A/D/W/S still
+       work but the user explicitly asked for the arrow indicators
+       since those are universally recognised. Bigger text, bigger
+       kbd outlines. Fades out 6s in. */
     .hint{
       position:absolute;left:24px;bottom:calc(env(safe-area-inset-bottom,12px) + 4px);
-      font:500 10.5px/1.7 'Cinzel',serif;
-      color:rgba(201,165,92,.62);letter-spacing:.18em;text-transform:uppercase;
-      pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.85);
+      font:500 12.5px/1.7 'Cinzel',serif;
+      color:#e6dac0;letter-spacing:.10em;text-transform:uppercase;
+      pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.95);
       transition:opacity 1.6s ease;
     }
     .hint.faded{opacity:0}
     .hint kbd{
-      display:inline-block;padding:0 4px;margin:0 2px;
-      background:transparent;border:1px solid rgba(201,165,92,.4);
-      border-radius:2px;font:inherit;font-size:10px;color:#c9a55c;letter-spacing:0;
+      display:inline-block;padding:2px 7px;margin:0 3px;min-width:14px;text-align:center;
+      background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.55);
+      border-radius:3px;font:inherit;font-size:12px;color:#d4ad6a;letter-spacing:0;
     }
 
     /* Active powerup strip — also Cinzel inscription style. No more
@@ -620,7 +629,7 @@
     <div class="combo" id="combo"><span id="comboN">2</span>&times;</div>
 
     <div class="hint">
-      <kbd>A</kbd>/<kbd>D</kbd> lane &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>S</kbd> slide &nbsp; <kbd>P</kbd> pause
+      <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Lane &nbsp; <kbd>&uarr;</kbd> Jump &nbsp; <kbd>&darr;</kbd> Slide &nbsp; <kbd>P</kbd> Pause
     </div>
 
     <div class="touch" id="touch">
@@ -671,7 +680,7 @@
       </div>
 
       <div class="controls-line">
-        <kbd>A</kbd> <kbd>D</kbd> change lane &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>S</kbd> slide &nbsp; <kbd>P</kbd> pause
+        <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Lane &nbsp; <kbd>&uarr;</kbd> Jump &nbsp; <kbd>&darr;</kbd> Slide &nbsp; <kbd>P</kbd> Pause
       </div>
     </div>
   </div>

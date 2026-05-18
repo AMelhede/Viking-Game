@@ -2060,11 +2060,11 @@ class Valhalla {
     //    feels static.
     // 2. FAR flakes - many small, drifting in middle distance for depth.
 
-    // Close layer (~camera-relative volume in front of player).
-    // Down to 80 (orig 350). _driftSnow loops over them every frame
-    // mutating positions — every cut here is direct CPU savings.
+    // Close layer — 350 → 80 → now 40. Each particle is a per-frame
+    // CPU loop that mutates the position buffer + flushes needsUpdate;
+    // this is the single biggest "lag in heavy scenes" win remaining.
     {
-      const count = 80;
+      const count = 40;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -2081,10 +2081,9 @@ class Valhalla {
       this.scene.add(this.snowClose);
     }
 
-    // Far layer (volumetric drift). 1800 → 900 → now 500. Far flakes
-    // are so small the eye really doesn't register the count.
+    // Far layer 1800 → 500 → now 250. Same reason as close layer.
     {
-      const count = 500;
+      const count = 250;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 140;
@@ -2763,19 +2762,39 @@ class Valhalla {
     this.power[type] = duration;
     const labels = {
       shield: "TYR'S AEGIS",
-      speed:  "SLEIPNIR'S GALLOP",
+      speed:  "SLEIPNIR",
       mult:   "BRAGI'S SAGA",
       magnet: "FREJA'S TEARS",
       ship:   "SKÍÐBLAÐNIR",
       thor:   "MJÖLNIR",
       odin:   "HUGINN & MUNINN",
     };
+    const SUBTITLES = {
+      shield: "Tyr shields you · " + duration.toFixed(1) + "s",
+      speed:  "Sleipnir's gallop · " + duration.toFixed(1) + "s",
+      mult:   "Sagas double your glory · " + duration.toFixed(1) + "s",
+      magnet: "Gold pulls to you · " + duration.toFixed(1) + "s",
+      ship:   "Freyr's longship · " + duration.toFixed(1) + "s",
+      thor:   "Lightning clears your path · " + duration.toFixed(1) + "s",
+      odin:   "Time bends to foresight · " + duration.toFixed(1) + "s",
+    };
+    const HEX_FOR = {
+      shield: 0xc8a040, speed: 0xc8d8e8, mult: 0xffd066, magnet: 0xff6090,
+      ship: 0xc04020, thor: 0x9ec0ff, odin: 0xa8b0d0,
+    };
     const SOUND_FOR = {
       shield: "tyr", speed: "sleipnir", mult: "bragi", magnet: "freja",
       ship: "skidbladnir", thor: "mjolnir", odin: "odin",
     };
     this.audio.power(SOUND_FOR[type] || "tyr");
-    this._popText(labels[type] || type, "rune", 0, -30);
+
+    // BIG centre-screen celebration on pickup. The user asked for
+    // "powerups should be visible upon claiming". Show the god's
+    // name MASSIVE in their colour, with a subtitle saying what
+    // it does and for how long. Plus a brief full-screen colour
+    // flash matching the god, plus a camera punch. Unmissable.
+    this._showPickupCelebration(labels[type] || type, SUBTITLES[type] || "", HEX_FOR[type] || 0xc9a55c);
+    this._shake(0.35, 0.25);
 
     // Visual side-effects on activate.
     if (type === "ship") this._mountLongship();
@@ -2783,11 +2802,41 @@ class Valhalla {
     else if (type === "thor") this._addThorAura();
     else if (type === "odin") {
       this._addOdinRavens();
-      // Odin's ravens grant foresight: time slows for the full duration.
-      // Hook into the existing _slowMo mechanism so the vignette also fires.
       this._slowMo(0.55, duration);
     }
     this._renderPowerHudOnce();
+  }
+
+  // Centre-screen god-pickup celebration. Builds the overlay once,
+  // re-uses on every pickup. Massive Cinzel name + subtitle, fades in
+  // and out over 1.8s. Saturated tint matches the god's halo colour.
+  _showPickupCelebration(name, subtitle, accentHex) {
+    let el = this._pickupEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);" +
+        "z-index:55;pointer-events:none;text-align:center;" +
+        "opacity:0;transition:opacity .35s ease,transform .35s ease;" +
+        "text-shadow:0 4px 36px rgba(0,0,0,.85),0 0 60px currentColor;";
+      el.innerHTML = `<div class="pn" style="font:700 64px/1 'Cinzel',serif;letter-spacing:.10em;text-transform:uppercase;margin-bottom:18px"></div>
+                      <div class="ps" style="font:500 14px/1.4 'Cinzel',serif;letter-spacing:.20em;text-transform:uppercase;opacity:.85"></div>`;
+      document.body.appendChild(el);
+      this._pickupEl = el;
+    }
+    const css = "#" + ("000000" + accentHex.toString(16)).slice(-6);
+    el.querySelector(".pn").textContent = name;
+    el.querySelector(".ps").textContent = subtitle;
+    el.style.color = css;
+    el.style.opacity = "1";
+    el.style.transform = "translate(-50%,-50%) scale(1)";
+    clearTimeout(this._pickupT);
+    this._pickupT = setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transform = "translate(-50%,-50%) scale(1.08)";
+    }, 1500);
+    // Brief screen flash in the god's colour.
+    if (this._bioStateFlash) this._bioStateFlash(accentHex);
   }
 
   _onPowerupEnd(type) {
