@@ -259,148 +259,192 @@
       opacity:0;transition:opacity .2s ease}
     .vignette.on{opacity:1}
 
+    /* CINEMATIC VALHALLA START MENU. Was the phone-app aesthetic
+       (white pill Play button + grey cards + system-ui sans). Now:
+       parchment-warm darkness, Cinzel inscriptions in bronze, no
+       cards at all — text floats on the world like an epitaph.
+       References: Vikings title card, Northman opening titles,
+       God-of-War Ragnarok menus. */
     .start{
       position:fixed;inset:0;z-index:50;
       display:flex;align-items:center;justify-content:center;
       padding:env(safe-area-inset-top,16px) 16px env(safe-area-inset-bottom,16px);
-      background:radial-gradient(ellipse at center,rgba(10,13,18,.55) 0%,rgba(10,13,18,.85) 100%);
+      /* Deep parchment-tinted darkness over the in-world scene. */
+      background:radial-gradient(ellipse at center,rgba(8,6,4,.30) 0%,rgba(8,6,4,.78) 100%);
       transition:opacity .5s ease;
     }
     .start.hide{opacity:0;pointer-events:none}
     .start .card{
-      width:100%;max-width:460px;
-      padding:48px 36px 28px;
+      width:100%;max-width:520px;
+      padding:60px 36px 32px;
       text-align:center;
+      background:none;border:none;
     }
-    .start .brand{
-      font-size:10px;font-weight:500;color:rgba(255,255,255,.4);
-      text-transform:uppercase;letter-spacing:.32em;margin-bottom:18px;
-    }
+    .start .brand{display:none}
     .start h1{
-      font-size:64px;font-weight:700;line-height:.92;letter-spacing:-.04em;
-      margin-bottom:14px;
-      background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.7) 100%);
-      -webkit-background-clip:text;background-clip:text;
-      -webkit-text-fill-color:transparent;
+      font:700 76px/.92 'Cinzel',serif;
+      letter-spacing:.14em;text-transform:uppercase;
+      margin:0 0 18px;
+      color:#d4ad6a;
+      text-shadow:
+        0 2px 0 rgba(0,0,0,.5),
+        0 8px 40px rgba(212,173,106,.25),
+        0 0 80px rgba(212,173,106,.10);
     }
     .start .tag{
-      font-size:15px;color:rgba(255,255,255,.65);line-height:1.5;
-      margin-bottom:38px;font-weight:400;
+      font:500 14px/1.7 'Cinzel',serif;letter-spacing:.18em;
+      color:rgba(212,173,106,.62);text-transform:uppercase;
+      margin:0 auto 42px;max-width:380px;
     }
     .start .play{
-      width:100%;max-width:280px;margin:0 auto 22px;
-      display:block;border:none;cursor:pointer;
-      padding:18px 24px;border-radius:14px;
-      background:#fff;color:#0a0d12;
-      font:inherit;font-weight:600;font-size:17px;letter-spacing:-.01em;
-      box-shadow:0 8px 40px rgba(255,255,255,.18),0 1px 0 rgba(255,255,255,.4) inset;
-      transition:transform .12s,box-shadow .12s;
+      display:block;margin:0 auto 32px;cursor:pointer;
+      padding:16px 64px;border:1px solid rgba(212,173,106,.45);
+      background:transparent;color:#d4ad6a;
+      font:700 16px/1 'Cinzel',serif;letter-spacing:.32em;
+      text-transform:uppercase;
+      transition:background .2s,border-color .2s,color .2s,box-shadow .2s;
     }
-    .start .play:hover{transform:translateY(-1px);box-shadow:0 12px 50px rgba(255,255,255,.28),0 1px 0 rgba(255,255,255,.5) inset}
-    .start .play:active{transform:translateY(0)}
+    .start .play:hover{
+      background:rgba(212,173,106,.10);border-color:#d4ad6a;color:#f4d49a;
+      box-shadow:0 0 32px rgba(212,173,106,.22),inset 0 0 18px rgba(212,173,106,.08);
+    }
+    .start .play:active{transform:translateY(1px)}
     .start .ministats{
-      display:flex;gap:18px;justify-content:center;align-items:center;
-      font-size:12.5px;color:rgba(255,255,255,.55);
-      margin-bottom:28px;
+      display:flex;gap:24px;justify-content:center;align-items:baseline;
+      font:500 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;
+      color:rgba(212,173,106,.55);
+      margin-bottom:42px;
     }
-    .start .ministats .v{color:#fff;font-weight:600;margin-right:4px}
+    .start .ministats .v{color:#d4ad6a;font-weight:700;margin-right:6px}
     .start .ministats .sep{opacity:.3}
+    /* Biosignal block — minimal inscription style. No card border. */
     .start .bio-sect{
-      margin:14px auto 0;max-width:340px;text-align:left;
-      padding:18px 18px 16px;
-      background:rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.07);
-      border-radius:14px;
+      margin:8px auto 0;max-width:420px;text-align:left;
+      padding:24px 0 4px;
+      border-top:1px solid rgba(212,173,106,.18);
+      background:none;
     }
     .start .bio-sect .hd{
       display:flex;align-items:baseline;justify-content:space-between;
-      margin-bottom:4px;
+      margin-bottom:6px;
     }
-    .start .bio-sect .hd b{font-size:13px;font-weight:600;color:#fff}
+    .start .bio-sect .hd b{
+      font:600 12px/1 'Cinzel',serif;letter-spacing:.28em;text-transform:uppercase;
+      color:#d4ad6a;font-weight:600;
+    }
     .start .bio-sect .hd em{
-      font-style:normal;font-size:9.5px;font-weight:500;color:rgba(255,255,255,.4);
-      text-transform:uppercase;letter-spacing:.18em;
+      font-style:normal;font:500 9.5px/1 'Cinzel',serif;
+      color:rgba(212,173,106,.4);text-transform:uppercase;letter-spacing:.32em;
     }
     .start .bio-sect p{
-      font-size:12px;color:rgba(255,255,255,.6);line-height:1.5;margin-bottom:14px;
+      font:400 12.5px/1.7 'Cinzel',serif;letter-spacing:.06em;
+      color:rgba(232,219,196,.62);margin-bottom:18px;
     }
-    .start .bio-sect p b{color:#fff;font-weight:600}
+    .start .bio-sect p b{color:#d4ad6a;font-weight:600}
     .start .bio-sect .biorow{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      padding:10px 0;border-top:1px solid rgba(255,255,255,.06);
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 0;border-top:1px solid rgba(212,173,106,.10);
     }
     .start .bio-sect .biorow:first-of-type{border-top:none}
     .start .bio-sect .biorow .tt{flex:1;min-width:0}
-    .start .bio-sect .biorow .tt .t{font-size:12.5px;font-weight:600;color:#fff;line-height:1.2}
-    .start .bio-sect .biorow .tt .d{font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;line-height:1.35}
-    .start .bio-sect .biorow button{
-      flex:0 0 auto;background:rgba(255,255,255,.1);
-      border:1px solid rgba(255,255,255,.15);color:#fff;
-      padding:6px 12px;border-radius:7px;font:inherit;font-size:11.5px;
-      font-weight:500;cursor:pointer;
+    .start .bio-sect .biorow .tt .t{
+      font:600 12px/1.2 'Cinzel',serif;letter-spacing:.16em;text-transform:uppercase;
+      color:#d4ad6a;
     }
-    .start .bio-sect .biorow button:hover{background:rgba(255,255,255,.18)}
-    .start .bio-sect .biorow button.live{background:#30D158;color:#04220e;border-color:#30D158}
-    .start .bio-sect .biorow button.error{background:#7f1d1d;border-color:#7f1d1d}
-    .start .bio-sect .biorow button:disabled{opacity:.55;cursor:default}
+    .start .bio-sect .biorow .tt .d{
+      font:400 11px/1.5 'Cinzel',serif;letter-spacing:.04em;
+      color:rgba(232,219,196,.5);margin-top:4px;
+    }
+    .start .bio-sect .biorow button{
+      flex:0 0 auto;background:transparent;
+      border:1px solid rgba(212,173,106,.4);color:#d4ad6a;
+      padding:9px 18px;border-radius:0;
+      font:600 11px/1 'Cinzel',serif;letter-spacing:.24em;text-transform:uppercase;
+      cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+    }
+    .start .bio-sect .biorow button:hover{background:rgba(212,173,106,.10);color:#f4d49a}
+    .start .bio-sect .biorow button.live{background:rgba(48,209,88,.18);color:#7fe5a0;border-color:rgba(48,209,88,.55)}
+    .start .bio-sect .biorow button.warming{background:rgba(212,173,106,.12);color:#f4d49a;border-color:rgba(212,173,106,.55)}
+    .start .bio-sect .biorow button.error{background:rgba(127,29,29,.4);color:#fca5a5;border-color:rgba(127,29,29,.7)}
+    .start .bio-sect .biorow button:disabled{opacity:.4;cursor:default}
     .start .controls-line{
-      margin-top:24px;font-size:11px;color:rgba(255,255,255,.4);
+      margin-top:36px;font:500 10.5px/1.4 'Cinzel',serif;letter-spacing:.22em;
+      text-transform:uppercase;color:rgba(212,173,106,.42);
     }
     .start .controls-line kbd{
-      display:inline-block;padding:1px 6px;margin:0 1px;
-      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
-      border-radius:4px;font:inherit;font-size:10.5px;color:#fff;
+      display:inline-block;padding:1px 5px;margin:0 2px;
+      background:transparent;border:1px solid rgba(212,173,106,.4);
+      border-radius:0;font:inherit;font-size:10px;color:#d4ad6a;letter-spacing:0;
     }
-    .start .brandmark{
-      position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
-      font-size:10px;font-weight:500;color:rgba(255,255,255,.3);
-      letter-spacing:.22em;text-transform:uppercase;
-    }
+    .start .brandmark{display:none}
 
+    /* Run-over panel — Cinzel inscription, no chunky white pill. */
     .over{
       position:fixed;inset:0;z-index:60;
       display:none;align-items:center;justify-content:center;
-      padding:16px;background:rgba(10,13,18,.78);
-      backdrop-filter:blur(8px);
+      padding:16px;background:radial-gradient(ellipse at center,rgba(8,6,4,.40) 0%,rgba(8,6,4,.88) 100%);
     }
     .over.show{display:flex}
     .over .card{
-      width:100%;max-width:380px;
-      padding:36px 28px 28px;text-align:center;
+      width:100%;max-width:460px;
+      padding:48px 32px 32px;text-align:center;
+      background:none;border:none;
     }
-    .over h2{font-size:36px;font-weight:600;letter-spacing:-.03em;margin-bottom:8px;color:#fff}
+    .over h2{
+      font:700 44px/1 'Cinzel',serif;letter-spacing:.16em;text-transform:uppercase;
+      color:#d4ad6a;margin:0 0 18px;
+      text-shadow:0 2px 0 rgba(0,0,0,.5),0 8px 28px rgba(212,173,106,.18);
+    }
     .over .ribbon{
-      display:inline-block;margin:6px 0 22px;padding:6px 12px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:999px;font-size:12px;font-weight:500;
-      color:rgba(255,255,255,.8);
+      display:inline-block;margin:0 0 30px;padding:6px 14px;
+      background:transparent;border:1px solid rgba(212,173,106,.45);
+      font:600 10.5px/1 'Cinzel',serif;letter-spacing:.28em;text-transform:uppercase;
+      color:#d4ad6a;
     }
-    .over .ribbon.best{background:rgba(122,217,255,.12);border-color:rgba(122,217,255,.4);color:#7ad9ff}
+    .over .ribbon.best{border-color:rgba(122,217,255,.55);color:#7ad9ff}
     .over .ribbon.none{display:none}
-    .over .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:22px}
-    .over .stats .item{padding:14px 4px;background:rgba(255,255,255,.04);border-radius:10px}
-    .over .stats .item .k{font-size:22px;font-weight:600;color:#fff;letter-spacing:-.02em}
-    .over .stats .item .v{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.12em;margin-top:3px}
+    .over .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:30px;
+      border-top:1px solid rgba(212,173,106,.18);border-bottom:1px solid rgba(212,173,106,.18)}
+    .over .stats .item{padding:18px 4px;background:none;border-radius:0;
+      border-left:1px solid rgba(212,173,106,.10)}
+    .over .stats .item:first-child{border-left:none}
+    .over .stats .item .k{
+      font:700 26px/1 'Cinzel',serif;color:#d4ad6a;letter-spacing:.02em;
+    }
+    .over .stats .item .v{
+      font:500 10px/1 'Cinzel',serif;color:rgba(212,173,106,.55);
+      text-transform:uppercase;letter-spacing:.28em;margin-top:8px;
+    }
     .over .actions{display:flex;flex-direction:column;gap:8px}
     .over .play{
-      border:none;cursor:pointer;padding:14px 22px;border-radius:11px;
-      background:#fff;color:#0a0d12;font:inherit;font-weight:600;font-size:15px;
+      cursor:pointer;padding:16px 48px;border-radius:0;
+      background:transparent;border:1px solid rgba(212,173,106,.45);
+      color:#d4ad6a;font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      transition:background .2s,color .2s,box-shadow .2s;
     }
-    .over .play:hover{transform:translateY(-1px)}
+    .over .play:hover{
+      background:rgba(212,173,106,.10);color:#f4d49a;
+      box-shadow:0 0 22px rgba(212,173,106,.20);
+    }
 
     .pause{
       position:fixed;inset:0;z-index:55;display:none;
       align-items:center;justify-content:center;
-      background:rgba(10,13,18,.6);backdrop-filter:blur(4px);
+      background:radial-gradient(ellipse at center,rgba(8,6,4,.45) 0%,rgba(8,6,4,.78) 100%);
     }
     .pause.on{display:flex}
-    .pause .card{padding:28px 32px;text-align:center}
-    .pause h3{font-size:22px;font-weight:600;margin-bottom:16px;letter-spacing:-.02em}
-    .pause button{
-      border:none;cursor:pointer;padding:12px 28px;border-radius:10px;
-      background:#fff;color:#0a0d12;font:inherit;font-weight:600;font-size:14px;
+    .pause .card{padding:36px 40px;text-align:center;background:none}
+    .pause h3{
+      font:700 28px/1 'Cinzel',serif;letter-spacing:.20em;text-transform:uppercase;
+      color:#d4ad6a;margin-bottom:24px;
     }
+    .pause button{
+      cursor:pointer;padding:14px 36px;border-radius:0;
+      background:transparent;border:1px solid rgba(212,173,106,.45);color:#d4ad6a;
+      font:700 13px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      transition:background .2s;
+    }
+    .pause button:hover{background:rgba(212,173,106,.10);color:#f4d49a}
 
     .loader{
       position:fixed;inset:0;z-index:100;
@@ -410,19 +454,14 @@
     }
     .loader.hide{opacity:0;pointer-events:none}
 
-    @media (min-width:720px){
-      .topbar{left:18px;right:18px;top:18px}
-      .stat{padding:11px 16px;min-width:96px}
-      .stat .val{font-size:26px}
-    }
     @media (max-width:719px){
       .hint{display:none}
-      .stat{padding:7px 11px;min-width:64px}
-      .stat .val{font-size:18px}
-      .stat .lbl{font-size:9px}
-      .start h1{font-size:48px}
-      .start .tag{font-size:14px;margin-bottom:30px}
-      .start .card{padding:32px 24px 20px}
+      .start h1{font-size:52px;letter-spacing:.10em}
+      .start .tag{font-size:12.5px;margin-bottom:30px}
+      .start .card{padding:40px 20px 20px}
+      .over h2{font-size:34px}
+      .stat.dist .val{font-size:22px}
+      .stat.lives{font-size:20px}
     }
   </style>
 
@@ -628,7 +667,7 @@
           </div>
           <button id="bioEegBtn">Pair</button>
         </div>
-        <div id="bioBleHint" style="display:none;font-size:11px;color:#fbbf24;margin-top:8px;padding:8px 12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;line-height:1.5"></div>
+        <div id="bioBleHint" style="display:none;font:500 11px/1.7 'Cinzel',serif;letter-spacing:.06em;color:rgba(212,173,106,.78);margin-top:16px;padding:14px 16px;background:none;border-top:1px solid rgba(212,173,106,.18);border-radius:0"></div>
       </div>
 
       <div class="controls-line">
