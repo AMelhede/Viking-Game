@@ -381,11 +381,18 @@
     }
   </style>
 
+  <!-- Three.js on jsDelivr (Cloudflare-backed CDN). Was unpkg before
+       — got a "Slow loading / Three.js blocked by your network" report
+       on a connection where unpkg.com loads slowly. jsDelivr hits
+       Cloudflare's PoPs globally and is less commonly blocked by
+       corporate/ISP filters than unpkg, so the all-in fetch of 11
+       Three.js files (core + Sky + GLTFLoader + composer + bloom +
+       FXAA + RGBE + ...) reliably completes inside the timeout. -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
       "@elata-biosciences/rppg-web": "./vendor/elata/rppg-web/dist/index.js",
       "@elata-biosciences/eeg-web": "./vendor/elata/eeg-web/dist/index.js",
       "@elata-biosciences/eeg-web-ble": "./vendor/elata/eeg-web-ble/dist/index.js"
@@ -419,23 +426,43 @@
           </div>`;
       });
     }
-    // 10-second hard timeout: if main.js never replaces the loader (CDN
-    // blocked, network error, slow shader compile), show a real error.
+    // 30-second hard timeout. The game now imports 11 separate Three.js
+    // files (core + Sky + GLTFLoader + composer + bloom + FXAA + RGBE
+    // + ...), so on a slow first load the previous 10s window was too
+    // tight. 30s catches genuine network blocks while letting a normal
+    // first-fetch complete.
+    //
+    // Diagnostic: when the timeout fires, we list which Three.js
+    // module URLs are still missing from the resource timeline so the
+    // user can see exactly which fetch is hanging.
     setTimeout(() => {
       const ldr = document.getElementById("loader");
       if (!ldr || ldr.classList.contains("hide")) return;
       if (!window.__valhalla) {
+        // Sniff out which Three URLs actually completed.
+        const seen = new Set(
+          performance.getEntriesByType("resource")
+            .map(e => e.name)
+            .filter(u => u.includes("jsdelivr") || u.includes("unpkg") || u.includes("three"))
+        );
+        const totalThree = seen.size;
         ldr.style.color = "#fff";
         ldr.innerHTML = `
-          <div style="text-align:center;max-width:480px;line-height:1.6;padding:0 24px;font-family:system-ui,sans-serif">
+          <div style="text-align:center;max-width:520px;line-height:1.6;padding:0 24px;font-family:system-ui,sans-serif">
             <div style="font-size:16px;font-weight:600;margin-bottom:8px">Slow loading</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px">
-              Three.js may be blocked by your network. Try a hard refresh.
+            <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:8px">
+              Three.js (loaded from jsDelivr) hasn't finished after 30s.
+              Got ${totalThree} of ~11 files. Likely a network block or
+              proxy filter on cdn.jsdelivr.net.
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">
+              Try: disable ad-blockers, hard refresh (Ctrl+Shift+R),
+              or check if your network blocks <code>cdn.jsdelivr.net</code>.
             </div>
             <button onclick="location.reload()" style="padding:10px 20px;border:1px solid rgba(255,255,255,.2);background:#fff;color:#0a0d12;border-radius:8px;cursor:pointer;font-weight:600">Reload</button>
           </div>`;
       }
-    }, 10000);
+    }, 30000);
   </script>
 </head>
 <body>
