@@ -1964,6 +1964,25 @@ class Valhalla {
     this._fpIdx = 0;
     this._fpAccum = 0;
 
+    // BREATH PUFFS — small Points cloud rising + drifting back from the
+    // player's mouth. In a cold Norse realm you can see your own breath.
+    // This single detail does more for "I'm a living person in this
+    // world" than any HUD element. 24 reusable particles cycling.
+    const breathCount = 24;
+    const breathPos = new Float32Array(breathCount * 3);
+    const breathLife = new Float32Array(breathCount); // 0..1 age
+    for (let i = 0; i < breathCount; i++) breathLife[i] = -1; // inactive
+    const breathGeo = new THREE.BufferGeometry();
+    breathGeo.setAttribute("position", new THREE.BufferAttribute(breathPos, 3));
+    const breathMat = new THREE.PointsMaterial({
+      color: 0xf6f9fc, size: 0.42, transparent: true, opacity: 0.0,
+      depthWrite: false, fog: true, sizeAttenuation: true,
+    });
+    const breath = new THREE.Points(breathGeo, breathMat);
+    breath.frustumCulled = false;
+    grp.add(breath);
+    this._breath = { points: breath, life: breathLife, lastEmit: 0 };
+
     // Bio aura — a soft glowing sphere wrapped around the player whose
     // colour is driven by the cognitive state. Starts invisible; comes
     // on the moment a biosignal is active. This is the player's visible
@@ -2699,6 +2718,49 @@ class Valhalla {
     b.escaped = true;
     if (b.hpFill) b.hpFill.visible = false;
     this._popText(`${b.type.toUpperCase()} ESCAPES`, "combo", 0, -20);
+  }
+
+  // Breath puffs — emit one new particle ~every 0.6s from the
+  // player's "mouth" (y ≈ 1.7 in player-local space, slightly forward).
+  // Each particle ages over ~1.4s: rises, drifts back, expands, fades.
+  // 24 particles in a ring buffer; reuse the slot once a particle dies.
+  _updateBreath(dt) {
+    const b = this._breath;
+    if (!b || !this.running) return;
+    const pos = b.points.geometry.attributes.position;
+    const life = b.life;
+    b.lastEmit += dt;
+    // Emit faster when sprint / higher HR — breathing harder.
+    const interval = 0.55 / Math.max(0.7, this.speed / BASE_SPEED);
+    if (b.lastEmit >= interval) {
+      b.lastEmit = 0;
+      for (let i = 0; i < life.length; i++) {
+        if (life[i] < 0) {
+          // Player-local emission point: slightly left/right of mouth.
+          const ox = (Math.random() - 0.5) * 0.10;
+          const oy = 1.72 + (Math.random() - 0.5) * 0.04;
+          const oz = 0.30 + Math.random() * 0.06;
+          pos.setXYZ(i, ox, oy, oz);
+          life[i] = 1;
+          break;
+        }
+      }
+    }
+    // Age + animate all active particles.
+    for (let i = 0; i < life.length; i++) {
+      if (life[i] < 0) continue;
+      life[i] -= dt * 0.7;       // ~1.4s lifetime
+      if (life[i] < 0) {
+        pos.setXYZ(i, 0, -100, 0);  // hide
+        continue;
+      }
+      // Drift up + back (away from camera which is behind player).
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      pos.setXYZ(i, x, y + dt * 0.6, z - dt * 1.2);
+    }
+    pos.needsUpdate = true;
+    // Material opacity fades the whole cloud out gently.
+    b.points.material.opacity = 0.6;
   }
 
   // Ease bio aura colour + opacity toward targets each frame so state
@@ -3506,7 +3568,15 @@ class Valhalla {
   _begin() {
     $("startOverlay").classList.add("hide");
     $("overOverlay").classList.remove("show");
-    document.body.classList.add("playing");
+    // CINEMATIC INTRO. Start the run in pure-black, then fade in over
+    // 1.4s as the body.playing class is added. .cinematic-intro on
+    // body keeps the .introfade overlay opaque; .playing then removes
+    // it via CSS transition. Same trick every Vikings episode opens.
+    document.body.classList.add("cinematic-intro");
+    requestAnimationFrame(() => {
+      document.body.classList.add("playing");
+      setTimeout(() => document.body.classList.remove("cinematic-intro"), 1500);
+    });
     this.lane = 1; this.targetLaneX = LANES[1];
     this.playerY = 0; this.playerVy = 0;
     this.sliding = false; this.slideTimer = 0;
@@ -4410,6 +4480,7 @@ class Valhalla {
     this._updateGodPowers(dt);
     this._updateBioAura(dt);
     this._updateBiome(dt);
+    this._updateBreath(dt);
     // Drive the real character's animation mixer. Speed scales with
     // game speed so legs cycle in sync with apparent motion.
     if (this._mixer) {
@@ -4595,6 +4666,15 @@ class Valhalla {
       1.0 + this.playerY * 0.4 + shakeY * 0.5,
       28
     );
+    // CINEMATIC CAMERA LEAN — when the player is changing lanes, the
+    // camera Z-rolls slightly into the turn. Lean magnitude scales
+    // with the lateral velocity (how fast the player is shifting
+    // sideways). Sells the run-and-dodge motion the way RDR2/God of
+    // War cameras lean into directional input.
+    const lateralVel = this.targetLaneX - this.player.position.x;
+    const leanTarget = -lateralVel * 0.04;             // radians
+    this._camLean = (this._camLean || 0) + (leanTarget - (this._camLean || 0)) * Math.min(1, dt * 6);
+    this.camera.rotation.z = this._camLean;
 
     // sun follows camera-ish
     this.sun.position.set(this.player.position.x * 0.5 + 50, 80, this.distance + 30);

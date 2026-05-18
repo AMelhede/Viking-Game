@@ -23,6 +23,58 @@
     body.playing .hud{opacity:1;visibility:visible}
     .hud > *{pointer-events:auto}
 
+    /* CINEMATIC FRAMING. Three stacked layers that immediately read
+       as "film" instead of "phone game":
+         .letterbox  — top + bottom hard black bars (movie aspect)
+         .vignette-cine — deep corner darkness (RDR2/Hellblade signature)
+         .grain      — animated film grain texture (every Viking film) */
+    .letterbox{
+      position:fixed;left:0;right:0;pointer-events:none;z-index:30;
+      background:#000;height:0;transition:height .9s cubic-bezier(.6,.02,.3,1);
+    }
+    .letterbox.top{top:0;border-bottom:1px solid rgba(0,0,0,1)}
+    .letterbox.bot{bottom:0;border-top:1px solid rgba(0,0,0,1)}
+    body.playing .letterbox{height:7vh}
+
+    .vignette-cine{
+      position:fixed;inset:0;pointer-events:none;z-index:29;
+      background:radial-gradient(ellipse 90% 70% at center,
+        rgba(0,0,0,0) 25%,rgba(0,0,0,.35) 65%,rgba(0,0,0,.85) 100%);
+      opacity:0;transition:opacity .9s ease .3s;
+    }
+    body.playing .vignette-cine{opacity:1}
+
+    /* Animated film grain via SVG noise data-URI. CSS-only, no JS,
+       no extra HTTP. Two layers shifted at different rates for that
+       organic 24fps texture feel. Subtle mix-blend so it doesn't
+       wash the colour out. */
+    .grain{
+      position:fixed;inset:-40px;pointer-events:none;z-index:31;
+      background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.4' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.92 0 0 0 0 0.85 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity:0;transition:opacity 1.4s ease .6s;
+      mix-blend-mode:overlay;
+      animation:grainShift 0.85s steps(6) infinite;
+    }
+    body.playing .grain{opacity:0.55}
+    @keyframes grainShift{
+      0%   {transform:translate(0,0)}
+      20%  {transform:translate(-12px,7px)}
+      40%  {transform:translate(8px,-10px)}
+      60%  {transform:translate(-6px,4px)}
+      80%  {transform:translate(10px,9px)}
+      100% {transform:translate(0,0)}
+    }
+
+    /* Intro fade — when Play is pressed, the game fades from black
+       over 1.4s. Echoes the opening of a film. Triggered by adding
+       body.cinematic-intro at the moment _begin fires; removed after. */
+    .introfade{
+      position:fixed;inset:0;background:#000;z-index:48;
+      pointer-events:none;opacity:0;transition:opacity 1.4s ease;
+    }
+    body.cinematic-intro .introfade{opacity:1;transition:none}
+    body.playing.cinematic-intro .introfade{opacity:0}
+
     /* Cinematic HUD — looks like rune carvings on parchment, not phone-
        app chips. Bronze on dark, Cinzel serif, no chunky cards. The
        only ALWAYS-VISIBLE elements are distance and lives. Score, BPM,
@@ -566,6 +618,15 @@
   <div class="flash" id="flash"></div>
   <div class="glory" id="glory"></div>
   <div class="vignette" id="vignette"></div>
+
+  <!-- Cinematic framing layers (purely visual, no JS interaction).
+       Order matters: letterbox sits highest so it crops over the
+       vignette + grain. -->
+  <div class="vignette-cine"></div>
+  <div class="grain"></div>
+  <div class="letterbox top"></div>
+  <div class="letterbox bot"></div>
+  <div class="introfade"></div>
 
   <!-- Bio-off nudge — bottom-right pill telling the player they can
        double their score by enabling a biosignal sensor. Hidden via
