@@ -14,8 +14,30 @@
 // IS the baseline. No eyes-open/eyes-closed ritual.
 
 import { BleTransport } from "@elata-biosciences/eeg-web-ble";
-import { AthenaWasmDecoder } from "@elata-biosciences/eeg-web";
+import { AthenaWasmDecoder, initEegWasm } from "@elata-biosciences/eeg-web";
 import { BandAnalyzer, CognitiveDeriver } from "./eegBands.js";
+
+// Path to the wasm binary, relative to THIS file. Kept here so the
+// init is self-contained and doesn't depend on the host page knowing
+// where vendor lives.
+const EEG_WASM_BINARY_URL = new URL(
+  "../../../vendor/elata/eeg-web/wasm/eeg_wasm_bg.wasm",
+  import.meta.url
+).href;
+
+// Process-wide promise so multiple sensors / drills can await the
+// same init without re-loading. Resolves to the wasm exports once
+// loaded; rejects if the .wasm fetch fails.
+let _eegWasmReady = null;
+function ensureEegWasm() {
+  if (!_eegWasmReady) {
+    _eegWasmReady = initEegWasm(EEG_WASM_BINARY_URL).catch((e) => {
+      _eegWasmReady = null;     // reset so a later retry can try again
+      throw e;
+    });
+  }
+  return _eegWasmReady;
+}
 
 const EMIT_MS = 250;
 const LIVE_THRESHOLD_SECONDS = 4; // warm for at least N seconds before going live
@@ -45,6 +67,23 @@ export class EegSensor {
     if (typeof navigator === "undefined" || !navigator.bluetooth) {
       this._setStatus("unsupported", "Web Bluetooth not available (Chrome/Edge desktop)");
       return { ok: false, reason: "unsupported" };
+    }
+
+    // CRITICAL: initialise the WASM binary BEFORE we let MuseBleDevice
+    // call `new AthenaWasmDecoder()`. The vendor lib instantiates the
+    // decoder synchronously inside startStream(), so if the wasm
+    // exports aren't loaded yet the constructor reads
+    // wasm.athenawasmdecoder_new() which is undefined and throws
+    // "Cannot read properties of undefined (reading
+    //  'athenawasmdecoder_new')". That was the entire "Stream start
+    // failed" loop the user was hitting — Muse hardware was fine.
+    this._setStatus("warming", "Loading EEG decoder…");
+    try {
+      await ensureEegWasm();
+    } catch (e) {
+      console.warn("[Bio] EEG wasm init failed", e);
+      this._setStatus("error", "EEG decoder failed to load — check network / vendor path");
+      return { ok: false, reason: "wasm_init", message: e?.message || "wasm_init_failed" };
     }
 
     // Inner pairing routine — builds a fresh transport, races against a

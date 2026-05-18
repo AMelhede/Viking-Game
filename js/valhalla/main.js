@@ -1105,19 +1105,24 @@ class Valhalla {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // Slightly under-exposed key so the warm sun pop reads as light,
-    // not blowout. Bloom adds the apparent highlight on top.
-    this.renderer.toneMappingExposure = 0.95;
+    // Cinematic dark grade. Previous 0.95 + Sky.js bright horizon +
+    // strong bloom = the screen blew out white and "couldn't see the
+    // map". 0.55 keeps the sky read but the world is properly dark
+    // and moody — like Northman, Vikings TV, 13th Warrior — instead
+    // of looking like a phone-game stock asset.
+    this.renderer.toneMappingExposure = 0.55;
     this.renderer.shadowMap.enabled = false;
 
     this.scene = new THREE.Scene();
-    // Fog matches the sky horizon. Denser and closer than before (40→320
-    // vs the old 60→520) so distant geometry actually fades into haze —
-    // sells "weather and air between me and the mountains" instead of
-    // looking like flat painted backdrops. Atmospheric perspective is
-    // the single biggest signal the brain uses to read realism.
-    const fogColor = new THREE.Color(0xc4d2dc);
-    this.scene.fog = new THREE.Fog(fogColor, 40, 320);
+    // HEAVY OVERCAST FOG. Was 40-320 in a pale grey-blue; now 30-180
+    // in a darker cold grey. References: opening of The Northman,
+    // every fjord shot in Vikings season 1, the misty meadows in The
+    // 13th Warrior. Sea mist + dense low cloud = you can see 50-100m
+    // and beyond that is suggestion. That's the actual Norse-coastal
+    // visibility, AND it hides the procedural geometry detail
+    // limitations gracefully.
+    const fogColor = new THREE.Color(0x6e7a86);
+    this.scene.fog = new THREE.Fog(fogColor, 30, 180);
     this.scene.background = fogColor.clone();
 
     // Camera lifted higher (4.0 → 5.5) and tilted down more so the
@@ -1143,11 +1148,13 @@ class Valhalla {
       const renderPass = new RenderPass(this.scene, this.camera);
       this.composer.addPass(renderPass);
 
-      // UnrealBloomPass(resolution, strength, radius, threshold).
-      // Bloom buffer at HALF resolution + strength bumped 0.65 → 0.85
-      // now that the IBL ambient doesn't double-count brightness —
-      // the highlights need more punch to read against the lit world.
-      const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.5, h * 0.5), 0.85, 0.6, 0.82);
+      // Bloom dialled WAY back. Previous 0.85 strength + 0.82 threshold
+      // caught the entire bright sky (Sky.js horizon is ~0.9-1.0
+      // brightness) and bloomed it over everything, which is why the
+      // user's screen "couldn't see the map" — it was solid white.
+      // 0.25 strength + 0.95 threshold = bloom ONLY on real lights
+      // (Mjölnir, runestones, fire, mead glow). Cinematic, not arcade.
+      const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.4, h * 0.4), 0.25, 0.5, 0.95);
       this.composer.addPass(bloom);
       this.bloomPass = bloom;
 
@@ -1224,20 +1231,22 @@ class Valhalla {
     // camera far clip (50000) and avoid floating-point issues at depth.
     sky.scale.setScalar(8000);
     const u = sky.material.uniforms;
-    // Tuning for a Viking-latitude winter afternoon — heavy turbidity
-    // (humid sea air), high Rayleigh (deep blue zenith), moderate Mie
-    // (soft horizon haze). Sun elevation ~12° gives the long warm
-    // raking light that's the signature look of Nordic Decembers.
-    u["turbidity"].value        = 6.0;
-    u["rayleigh"].value         = 2.4;
-    u["mieCoefficient"].value   = 0.012;
-    u["mieDirectionalG"].value  = 0.85;
+    // OVERCAST CINEMATIC Viking sky. Heavy turbidity (sea mist), low
+    // Rayleigh (no deep blue zenith), high Mie (diffuse cloudy
+    // horizon). The previous "golden hour" settings + bloom made the
+    // sky bright white. References: The Northman, Vikings TV, The
+    // 13th Warrior — all overcast, low contrast, oppressive weather.
+    // That's the Nordic look the user actually wants.
+    u["turbidity"].value        = 10.0;
+    u["rayleigh"].value         = 0.5;
+    u["mieCoefficient"].value   = 0.025;
+    u["mieDirectionalG"].value  = 0.7;
     this.sky = sky;
     this.scene.add(sky);
 
-    // Sun position. Elevation 12° azimuth 200° = warm late-afternoon
-    // from the south-west, classic Nordic golden-hour direction.
-    const elevation = 12;
+    // Sun JUST below horizon for overcast diffuse skylight feel —
+    // no direct sun disk, no golden glare, just heavy cloudy sky.
+    const elevation = 4;
     const azimuth   = 200;
     const phi   = THREE.MathUtils.degToRad(90 - elevation);
     const theta = THREE.MathUtils.degToRad(azimuth);
@@ -1329,36 +1338,27 @@ class Valhalla {
     // sources: warm key, cold rim, soft fill. Higher contrast than
     // before, addresses "hard to see" + "looks washed out".
 
-    // Hemisphere is now a thin supplement to the sky IBL — kept only
-    // to backstop materials that don't accept env (e.g. MeshBasic).
-    const hemi = new THREE.HemisphereLight(0xc8dbe8, 0x1c2632, 0.35);
+    // OVERCAST LIGHTING — no direct sun. Cinematic Nordic overcast is
+    // ~85% soft skylight from above + 15% cold rim. Total intensity
+    // way down from previous "golden hour" setup so the scene reads
+    // moody and atmospheric like the references the user shared
+    // (Northman, Vikings TV) rather than mid-day phone-game bright.
+    const hemi = new THREE.HemisphereLight(0xb4c4d4, 0x2a2e36, 0.9);
     this.scene.add(hemi);
 
-    // KEY sun — direction matched to the Sky.js sun (12° elev, az 200°)
-    // so shadows + ambient agree. Pushed to a punchy 2.4 intensity for
-    // real contrast against the IBL-lit ambient. Warm hue (#ffd098)
-    // matches the Hosek-Wilkie horizon at sun elev 12°.
-    const sun = new THREE.DirectionalLight(0xffd098, 2.4);
+    // Diffuse "sky key" — extremely soft, no direct disc, low warmth.
+    const sun = new THREE.DirectionalLight(0xd8d8e0, 0.55);
     if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
-    else sun.position.set(55, 18, -25);
-    sun.castShadow = false;       // shadow map is the GPU killer — IBL
-                                   // ambient + bloom carry the look now.
+    else sun.position.set(40, 30, -10);
+    sun.castShadow = false;
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
 
-    // COLD rim from the opposite hemisphere — saturated north-sky blue
-    // for silhouette pop. Stronger than before (0.7→1.1) so backs of
-    // objects don't go totally black in absence of fill.
-    const rim = new THREE.DirectionalLight(0x88a8e0, 1.1);
+    // Cold steel-blue rim for silhouette separation against fog.
+    const rim = new THREE.DirectionalLight(0x6a7c92, 0.55);
     rim.position.set(-40, 30, -25);
     this.scene.add(rim);
-
-    // Subtle warm bounce from the ground — fake "snow reflecting sun
-    // back up at faces" which is huge in real snow scenes.
-    const bounce = new THREE.DirectionalLight(0xffeecc, 0.5);
-    bounce.position.set(0, -10, 30);
-    this.scene.add(bounce);
   }
 
   _buildGround() {
@@ -2210,6 +2210,47 @@ class Valhalla {
     }
   }
 
+  // Heartbeat pulse — paces a soft visual pulse to the player's BPM so
+  // the world physically beats with their body. The rPPG sensor reports
+  // BPM ~4×/sec, not per-beat, so we INFER the next-beat timing from
+  // BPM (60/bpm seconds between beats) and schedule a chain of pulses
+  // that runs until the next BPM update overrides it. Each pulse:
+  //   * adds a brief vignette darkening (systole compression)
+  //   * gives a tiny camera punch via the existing _shake system
+  //   * tints the bio aura saturation up for ~120ms
+  _scheduleHeartbeatPulse() {
+    if (!this.bpm || this.bpm < 30 || this.bpm > 220) return;
+    if (this._hbTimer) clearTimeout(this._hbTimer);
+    const interval = 60 / this.bpm; // seconds between beats
+    const tick = () => {
+      this._heartbeatPulse();
+      // Re-schedule for the next beat at current BPM. If BPM updates
+      // mid-chain, this timer will be cleared and replaced.
+      this._hbTimer = setTimeout(tick, interval * 1000);
+    };
+    // First pulse immediately, then chain.
+    tick();
+  }
+  _heartbeatPulse() {
+    if (!this.running) return;
+    // Tiny camera kick — magnitude 0.06 is just barely perceptible,
+    // exactly the feeling of feeling your own pulse in the world.
+    this._shake(0.06, 0.08);
+    // Brief darkening pulse via a reused overlay element.
+    let el = this._heartbeatEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:8;"
+        + "background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.18) 100%);"
+        + "opacity:0;transition:opacity .12s ease;";
+      document.body.appendChild(el);
+      this._heartbeatEl = el;
+    }
+    el.style.opacity = "1";
+    clearTimeout(this._heartbeatT);
+    this._heartbeatT = setTimeout(() => { el.style.opacity = "0"; }, 110);
+  }
+
   // One-shot fullscreen colour flash when bio cognitive state changes.
   // Uses a CSS-driven overlay (added once, reused) so it doesn't burn GC.
   _bioStateFlash(hex) {
@@ -2282,11 +2323,14 @@ class Valhalla {
     this._biomeSkyTargets = b.sky.map(c => new THREE.Color(c));
     // Sky.js parameter targets per biome — these drive the atmosphere
     // through Hosek-Wilkie scattering for radically different looks.
+    // All biome skies now sit on the OVERCAST cinematic baseline. None
+    // of them have a visible sun disk; difference is in colour temp
+    // and density. Matches Northman / Vikings reference look.
     const SKY_PARAMS = {
-      Midgard:    { turbidity: 6,  rayleigh: 2.4, mieCoefficient: 0.012, mieDirectionalG: 0.85, sunElev: 12,  sunAz: 200 },
-      "Jötunheim":{ turbidity: 3,  rayleigh: 3.5, mieCoefficient: 0.005, mieDirectionalG: 0.78, sunElev: 6,   sunAz: 220 },
-      Muspelheim: { turbidity: 14, rayleigh: 1.5, mieCoefficient: 0.035, mieDirectionalG: 0.90, sunElev: 3,   sunAz: 180 },
-      Asgard:     { turbidity: 2,  rayleigh: 2.0, mieCoefficient: 0.008, mieDirectionalG: 0.80, sunElev: 45,  sunAz: 220 },
+      Midgard:    { turbidity: 10, rayleigh: 0.5, mieCoefficient: 0.025, mieDirectionalG: 0.70, sunElev:  4, sunAz: 200 },
+      "Jötunheim":{ turbidity: 14, rayleigh: 0.3, mieCoefficient: 0.030, mieDirectionalG: 0.65, sunElev:  2, sunAz: 220 },
+      Muspelheim: { turbidity: 18, rayleigh: 0.4, mieCoefficient: 0.060, mieDirectionalG: 0.85, sunElev:  3, sunAz: 180 },
+      Asgard:     { turbidity:  8, rayleigh: 0.6, mieCoefficient: 0.020, mieDirectionalG: 0.75, sunElev: 12, sunAz: 220 },
     };
     const sp = SKY_PARAMS[b.name] || SKY_PARAMS.Midgard;
     this._skyTarget = sp;
@@ -3255,6 +3299,12 @@ class Valhalla {
           this.bpm = Math.round(m.bpm);
           this.hud.bpmTxt.textContent = `${this.bpm} bpm`;
           this.hud.bioRow.classList.add("on");
+          // HEARTBEAT IMPACT — every detected beat sends a real pulse
+          // through the world. Scheduled as a chain of soft camera
+          // kicks + screen pulses paced to the player's actual BPM,
+          // so the game LITERALLY beats with their body. This is the
+          // single biggest "the SDK changes the experience" cue.
+          this._scheduleHeartbeatPulse();
         }
       });
       window.Bio.on("rppgStatus", (s) => {
@@ -3448,6 +3498,9 @@ class Valhalla {
     this.audio.stopMusic();
     this.audio.death();
     if (this._biomeChipEl) this._biomeChipEl.style.opacity = "0";
+    // Stop the heartbeat pulse so it doesn't keep dimming the menu.
+    if (this._hbTimer) { clearTimeout(this._hbTimer); this._hbTimer = null; }
+    if (this._heartbeatEl) this._heartbeatEl.style.opacity = "0";
     const prev = Store.load();
     const prevBestScore = prev.bestScore || 0;
     const prevBestDist = prev.bestDist || 0;
