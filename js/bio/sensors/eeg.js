@@ -69,47 +69,70 @@ export class EegSensor {
       ]);
     };
 
-    try {
+    // Three-attempt retry strategy with progressive backoff. The 700ms
+    // wait was too short — the Muse's GATT stack takes 2-3s to fully
+    // release the previous stream-start state, and some firmware
+    // versions need even longer. Each attempt fully tears down the
+    // transport so we never reuse a busy GATT session.
+    const RETRY_DELAYS_MS = [1500, 3000]; // before attempts 2 and 3
+    const ATTEMPT_LABELS  = [
+      "Pairing Muse…",
+      "Retrying Muse stream… (1/2)",
+      "Retrying Muse stream… (2/2)",
+    ];
+    let lastError = null;
+    let attemptsTaken = 0;
+    for (let i = 0; i < 3; i++) {
       try {
-        await attempt("Pairing Muse…");
-      } catch (e1) {
-        // BLE_START_FAILED = pairing completed but the stream-start
-        // command on the Muse's control characteristic failed. This
-        // happens fairly often on the first try because the headband's
-        // BLE state can be stale from a previous session. Tear the
-        // transport down and try ONE clean reconnect. Most "Failed to
-        // start BLE streaming" errors clear here.
-        const isStartFailed = e1?.code === "BLE_START_FAILED"
-                          || /failed to start ble streaming/i.test(String(e1?.message || ""));
-        if (!isStartFailed) throw e1;
-        console.warn("[Bio] Muse start failed — retrying once", e1);
+        attemptsTaken = i + 1;
+        await attempt(ATTEMPT_LABELS[i]);
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        // Stream-start failures get retried. All other failures (no
+        // device, timeout, security, network) bail immediately because
+        // the user has to take action before any retry can help.
+        const isStartFailed = e?.code === "BLE_START_FAILED"
+                          || /failed to start ble streaming/i.test(String(e?.message || ""));
+        // Log the underlying details so the dev console is useful.
+        console.warn(`[Bio] Muse attempt ${i + 1}/3 failed`, {
+          code: e?.code, name: e?.name, message: e?.message,
+          recoverable: e?.recoverable, details: e?.details, raw: e,
+        });
+        if (!isStartFailed) break;
+        // Clean teardown so attempt i+1 starts fresh.
         try { await this._transport?.stop?.(); } catch {}
         try { await this._transport?.disconnect?.(); } catch {}
         this._transport = null;
-        // Brief pause so the Muse releases the previous GATT session
-        // cleanly before we re-attempt.
-        await new Promise(r => setTimeout(r, 700));
-        await attempt("Retrying Muse stream…");
+        if (i < 2) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS_MS[i]));
+        }
       }
-    } catch (e) {
-      console.warn("[Bio] Muse connect failed", e);
+    }
+
+    if (lastError) {
+      const e = lastError;
       const reason = (e && e.code) ? e.code
                    : (e?.name === "NotFoundError" ? "no_device"
                    : (e?.name === "SecurityError" ? "insecure"
                    : "connect_failed"));
-      // Human-readable reason. The button gets this text so the user knows
-      // what to fix rather than just seeing "Failed".
+      // Detailed actionable error for the four real Muse failure modes.
+      // The previous "power-cycle and retry" was incomplete — most BLE_
+      // START_FAILED cases I've seen are caused by a competing app
+      // holding the device, not the Muse itself being stuck.
       const msg = reason === "no_device" ? "No Muse selected — try again"
                 : reason === "timeout"   ? "Pairing timed out — pick the Muse"
-                : reason === "insecure"  ? "Web Bluetooth needs HTTPS / localhost"
-                : reason === "BLE_START_FAILED" ? "Stream start failed — power-cycle your Muse (hold button 5s) and retry"
-                                         : `Connect failed: ${e?.message || reason}`;
-      // Best-effort cleanup so a follow-up retry has a clean slate.
+                : reason === "insecure"  ? "Needs HTTPS or localhost"
+                : reason === "BLE_START_FAILED"
+                  ? "Stream failed after 3 tries. Close the Muse app on your phone, hold the Muse button 5s to reset, then click Pair again."
+                  : `Connect failed: ${e?.message || reason}`;
       try { await this._transport?.stop?.(); } catch {}
       try { await this._transport?.disconnect?.(); } catch {}
       this._teardown();
+      console.warn(`[Bio] Muse gave up after ${attemptsTaken} attempts — final reason:`, reason);
       this._setStatus("error", msg);
-      return { ok: false, reason, message: msg };
+      return { ok: false, reason, message: msg, attempts: attemptsTaken };
     }
 
     this._emitHandle = setInterval(() => { try { this._emit(); } catch (err) { console.warn("[Bio] EEG emit threw", err); } }, EMIT_MS);
