@@ -2323,14 +2323,16 @@ class Valhalla {
     this._biomeSkyTargets = b.sky.map(c => new THREE.Color(c));
     // Sky.js parameter targets per biome — these drive the atmosphere
     // through Hosek-Wilkie scattering for radically different looks.
-    // All biome skies now sit on the OVERCAST cinematic baseline. None
-    // of them have a visible sun disk; difference is in colour temp
-    // and density. Matches Northman / Vikings reference look.
+    // All four realms on the SAME overcast baseline. Asgard had
+    // rayleigh 0.6 + sun elev 12° which Sky.js rendered as bright
+    // white = "I can see nothing" whiteout. Now Asgard is just a
+    // warmer / lighter overcast, not a snowstorm. All four are
+    // similar mid-greys with subtle temperature shifts.
     const SKY_PARAMS = {
-      Midgard:    { turbidity: 10, rayleigh: 0.5, mieCoefficient: 0.025, mieDirectionalG: 0.70, sunElev:  4, sunAz: 200 },
-      "Jötunheim":{ turbidity: 14, rayleigh: 0.3, mieCoefficient: 0.030, mieDirectionalG: 0.65, sunElev:  2, sunAz: 220 },
-      Muspelheim: { turbidity: 18, rayleigh: 0.4, mieCoefficient: 0.060, mieDirectionalG: 0.85, sunElev:  3, sunAz: 180 },
-      Asgard:     { turbidity:  8, rayleigh: 0.6, mieCoefficient: 0.020, mieDirectionalG: 0.75, sunElev: 12, sunAz: 220 },
+      Midgard:    { turbidity: 12, rayleigh: 0.4, mieCoefficient: 0.030, mieDirectionalG: 0.70, sunElev: 5, sunAz: 200 },
+      "Jötunheim":{ turbidity: 14, rayleigh: 0.3, mieCoefficient: 0.035, mieDirectionalG: 0.65, sunElev: 3, sunAz: 220 },
+      Muspelheim: { turbidity: 18, rayleigh: 0.4, mieCoefficient: 0.060, mieDirectionalG: 0.85, sunElev: 3, sunAz: 180 },
+      Asgard:     { turbidity: 11, rayleigh: 0.4, mieCoefficient: 0.028, mieDirectionalG: 0.75, sunElev: 5, sunAz: 220 },
     };
     const sp = SKY_PARAMS[b.name] || SKY_PARAMS.Midgard;
     this._skyTarget = sp;
@@ -4051,6 +4053,22 @@ class Valhalla {
     }
     icon.position.z = 0.05;
     grp.add(icon);
+
+    // BEACON — vertical pillar of light shooting up from the orb so
+    // the player spots it from far away even through heavy fog. This
+    // is THE fix for "I can't see what's a powerup" — the pillar is
+    // 18m tall, additive-blended, fog-aware so it fades naturally
+    // with distance. God's halo colour at top.
+    const beaconGeo = new THREE.CylinderGeometry(0.22, 0.22, 18, 8, 1, true);
+    beaconGeo.translate(0, 9, 0);
+    const beaconMat = new THREE.MeshBasicMaterial({
+      color: spec.halo, transparent: true, opacity: 0.55,
+      depthWrite: false, side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending, fog: true,
+    });
+    const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+    grp.add(beacon);
+
     grp.position.set(LANES[lane], 1.6, zWorld);
     this.scene.add(grp);
     // Reward decal — the god's halo colour on the ground, so the player can

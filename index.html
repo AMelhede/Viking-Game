@@ -79,6 +79,23 @@
     body[data-bio-state="calm"]::after      {background:radial-gradient(ellipse at center,rgba(128,208,224,0) 30%,rgba(128,208,224,.26) 100%)}
     body[data-bio-state="distracted"]::after{background:radial-gradient(ellipse at center,rgba(128,136,152,0) 30%,rgba(128,136,152,.24) 100%)}
 
+    /* Visual-language legend — bottom-left, in-game only. Teaches
+       the four ring-colour meanings. Compact pill, fade in on play. */
+    .legend{
+      position:fixed;left:14px;bottom:env(safe-area-inset-bottom,72px);
+      z-index:12;pointer-events:none;
+      display:flex;gap:14px;align-items:center;
+      background:rgba(10,13,18,.7);border:1px solid rgba(255,255,255,.10);
+      color:rgba(255,255,255,.82);font:600 10.5px/1 system-ui,sans-serif;
+      padding:7px 12px;border-radius:999px;letter-spacing:.04em;
+      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+      opacity:0;transition:opacity .4s ease;
+    }
+    body.playing .legend{opacity:1}
+    .legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+      margin-right:6px;vertical-align:-1px;box-shadow:0 0 6px currentColor}
+    .legend span{display:inline-flex;align-items:center}
+
     /* Bio-off nudge in-game: a small pill in the bottom-right reminds
        the player that flipping on a sensor doubles score. Disappears
        once a sensor is live. */
@@ -478,6 +495,16 @@
        double their score by enabling a biosignal sensor. Hidden via
        body.bio-live once any sensor goes live. -->
   <div class="bionudge" id="bioNudge">⚡ Enable camera or Muse → 2× score</div>
+
+  <!-- Visual-language legend — bottom-left, only shown in-game.
+       Teaches the four ground-ring colours explicitly so the player
+       never has to guess what an orb is. Tiny, pure CSS, no JS. -->
+  <div class="legend" id="legend">
+    <span><span class="dot" style="background:#ff2818"></span>Dodge</span>
+    <span><span class="dot" style="background:#ffd066"></span>Gift</span>
+    <span><span class="dot" style="background:#60d0ff"></span>Rune</span>
+    <span><span class="dot" style="background:#ffc060"></span>Mead</span>
+  </div>
 
   <div class="hud" id="hud">
     <div class="topbar">
