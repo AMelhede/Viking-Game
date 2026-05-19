@@ -4740,15 +4740,11 @@ class Valhalla {
       1.0 + this.playerY * 0.4 + shakeY * 0.5,
       28
     );
-    // CINEMATIC CAMERA LEAN — when the player is changing lanes, the
-    // camera Z-rolls slightly into the turn. Lean magnitude scales
-    // with the lateral velocity (how fast the player is shifting
-    // sideways). Sells the run-and-dodge motion the way RDR2/God of
-    // War cameras lean into directional input.
-    const lateralVel = this.targetLaneX - this.player.position.x;
-    const leanTarget = -lateralVel * 0.04;             // radians
-    this._camLean = (this._camLean || 0) + (leanTarget - (this._camLean || 0)) * Math.min(1, dt * 6);
-    this.camera.rotation.z = this._camLean;
+    // Camera lean reverted — setting camera.rotation.z directly AFTER
+    // lookAt() flipped the view upside-down in some frames (the user
+    // saw "you are walking on the opposite"). The visual lean was
+    // not worth the orientation risk; the existing footfall bob +
+    // sway already sells run-motion adequately.
 
     // sun follows camera-ish
     this.sun.position.set(this.player.position.x * 0.5 + 50, 80, this.distance + 30);
