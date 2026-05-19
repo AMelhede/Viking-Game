@@ -6,12 +6,21 @@ import { Water } from "three/addons/objects/Water.js";
 // This replaces the previous custom gradient-sphere — Hosek-Wilkie is
 // the same physically-based model used in feature films for daytime sky.
 import { Sky } from "three/addons/objects/Sky.js";
-// Postprocessing — turns the procedural geometry into something that
-// actually looks LIT. Bloom on emissives (runes, mead, Mjölnir, fires)
-// is the single biggest "this is a real 3D world not a toy" cue.
+// Postprocessing — three layered passes turn procedural geometry into
+// something that reads as "real lit world":
+//   Bloom    — emissive highlights bleed (runes/Mjölnir/fire)
+//   SSAO     — screen-space ambient occlusion grounds objects in
+//              contact shadows (the single biggest "object weight"
+//              cue in cinematic games; rocks/trees stop floating)
+//   LUT      — cinematic colour grade via channel-mix shader (cool
+//              shadows, warm highlights, desaturate midtones —
+//              same grade family as Northman / Vikings / The 13th
+//              Warrior)
+//   FXAA     — final AA pass over the post chain
 import { EffectComposer }   from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass }       from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass }  from "three/addons/postprocessing/UnrealBloomPass.js";
+import { SSAOPass }         from "three/addons/postprocessing/SSAOPass.js";
 import { ShaderPass }       from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader }       from "three/addons/shaders/FXAAShader.js";
 // HDRI image-based lighting — feeds every PBR material a real-world
@@ -1148,19 +1157,76 @@ class Valhalla {
       const renderPass = new RenderPass(this.scene, this.camera);
       this.composer.addPass(renderPass);
 
-      // Bloom dialled WAY back. Previous 0.85 strength + 0.82 threshold
-      // caught the entire bright sky (Sky.js horizon is ~0.9-1.0
-      // brightness) and bloomed it over everything, which is why the
-      // user's screen "couldn't see the map" — it was solid white.
-      // 0.25 strength + 0.95 threshold = bloom ONLY on real lights
-      // (Mjölnir, runestones, fire, mead glow). Cinematic, not arcade.
+      // SSAO — screen-space ambient occlusion. Darkens contact-shadow
+      // regions where geometry meets geometry (rock bases, character
+      // feet on snow, tree trunk + ground crease). THE technique that
+      // makes objects look "in the world" instead of floating on it.
+      // Half-res for perf; minDistance/maxDistance tuned to our scene
+      // scale (geometry mostly 1-5m tall).
+      try {
+        const ssao = new SSAOPass(this.scene, this.camera, w * 0.5, h * 0.5);
+        ssao.kernelRadius = 6;        // sample radius — small for tight contact shadows
+        ssao.minDistance = 0.002;     // ignore self-intersection bleed
+        ssao.maxDistance = 0.08;      // ignore distant geometry
+        ssao.output = SSAOPass.OUTPUT.Default;
+        this.composer.addPass(ssao);
+        this.ssaoPass = ssao;
+      } catch (e) {
+        console.warn("[Valhalla] SSAO init failed — continuing", e);
+      }
+
+      // Bloom — strength 0.25 + threshold 0.95, only true emissives
+      // bleed (Mjölnir / runes / fire / mead halo). Quarter-res buffer.
       const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.4, h * 0.4), 0.25, 0.5, 0.95);
       this.composer.addPass(bloom);
       this.bloomPass = bloom;
 
-      // FXAA for cheap anti-aliasing on top of the post chain. MSAA
-      // doesn't survive the composer pipeline cleanly so we re-add AA
-      // here. Negligible perf cost.
+      // CINEMATIC LUT — custom shader pass that approximates the
+      // Northman/Vikings colour grade: shadows pushed cool (cyan-blue),
+      // highlights pushed warm (amber), midtones desaturated. Plus a
+      // gentle film-curve contrast lift. This is the SAME function
+      // every cinematic colourist runs in DaVinci Resolve as the
+      // base grade for Nordic-period drama.
+      const lutShader = {
+        uniforms: {
+          tDiffuse: { value: null },
+          uShadowTint:   { value: new THREE.Color(0.78, 0.92, 1.10) },  // cool
+          uHighlightTint:{ value: new THREE.Color(1.18, 1.02, 0.78) },  // warm
+          uSaturation:   { value: 0.72 },                                 // desaturate
+          uContrast:     { value: 1.08 },
+          uLift:         { value: -0.02 },                                // crush blacks
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+        `,
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          uniform vec3 uShadowTint;
+          uniform vec3 uHighlightTint;
+          uniform float uSaturation;
+          uniform float uContrast;
+          uniform float uLift;
+          varying vec2 vUv;
+          void main() {
+            vec4 c = texture2D(tDiffuse, vUv);
+            float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+            // Split-toning: cool tint in shadows, warm tint in highlights.
+            vec3 tint = mix(uShadowTint, uHighlightTint, smoothstep(0.0, 1.0, lum));
+            c.rgb *= tint;
+            // Saturation pull.
+            c.rgb = mix(vec3(lum), c.rgb, uSaturation);
+            // Contrast around 0.5, then black-lift offset.
+            c.rgb = (c.rgb - 0.5) * uContrast + 0.5 + uLift;
+            gl_FragColor = c;
+          }
+        `,
+      };
+      const lut = new ShaderPass(lutShader);
+      this.composer.addPass(lut);
+      this.lutPass = lut;
+
+      // FXAA last so it smooths the LUT output.
       const fxaa = new ShaderPass(FXAAShader);
       fxaa.material.uniforms["resolution"].value.set(
         1 / (w * this.renderer.getPixelRatio()),
@@ -4409,10 +4475,18 @@ class Valhalla {
     // Track an EMA of frame time so we can drop quality if the GPU is
     // struggling. Updates every frame, ~1s smoothing.
     this._frameEMA = this._frameEMA == null ? realDt : (this._frameEMA * 0.95 + realDt * 0.05);
-    // Adaptive bloom — disable if we're running below 40 FPS sustained
-    // and re-enable above 50 FPS. Hysteresis prevents flicker.
+    // Adaptive post — disable heavy passes if running below 40 FPS
+    // sustained, re-enable above 50 FPS. Hysteresis prevents flicker.
+    // SSAO drops first (most expensive), bloom second.
+    if (this.ssaoPass) {
+      if (this._frameEMA > 0.022 && this.ssaoPass.enabled) {
+        this.ssaoPass.enabled = false;
+      } else if (this._frameEMA < 0.017 && !this.ssaoPass.enabled) {
+        this.ssaoPass.enabled = true;
+      }
+    }
     if (this.bloomPass) {
-      if (this._frameEMA > 0.025 && this.bloomPass.enabled) {
+      if (this._frameEMA > 0.028 && this.bloomPass.enabled) {
         this.bloomPass.enabled = false;
       } else if (this._frameEMA < 0.020 && !this.bloomPass.enabled) {
         this.bloomPass.enabled = true;
@@ -5052,7 +5126,8 @@ class Valhalla {
     this.camera.updateProjectionMatrix();
     if (this.composer) {
       this.composer.setSize(w, h);
-      if (this.bloomPass) this.bloomPass.setSize(w * 0.5, h * 0.5);
+      if (this.bloomPass) this.bloomPass.setSize(w * 0.4, h * 0.4);
+      if (this.ssaoPass)  this.ssaoPass.setSize(w * 0.5, h * 0.5);
       if (this.fxaaPass) {
         this.fxaaPass.material.uniforms["resolution"].value.set(
           1 / (w * this.renderer.getPixelRatio()),
