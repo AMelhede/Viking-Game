@@ -3724,10 +3724,10 @@ class Valhalla {
       window.Bio.on("rppgStatus", (s) => {
         if (s.status === "off" || s.status === "error") {
           this.hud.bioRow.classList.remove("on");
-          this.hud.bpmTxt.textContent = "Bio off";
+          this.hud.bpmTxt.textContent = "Off";
         } else if (s.status === "warming") {
           this.hud.bioRow.classList.add("on");
-          this.hud.bpmTxt.textContent = "Warming up";
+          this.hud.bpmTxt.textContent = "Steadying";
         } else if (s.status === "live") {
           this.hud.bioRow.classList.add("on");
         }
@@ -3987,7 +3987,7 @@ class Valhalla {
         "margin:18px 0 4px;padding:18px 0 0;"
         + "border-top:1px solid rgba(212,173,106,.18);text-align:left;";
       host.innerHTML =
-        '<div style="font:600 11px/1 \'Cinzel\',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.62);margin-bottom:14px">Your Body This Run</div>'
+        '<div style="font:600 11px/1 \'Cinzel\',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.62);margin-bottom:14px">What You Earned</div>'
         + '<div id="bioReportRows"></div>';
       const actions = card.querySelector(".actions");
       card.insertBefore(host, actions || null);

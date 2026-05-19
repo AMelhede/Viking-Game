@@ -636,10 +636,9 @@
   <div class="letterbox bot"></div>
   <div class="introfade"></div>
 
-  <!-- Bio-off nudge — bottom-right pill telling the player they can
-       double their score by enabling a biosignal sensor. Hidden via
-       body.bio-live once any sensor goes live. -->
-  <div class="bionudge" id="bioNudge">⚡ Enable camera or Muse → 2× score</div>
+  <!-- Sensor-off nudge — bottom-right pill (currently display:none).
+       Wording kept jargon-free in case it's ever surfaced again. -->
+  <div class="bionudge" id="bioNudge">⚡ Use webcam or headband → 2× score</div>
 
   <!-- Visual-language legend — bottom-left, only shown for first
        20s of a fresh run. Reachable any time via TAB. -->
@@ -688,7 +687,7 @@
       </div>
     </div>
 
-    <div class="bio" id="bioRow" title="Tap to open biosignals">
+    <div class="bio" id="bioRow" title="Body status">
       <div class="chip" id="bpmChip"><span class="dot"></span><span id="bpmTxt">Bio off</span></div>
       <div class="chip" id="stateChip" style="display:none"><span class="dot"></span><span id="stateTxt">Neutral</span></div>
     </div>
@@ -729,19 +728,18 @@
       </div>
 
       <div class="bio-sect">
-        <div class="hd"><b>Biosignals</b><em>Optional</em></div>
-        <p>Your body changes the game. <b>Heart rate</b> drives intensity; <b>EEG focus</b> unlocks Flow state for 2&times; score.</p>
+        <p>The gods watch your body. <b>Stay calm</b> to earn their gifts; <b>focus</b> to claim greater power.</p>
         <div class="biorow">
           <div class="tt">
-            <div class="t">Heart rate</div>
-            <div class="d">Reads your pulse from the webcam.</div>
+            <div class="t">Heart</div>
+            <div class="d">Read through your webcam.</div>
           </div>
-          <button id="bioHrBtn">Enable</button>
+          <button id="bioHrBtn">Use webcam</button>
         </div>
         <div class="biorow">
           <div class="tt">
-            <div class="t">EEG focus</div>
-            <div class="d">Pairs with a Muse headband. Turn the Muse on, disconnect it from your phone first, then click Pair.</div>
+            <div class="t">Mind</div>
+            <div class="d">Pair a Muse headband. Turn it on, unpair it from your phone first.</div>
           </div>
           <button id="bioEegBtn">Pair</button>
         </div>
