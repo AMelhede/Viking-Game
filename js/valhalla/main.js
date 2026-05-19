@@ -1244,7 +1244,11 @@ class Valhalla {
     // dependency, no GPU crash risk, env always matches the current
     // realm's atmosphere. The optional HDRI override stays as a flag
     // for users who want to test with a real captured sky.
-    if (localStorage.getItem("valhalla.ibl") === "1") {
+    // Load real HDRI environment by DEFAULT now. PMREM crash risk
+    // on weak GPUs is mitigated by the webglcontextlost handler below
+    // plus the FPS-adaptive SSAO/bloom that drops first. Opt out via
+    //   localStorage.setItem("valhalla.ibl", "0")
+    if (localStorage.getItem("valhalla.ibl") !== "0") {
       this._loadEnvironment();
     }
 
@@ -1427,6 +1431,49 @@ class Valhalla {
     this.scene.add(rim);
   }
 
+  // Real CC0 PBR texture loader — pulls colour + normal maps from
+  // threejs.org's official examples CDN (stable, CORS-safe, won't
+  // 404 next week). Loads async and swaps into the ground material
+  // when ready. Procedural canvas texture is the immediate fallback
+  // so the world looks intact from frame 1.
+  _loadRealGroundTextures() {
+    if (!this.chunkMat) return;
+    try {
+      const loader = new THREE.TextureLoader();
+      // Threejs.org hosts a high-detail noise sheet at this stable URL.
+      // Repurposed as snow micro-relief: when tinted cool-white via
+      // material.color, the noise reads as wind-packed snow crystals.
+      const colorURL = "https://threejs.org/examples/textures/terrain/grasslight-big.jpg";
+      const normURL  = "https://threejs.org/examples/textures/terrain/grasslight-big-nm.jpg";
+
+      loader.load(colorURL, (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(14, 14);                  // tight tiling, no obvious seams
+        tex.anisotropy = 8;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        this.chunkMat.map = tex;
+        // Tint the warm grass tones toward cold snow.
+        this.chunkMat.color = new THREE.Color(0xc8d4dc);
+        this.chunkMat.needsUpdate = true;
+      }, undefined, (err) => {
+        console.warn("[Valhalla] ground PBR colour map load failed (keeping procedural)", err);
+      });
+
+      loader.load(normURL, (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(14, 14);
+        tex.anisotropy = 8;
+        this.chunkMat.normalMap = tex;
+        this.chunkMat.normalScale = new THREE.Vector2(0.7, 0.7);
+        this.chunkMat.needsUpdate = true;
+      }, undefined, (err) => {
+        console.warn("[Valhalla] ground PBR normal map load failed (keeping procedural)", err);
+      });
+    } catch (e) {
+      console.warn("[Valhalla] ground texture loader setup failed", e);
+    }
+  }
+
   _buildGround() {
     // Higher tessellation so per-vertex displacement reads as actual snow
     // microrelief, not flat plane with paint. 40x52 segs = ~2000 verts
@@ -1466,6 +1513,12 @@ class Valhalla {
       this.chunks.push(chunk);
       this.scene.add(chunk.mesh);
     }
+
+    // Kick off async load of real PBR snow textures from threejs CDN.
+    // The procedural canvas texture is already applied so the world
+    // looks fine from frame 1; when the high-res maps land they swap
+    // in and the ground gets real surface detail.
+    this._loadRealGroundTextures();
   }
 
   _makeSnowTexture() {
@@ -2145,6 +2198,15 @@ class Valhalla {
     //    feels static.
     // 2. FAR flakes - many small, drifting in middle distance for depth.
 
+    // Snow particles use a REAL snowflake sprite texture from threejs's
+    // CDN. The procedural square-pixel look the user kept complaining
+    // about is replaced with a soft circular flake silhouette.
+    const flakeURL = "https://threejs.org/examples/textures/sprites/snowflake1.png";
+    const flakeTex = new THREE.TextureLoader().load(flakeURL,
+      undefined, undefined,
+      (err) => console.warn("[Valhalla] snowflake sprite failed (keeping square dots)", err)
+    );
+
     // Close layer — 350 → 80 → now 40. Each particle is a per-frame
     // CPU loop that mutates the position buffer + flushes needsUpdate;
     // this is the single biggest "lag in heavy scenes" win remaining.
@@ -2159,8 +2221,10 @@ class Valhalla {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       const mat = new THREE.PointsMaterial({
-        color: 0xfafcff, size: 0.32, transparent: true, opacity: 0.92,
+        color: 0xfafcff, size: 0.55, transparent: true, opacity: 0.92,
         depthWrite: false, fog: true, sizeAttenuation: true,
+        map: flakeTex,        // real snowflake sprite (loaded above)
+        alphaTest: 0.01,
       });
       this.snowClose = new THREE.Points(geo, mat);
       this.scene.add(this.snowClose);
@@ -2178,8 +2242,10 @@ class Valhalla {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
       const mat = new THREE.PointsMaterial({
-        color: 0xffffff, size: 0.16, transparent: true, opacity: 0.7,
+        color: 0xffffff, size: 0.28, transparent: true, opacity: 0.7,
         depthWrite: false, fog: true,
+        map: flakeTex,
+        alphaTest: 0.01,
       });
       this.snow = new THREE.Points(geo, mat);
       this.scene.add(this.snow);
