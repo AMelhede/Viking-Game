@@ -1051,6 +1051,19 @@ class Valhalla {
 
     this.cognitiveState = "neutral";
     this.bpm = null;
+    // Bio session tracking. Every frame we accumulate time in each
+    // useful state. Drives:
+    //   * bio-gift spawn (12s in flow/focused/calm → free powerup)
+    //   * end-of-run bio report (shown on game over)
+    //   * always-visible bio HUD pill showing progress to next gift
+    this.bioSession = {
+      flowSec: 0, focusedSec: 0, calmSec: 0, berserkerSec: 0,
+      meditationSec: 0,
+      sumHR: 0, hrSamples: 0, peakHR: 0,
+      giftAccumSec: 0,           // counts up while in a "good" state
+      giftsEarned: 0,
+      durationBonusApplied: 0,   // count of powerups extended by bio
+    };
 
     // Biome / realm tracking. We walk through Midgard → Jötunheim →
     // Muspelheim → Asgard, then loop. Each biome runs ~500m; transitions
@@ -2852,6 +2865,115 @@ class Valhalla {
     this._popText(`${b.type.toUpperCase()} ESCAPES`, "combo", 0, -20);
   }
 
+  // BIO SESSION TRACKER — the visible value prop of the Elata SDK.
+  // Accumulates per-frame: time in each cognitive state, HR samples,
+  // and progress toward the next "gift". Every 12 seconds of
+  // continuous flow/focused/calm earns the player a free powerup
+  // — direct cause and effect, no abstract score multiplier.
+  // Drives the always-visible bio pill in the HUD and the end-of-run
+  // report. This is THE feedback loop that justifies the SDK.
+  _updateBioSession(dt) {
+    const s = this.bioSession;
+    if (!s) return;
+    // HR sampling — running average + peak.
+    if (this.bpm && this.bpm > 30) {
+      s.sumHR += this.bpm * dt;
+      s.hrSamples += dt;
+      if (this.bpm > s.peakHR) s.peakHR = this.bpm;
+    }
+    // Per-state time accumulation.
+    const cs = this.cognitiveState;
+    if (cs === "flow")        s.flowSec       += dt;
+    if (cs === "focused")     s.focusedSec    += dt;
+    if (cs === "calm")        s.calmSec       += dt;
+    if (cs === "berserker")   s.berserkerSec  += dt;
+    if (cs === "meditation")  s.meditationSec += dt;
+
+    // GIFT CYCLE — flow/focused/calm advance the meter; other states
+    // pause or slowly drain it. Once at 12s, fire a bio gift in front
+    // of the player. Flow advances faster than calm — it's the
+    // highest-skill state.
+    const positive = (cs === "flow")    ? 1.8
+                   : (cs === "focused") ? 1.3
+                   : (cs === "calm")    ? 1.0
+                   : 0;
+    if (positive > 0) {
+      s.giftAccumSec += dt * positive;
+      if (s.giftAccumSec >= 12) {
+        s.giftAccumSec = 0;
+        s.giftsEarned++;
+        this._spawnBioGift(cs);
+      }
+    } else {
+      // Drain slightly if state is bad — frantic / distracted lose
+      // ground, neutral just pauses.
+      if (cs === "frantic" || cs === "distracted") {
+        s.giftAccumSec = Math.max(0, s.giftAccumSec - dt * 0.5);
+      }
+    }
+    // Drive the bio status pill HUD.
+    this._updateBioStatusPill();
+  }
+
+  // Bio-triggered gift spawn — free powerup ahead of the player as
+  // direct reward for biological self-regulation. Picks a gift
+  // appropriate to the state.
+  _spawnBioGift(state) {
+    // Tier the gift to the state: flow gets the heavy hitters,
+    // focused gets utility, calm gets the helpers.
+    const POOLS = {
+      flow:    ["thor",   "odin", "ship",   "shield"],
+      focused: ["mult",   "ship", "shield", "magnet"],
+      calm:    ["speed",  "mult", "magnet"],
+    };
+    const pool = POOLS[state] || POOLS.calm;
+    const t = pool[(Math.random() * pool.length) | 0];
+    const lane = (Math.random() * 3) | 0;
+    const z = this.distance + 40;
+    this._spawnPowerup(t, lane, z);
+    // Big floating announcement in the world.
+    this._popText("GIFT FROM " + state.toUpperCase(), "rune", 0, -40);
+    if (this.audio?.power) this.audio.power("bragi");
+  }
+
+  // Always-visible bio status pill in the top-right under the lives.
+  // Shows: current state + progress to next gift + cumulative gifts.
+  // Only present when a sensor is active.
+  _updateBioStatusPill() {
+    let el = this._bioPillEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;right:24px;top:calc(env(safe-area-inset-top,18px) + 76px);" +
+        "z-index:11;pointer-events:none;text-align:right;" +
+        "font:600 11px/1.45 'Cinzel',serif;letter-spacing:.10em;" +
+        "text-transform:uppercase;color:#c9a55c;" +
+        "text-shadow:0 2px 14px rgba(0,0,0,.9);" +
+        "opacity:0;transition:opacity .4s ease";
+      el.innerHTML =
+        '<div class="state" style="font-size:13px;color:#e6dac0"></div>' +
+        '<div class="meter" style="margin-top:6px;width:120px;height:3px;background:rgba(201,165,92,.18);border-radius:2px;overflow:hidden;display:inline-block">' +
+          '<div class="meter-fill" style="height:100%;width:0%;background:#c9a55c;transition:width .3s ease"></div>' +
+        '</div>' +
+        '<div class="meta" style="margin-top:5px;font-size:10px;color:rgba(201,165,92,.65);letter-spacing:.16em"></div>';
+      document.body.appendChild(el);
+      this._bioPillEl = el;
+    }
+    const live = document.body.classList.contains("bio-live");
+    el.style.opacity = (live && this.running) ? "1" : "0";
+    if (!live || !this.running) return;
+    const s = this.bioSession;
+    const cs = this.cognitiveState;
+    el.querySelector(".state").textContent =
+      cs && cs !== "neutral"
+        ? cs.charAt(0).toUpperCase() + cs.slice(1)
+        : "Warming";
+    const pct = Math.min(100, (s.giftAccumSec / 12) * 100);
+    el.querySelector(".meter-fill").style.width = pct + "%";
+    el.querySelector(".meta").textContent =
+      "Gifts " + s.giftsEarned + " · " + (this.bpm ? this.bpm + " bpm" : "—");
+  }
+
   // Breath puffs — emit one new particle ~every 0.6s from the
   // player's "mouth" (y ≈ 1.7 in player-local space, slightly forward).
   // Each particle ages over ~1.4s: rises, drifts back, expands, fades.
@@ -2953,7 +3075,20 @@ class Valhalla {
   // (shield, speed, mult, magnet, ship, thor, odin) stay terse for the
   // game loop; user-facing names are the gods/relics themselves.
   _activatePowerup(type, duration) {
-    this.power[type] = duration;
+    // BIO DURATION BONUS: if the player is in flow/focused/calm
+    // when they pick up a gift, the god honours the steady mind
+    // with a +50% duration extension. Direct, visible bio benefit:
+    // the same Mjölnir lasts 4.5s normally but 6.75s if you grabbed
+    // it in Flow. End-of-run report tallies how many times this fired.
+    const bonusStates = { flow: 1.5, focused: 1.35, calm: 1.20 };
+    const bonus = bonusStates[this.cognitiveState];
+    let actualDuration = duration;
+    if (bonus) {
+      actualDuration = duration * bonus;
+      if (this.bioSession) this.bioSession.durationBonusApplied++;
+      this._popText("EXTENDED +" + Math.round((bonus - 1) * 100) + "%", "rune", 0, 30);
+    }
+    this.power[type] = actualDuration;
     const labels = {
       shield: "TYR'S AEGIS",
       speed:  "SLEIPNIR",
@@ -2964,13 +3099,13 @@ class Valhalla {
       odin:   "HUGINN & MUNINN",
     };
     const SUBTITLES = {
-      shield: "Tyr shields you · " + duration.toFixed(1) + "s",
-      speed:  "Sleipnir's gallop · " + duration.toFixed(1) + "s",
-      mult:   "Sagas double your glory · " + duration.toFixed(1) + "s",
-      magnet: "Gold pulls to you · " + duration.toFixed(1) + "s",
-      ship:   "Freyr's longship · " + duration.toFixed(1) + "s",
-      thor:   "Lightning clears your path · " + duration.toFixed(1) + "s",
-      odin:   "Time bends to foresight · " + duration.toFixed(1) + "s",
+      shield: "Tyr shields you · " + actualDuration.toFixed(1) + "s",
+      speed:  "Sleipnir's gallop · " + actualDuration.toFixed(1) + "s",
+      mult:   "Sagas double your glory · " + actualDuration.toFixed(1) + "s",
+      magnet: "Gold pulls to you · " + actualDuration.toFixed(1) + "s",
+      ship:   "Freyr's longship · " + actualDuration.toFixed(1) + "s",
+      thor:   "Lightning clears your path · " + actualDuration.toFixed(1) + "s",
+      odin:   "Time bends to foresight · " + actualDuration.toFixed(1) + "s",
     };
     const HEX_FOR = {
       shield: 0xc8a040, speed: 0xc8d8e8, mult: 0xffd066, magnet: 0xff6090,
@@ -2996,7 +3131,7 @@ class Valhalla {
     else if (type === "thor") this._addThorAura();
     else if (type === "odin") {
       this._addOdinRavens();
-      this._slowMo(0.55, duration);
+      this._slowMo(0.55, actualDuration);
     }
     this._renderPowerHudOnce();
   }
@@ -3744,6 +3879,13 @@ class Valhalla {
     this._spawnZ = 55;
     // Reset hostile-spawn cooldown so the very first wave isn't gated.
     this._lastHardZ = -999;
+    // Reset bio session counters so the end-of-run report reflects
+    // this run only.
+    this.bioSession = {
+      flowSec: 0, focusedSec: 0, calmSec: 0, berserkerSec: 0, meditationSec: 0,
+      sumHR: 0, hrSamples: 0, peakHR: 0,
+      giftAccumSec: 0, giftsEarned: 0, durationBonusApplied: 0,
+    };
     // Refresh bio aura with the current state so it shows on this run too
     // (cognitive state survives game-over, only the visible aura clears).
     this._updateMultiplier(this.cognitiveState);
@@ -3816,8 +3958,58 @@ class Valhalla {
     } else {
       bb.classList.add("none");
     }
+    // END-OF-RUN BIO REPORT — the receipt that justifies the SDK.
+    // Inject a "Body" section into the run-over card with this run's
+    // physiological summary. Only shows if a sensor was active at any
+    // point (hrSamples > 0 OR any positive state accumulated).
+    this._injectBioReport();
     $("overOverlay").classList.add("show");
     this._loadStats();
+  }
+
+  // Build / refresh the bio report on the game-over screen. Pure DOM
+  // injection — finds the .over .card and appends/updates a section.
+  _injectBioReport() {
+    const card = document.querySelector("#overOverlay .card");
+    if (!card) return;
+    let host = card.querySelector("#bioReport");
+    const s = this.bioSession || {};
+    const hadBio = (s.hrSamples > 0)
+                || (s.flowSec + s.focusedSec + s.calmSec) > 0.5;
+    if (!hadBio) {
+      if (host) host.style.display = "none";
+      return;
+    }
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "bioReport";
+      host.style.cssText =
+        "margin:18px 0 4px;padding:18px 0 0;"
+        + "border-top:1px solid rgba(212,173,106,.18);text-align:left;";
+      host.innerHTML =
+        '<div style="font:600 11px/1 \'Cinzel\',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.62);margin-bottom:14px">Your Body This Run</div>'
+        + '<div id="bioReportRows"></div>';
+      const actions = card.querySelector(".actions");
+      card.insertBefore(host, actions || null);
+    }
+    const rows = host.querySelector("#bioReportRows");
+    const fmtSec = (sec) => sec >= 60 ? (sec/60).toFixed(1) + " min" : sec.toFixed(0) + " s";
+    const avgHR = s.hrSamples > 0 ? Math.round(s.sumHR / s.hrSamples) : null;
+    const items = [];
+    if (s.flowSec > 0.5)      items.push(["Time in Flow",       fmtSec(s.flowSec),       "#7ad9ff"]);
+    if (s.focusedSec > 0.5)   items.push(["Time Focused",       fmtSec(s.focusedSec),    "#a3b8ff"]);
+    if (s.calmSec > 0.5)      items.push(["Time Calm",          fmtSec(s.calmSec),       "#80d0e0"]);
+    if (avgHR)                items.push(["Avg Heart Rate",      avgHR + " bpm",          "#ff8a7a"]);
+    if (s.peakHR)             items.push(["Peak Heart Rate",     s.peakHR + " bpm",       "#ff5e4a"]);
+    if (s.giftsEarned)        items.push(["Gifts From Body",     s.giftsEarned + "×",     "#d4ad6a"]);
+    if (s.durationBonusApplied) items.push(["Gifts Extended",   s.durationBonusApplied + "×", "#d4ad6a"]);
+    rows.innerHTML = items.map(([k, v, c]) =>
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif">'
+      + '<span style="font-size:11.5px;color:rgba(232,219,196,.55);text-transform:uppercase;letter-spacing:.10em">' + k + '</span>'
+      + '<span style="font:700 16px/1 \'Cinzel\',serif;color:' + c + ';font-variant-numeric:tabular-nums">' + v + '</span>'
+      + '</div>'
+    ).join("");
+    host.style.display = "block";
   }
 
   // ---------- Spawning ----------
@@ -4621,6 +4813,7 @@ class Valhalla {
     this._updateBioAura(dt);
     this._updateBiome(dt);
     this._updateBreath(dt);
+    this._updateBioSession(dt);
     // Drive the real character's animation mixer. Speed scales with
     // game speed so legs cycle in sync with apparent motion.
     if (this._mixer) {
