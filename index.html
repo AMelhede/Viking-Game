@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0a0d12" />
+  <!-- AGGRESSIVE CACHE-BUST. The user kept seeing days-old HTML
+       (EEG focus / horned Viking / A/D / square snow) because the
+       browser had aggressively cached index.html across many edits.
+       Pragma + Cache-Control: no-cache headers force the browser to
+       check with the server every reload. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Valhalla</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');

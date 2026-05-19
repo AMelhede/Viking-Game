@@ -2967,7 +2967,7 @@ class Valhalla {
     el.querySelector(".state").textContent =
       cs && cs !== "neutral"
         ? cs.charAt(0).toUpperCase() + cs.slice(1)
-        : "Warming";
+        : (this.bpm ? "Steady" : "Face the camera");
     const pct = Math.min(100, (s.giftAccumSec / 12) * 100);
     el.querySelector(".meter-fill").style.width = pct + "%";
     el.querySelector(".meta").textContent =
@@ -3727,7 +3727,9 @@ class Valhalla {
           this.hud.bpmTxt.textContent = "Off";
         } else if (s.status === "warming") {
           this.hud.bioRow.classList.add("on");
-          this.hud.bpmTxt.textContent = "Steadying";
+          // Actionable warming hint instead of "Steadying" so the user
+          // knows what to actually do during the calibration window.
+          this.hud.bpmTxt.textContent = "Face the camera";
         } else if (s.status === "live") {
           this.hud.bioRow.classList.add("on");
         }

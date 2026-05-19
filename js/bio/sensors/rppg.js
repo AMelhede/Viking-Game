@@ -22,8 +22,13 @@ const WASM_JS_URL = new URL("../../../vendor/elata/rppg-web/pkg/rppg_wasm.js", i
 const WASM_BIN_URL = new URL("../../../vendor/elata/rppg-web/pkg/rppg_wasm_bg.wasm", import.meta.url).href;
 
 const POLL_MS = 250;
-const LIVE_THRESHOLD_SAMPLES = 4;        // need 4 consecutive confident reads to go "live"
-const LIVE_MIN_CONFIDENCE = 0.35;
+// More forgiving live thresholds — the user kept reporting "Bio off
+// even when connected" because the original 4-sample / 0.35-confidence
+// gate was too strict. 2 samples / 0.20 confidence promotes to "live"
+// within ~600ms of the face being visible in OK lighting. The
+// adaptive baseline still smooths out noise downstream.
+const LIVE_THRESHOLD_SAMPLES = 2;
+const LIVE_MIN_CONFIDENCE = 0.20;
 const AROUSAL_BPM_SCALE = 15;             // ±15 BPM from baseline maps to ±1.0 arousal
 
 export class RppgSensor {
