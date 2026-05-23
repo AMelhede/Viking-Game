@@ -3724,6 +3724,56 @@ class Valhalla {
       }
     }
 
+    // EEG DIAGNOSE link — clickable, runs all environment checks and
+    // attempts a pair, then prints a detailed report inline. The user
+    // can screenshot the report so we can pinpoint exactly which
+    // stage of pairing is failing (Bluetooth API, WASM, GATT, Muse
+    // firmware command sequence).
+    const diagLink = $("bioEegDiag");
+    const diagOut = $("bioEegDiagOut");
+    if (diagLink && diagOut) {
+      diagLink.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const lines = [];
+        const push = (k, v) => lines.push(k.padEnd(28) + " " + v);
+        diagOut.style.display = "block";
+        diagOut.textContent = "Running EEG diagnostic...";
+
+        // Environment checks
+        const hasBT = !!(navigator && navigator.bluetooth);
+        push("navigator.bluetooth",   hasBT ? "yes" : "MISSING (use Chrome/Edge)");
+        push("Secure context",        window.isSecureContext ? "yes" : "NO (use localhost or HTTPS)");
+        push("User agent",            (navigator.userAgent || "").slice(0, 80));
+        push("Bio adapter ready",     window.Bio ? "yes" : "MISSING");
+        push("Bio status snapshot",   JSON.stringify(window.Bio?.status?.() || {}));
+
+        // Try Bio.start with EEG and capture whatever returns/throws.
+        push("--- Pair attempt ---", "");
+        try {
+          const r = await window.Bio?.start?.({ eeg: true });
+          if (r?.eeg?.ok) {
+            push("Result", "OK — sensor live (state should be 'warming' or 'live')");
+          } else {
+            push("Result.ok",      String(r?.eeg?.ok));
+            push("Result.reason",  String(r?.eeg?.reason || "—"));
+            push("Result.message", String(r?.eeg?.message || "—"));
+            push("Result.attempts",String(r?.eeg?.attempts || "—"));
+          }
+        } catch (err) {
+          push("Threw",   err?.name || "Error");
+          push("Message", err?.message || String(err));
+          if (err?.code) push("Code", String(err.code));
+        }
+
+        diagOut.textContent = lines.join("\n");
+        // Auto-select so the user can copy with Ctrl+A / Ctrl+C.
+        const range = document.createRange();
+        range.selectNodeContents(diagOut);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+      });
+    }
+
     // Clicking the HUD bio row when no sensor is on quick-starts the heart-rate sensor.
     this.hud.bioRow.addEventListener("click", () => {
       const hrBtn = $("bioHrBtn");

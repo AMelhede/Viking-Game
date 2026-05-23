@@ -368,12 +368,13 @@
       color:#d4ad6a;
       text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 60px rgba(212,173,106,.15);
     }
-    /* TAGLINE — sans, normal case, comfortable size. No more all-caps
-       small-Cinzel pretension. */
+    /* TAGLINE — sans, normal case, BRIGHT WHITE for max readability
+       against the parchment-dark card. User explicitly couldn't read
+       the previous bronze-at-70%-alpha. */
     .start .tag{
-      font:400 15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-      color:rgba(232,219,196,.7);
-      margin:0 auto 40px;max-width:360px;letter-spacing:0;
+      font:400 16px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      color:rgba(255,255,255,.94);
+      margin:0 auto 40px;max-width:360px;letter-spacing:.005em;
     }
     /* PLAY — solid fill, not outline-template. Bronze-on-dark, real
        button-feel. Sans label. */
@@ -391,15 +392,15 @@
       box-shadow:0 10px 36px rgba(212,173,106,.4),0 1px 0 rgba(255,255,255,.35) inset;
     }
     .start .play:active{transform:translateY(0)}
-    /* Stats — sans-serif numerics, no Cinzel small-caps */
+    /* Stats — sans-serif numerics, bronze value + white label */
     .start .ministats{
-      display:flex;gap:18px;justify-content:center;align-items:baseline;
-      font:400 12.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-      color:rgba(232,219,196,.55);
+      display:flex;gap:20px;justify-content:center;align-items:baseline;
+      font:400 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      color:rgba(255,255,255,.78);
       margin-bottom:36px;letter-spacing:.02em;
     }
-    .start .ministats .v{color:#d4ad6a;font-weight:600;margin-right:5px;font-variant-numeric:tabular-nums}
-    .start .ministats .sep{opacity:.3}
+    .start .ministats .v{color:#f4d49a;font-weight:700;margin-right:6px;font-variant-numeric:tabular-nums}
+    .start .ministats .sep{opacity:.4}
     /* Biosignal block — sans, proper case, readable like a real form */
     .start .bio-sect{
       margin:8px auto 0;max-width:420px;text-align:left;
@@ -420,24 +421,27 @@
       font-style:normal;font:500 10px/1 inherit;letter-spacing:.22em;
       color:rgba(212,173,106,.4);text-transform:uppercase;
     }
+    /* Body copy throughout the biosignal block — WHITE for max
+       readability, bigger, with bronze used ONLY for accent (bold)
+       and row-label headers. */
     .start .bio-sect p{
-      font:400 14px/1.55 inherit;letter-spacing:0;
-      color:#e8dbc4;margin-bottom:18px;
+      font:400 15px/1.55 inherit;letter-spacing:0;
+      color:rgba(255,255,255,.92);margin-bottom:18px;
     }
-    .start .bio-sect p b{color:#f4d49a;font-weight:600}
+    .start .bio-sect p b{color:#f4d49a;font-weight:700}
     .start .bio-sect .biorow{
       display:flex;align-items:center;justify-content:space-between;gap:14px;
-      padding:14px 0;border-top:1px solid rgba(212,173,106,.14);
+      padding:16px 0;border-top:1px solid rgba(212,173,106,.22);
     }
     .start .bio-sect .biorow:first-of-type{border-top:none}
     .start .bio-sect .biorow .tt{flex:1;min-width:0}
     .start .bio-sect .biorow .tt .t{
-      font:600 15px/1.2 inherit;letter-spacing:.01em;
+      font:700 16px/1.2 inherit;letter-spacing:.01em;
       color:#f4d49a;text-transform:none;
     }
     .start .bio-sect .biorow .tt .d{
-      font:400 13px/1.45 inherit;letter-spacing:0;
-      color:#c8b896;margin-top:4px;
+      font:400 14px/1.45 inherit;letter-spacing:0;
+      color:rgba(255,255,255,.88);margin-top:4px;
     }
     .start .bio-sect .biorow button{
       flex:0 0 auto;background:rgba(212,173,106,.10);
@@ -453,13 +457,13 @@
     .start .bio-sect .biorow button:disabled{opacity:.4;cursor:default}
     .start .controls-line{
       margin-top:30px;
-      font:400 11.5px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-      color:rgba(232,219,196,.4);letter-spacing:.02em;
+      font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      color:rgba(255,255,255,.72);letter-spacing:.02em;
     }
     .start .controls-line kbd{
-      display:inline-block;padding:1px 6px;margin:0 2px;
-      background:rgba(212,173,106,.08);border:1px solid rgba(212,173,106,.32);
-      border-radius:4px;font:inherit;font-size:10.5px;color:#d4ad6a;
+      display:inline-block;padding:2px 8px;margin:0 3px;min-width:14px;text-align:center;
+      background:rgba(212,173,106,.14);border:1px solid rgba(212,173,106,.5);
+      border-radius:5px;font:inherit;font-size:12.5px;color:#f4d49a;font-weight:600;
     }
     .start .brandmark{display:none}
 
@@ -759,11 +763,14 @@
         <div class="biorow">
           <div class="tt">
             <div class="t">Mind</div>
-            <div class="d">Pair a Muse headband. Turn it on, unpair it from your phone first.</div>
+            <div class="d">Pair a Muse headband. Turn it on, unpair it from your phone first.
+              <a href="#" id="bioEegDiag" style="display:inline-block;margin-left:6px;color:#f4d49a;text-decoration:underline;font-weight:600">Diagnose</a>
+            </div>
           </div>
           <button id="bioEegBtn">Pair</button>
         </div>
-        <div id="bioBleHint" style="display:none;font:500 11px/1.7 'Cinzel',serif;letter-spacing:.06em;color:rgba(212,173,106,.78);margin-top:16px;padding:14px 16px;background:none;border-top:1px solid rgba(212,173,106,.18);border-radius:0"></div>
+        <div id="bioBleHint" style="display:none;font:400 13.5px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;letter-spacing:.01em;color:rgba(255,255,255,.88);margin-top:18px;padding:16px 18px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.28);border-radius:8px"></div>
+        <div id="bioEegDiagOut" style="display:none;font:400 13px/1.55 ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;color:#f4d49a;margin-top:14px;padding:14px 16px;background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.35);border-radius:6px;white-space:pre-wrap;text-align:left"></div>
       </div>
 
       <div class="controls-line">

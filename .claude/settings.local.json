@@ -42,7 +42,8 @@
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" fetch origin)",
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" checkout main)",
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" pull --ff-only origin main)",
-      "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:',e.message\\)\\)\")"
+      "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:',e.message\\)\\)\")",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" log --oneline -1)"
     ]
   }
 }
