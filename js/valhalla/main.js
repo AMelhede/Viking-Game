@@ -1121,10 +1121,12 @@ class Valhalla {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas, antialias: true, powerPreference: "high-performance",
     });
-    // Cap at 1.5 instead of 2 — on a retina display this cuts rendered
-    // pixels by 44% with barely-noticeable sharpness loss because the
-    // scene is low-poly / flat-shaded already. Biggest single perf win.
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    // pixelRatio HARD-CAPPED at 1.0. On retina this is 4x fewer pixels
+    // than native. The scene is low-poly + flat-shaded + grain-overlaid
+    // so the sharpness loss is invisible, but the perf win is the
+    // single biggest one available. User has repeatedly reported lag
+    // even after every other optimisation; this is the last lever.
+    this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     // Cinematic dark grade. Previous 0.95 + Sky.js bright horizon +
@@ -1170,22 +1172,22 @@ class Valhalla {
       const renderPass = new RenderPass(this.scene, this.camera);
       this.composer.addPass(renderPass);
 
-      // SSAO — screen-space ambient occlusion. Darkens contact-shadow
-      // regions where geometry meets geometry (rock bases, character
-      // feet on snow, tree trunk + ground crease). THE technique that
-      // makes objects look "in the world" instead of floating on it.
-      // Half-res for perf; minDistance/maxDistance tuned to our scene
-      // scale (geometry mostly 1-5m tall).
-      try {
-        const ssao = new SSAOPass(this.scene, this.camera, w * 0.5, h * 0.5);
-        ssao.kernelRadius = 6;        // sample radius — small for tight contact shadows
-        ssao.minDistance = 0.002;     // ignore self-intersection bleed
-        ssao.maxDistance = 0.08;      // ignore distant geometry
-        ssao.output = SSAOPass.OUTPUT.Default;
-        this.composer.addPass(ssao);
-        this.ssaoPass = ssao;
-      } catch (e) {
-        console.warn("[Valhalla] SSAO init failed — continuing", e);
+      // SSAO disabled by default. It's the most expensive post pass
+      // and the user has repeatedly reported lag. The cinematic LUT +
+      // bloom + grain already carry the "lit world" feel without SSAO's
+      // contact-shadow overhead. Re-enable via
+      //   localStorage.setItem("valhalla.ssao", "1")
+      if (localStorage.getItem("valhalla.ssao") === "1") {
+        try {
+          const ssao = new SSAOPass(this.scene, this.camera, w * 0.4, h * 0.4);
+          ssao.kernelRadius = 6;
+          ssao.minDistance = 0.002;
+          ssao.maxDistance = 0.08;
+          this.composer.addPass(ssao);
+          this.ssaoPass = ssao;
+        } catch (e) {
+          console.warn("[Valhalla] SSAO init failed — continuing", e);
+        }
       }
 
       // Bloom — strength 0.25 + threshold 0.95, only true emissives
@@ -1257,11 +1259,12 @@ class Valhalla {
     // dependency, no GPU crash risk, env always matches the current
     // realm's atmosphere. The optional HDRI override stays as a flag
     // for users who want to test with a real captured sky.
-    // Load real HDRI environment by DEFAULT now. PMREM crash risk
-    // on weak GPUs is mitigated by the webglcontextlost handler below
-    // plus the FPS-adaptive SSAO/bloom that drops first. Opt out via
-    //   localStorage.setItem("valhalla.ibl", "0")
-    if (localStorage.getItem("valhalla.ibl") !== "0") {
+    // HDRI environment OFF by default — perf trade-off after
+    // repeated user lag reports. The PMREM prefilter + 1k HDR fetch
+    // were significant on weak GPUs. The Sky.js + warm key + cold
+    // rim still give natural lighting. Opt back in via
+    //   localStorage.setItem("valhalla.ibl", "1")
+    if (localStorage.getItem("valhalla.ibl") === "1") {
       this._loadEnvironment();
     }
 
@@ -2264,11 +2267,9 @@ class Valhalla {
       (err) => console.warn("[Valhalla] snowflake sprite failed (keeping square dots)", err)
     );
 
-    // Close layer — 350 → 80 → now 40. Each particle is a per-frame
-    // CPU loop that mutates the position buffer + flushes needsUpdate;
-    // this is the single biggest "lag in heavy scenes" win remaining.
+    // Close snow — orig 350 → repeatedly halved → now 20. Floor.
     {
-      const count = 40;
+      const count = 20;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -2287,9 +2288,9 @@ class Valhalla {
       this.scene.add(this.snowClose);
     }
 
-    // Far layer 1800 → 500 → now 250. Same reason as close layer.
+    // Far layer orig 1800 → now 120. Floor.
     {
-      const count = 250;
+      const count = 120;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 140;
@@ -3016,6 +3017,86 @@ class Valhalla {
     el.querySelector(".meter-fill").style.width = pct + "%";
     el.querySelector(".meta").textContent =
       "Gifts " + s.giftsEarned + " · " + (this.bpm ? this.bpm + " bpm" : "—");
+  }
+
+  // WORLD-SPACE MARKERS — HTML icons projected to the screen
+  // position of every active obstacle/powerup/mead/rune so the
+  // player CANNOT confuse them. Bypasses all the 3D shader
+  // ambiguity that's been confusing the user for many rounds.
+  //   ⚠ red over dangers
+  //   ⭐ gold over powerups (with god initial)
+  //   🪙 over mead
+  //   ᚱ blue over runestones
+  // Reuses a pool of div nodes keyed by stable obstacle/collectible
+  // index so we don't thrash the DOM.
+  _updateWorldMarkers(dt) {
+    const host = document.getElementById("worldMarkers");
+    if (!host) return;
+    if (!this.running) {
+      // Clear all on menu/over so they don't ghost.
+      if (host.children.length) host.innerHTML = "";
+      return;
+    }
+    const W = window.innerWidth, H = window.innerHeight;
+    const cam = this.camera;
+    // Build a list of (worldPos, label, color, key) for each thing.
+    const items = [];
+    const tmp = this._mkTmp || (this._mkTmp = new THREE.Vector3());
+
+    const POW_INITIAL = { shield:"T", speed:"S", mult:"B", magnet:"F",
+                          ship:"S", thor:"M", odin:"O" };
+
+    for (let i = 0; i < this.obstacles.length; i++) {
+      const o = this.obstacles[i];
+      if (o._consumed) continue;
+      const sz = o.spawnAt - this.distance;
+      if (sz < 4 || sz > 80) continue;
+      const lane = o.lane === -1 ? this.lane : o.lane;
+      items.push({
+        x: LANES[lane], y: (o.h || 2) + 0.6, z: sz,
+        text: "⚠", color: "#ff3030", key: "o" + i,
+        bg: "rgba(60,8,8,.85)", size: 26,
+      });
+    }
+    for (let i = 0; i < this.collectibles.length; i++) {
+      const c = this.collectibles[i];
+      const sz = c.spawnAt - this.distance;
+      if (sz < 4 || sz > 80) continue;
+      let text = "🪙", color = "#ffc060", bg = "rgba(40,30,8,.85)", size = 22;
+      if (c.type === "rune")    { text = "ᚱ"; color = "#60d0ff"; bg = "rgba(10,30,50,.85)"; size = 26; }
+      if (c.type === "powerup") { text = POW_INITIAL[c.pwType] || "⭐"; color = "#ffd066"; bg = "rgba(50,38,10,.92)"; size = 28; }
+      items.push({
+        x: LANES[c.lane], y: (c.baseY || 1.2) + 1.0, z: sz,
+        text, color, key: "c" + i, bg, size,
+      });
+    }
+
+    // Sync DOM children to items. Simple "wipe and rebuild" — fewer
+    // than ~15 markers at any time so the cost is negligible.
+    let html = "";
+    for (const it of items) {
+      tmp.set(it.x, it.y, it.z + this.distance);
+      // Distance-from-player so we can scale further markers down.
+      const distFromPlayer = it.z;
+      tmp.project(cam);
+      // Cull anything off-screen or behind the camera.
+      if (tmp.z > 1 || tmp.x < -1.05 || tmp.x > 1.05 || tmp.y < -1.05 || tmp.y > 1.05) continue;
+      const sx = (tmp.x * 0.5 + 0.5) * W;
+      const sy = (-tmp.y * 0.5 + 0.5) * H;
+      // Scale size with distance — closer markers are bigger.
+      const scale = Math.max(0.55, Math.min(1, 25 / Math.max(8, distFromPlayer)));
+      const fontSize = (it.size * scale) | 0;
+      html += `<div style="position:absolute;left:${sx | 0}px;top:${sy | 0}px;`
+            + `transform:translate(-50%,-100%);`
+            + `background:${it.bg};color:${it.color};`
+            + `font:700 ${fontSize}px/1 'Cinzel',serif;`
+            + `padding:4px 9px;border-radius:6px;`
+            + `border:1px solid ${it.color}80;`
+            + `text-shadow:0 0 6px ${it.color}80;`
+            + `white-space:nowrap;pointer-events:none">`
+            + it.text + `</div>`;
+    }
+    host.innerHTML = html;
   }
 
   // Breath puffs — emit one new particle ~every 0.6s from the
@@ -3920,7 +4001,115 @@ class Valhalla {
     s.totalRuns = (s.totalRuns || 0) + 1;
     s.totalScore = (s.totalScore || 0) + this.score;
     s.totalMead = (s.totalMead || 0) + this.mead;
+
+    // LEADERBOARD — top 10 scores all-time, kept in localStorage.
+    // Each entry: { score, dist, mead, date (yyyy-mm-dd) }
+    const board = Array.isArray(s.leaderboard) ? s.leaderboard.slice() : [];
+    const today = new Date().toISOString().slice(0, 10);
+    board.push({
+      score: Math.floor(this.score),
+      dist: Math.round(this.distance),
+      mead: this.mead,
+      date: today,
+    });
+    board.sort((a, b) => b.score - a.score);
+    s.leaderboard = board.slice(0, 10);
+
+    // DAILY STREAK — runs played on consecutive days.
+    if (s.lastPlayDate !== today) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const ydStr = yesterday.toISOString().slice(0, 10);
+      s.streak = (s.lastPlayDate === ydStr) ? (s.streak || 0) + 1 : 1;
+      s.lastPlayDate = today;
+    }
+
+    // BADGES — unlock once, persistent.
+    const badges = new Set(s.badges || []);
+    if (s.totalRuns >= 1)                  badges.add("first_run");
+    if (s.bestDist >= 500)                 badges.add("five_hundred_m");
+    if (s.bestDist >= 1000)                badges.add("one_km");
+    if (s.bestScore >= 5000)               badges.add("score_5k");
+    if (s.bestScore >= 10000)              badges.add("score_10k");
+    if ((s.streak || 0) >= 3)              badges.add("streak_3");
+    if ((s.streak || 0) >= 7)              badges.add("streak_7");
+    if ((this.bioSession?.giftsEarned || 0) >= 1)        badges.add("first_gift");
+    if ((this.bioSession?.flowSec || 0) >= 30)           badges.add("flow_30s");
+    if ((this.bioSession?.flowSec || 0) >= 120)          badges.add("flow_2min");
+    s.badges = Array.from(badges);
+
     Store.save(s);
+  }
+
+  // List of all known badges with metadata for the over-screen display.
+  _allBadges() {
+    return [
+      { id: "first_run",       label: "First Run",       icon: "🏃" },
+      { id: "first_gift",      label: "Gift of the Gods",icon: "🎁" },
+      { id: "five_hundred_m",  label: "500m",            icon: "🏔" },
+      { id: "one_km",          label: "1km",             icon: "🛡" },
+      { id: "score_5k",        label: "Score 5,000",     icon: "⚔" },
+      { id: "score_10k",       label: "Score 10,000",    icon: "👑" },
+      { id: "streak_3",        label: "3-Day Streak",    icon: "🔥" },
+      { id: "streak_7",        label: "7-Day Streak",    icon: "⚡" },
+      { id: "flow_30s",        label: "30s of Flow",     icon: "🌊" },
+      { id: "flow_2min",       label: "2min of Flow",    icon: "🧠" },
+    ];
+  }
+
+  // Build the leaderboard + streak + badges section on the over screen.
+  _injectScoreboard() {
+    const card = document.querySelector("#overOverlay .card");
+    if (!card) return;
+    const s = Store.load();
+    let host = card.querySelector("#scoreboard");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "scoreboard";
+      host.style.cssText =
+        "margin:18px 0 4px;padding:18px 0 0;"
+        + "border-top:1px solid rgba(212,173,106,.22);text-align:left;"
+        + "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;";
+      const actions = card.querySelector(".actions");
+      card.insertBefore(host, actions || null);
+    }
+    const todayScore = Math.floor(this.score);
+    const board = (s.leaderboard || []).slice(0, 10);
+    const rows = board.map((b, i) => {
+      const isThis = b.score === todayScore && b.date === new Date().toISOString().slice(0, 10);
+      const colour = isThis ? "#f4d49a" : "rgba(255,255,255,.78)";
+      const weight = isThis ? 700 : 500;
+      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1) + ".";
+      return `<div style="display:flex;justify-content:space-between;gap:12px;`
+           + `padding:5px 0;color:${colour};font-weight:${weight};`
+           + `font-size:13px;letter-spacing:.01em">`
+           + `<span style="min-width:28px">${medal}</span>`
+           + `<span style="flex:1;font-variant-numeric:tabular-nums">${b.score.toLocaleString()}</span>`
+           + `<span style="opacity:.7">${b.dist}m</span>`
+           + `<span style="opacity:.5;font-size:11px">${b.date.slice(5)}</span>`
+           + `</div>`;
+    }).join("");
+
+    const all = this._allBadges();
+    const earned = new Set(s.badges || []);
+    const badgeHtml = all.map(b => {
+      const got = earned.has(b.id);
+      const op = got ? 1 : 0.22;
+      const colour = got ? "#f4d49a" : "rgba(255,255,255,.6)";
+      return `<div title="${b.label}" style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:${op}">`
+           + `<div style="font-size:24px;line-height:1">${b.icon}</div>`
+           + `<div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:${colour};text-align:center">${b.label}</div>`
+           + `</div>`;
+    }).join("");
+
+    host.innerHTML =
+        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">`
+      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78)">Skalds' Roll</div>`
+      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">🔥 ${s.streak || 0}-day streak</div>`
+      + `</div>`
+      + `<div style="margin-bottom:18px">${rows || '<div style="opacity:.6">No runs yet</div>'}</div>`
+      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78);margin-bottom:10px">Honours</div>`
+      + `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">${badgeHtml}</div>`;
   }
 
   _flash() {
@@ -4059,6 +4248,7 @@ class Valhalla {
     // physiological summary. Only shows if a sensor was active at any
     // point (hrSamples > 0 OR any positive state accumulated).
     this._injectBioReport();
+    this._injectScoreboard();
     $("overOverlay").classList.add("show");
     this._loadStats();
   }
@@ -4910,6 +5100,7 @@ class Valhalla {
     this._updateBiome(dt);
     this._updateBreath(dt);
     this._updateBioSession(dt);
+    this._updateWorldMarkers(dt);
     // Drive the real character's animation mixer. Speed scales with
     // game speed so legs cycle in sync with apparent motion.
     if (this._mixer) {
@@ -5369,6 +5560,15 @@ class Valhalla {
     this.audio.hit();
     this._flash();
     this._shake(0.55, 0.35);
+    // LIVES SYNC FIX — update HUD lives counter IMMEDIATELY on
+    // collision instead of waiting for the next _updateHUD() at
+    // end-of-frame. User reported the counter felt out-of-sync with
+    // the hit. Also pop a big visible "-1" floater so the loss is
+    // unmistakable.
+    if (this.hud && this.hud.lives) {
+      this.hud.lives.textContent = Math.max(0, this.lives);
+    }
+    this._popText("-1 LIFE", "combo", 0, -60);
     if (this.lives <= 0) this._gameOver();
   }
 

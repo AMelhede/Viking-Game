@@ -651,6 +651,14 @@
   <div class="glory" id="glory"></div>
   <div class="vignette" id="vignette"></div>
 
+  <!-- World-space markers — HTML icons projected to the 2D screen
+       position of every obstacle / powerup / mead / rune. Updated
+       per frame in main.js _updateWorldMarkers. Unambiguous: ⚠
+       red over dangers, ⭐ gold over powerups, 🪙 gold over mead,
+       ᚱ blue over runestones. Pure HTML so they're always sharp
+       and unmissable regardless of 3D shader state. -->
+  <div id="worldMarkers" style="position:fixed;inset:0;pointer-events:none;z-index:14;overflow:hidden"></div>
+
   <!-- Cinematic framing layers (purely visual, no JS interaction).
        Order matters: letterbox sits highest so it crops over the
        vignette + grain. -->
