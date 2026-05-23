@@ -34,7 +34,15 @@
       "Bash(git ls-remote *)",
       "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('parse OK'\\)\\).catch\\(e=>console.error\\('parse FAIL:', e.message\\)\\)\")",
       "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:', e.message\\)\\)\")",
-      "Bash(node --input-type=module -e \"import\\('./js/bio/sensors/eeg.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:', e.message\\)\\)\")"
+      "Bash(node --input-type=module -e \"import\\('./js/bio/sensors/eeg.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:', e.message\\)\\)\")",
+      "Bash(grep -n \"ELATA\\\\|biosignal arcade\\\\|BIOSIGNAL ARCADE\\\\|EEG focus\\\\|Biosignals\\\\|>A</kbd>\\\\|>D</kbd>\\\\|>S</kbd>\\\\|>Space</kbd>\\\\|Heart rate\" \"C:/Users/andre/Downloads/Viking Game/index.html\" 2>&1 | head -10)",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" status --short --branch)",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" status --short)",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" log --oneline -3)",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" fetch origin)",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" checkout main)",
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" pull --ff-only origin main)",
+      "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:',e.message\\)\\)\")"
     ]
   }
 }

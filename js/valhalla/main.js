@@ -2153,13 +2153,57 @@ class Valhalla {
           // player is ~2.0 tall facing +Z. Scale + rotate to match.
           model.scale.setScalar(1.05);
           model.rotation.y = Math.PI;            // face forward (+Z)
-          // Make every mesh in the model accept the sky-driven IBL
-          // env so it lights consistently with the rest of the scene.
+          // VIKING RESKIN. Soldier.glb ships modern military fatigues
+          // (camo / nylon / black boots). We override every mesh's
+          // material with Viking-era tones so the rig + animations
+          // stay but the character reads as a Norse warrior, not a
+          // soldier. Detect by mesh name heuristics; bone count
+          // matters more than what the texture said.
           model.traverse((o) => {
-            if (o.isMesh) {
-              o.material.envMapIntensity = 1.0;
-              o.frustumCulled = false;           // never cull our hero
+            if (!o.isMesh) return;
+            o.frustumCulled = false;
+            // Clone the material so we don't mutate cached/shared maps.
+            const original = o.material;
+            const m = new THREE.MeshStandardMaterial({
+              roughness: 0.92, metalness: 0.05,
+              skinning: true,
+              envMapIntensity: 0.85,
+              flatShading: false,
+            });
+            const name = (o.name || "").toLowerCase();
+            // Map every typical Soldier mesh into a Viking palette.
+            if (/head|face|hair/.test(name)) {
+              m.color = new THREE.Color(0xcaa380);             // weathered skin
+              m.roughness = 0.78;
+            } else if (/helm|hat|cap/.test(name)) {
+              m.color = new THREE.Color(0x3a3d42);             // weathered iron
+              m.metalness = 0.7; m.roughness = 0.5;
+            } else if (/torso|body|chest|shirt|jacket|vest/.test(name)) {
+              m.color = new THREE.Color(0x5a4a36);             // undyed wool
+              m.roughness = 0.97;
+            } else if (/arm|hand|sleeve/.test(name)) {
+              m.color = new THREE.Color(0x4a3c2a);             // darker wool sleeve
+              m.roughness = 0.97;
+            } else if (/leg|pant|trouser|boot|foot|shoe/.test(name)) {
+              m.color = new THREE.Color(0x2a1d14);             // oiled leather
+              m.roughness = 0.85;
+            } else if (/belt|strap/.test(name)) {
+              m.color = new THREE.Color(0x1a1208);             // dark leather
+              m.roughness = 0.7;
+            } else {
+              // Default to wool — better than military camo for anything
+              // we couldn't classify.
+              m.color = new THREE.Color(0x5a4838);
+              m.roughness = 0.95;
             }
+            // Preserve any normal/AO map the original had — gives micro-detail
+            // even though we override the colour.
+            if (original) {
+              if (original.normalMap)   { m.normalMap   = original.normalMap;   m.normalScale = new THREE.Vector2(0.8, 0.8); }
+              if (original.aoMap)       { m.aoMap       = original.aoMap;       m.aoMapIntensity = 0.9; }
+              if (original.skinning !== undefined) m.skinning = original.skinning;
+            }
+            o.material = m;
           });
           // Hide the procedural placeholder, add the real character.
           if (this.procPlayer) this.procPlayer.visible = false;

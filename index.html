@@ -336,15 +336,27 @@
       position:fixed;inset:0;z-index:50;
       display:flex;align-items:center;justify-content:center;
       padding:env(safe-area-inset-top,16px) 16px env(safe-area-inset-bottom,16px);
-      background:radial-gradient(ellipse at center,rgba(8,6,4,.30) 0%,rgba(8,6,4,.82) 100%);
+      /* Heavier base darkness — the previous .82 alpha let the live 3D
+         scene (trees, character, snow particles) bleed through and
+         clash with the menu text. Now nearly opaque at edges. */
+      background:radial-gradient(ellipse at center,rgba(8,6,4,.55) 0%,rgba(4,3,2,.96) 100%);
       transition:opacity .5s ease;
     }
     .start.hide{opacity:0;pointer-events:none}
+    /* SOLID CARD — opaque parchment-dark background with subtle warm
+       border. The menu reads as a real card, not as text floating on
+       a busy live-3D world. AA contrast guaranteed regardless of
+       what the canvas is rendering. */
     .start .card{
       width:100%;max-width:480px;
       padding:60px 32px 32px;
       text-align:center;
-      background:none;border:none;
+      background:rgba(14,10,6,.88);
+      border:1px solid rgba(212,173,106,.22);
+      border-radius:12px;
+      backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+      box-shadow:0 30px 100px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.4);
     }
     .start .brand{display:none}
     /* TITLE — Cinzel keeps the cinematic gravitas. Lighter weight (600
