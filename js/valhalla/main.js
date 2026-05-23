@@ -2919,6 +2919,54 @@ class Valhalla {
       this._bossActor.hpMax = 0;
       hpBg.visible = false; hpFill.visible = false;
     }
+
+    // Show the 4s tutorial popup — explicit "how to kill this boss"
+    // hint that even a first-timer can grok. Valkyrie gets a friendlier
+    // variant since she's a blessing, not a fight.
+    this._showBossTutorial(label, hpMax, type);
+  }
+
+  // Big-text popup that briefly explains how to deal damage to the boss
+  // currently on-stage. Auto-dismisses after 4s. Idempotent — replacing
+  // a popup before it finishes resets the timer.
+  _showBossTutorial(label, hpMax, type) {
+    const el = document.getElementById("bossTutorial");
+    if (!el) return;
+    const nameEl = document.getElementById("bossTutorialName");
+    const hpEl = document.getElementById("bossTutorialHp");
+    if (nameEl) nameEl.textContent = label;
+    if (hpEl) hpEl.textContent = hpMax > 0 ? `HP ${hpMax}` : "BLESSING";
+    // Valkyrie variant — swap the "how to damage" rows for a single
+    // "collect her runes" line so users don't try to attack her.
+    // Reach into the popup's body rows (the .col flex container).
+    const rows = el.querySelector("div[style*='flex-direction:column']");
+    if (rows) {
+      if (type === "valkyrie") {
+        rows.innerHTML = `
+          <div><span style="color:#60d0ff;font-weight:700">ᚱ Collect her runes</span> &nbsp;<span style="color:rgba(255,255,255,.55)">to receive her gift</span></div>
+          <div><span style="color:#ffd066;font-weight:700">3× score multiplier</span> &nbsp;<span style="color:rgba(255,255,255,.55)">active for 5 seconds</span></div>
+        `;
+      } else {
+        rows.innerHTML = `
+          <div><span style="color:#60d0ff;font-weight:700">ᚱ Collect runes</span> &nbsp;<span style="color:rgba(255,255,255,.55)">+40 damage each</span></div>
+          <div><span style="color:#ffd066;font-weight:700">⚠ Dodge his attacks</span> &nbsp;<span style="color:rgba(255,255,255,.55)">+25 damage each</span></div>
+          <div><span style="color:#7ad9ff;font-weight:700">🌊 Stay in Flow</span> &nbsp;<span style="color:rgba(255,255,255,.55)">+5 damage / second</span></div>
+        `;
+      }
+    }
+    el.style.display = "block";
+    // Force reflow so the opacity transition actually plays from 0→1.
+    void el.offsetWidth;
+    el.style.opacity = "1";
+    el.style.transform = "translate(-50%,-50%) scale(1)";
+    // Cancel any in-flight dismiss timer.
+    if (this._bossTutorialTimer) { clearTimeout(this._bossTutorialTimer); this._bossTutorialTimer = null; }
+    this._bossTutorialTimer = setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transform = "translate(-50%,-50%) scale(0.96)";
+      setTimeout(() => { if (el.style.opacity === "0") el.style.display = "none"; }, 350);
+      this._bossTutorialTimer = null;
+    }, 4000);
   }
 
   // _spawnObstacle but returns the obstacle record so the boss code can
@@ -2943,9 +2991,58 @@ class Valhalla {
       b.hpFill.material.color.setHex(0xff8030);
       setTimeout(() => { if (b.hpFill) b.hpFill.material.color.setHex(0xff3030); }, 120);
     }
-    // Floating damage number near the boss.
-    this._popText(`-${amount}`, "rune", 0, -50);
+    // Floating damage number near the boss (in-world sprite).
+    this._popText(`-${Math.round(amount)}`, "rune", 0, -50);
+    // Screen-space damage float on the HP bar — bigger, colour-coded by
+    // source so the player can SEE which input is hurting the boss.
+    // Continuous flow/berserker damage accumulates into integer chunks
+    // so we don't spam tiny "+0.08" floats every frame.
+    this._accumBossDmg(amount, source);
     if (b.hp <= 0) this._killBoss(source);
+  }
+
+  // Coalesces sub-integer DPS into one float per integer of damage, so
+  // the HP bar floats stay readable (one big "+5" per second of Flow
+  // rather than 60 "+0.08"s).
+  _accumBossDmg(amount, source) {
+    if (!this._bossDmgAccum) this._bossDmgAccum = { rune: 0, dodge: 0, flow: 0, berserker: 0 };
+    if (amount >= 5) {
+      // Discrete big hit — show immediately and don't touch the accumulator.
+      this._spawnBossDmgFloat(Math.round(amount), source);
+      return;
+    }
+    const key = (source in this._bossDmgAccum) ? source : "flow";
+    this._bossDmgAccum[key] = (this._bossDmgAccum[key] || 0) + amount;
+    if (this._bossDmgAccum[key] >= 5) {
+      const whole = Math.floor(this._bossDmgAccum[key]);
+      this._bossDmgAccum[key] -= whole;
+      this._spawnBossDmgFloat(whole, key);
+    }
+  }
+
+  // Append a "+N" element to the HP bar's float layer. CSS animation
+  // lifts it up and fades it out, then we GC the node after 700ms.
+  _spawnBossDmgFloat(n, source) {
+    const layer = document.getElementById("bossBannerDmgFloats");
+    if (!layer) return;
+    const colour = source === "rune"      ? "#60d0ff"
+                 : source === "dodge"     ? "#ffd066"
+                 : source === "flow"      ? "#7ad9ff"
+                 : source === "berserker" ? "#ff8c5a"
+                                          : "#ffffff";
+    const icon = source === "rune"      ? "ᚱ"
+               : source === "dodge"     ? "⚠"
+               : source === "flow"      ? "🌊"
+               : source === "berserker" ? "⚔"
+                                        : "";
+    const el = document.createElement("div");
+    el.textContent = `${icon} +${n}`;
+    // Random horizontal position across the bar so back-to-back floats
+    // don't overlap. Anchored above the bar (-22px) and animates up.
+    const xPct = 20 + Math.random() * 60;
+    el.style.cssText = `position:absolute;left:${xPct}%;top:-22px;transform:translate(-50%,0);font:700 16px/1 'Cinzel',serif;color:${colour};text-shadow:0 2px 8px rgba(0,0,0,.85),0 0 12px ${colour}80;pointer-events:none;white-space:nowrap;animation:bossDmgFloat .7s ease-out forwards`;
+    layer.appendChild(el);
+    setTimeout(() => { try { el.remove(); } catch {} }, 750);
   }
 
   _killBoss(source) {
