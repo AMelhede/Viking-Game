@@ -1054,6 +1054,9 @@ class Valhalla {
 
     this.cognitiveState = "neutral";
     this.bpm = null;
+    this.hrv = null;          // RMSSD ms — captured for biohacker panel
+    this.focusLevel = null;   // 0..1 — captured from EEG
+    this.calmLevel = null;    // 0..1 — captured from EEG
     // Bio session tracking. Every frame we accumulate time in each
     // useful state. Drives:
     //   * bio-gift spawn (12s in flow/focused/calm → free powerup)
@@ -3049,6 +3052,8 @@ class Valhalla {
     const b = this._bossActor;
     if (!b || b.defeated) return;
     b.defeated = true;
+    // Track for lifetime/daily stats.
+    this.runBossKills = (this.runBossKills || 0) + 1;
     // Big reward scaling with biome cycle.
     const reward = 1000 + this.biomeCycle * 500;
     this.score += reward;
@@ -3144,34 +3149,48 @@ class Valhalla {
   // Always-visible bio status pill in the top-right under the lives.
   // Shows: current state + progress to next gift + cumulative gifts.
   // Only present when a sensor is active.
+  // State-first bio dashboard. Hierarchy:
+  //   1. BIG state name (FLOW / CALM / FOCUSED…) in plain English
+  //   2. One-line plain-English meaning the player can actually feel
+  //   3. Time-in-state counter (how long you've held this state)
+  //   4. Gift meter (the always-on reward feedback loop)
+  //   5. Tally of earned gifts
+  //   6. Biohacker toggle (⚙) reveals raw numbers — hidden by default
+  //
+  // The previous version led with BPM and crammed mechanic-speak
+  // ("+35% gift duration") on the second line. Normal users have no
+  // mental model for any of that. Now the panel says things like:
+  //   "FLOW · The world bends around you · 23s held · Next gift 78%"
   _updateBioStatusPill() {
     let el = this._bioPillEl;
     if (!el) {
       el = document.createElement("div");
-      // BIG always-on bio dashboard — explicit value-prop, not a
-      // subtle decoration. User has repeatedly said "I see no use or
-      // change or output from bio whatsoever". Now this panel shows:
-      //   * Big BPM number with delta from baseline
-      //   * Cognitive state name + WHAT IT'S DOING for the player
-      //   * Gift meter as a visible filling bar
-      //   * Running tally of bio-earned gifts and bonus extensions
       el.style.cssText =
         "position:fixed;right:18px;top:calc(env(safe-area-inset-top,18px) + 76px);" +
-        "z-index:11;pointer-events:none;text-align:left;" +
-        "min-width:200px;max-width:220px;" +
-        "background:rgba(14,10,6,.78);border:1px solid rgba(212,173,106,.32);" +
-        "border-radius:10px;padding:12px 14px;" +
+        "z-index:11;pointer-events:auto;text-align:left;" +
+        "min-width:230px;max-width:260px;" +
+        "background:rgba(14,10,6,.82);border:1px solid rgba(212,173,106,.32);" +
+        "border-radius:10px;padding:14px 16px 12px;" +
         "backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" +
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;" +
         "color:#fff;opacity:0;transition:opacity .4s ease;" +
         "box-shadow:0 6px 30px rgba(0,0,0,.55)";
       el.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
-          '<div class="bpm" style="font:700 22px/1 \'Cinzel\',serif;color:#f4d49a;font-variant-numeric:tabular-nums"></div>' +
-          '<div class="bpmlbl" style="font-size:9.5px;letter-spacing:.18em;color:rgba(255,255,255,.55);text-transform:uppercase">heart</div>' +
+        // Header row: eyebrow + gear toggle
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<div style="font:600 9.5px/1 \'Cinzel\',serif;letter-spacing:.22em;color:rgba(212,173,106,.7);text-transform:uppercase">Your Body</div>' +
+          '<button class="biohackToggle" title="Toggle biohacker numbers" style="background:none;border:1px solid rgba(212,173,106,.3);color:rgba(212,173,106,.7);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:11px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle biohacker mode">⚙</button>' +
         '</div>' +
-        '<div class="state" style="font:700 13px/1.2 \'Cinzel\',serif;color:#fff;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px"></div>' +
-        '<div class="effect" style="font-size:11.5px;color:rgba(255,255,255,.78);line-height:1.4;margin-bottom:10px;min-height:1.4em"></div>' +
+        // STATE NAME (big, the headline)
+        '<div class="stateName" style="font:700 22px/1 \'Cinzel\',serif;color:#f4d49a;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;text-shadow:0 0 16px rgba(244,212,154,.22)"></div>' +
+        // Plain-English meaning (the value-prop sentence)
+        '<div class="stateMeaning" style="font-size:12.5px;color:rgba(255,255,255,.85);line-height:1.4;margin-bottom:8px;min-height:2.4em"></div>' +
+        // Time held
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;font-size:10.5px;letter-spacing:.04em">' +
+          '<span style="color:rgba(255,255,255,.55)">Held for</span>' +
+          '<span class="stateHeld" style="color:#f4d49a;font:600 12px/1 \'Cinzel\',serif;font-variant-numeric:tabular-nums">—</span>' +
+        '</div>' +
+        // Gift meter
         '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">' +
           '<div style="font:600 10px/1 \'Cinzel\',serif;letter-spacing:.18em;color:rgba(212,173,106,.85);text-transform:uppercase">Next gift</div>' +
           '<div class="giftpct" style="font:600 10px/1 \'Cinzel\',serif;color:#f4d49a"></div>' +
@@ -3179,60 +3198,112 @@ class Valhalla {
         '<div style="height:5px;background:rgba(201,165,92,.18);border-radius:3px;overflow:hidden">' +
           '<div class="meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a55c,#f4d49a);transition:width .3s ease"></div>' +
         '</div>' +
-        '<div class="tally" style="font-size:10.5px;letter-spacing:.04em;color:rgba(255,255,255,.6);margin-top:8px"></div>';
+        // Earned tally
+        '<div class="tally" style="font-size:10.5px;letter-spacing:.02em;color:rgba(255,255,255,.6);margin-top:9px;min-height:1.2em"></div>' +
+        // BIOHACKER NUMBERS — hidden unless toggled
+        '<div class="biohackBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,173,106,.18);font-size:10.5px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">' +
+            '<div>HR <span class="bhBpm" style="color:#ff8a7a;font-weight:600">—</span></div>' +
+            '<div>HRV <span class="bhHrv" style="color:#80d0e0;font-weight:600">—</span></div>' +
+            '<div>Focus <span class="bhFocus" style="color:#a3b8ff;font-weight:600">—</span></div>' +
+            '<div>Calm <span class="bhCalm" style="color:#80d0e0;font-weight:600">—</span></div>' +
+          '</div>' +
+        '</div>';
       document.body.appendChild(el);
       this._bioPillEl = el;
+      // Restore biohacker-mode pref from localStorage.
+      this._biohackerMode = localStorage.getItem("valhalla.biohackerMode") === "1";
+      const toggle = el.querySelector(".biohackToggle");
+      toggle.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        this._biohackerMode = !this._biohackerMode;
+        localStorage.setItem("valhalla.biohackerMode", this._biohackerMode ? "1" : "0");
+        el.querySelector(".biohackBox").style.display = this._biohackerMode ? "block" : "none";
+        toggle.style.background = this._biohackerMode ? "rgba(212,173,106,.3)" : "none";
+      });
+      if (this._biohackerMode) {
+        el.querySelector(".biohackBox").style.display = "block";
+        toggle.style.background = "rgba(212,173,106,.3)";
+      }
+      // Track state held-for timing
+      this._stateHeldSince = performance.now();
+      this._stateHeldFor   = "neutral";
     }
     const live = document.body.classList.contains("bio-live");
     el.style.opacity = (live && this.running) ? "1" : "0";
     if (!live || !this.running) return;
-    const s = this.bioSession;
-    const cs = this.cognitiveState;
 
-    // BPM with delta from a 70 BPM resting baseline (simple visible
-    // reference; the SDK has its own rolling baseline for internals).
-    const bpmEl = el.querySelector(".bpm");
-    if (this.bpm) {
-      const delta = this.bpm - 70;
-      const sign = delta > 0 ? "+" : "";
-      bpmEl.innerHTML = this.bpm + ' <span style="font-size:11px;color:' +
-        (delta > 15 ? "#ff8a7a" : delta < -5 ? "#7fe5a0" : "rgba(255,255,255,.55)") +
-        ';font-weight:500;letter-spacing:.04em">' + sign + delta + '</span>';
+    const s = this.bioSession;
+    const cs = this.cognitiveState || "neutral";
+
+    // Track time-in-state. Resets when state changes.
+    if (this._stateHeldFor !== cs) {
+      this._stateHeldFor = cs;
+      this._stateHeldSince = performance.now();
+    }
+    const heldSec = Math.max(0, (performance.now() - this._stateHeldSince) / 1000);
+
+    // STATE → display name + meaning. Plain English, emotional, no
+    // mechanics-speak. The point is the player feels "the game is
+    // responding to me" not "I understand the percentage modifiers".
+    const STATE_UI = {
+      flow:       { name: "FLOW",        meaning: "You're in the zone — the world bends around you.",        colour: "#7ad9ff" },
+      focused:    { name: "FOCUSED",     meaning: "Sharp mind. Your aim is true and rewards come faster.",   colour: "#a3b8ff" },
+      calm:       { name: "CALM",        meaning: "Steady breath. The gods are noticing — gifts incoming.", colour: "#80d0e0" },
+      berserker:  { name: "BERSERKER",   meaning: "Battle fury! Score boosts and bosses bleed for you.",     colour: "#ff8c5a" },
+      meditation: { name: "MEDITATION",  meaning: "Mind at rest — the road feels slower, hazards easier.",   colour: "#c5a3ff" },
+      aroused:    { name: "AROUSED",     meaning: "Your pulse is up — speed and intensity rising.",          colour: "#ffaa70" },
+      frantic:    { name: "FRANTIC",     meaning: "Heart racing — careful, but every point counts double.",  colour: "#ff7060" },
+      distracted: { name: "DISTRACTED",  meaning: "Mind is wandering — settle in to earn rewards.",          colour: "#998a78" },
+      neutral:    { name: "STEADY",      meaning: "Find calm or focus to earn god-gifts.",                   colour: "#d4ad6a" },
+    };
+    const warming = !live || (!this.bpm && cs === "neutral");
+    const ui = warming
+      ? { name: "WARMING UP", meaning: "Sensors locking on… face the camera, sit still for a moment.", colour: "#d4ad6a" }
+      : (STATE_UI[cs] || STATE_UI.neutral);
+
+    const stateEl = el.querySelector(".stateName");
+    stateEl.textContent = ui.name;
+    stateEl.style.color = ui.colour;
+    stateEl.style.textShadow = `0 0 16px ${ui.colour}40`;
+    el.querySelector(".stateMeaning").textContent = ui.meaning;
+
+    // Held-for, formatted: "—" if neutral/warming, else "Ns" or "M:SS"
+    const heldEl = el.querySelector(".stateHeld");
+    if (warming || cs === "neutral") {
+      heldEl.textContent = "—";
+    } else if (heldSec < 60) {
+      heldEl.textContent = heldSec.toFixed(0) + "s";
     } else {
-      bpmEl.innerHTML = '<span style="color:rgba(255,255,255,.45);font-size:14px;font-weight:500">Face camera</span>';
+      const m = Math.floor(heldSec / 60), sec = Math.floor(heldSec % 60);
+      heldEl.textContent = `${m}:${sec.toString().padStart(2, "0")}`;
     }
 
-    // State + effect description — TELLS the player what their state
-    // is doing for them right now.
-    const STATE_EFFECTS = {
-      flow:       "+50% gift duration · faster gift meter",
-      focused:    "+35% gift duration · gift meter +30%",
-      calm:       "+20% gift duration · gift meter armed",
-      berserker:  "+50% score · damages bosses",
-      meditation: "−10% game speed · steadier",
-      aroused:    "speed bump from your pulse",
-      frantic:    "score multiplier · careful",
-      distracted: "no bonus yet — settle in",
-      neutral:    "find calm to earn god-gifts",
-    };
-    el.querySelector(".state").textContent =
-      cs && cs !== "neutral"
-        ? cs.charAt(0).toUpperCase() + cs.slice(1)
-        : (this.bpm ? "Steady" : "Warming");
-    el.querySelector(".effect").textContent =
-      STATE_EFFECTS[cs] || STATE_EFFECTS.neutral;
-
-    // Gift meter %.
+    // Gift meter.
     const pct = Math.min(100, (s.giftAccumSec / 12) * 100);
     el.querySelector(".meter-fill").style.width = pct + "%";
     el.querySelector(".giftpct").textContent = (pct | 0) + "%";
 
-    // Cumulative bio impact tally.
+    // Tally.
     const tallyParts = [];
-    if (s.giftsEarned)             tallyParts.push("🎁 " + s.giftsEarned + " gifts");
-    if (s.durationBonusApplied)    tallyParts.push("⏱ " + s.durationBonusApplied + " extended");
-    if (s.flowSec >= 1)            tallyParts.push("🌊 " + s.flowSec.toFixed(0) + "s flow");
-    el.querySelector(".tally").textContent = tallyParts.join(" · ") || "Stay calm to earn rewards";
+    if (s.giftsEarned)          tallyParts.push("🎁 " + s.giftsEarned);
+    if (s.durationBonusApplied) tallyParts.push("⏱ " + s.durationBonusApplied);
+    if (s.flowSec >= 1)         tallyParts.push("🌊 " + s.flowSec.toFixed(0) + "s");
+    el.querySelector(".tally").textContent = tallyParts.length
+      ? "Earned: " + tallyParts.join(" · ")
+      : "Hold a state to earn rewards";
+
+    // BIOHACKER NUMBERS — only update if visible.
+    if (this._biohackerMode) {
+      const bhBpm = el.querySelector(".bhBpm");
+      const bhHrv = el.querySelector(".bhHrv");
+      const bhFocus = el.querySelector(".bhFocus");
+      const bhCalm = el.querySelector(".bhCalm");
+      bhBpm.textContent   = this.bpm ? Math.round(this.bpm) : "—";
+      bhHrv.textContent   = this.hrv != null ? Math.round(this.hrv) + "ms" : "—";
+      bhFocus.textContent = (this.focusLevel != null) ? Math.round(this.focusLevel * 100) + "%" : "—";
+      bhCalm.textContent  = (this.calmLevel != null)  ? Math.round(this.calmLevel * 100) + "%"  : "—";
+    }
   }
 
   // WORLD-SPACE MARKERS — HTML icons projected to the screen
@@ -4111,6 +4182,14 @@ class Valhalla {
           // single biggest "the SDK changes the experience" cue.
           this._scheduleHeartbeatPulse();
         }
+        // HRV (RMSSD ms) — captured for the biohacker-mode panel.
+        if (m && typeof m.hrv === "number") this.hrv = m.hrv;
+      });
+      // EEG metrics — capture focus/calm levels for biohacker-mode panel.
+      window.Bio.on("eegMetric", (m) => {
+        if (!m) return;
+        if (typeof m.focus === "number") this.focusLevel = m.focus;
+        if (typeof m.calm === "number")  this.calmLevel  = m.calm;
       });
       window.Bio.on("rppgStatus", (s) => {
         if (s.status === "off" || s.status === "error") {
@@ -4218,8 +4297,23 @@ class Valhalla {
     s.totalScore = (s.totalScore || 0) + this.score;
     s.totalMead = (s.totalMead || 0) + this.mead;
 
+    // LIFETIME STATS — the spine of the badge progression. Accumulates
+    // across every run forever so badges have a real long-term curve.
+    const bs = this.bioSession || {};
+    const life = s.lifetime || {};
+    life.runs       = (life.runs       || 0) + 1;
+    life.score      = (life.score      || 0) + Math.floor(this.score);
+    life.distance   = (life.distance   || 0) + Math.round(this.distance);
+    life.mead       = (life.mead       || 0) + (this.mead || 0);
+    life.runes      = (life.runes      || 0) + (this.runRunes || 0);
+    life.bossKills  = (life.bossKills  || 0) + (this.runBossKills || 0);
+    life.gifts      = (life.gifts      || 0) + (bs.giftsEarned || 0);
+    life.flowSec    = (life.flowSec    || 0) + (bs.flowSec || 0);
+    life.focusedSec = (life.focusedSec || 0) + (bs.focusedSec || 0);
+    life.calmSec    = (life.calmSec    || 0) + (bs.calmSec || 0);
+    s.lifetime = life;
+
     // LEADERBOARD — top 10 scores all-time, kept in localStorage.
-    // Each entry: { score, dist, mead, date (yyyy-mm-dd) }
     const board = Array.isArray(s.leaderboard) ? s.leaderboard.slice() : [];
     const today = new Date().toISOString().slice(0, 10);
     board.push({
@@ -4231,6 +4325,31 @@ class Valhalla {
     board.sort((a, b) => b.score - a.score);
     s.leaderboard = board.slice(0, 10);
 
+    // DAILY ROLLUP — keyed by YYYY-MM-DD. Powers the 7-day chart on
+    // the game-over screen so users can see their progression over
+    // time, not just one number that resets to "no runs yet".
+    const daily = s.daily || {};
+    const today_ = daily[today] || {
+      flowSec: 0, focusedSec: 0, calmSec: 0,
+      runs: 0, bestScore: 0, bossKills: 0, runes: 0, distance: 0,
+    };
+    today_.runs      += 1;
+    today_.flowSec   += (bs.flowSec || 0);
+    today_.focusedSec+= (bs.focusedSec || 0);
+    today_.calmSec   += (bs.calmSec || 0);
+    today_.bossKills += (this.runBossKills || 0);
+    today_.runes     += (this.runRunes || 0);
+    today_.distance  += Math.round(this.distance);
+    today_.bestScore = Math.max(today_.bestScore, Math.floor(this.score));
+    daily[today] = today_;
+    // Prune anything older than 60 days so localStorage doesn't bloat.
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    for (const key of Object.keys(daily)) {
+      if (key < cutoffStr) delete daily[key];
+    }
+    s.daily = daily;
+
     // DAILY STREAK — runs played on consecutive days.
     if (s.lastPlayDate !== today) {
       const yesterday = new Date();
@@ -4239,41 +4358,117 @@ class Valhalla {
       s.streak = (s.lastPlayDate === ydStr) ? (s.streak || 0) + 1 : 1;
       s.lastPlayDate = today;
     }
+    s.bestStreak = Math.max(s.bestStreak || 0, s.streak || 0);
 
-    // BADGES — unlock once, persistent.
+    // TIERED BADGES — unlocked from lifetime stats. The unlock loop is
+    // driven by the _allBadges() definitions themselves so adding a
+    // new badge is one line of data, not new code paths.
     const badges = new Set(s.badges || []);
-    if (s.totalRuns >= 1)                  badges.add("first_run");
-    if (s.bestDist >= 500)                 badges.add("five_hundred_m");
-    if (s.bestDist >= 1000)                badges.add("one_km");
-    if (s.bestScore >= 5000)               badges.add("score_5k");
-    if (s.bestScore >= 10000)              badges.add("score_10k");
-    if ((s.streak || 0) >= 3)              badges.add("streak_3");
-    if ((s.streak || 0) >= 7)              badges.add("streak_7");
-    if ((this.bioSession?.giftsEarned || 0) >= 1)        badges.add("first_gift");
-    if ((this.bioSession?.flowSec || 0) >= 30)           badges.add("flow_30s");
-    if ((this.bioSession?.flowSec || 0) >= 120)          badges.add("flow_2min");
+    for (const b of this._allBadges()) {
+      const val = this._badgeMetricValue(b.metric, s);
+      if (val >= b.threshold) badges.add(b.id);
+    }
     s.badges = Array.from(badges);
 
     Store.save(s);
   }
 
-  // List of all known badges with metadata for the over-screen display.
+  // Resolve a metric name (used by badge definitions) to its current
+  // value from the stats blob. Centralises so badges and progress bars
+  // share the same lookup table.
+  _badgeMetricValue(metric, s) {
+    const life = s.lifetime || {};
+    switch (metric) {
+      case "runs":         return life.runs       || 0;
+      case "bestDist":     return s.bestDist      || 0;
+      case "bestScore":    return s.bestScore     || 0;
+      case "streak":       return s.bestStreak    || s.streak || 0;
+      case "lifeRunes":    return life.runes      || 0;
+      case "lifeBoss":     return life.bossKills  || 0;
+      case "lifeGifts":    return life.gifts      || 0;
+      case "lifeFlow":     return life.flowSec    || 0;
+      case "lifeFocused":  return life.focusedSec || 0;
+      case "lifeCalm":     return life.calmSec    || 0;
+      case "lifeDistance": return life.distance   || 0;
+      case "lifeMead":     return life.mead       || 0;
+      default: return 0;
+    }
+  }
+
+  // TIERED BADGES — Bronze/Silver/Gold/Mythic for each progression
+  // axis. Real long-term retention: ~40 badges, most need lifetime
+  // play to unlock. Each tier's threshold is 4-8x the previous so the
+  // unlock cadence stays satisfying for a long time.
   _allBadges() {
     return [
-      { id: "first_run",       label: "First Run",       icon: "🏃" },
-      { id: "first_gift",      label: "Gift of the Gods",icon: "🎁" },
-      { id: "five_hundred_m",  label: "500m",            icon: "🏔" },
-      { id: "one_km",          label: "1km",             icon: "🛡" },
-      { id: "score_5k",        label: "Score 5,000",     icon: "⚔" },
-      { id: "score_10k",       label: "Score 10,000",    icon: "👑" },
-      { id: "streak_3",        label: "3-Day Streak",    icon: "🔥" },
-      { id: "streak_7",        label: "7-Day Streak",    icon: "⚡" },
-      { id: "flow_30s",        label: "30s of Flow",     icon: "🌊" },
-      { id: "flow_2min",       label: "2min of Flow",    icon: "🧠" },
+      // FIRST STEPS — earliest unlocks, day-1 reinforcement
+      { id: "first_run",      label: "First Run",       icon: "🏃", metric: "runs", threshold: 1,   group: "Journey", tier: "Bronze" },
+      { id: "ten_runs",       label: "Wanderer",        icon: "🧭", metric: "runs", threshold: 10,  group: "Journey", tier: "Silver" },
+      { id: "fifty_runs",     label: "Pilgrim",         icon: "⛺", metric: "runs", threshold: 50,  group: "Journey", tier: "Gold"   },
+      { id: "two_fifty_runs", label: "Saga-Bearer",     icon: "📜", metric: "runs", threshold: 250, group: "Journey", tier: "Mythic" },
+
+      // DISTANCE — single run best
+      { id: "dist_500",   label: "500m",   icon: "🏔", metric: "bestDist", threshold: 500,   group: "Distance", tier: "Bronze" },
+      { id: "dist_1k",    label: "1km",    icon: "🛡", metric: "bestDist", threshold: 1000,  group: "Distance", tier: "Silver" },
+      { id: "dist_5k",    label: "5km",    icon: "⚓", metric: "bestDist", threshold: 5000,  group: "Distance", tier: "Gold"   },
+      { id: "dist_25k",   label: "25km",   icon: "🐉", metric: "bestDist", threshold: 25000, group: "Distance", tier: "Mythic" },
+
+      // SCORE — single run best
+      { id: "score_5k",   label: "5K Skald",  icon: "⚔", metric: "bestScore", threshold: 5000,   group: "Score", tier: "Bronze" },
+      { id: "score_25k",  label: "25K Jarl",  icon: "👑", metric: "bestScore", threshold: 25000,  group: "Score", tier: "Silver" },
+      { id: "score_100k", label: "100K King", icon: "🏰", metric: "bestScore", threshold: 100000, group: "Score", tier: "Gold"   },
+      { id: "score_500k", label: "Allfather", icon: "🌟", metric: "bestScore", threshold: 500000, group: "Score", tier: "Mythic" },
+
+      // STREAK — daily play retention
+      { id: "streak_3",   label: "3-Day Streak",  icon: "🔥", metric: "streak", threshold: 3,   group: "Streak", tier: "Bronze" },
+      { id: "streak_7",   label: "7-Day Streak",  icon: "⚡", metric: "streak", threshold: 7,   group: "Streak", tier: "Silver" },
+      { id: "streak_30",  label: "30-Day Streak", icon: "🌙", metric: "streak", threshold: 30,  group: "Streak", tier: "Gold"   },
+      { id: "streak_100", label: "100-Day Streak",icon: "☀", metric: "streak", threshold: 100, group: "Streak", tier: "Mythic" },
+
+      // BOSS KILLS — lifetime
+      { id: "boss_1",     label: "First Slay",     icon: "🗡", metric: "lifeBoss", threshold: 1,    group: "Bosses", tier: "Bronze" },
+      { id: "boss_10",    label: "Giant-Slayer",   icon: "⚔", metric: "lifeBoss", threshold: 10,   group: "Bosses", tier: "Silver" },
+      { id: "boss_50",    label: "Berserker-King", icon: "🪓", metric: "lifeBoss", threshold: 50,   group: "Bosses", tier: "Gold"   },
+      { id: "boss_250",   label: "Ragnarök",       icon: "💀", metric: "lifeBoss", threshold: 250,  group: "Bosses", tier: "Mythic" },
+
+      // RUNES — lifetime collected
+      { id: "rune_10",    label: "First Runes",   icon: "ᚱ", metric: "lifeRunes", threshold: 10,    group: "Runes", tier: "Bronze" },
+      { id: "rune_100",   label: "Rune-Reader",   icon: "ᚦ", metric: "lifeRunes", threshold: 100,   group: "Runes", tier: "Silver" },
+      { id: "rune_1000",  label: "Runemaster",    icon: "ᚷ", metric: "lifeRunes", threshold: 1000,  group: "Runes", tier: "Gold"   },
+      { id: "rune_10000", label: "Skald of Mímir",icon: "ᚹ", metric: "lifeRunes", threshold: 10000, group: "Runes", tier: "Mythic" },
+
+      // FLOW — lifetime seconds (the headline bio achievement)
+      { id: "flow_30",    label: "Touch of Flow",   icon: "🌊", metric: "lifeFlow", threshold: 30,   group: "Flow", tier: "Bronze" },
+      { id: "flow_5m",    label: "5 min in Flow",   icon: "🧠", metric: "lifeFlow", threshold: 300,  group: "Flow", tier: "Silver" },
+      { id: "flow_30m",   label: "30 min in Flow",  icon: "💫", metric: "lifeFlow", threshold: 1800, group: "Flow", tier: "Gold"   },
+      { id: "flow_3h",    label: "Lord of Flow",    icon: "🔱", metric: "lifeFlow", threshold: 10800,group: "Flow", tier: "Mythic" },
+
+      // CALM — lifetime seconds (the breathwork badge)
+      { id: "calm_1m",    label: "Settled Mind",  icon: "🍃", metric: "lifeCalm", threshold: 60,    group: "Calm", tier: "Bronze" },
+      { id: "calm_15m",   label: "Calm Spirit",   icon: "🪷", metric: "lifeCalm", threshold: 900,   group: "Calm", tier: "Silver" },
+      { id: "calm_2h",    label: "Sage",          icon: "🧘", metric: "lifeCalm", threshold: 7200,  group: "Calm", tier: "Gold"   },
+      { id: "calm_10h",   label: "Bodhisattva",   icon: "☯", metric: "lifeCalm", threshold: 36000, group: "Calm", tier: "Mythic" },
+
+      // FOCUS — lifetime seconds
+      { id: "focus_1m",  label: "Sharpened",       icon: "👁", metric: "lifeFocused", threshold: 60,    group: "Focus", tier: "Bronze" },
+      { id: "focus_15m", label: "Hawk-Eyed",       icon: "🦅", metric: "lifeFocused", threshold: 900,   group: "Focus", tier: "Silver" },
+      { id: "focus_2h",  label: "Eyes of Heimdall",icon: "🌈", metric: "lifeFocused", threshold: 7200,  group: "Focus", tier: "Gold"   },
+      { id: "focus_10h", label: "All-Seeing",      icon: "🔮", metric: "lifeFocused", threshold: 36000, group: "Focus", tier: "Mythic" },
+
+      // GIFTS — bio-earned powerups (validates the SDK loop)
+      { id: "gift_1",    label: "First Gift",   icon: "🎁", metric: "lifeGifts", threshold: 1,    group: "Gifts", tier: "Bronze" },
+      { id: "gift_25",   label: "Blessed",      icon: "✨", metric: "lifeGifts", threshold: 25,   group: "Gifts", tier: "Silver" },
+      { id: "gift_100",  label: "Favoured",     icon: "🏵", metric: "lifeGifts", threshold: 100,  group: "Gifts", tier: "Gold"   },
+      { id: "gift_500",  label: "Chosen of Odin",icon: "🦉", metric: "lifeGifts", threshold: 500,  group: "Gifts", tier: "Mythic" },
     ];
   }
 
-  // Build the leaderboard + streak + badges section on the over screen.
+  // Build the post-run dashboard on the game-over card:
+  //   1. Today's recap (runs played today, flow seconds, bossKills, etc.)
+  //   2. 7-day flow-seconds bar chart (visible progression over time)
+  //   3. Top-10 leaderboard
+  //   4. Tiered badge grid grouped by progression axis, with the next
+  //      not-yet-earned tier of each group showing live progress.
   _injectScoreboard() {
     const card = document.querySelector("#overOverlay .card");
     if (!card) return;
@@ -4289,10 +4484,50 @@ class Valhalla {
       const actions = card.querySelector(".actions");
       card.insertBefore(host, actions || null);
     }
+
+    // ----- Today's recap ----------------------------------------------
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const today = (s.daily || {})[todayStr] || {};
+    const todayBits = [];
+    if (today.runs)      todayBits.push(`<b style="color:#f4d49a">${today.runs}</b> runs`);
+    if (today.flowSec >= 1)   todayBits.push(`<b style="color:#7ad9ff">${Math.round(today.flowSec)}s</b> flow`);
+    if (today.calmSec >= 1)   todayBits.push(`<b style="color:#80d0e0">${Math.round(today.calmSec)}s</b> calm`);
+    if (today.bossKills)      todayBits.push(`<b style="color:#ff8c5a">${today.bossKills}</b> bosses`);
+
+    // ----- 7-day chart of flow seconds --------------------------------
+    const labels = [];
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const day = (s.daily || {})[key];
+      labels.push(d.toLocaleDateString(undefined, { weekday: "short" })[0]);
+      data.push(day ? (day.flowSec + day.calmSec + day.focusedSec) : 0);
+    }
+    const maxBar = Math.max(1, ...data);
+    const chartHtml = data.map((v, i) => {
+      const h = Math.max(2, Math.round((v / maxBar) * 38));
+      const isToday = i === 6;
+      const bg = isToday ? "linear-gradient(180deg,#f4d49a,#c9a55c)" : "rgba(212,173,106,.4)";
+      const txt = isToday ? "#f4d49a" : "rgba(255,255,255,.45)";
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">`
+           + `<div style="width:80%;height:${h}px;background:${bg};border-radius:2px 2px 0 0"></div>`
+           + `<div style="font-size:9.5px;color:${txt};letter-spacing:.04em">${labels[i]}</div>`
+           + `</div>`;
+    }).join("");
+    const bestThisWeek = Math.max(...data);
+    const thisDay = data[6];
+    const weekHint = thisDay > 0 && thisDay >= bestThisWeek
+      ? `<span style="color:#f4d49a">Best bio day this week 🎉</span>`
+      : (thisDay > 0
+          ? `${Math.round(thisDay)}s of bio-state today`
+          : `No bio-state yet today — pair to start`);
+
+    // ----- Leaderboard ------------------------------------------------
     const todayScore = Math.floor(this.score);
-    const board = (s.leaderboard || []).slice(0, 10);
+    const board = (s.leaderboard || []).slice(0, 5);
     const rows = board.map((b, i) => {
-      const isThis = b.score === todayScore && b.date === new Date().toISOString().slice(0, 10);
+      const isThis = b.score === todayScore && b.date === todayStr;
       const colour = isThis ? "#f4d49a" : "rgba(255,255,255,.78)";
       const weight = isThis ? 700 : 500;
       const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1) + ".";
@@ -4306,26 +4541,82 @@ class Valhalla {
            + `</div>`;
     }).join("");
 
+    // ----- Tiered badges, grouped + progress to next tier --------------
     const all = this._allBadges();
     const earned = new Set(s.badges || []);
-    const badgeHtml = all.map(b => {
-      const got = earned.has(b.id);
-      const op = got ? 1 : 0.22;
-      const colour = got ? "#f4d49a" : "rgba(255,255,255,.6)";
-      return `<div title="${b.label}" style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:${op}">`
-           + `<div style="font-size:24px;line-height:1">${b.icon}</div>`
-           + `<div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:${colour};text-align:center">${b.label}</div>`
-           + `</div>`;
+    // Group by axis (Journey, Distance, …)
+    const groups = {};
+    for (const b of all) {
+      (groups[b.group] || (groups[b.group] = [])).push(b);
+    }
+    const TIER_COLOUR = {
+      Bronze: "#c08868", Silver: "#cdd8df", Gold: "#f4d49a", Mythic: "#cba6ff",
+    };
+    const fmt = (n, metric) => {
+      // Time-domain metrics formatted as duration; everything else as integer.
+      const isTimeMetric = metric === "lifeFlow" || metric === "lifeFocused" || metric === "lifeCalm";
+      if (isTimeMetric) {
+        if (n >= 3600) return (n / 3600).toFixed(1) + "h";
+        if (n >= 60)   return Math.round(n / 60) + "m";
+        return Math.round(n) + "s";
+      }
+      return n.toLocaleString();
+    };
+    const groupHtml = Object.keys(groups).map(gname => {
+      const tiers = groups[gname];
+      const tierIcons = tiers.map(t => {
+        const got = earned.has(t.id);
+        const col = got ? TIER_COLOUR[t.tier] : "rgba(255,255,255,.18)";
+        const op = got ? 1 : 0.35;
+        return `<span title="${t.tier}: ${t.label}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${got ? "rgba(244,212,154,.12)" : "transparent"};border:1px solid ${col};font-size:13px;opacity:${op}">${t.icon}</span>`;
+      }).join("");
+      // Find next-not-yet-earned tier in this group for the progress bar.
+      const nextTier = tiers.find(t => !earned.has(t.id));
+      let progressBar = "";
+      if (nextTier) {
+        const val = this._badgeMetricValue(nextTier.metric, s);
+        const pct = Math.min(100, (val / nextTier.threshold) * 100);
+        progressBar = `<div style="margin-top:4px">`
+          + `<div style="display:flex;justify-content:space-between;font-size:9.5px;color:rgba(255,255,255,.55);margin-bottom:2px">`
+          + `<span>Next: <b style="color:${TIER_COLOUR[nextTier.tier]}">${nextTier.label}</b></span>`
+          + `<span style="font-variant-numeric:tabular-nums">${fmt(val, nextTier.metric)} / ${fmt(nextTier.threshold, nextTier.metric)}</span>`
+          + `</div>`
+          + `<div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">`
+          + `<div style="height:100%;width:${pct}%;background:${TIER_COLOUR[nextTier.tier]};border-radius:2px"></div>`
+          + `</div>`
+          + `</div>`;
+      } else {
+        progressBar = `<div style="margin-top:4px;font-size:9.5px;color:${TIER_COLOUR.Mythic};text-align:right">All tiers earned ✦</div>`;
+      }
+      return `<div style="margin-bottom:10px">`
+        + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">`
+        + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(212,173,106,.78);text-transform:uppercase">${gname}</div>`
+        + `<div style="display:flex;gap:4px">${tierIcons}</div>`
+        + `</div>`
+        + progressBar
+        + `</div>`;
     }).join("");
 
+    // ----- Final HTML ---------------------------------------------------
     host.innerHTML =
-        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">`
-      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78)">Skalds' Roll</div>`
+        // Today's recap line + streak
+        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">`
+      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78)">Today</div>`
       + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">🔥 ${s.streak || 0}-day streak</div>`
       + `</div>`
-      + `<div style="margin-bottom:18px">${rows || '<div style="opacity:.6">No runs yet</div>'}</div>`
-      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78);margin-bottom:10px">Honours</div>`
-      + `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">${badgeHtml}</div>`;
+      + `<div style="font-size:12px;color:rgba(255,255,255,.78);margin-bottom:14px">`
+      + (todayBits.length ? todayBits.join(" · ") : "Your first run today!")
+      + `</div>`
+      // 7-day chart
+      + `<div style="margin-bottom:6px;font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78)">7-Day Bio Progress</div>`
+      + `<div style="display:flex;align-items:flex-end;gap:4px;height:48px;margin-bottom:6px">${chartHtml}</div>`
+      + `<div style="font-size:10.5px;color:rgba(255,255,255,.55);margin-bottom:16px;letter-spacing:.02em">${weekHint}</div>`
+      // Leaderboard
+      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78);margin-bottom:8px">Skalds' Roll</div>`
+      + `<div style="margin-bottom:16px">${rows || '<div style="opacity:.6;font-size:12px">No runs yet</div>'}</div>`
+      // Tiered badges by group
+      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78);margin-bottom:10px">Honours · ${earned.size} / ${all.length}</div>`
+      + groupHtml;
   }
 
   _flash() {
@@ -4350,6 +4641,8 @@ class Valhalla {
     this.sliding = false; this.slideTimer = 0;
     this.distance = 0; this.score = 0; this.mead = 0;
     this.lives = 3; this.combo = 0; this.invuln = 0;
+    // Per-run counters for lifetime/daily aggregation in _saveStats.
+    this.runRunes = 0; this.runBossKills = 0;
     this.speed = BASE_SPEED;
     this._shakeAmp = 0; this._shakeT = 0;
     this._timeScale = 1; this._timeScaleTarget = 1;
@@ -5717,6 +6010,8 @@ class Valhalla {
           this._slowMo(0.35, 0.7);
           this.hud.glory.classList.add("on");
           setTimeout(() => this.hud.glory.classList.remove("on"), 350);
+          // Track for lifetime/daily stats.
+          this.runRunes = (this.runRunes || 0) + 1;
           // Runes hit the active boss HARD — they're the player's main
           // ranged attack during a fight.
           if (this._bossActor && !this._bossActor.defeated) {
