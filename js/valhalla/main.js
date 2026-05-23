@@ -2748,26 +2748,48 @@ class Valhalla {
       grp.position.set(0, 0, ahead);
     } else if (type === "surtr") {
       label = "SURTR";
-      // Fire jötunn — dark stone body with molten cracks.
+      // Fire jötunn — full humanoid silhouette (not just torso+head
+      // which user was correctly reporting as "a red block"). Same
+      // proportions as Jötunn but darker stone with molten cracks
+      // glowing through. ALL the body parts now.
       const stone = new THREE.MeshStandardMaterial({
         color: 0x301810, roughness: 1.0, flatShading: true,
-        emissive: 0xff4010, emissiveIntensity: 0.8,
+        emissive: 0xff4010, emissiveIntensity: 0.5,
       });
       const torso = new THREE.Mesh(new THREE.BoxGeometry(3.5, 5, 2.2), stone);
       torso.position.y = 4.2; grp.add(torso);
       const head = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), stone);
       head.position.y = 7.7; grp.add(head);
-      // Flaming sword raised overhead
+      // Arms — same as Jötunn proportions, tagged so we can animate
+      // them swinging during idle (held above the head with the sword).
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.2), stone);
+      armL.position.set(-2.4, 4.5, 0); grp.add(armL);
+      const armR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.2), stone);
+      armR.position.set(2.4, 4.5, 0); grp.add(armR);
+      // Legs
+      for (const sx of [-0.7, 0.7]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.6, 1.4), stone);
+        leg.position.set(sx, 1.4, 0); grp.add(leg);
+      }
+      // Glowing eyes — twin emissive dots on the head.
+      for (const sx of [-0.35, 0.35]) {
+        const eye = new THREE.Mesh(
+          new THREE.SphereGeometry(0.18, 8, 6),
+          new THREE.MeshBasicMaterial({ color: 0xffe040 })
+        );
+        eye.position.set(sx, 7.8, 1.05); grp.add(eye);
+      }
+      // Flaming sword raised in right arm (offset to sit in the hand).
       const sword = new THREE.Mesh(
         new THREE.BoxGeometry(0.4, 6, 0.4),
         new THREE.MeshBasicMaterial({ color: 0xffb030, transparent: true, opacity: 0.95 })
       );
-      sword.position.set(0, 11, 0); grp.add(sword);
+      sword.position.set(2.4, 10, 0); grp.add(sword);
       const swordGlow = new THREE.Mesh(
         new THREE.BoxGeometry(1.2, 6.6, 1.2),
         new THREE.MeshBasicMaterial({ color: 0xff4010, transparent: true, opacity: 0.35, depthWrite: false })
       );
-      swordGlow.position.set(0, 11, 0); grp.add(swordGlow);
+      swordGlow.position.set(2.4, 10, 0); grp.add(swordGlow);
       grp.position.set(0, 0, ahead);
     } else if (type === "valkyrie") {
       label = "VALKYRIE";
@@ -2988,19 +3010,38 @@ class Valhalla {
     let el = this._bioPillEl;
     if (!el) {
       el = document.createElement("div");
+      // BIG always-on bio dashboard — explicit value-prop, not a
+      // subtle decoration. User has repeatedly said "I see no use or
+      // change or output from bio whatsoever". Now this panel shows:
+      //   * Big BPM number with delta from baseline
+      //   * Cognitive state name + WHAT IT'S DOING for the player
+      //   * Gift meter as a visible filling bar
+      //   * Running tally of bio-earned gifts and bonus extensions
       el.style.cssText =
-        "position:fixed;right:24px;top:calc(env(safe-area-inset-top,18px) + 76px);" +
-        "z-index:11;pointer-events:none;text-align:right;" +
-        "font:600 11px/1.45 'Cinzel',serif;letter-spacing:.10em;" +
-        "text-transform:uppercase;color:#c9a55c;" +
-        "text-shadow:0 2px 14px rgba(0,0,0,.9);" +
-        "opacity:0;transition:opacity .4s ease";
+        "position:fixed;right:18px;top:calc(env(safe-area-inset-top,18px) + 76px);" +
+        "z-index:11;pointer-events:none;text-align:left;" +
+        "min-width:200px;max-width:220px;" +
+        "background:rgba(14,10,6,.78);border:1px solid rgba(212,173,106,.32);" +
+        "border-radius:10px;padding:12px 14px;" +
+        "backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" +
+        "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;" +
+        "color:#fff;opacity:0;transition:opacity .4s ease;" +
+        "box-shadow:0 6px 30px rgba(0,0,0,.55)";
       el.innerHTML =
-        '<div class="state" style="font-size:13px;color:#e6dac0"></div>' +
-        '<div class="meter" style="margin-top:6px;width:120px;height:3px;background:rgba(201,165,92,.18);border-radius:2px;overflow:hidden;display:inline-block">' +
-          '<div class="meter-fill" style="height:100%;width:0%;background:#c9a55c;transition:width .3s ease"></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
+          '<div class="bpm" style="font:700 22px/1 \'Cinzel\',serif;color:#f4d49a;font-variant-numeric:tabular-nums"></div>' +
+          '<div class="bpmlbl" style="font-size:9.5px;letter-spacing:.18em;color:rgba(255,255,255,.55);text-transform:uppercase">heart</div>' +
         '</div>' +
-        '<div class="meta" style="margin-top:5px;font-size:10px;color:rgba(201,165,92,.65);letter-spacing:.16em"></div>';
+        '<div class="state" style="font:700 13px/1.2 \'Cinzel\',serif;color:#fff;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px"></div>' +
+        '<div class="effect" style="font-size:11.5px;color:rgba(255,255,255,.78);line-height:1.4;margin-bottom:10px;min-height:1.4em"></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">' +
+          '<div style="font:600 10px/1 \'Cinzel\',serif;letter-spacing:.18em;color:rgba(212,173,106,.85);text-transform:uppercase">Next gift</div>' +
+          '<div class="giftpct" style="font:600 10px/1 \'Cinzel\',serif;color:#f4d49a"></div>' +
+        '</div>' +
+        '<div style="height:5px;background:rgba(201,165,92,.18);border-radius:3px;overflow:hidden">' +
+          '<div class="meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a55c,#f4d49a);transition:width .3s ease"></div>' +
+        '</div>' +
+        '<div class="tally" style="font-size:10.5px;letter-spacing:.04em;color:rgba(255,255,255,.6);margin-top:8px"></div>';
       document.body.appendChild(el);
       this._bioPillEl = el;
     }
@@ -3009,14 +3050,51 @@ class Valhalla {
     if (!live || !this.running) return;
     const s = this.bioSession;
     const cs = this.cognitiveState;
+
+    // BPM with delta from a 70 BPM resting baseline (simple visible
+    // reference; the SDK has its own rolling baseline for internals).
+    const bpmEl = el.querySelector(".bpm");
+    if (this.bpm) {
+      const delta = this.bpm - 70;
+      const sign = delta > 0 ? "+" : "";
+      bpmEl.innerHTML = this.bpm + ' <span style="font-size:11px;color:' +
+        (delta > 15 ? "#ff8a7a" : delta < -5 ? "#7fe5a0" : "rgba(255,255,255,.55)") +
+        ';font-weight:500;letter-spacing:.04em">' + sign + delta + '</span>';
+    } else {
+      bpmEl.innerHTML = '<span style="color:rgba(255,255,255,.45);font-size:14px;font-weight:500">Face camera</span>';
+    }
+
+    // State + effect description — TELLS the player what their state
+    // is doing for them right now.
+    const STATE_EFFECTS = {
+      flow:       "+50% gift duration · faster gift meter",
+      focused:    "+35% gift duration · gift meter +30%",
+      calm:       "+20% gift duration · gift meter armed",
+      berserker:  "+50% score · damages bosses",
+      meditation: "−10% game speed · steadier",
+      aroused:    "speed bump from your pulse",
+      frantic:    "score multiplier · careful",
+      distracted: "no bonus yet — settle in",
+      neutral:    "find calm to earn god-gifts",
+    };
     el.querySelector(".state").textContent =
       cs && cs !== "neutral"
         ? cs.charAt(0).toUpperCase() + cs.slice(1)
-        : (this.bpm ? "Steady" : "Face the camera");
+        : (this.bpm ? "Steady" : "Warming");
+    el.querySelector(".effect").textContent =
+      STATE_EFFECTS[cs] || STATE_EFFECTS.neutral;
+
+    // Gift meter %.
     const pct = Math.min(100, (s.giftAccumSec / 12) * 100);
     el.querySelector(".meter-fill").style.width = pct + "%";
-    el.querySelector(".meta").textContent =
-      "Gifts " + s.giftsEarned + " · " + (this.bpm ? this.bpm + " bpm" : "—");
+    el.querySelector(".giftpct").textContent = (pct | 0) + "%";
+
+    // Cumulative bio impact tally.
+    const tallyParts = [];
+    if (s.giftsEarned)             tallyParts.push("🎁 " + s.giftsEarned + " gifts");
+    if (s.durationBonusApplied)    tallyParts.push("⏱ " + s.durationBonusApplied + " extended");
+    if (s.flowSec >= 1)            tallyParts.push("🌊 " + s.flowSec.toFixed(0) + "s flow");
+    el.querySelector(".tally").textContent = tallyParts.join(" · ") || "Stay calm to earn rewards";
   }
 
   // WORLD-SPACE MARKERS — HTML icons projected to the screen
@@ -5118,7 +5196,10 @@ class Valhalla {
         m.position.x = Math.sin(t * 0.7 + i) * 8;
       }
     }
-    // Boss actor — scrolls with the world, idles, fights, dies.
+    // Boss actor — scrolls with the world, idles dramatically, fights,
+    // dies. Now also drives the screen-space HP banner for unambiguous
+    // boss-fight UI (the in-world bar above the head was easy to miss).
+    const bossBanner = document.getElementById("bossBanner");
     if (this._bossActor) {
       const b = this._bossActor;
       const sz = b.spawnAt - this.distance;
@@ -5131,16 +5212,26 @@ class Valhalla {
         b.mesh.rotation.x = -fall * 1.4;
         b.mesh.position.y = -fall * 4;
         if (b.hpFill) b.hpFill.visible = false;
-        // Cleanup once well past + faded out.
+        if (bossBanner) bossBanner.style.display = "none";
         if (fall >= 1 && sz < -10) {
           this.scene.remove(b.mesh);
           this._bossActor = null;
         }
       } else {
-        // Idle: subtle bob + sway.
+        // BIGGER, more dramatic idle. Was a quiet 0.18m bob — easy
+        // to miss. Now 0.45m bob + 0.12rad sway, slightly faster.
+        // The boss visibly BREATHES + ROCKS.
         b.idle += dt;
-        b.mesh.position.y = Math.sin(b.idle * 1.2) * 0.18;
-        b.mesh.rotation.y = Math.sin(b.idle * 0.6) * 0.04;
+        b.mesh.position.y = Math.sin(b.idle * 1.4) * 0.45;
+        b.mesh.rotation.y = Math.sin(b.idle * 0.8) * 0.12;
+        // If boss has arms (children with x > 2), swing them like an
+        // angry war-stance. Children indexed by position so we don't
+        // need to keep separate refs.
+        for (const c of b.mesh.children) {
+          if (c.position && Math.abs(c.position.x) > 1.8 && c.position.y > 3 && c.position.y < 6) {
+            c.rotation.z = Math.sin(b.idle * 1.6 + (c.position.x > 0 ? 0 : Math.PI)) * 0.18;
+          }
+        }
 
         // BIO DAMAGE: being in Flow state during a fight ticks damage
         // continuously (5/s). This is the "your physiology helps you
@@ -5148,22 +5239,37 @@ class Valhalla {
         if (this.cognitiveState === "flow")        this._damageBoss(5 * dt, "flow");
         else if (this.cognitiveState === "berserker") this._damageBoss(3 * dt, "berserker");
 
+        // SCREEN-SPACE BOSS BANNER — always-visible HP + name + hint
+        // while the boss is in front of the player.
+        if (bossBanner && sz > -10) {
+          bossBanner.style.display = "block";
+          const nameEl = document.getElementById("bossBannerName");
+          const fillEl = document.getElementById("bossBannerFill");
+          if (nameEl) nameEl.textContent = b.type.toUpperCase();
+          if (fillEl) fillEl.style.width = Math.max(0, (b.hp / b.hpMax) * 100) + "%";
+        } else if (bossBanner) {
+          bossBanner.style.display = "none";
+        }
+
         // Boss escapes if it scrolls 20m past the player still alive.
         if (sz < -20 && !b.escaped) this._bossEscaped();
         if (sz < -30) {
           this.scene.remove(b.mesh);
           this._bossActor = null;
+          if (bossBanner) bossBanner.style.display = "none";
         }
       }
 
-      // HP bar billboards toward camera — quick LookAt every frame.
+      // In-world HP bar still updated, just less prominent than the
+      // screen-space banner.
       if (b.hpFill && !b.defeated) {
-        // Keep the fill anchored to its own left edge so it shrinks
-        // from the right (visual: hp depleting).
         const w = b.hpFillBaseWidth;
         const pct = Math.max(0.001, b.hp / b.hpMax);
         b.hpFill.position.x = -(w * (1 - pct)) * 0.5;
       }
+    } else {
+      // No boss — make sure banner is hidden.
+      if (bossBanner) bossBanner.style.display = "none";
     }
 
     // forward distance
