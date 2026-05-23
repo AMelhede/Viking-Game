@@ -31,6 +31,72 @@
     body.playing .hud{opacity:1;visibility:visible}
     .hud > *{pointer-events:auto}
 
+    /* FIRST-RUN ONBOARDING — three-step guided overlay. Higher z-index
+       than the start menu so it's the first thing a new player sees. */
+    .intro{
+      position:fixed;inset:0;z-index:70;
+      display:flex;align-items:center;justify-content:center;
+      padding:16px;
+      background:radial-gradient(ellipse at center,rgba(8,6,4,.62) 0%,rgba(4,3,2,.96) 100%);
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+    }
+    .intro-card{
+      width:100%;max-width:520px;padding:42px 36px 22px;
+      background:rgba(14,10,6,.94);border:1px solid rgba(212,173,106,.32);
+      border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.7);
+    }
+    .intro-eyebrow{
+      font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      color:#d4ad6a;margin-bottom:14px;
+    }
+    .intro-card h2{
+      font:600 24px/1.25 'Cinzel',serif;letter-spacing:.04em;
+      color:#fff;margin:0 0 16px;
+    }
+    .intro-card p{
+      font:400 15px/1.55 inherit;color:rgba(255,255,255,.9);
+      margin:0 0 8px;
+    }
+    .intro-card p b{color:#f4d49a;font-weight:700}
+    .intro-keys{
+      display:grid;grid-template-columns:repeat(2,1fr);gap:14px 24px;
+      margin:18px 0 22px;
+    }
+    .intro-keys > div{
+      font:500 13px/1.4 inherit;color:rgba(255,255,255,.85);
+    }
+    .intro-keys kbd{
+      display:inline-block;padding:4px 10px;margin:0 3px;min-width:18px;text-align:center;
+      background:rgba(212,173,106,.16);border:1px solid rgba(212,173,106,.55);
+      border-radius:6px;font:inherit;font-size:14px;color:#f4d49a;font-weight:700;
+    }
+    .intro-footer{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-top:24px;padding-top:18px;
+      border-top:1px solid rgba(212,173,106,.18);
+    }
+    .intro-skip,.intro-next{
+      cursor:pointer;padding:10px 22px;border-radius:8px;
+      font:600 13px/1 inherit;letter-spacing:.04em;
+      transition:transform .15s,background .2s;
+    }
+    .intro-skip{
+      background:transparent;border:1px solid rgba(212,173,106,.3);
+      color:rgba(255,255,255,.72);
+    }
+    .intro-skip:hover{background:rgba(212,173,106,.08);color:#fff}
+    .intro-next{
+      background:#d4ad6a;border:none;color:#1a1208;font-weight:700;
+      box-shadow:0 4px 18px rgba(212,173,106,.28);
+    }
+    .intro-next:hover{background:#e8c084;transform:translateY(-1px)}
+    .intro-dots{display:flex;gap:6px}
+    .intro-dots .dot{
+      width:7px;height:7px;border-radius:50%;
+      background:rgba(212,173,106,.28);transition:background .2s,transform .2s;
+    }
+    .intro-dots .dot.on{background:#d4ad6a;transform:scale(1.2)}
+
     /* CINEMATIC FRAMING. Three stacked layers that immediately read
        as "film" instead of "phone game":
          .letterbox  — top + bottom hard black bars (movie aspect)
@@ -667,6 +733,48 @@
       <div id="bossBannerFill" style="height:100%;width:100%;background:linear-gradient(90deg,#ff3030,#ff8030);transition:width .15s ease"></div>
     </div>
     <div id="bossBannerHint" style="font-size:11px;color:rgba(255,255,255,.78);margin-top:6px;letter-spacing:.06em">Collect runes · Survive obstacles · Stay in Flow</div>
+  </div>
+
+  <!-- FIRST-RUN ONBOARDING — three-step guided overlay shown only on
+       the very first visit (stored via localStorage.valhalla.seenIntro).
+       Walks a new player through: world setup → controls → bio (opt) →
+       Play. Each step has its own panel with a Next/Skip footer. -->
+  <div class="intro" id="introOverlay" style="display:none">
+    <div class="intro-card">
+      <div class="intro-step" data-step="1">
+        <div class="intro-eyebrow">Welcome to Valhalla</div>
+        <h2>You are a Viking running the realms of Norse myth.</h2>
+        <p>Race through Midgard, Jötunheim, Muspelheim, and Asgard.
+          Dodge what's red, grab what's gold, slay the bosses you meet.</p>
+      </div>
+      <div class="intro-step" data-step="2" style="display:none">
+        <div class="intro-eyebrow">Controls</div>
+        <h2>Use the arrow keys.</h2>
+        <div class="intro-keys">
+          <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd><div>Change lane</div></div>
+          <div><kbd>&uarr;</kbd><div>Jump</div></div>
+          <div><kbd>&darr;</kbd><div>Slide</div></div>
+          <div><kbd>P</kbd><div>Pause</div></div>
+        </div>
+        <p>Watch for <span style="color:#ff7060;font-weight:700">red ⚠</span> dangers and
+          <span style="color:#f4d49a;font-weight:700">gold ⭐</span> gifts above the world.</p>
+      </div>
+      <div class="intro-step" data-step="3" style="display:none">
+        <div class="intro-eyebrow">Your body changes the game</div>
+        <h2>Optional: connect your webcam or a Muse headband.</h2>
+        <p>When you stay <b>calm</b> or <b>focused</b>, the gods drop you free powerups
+          and your powerups last longer. <br/><br/>
+          You can skip this and play without it — the game works fine. But the more your
+          body settles, the more the world rewards you.</p>
+      </div>
+      <div class="intro-footer">
+        <button class="intro-skip" id="introSkip">Skip</button>
+        <div class="intro-dots">
+          <span class="dot on"></span><span class="dot"></span><span class="dot"></span>
+        </div>
+        <button class="intro-next" id="introNext">Next</button>
+      </div>
+    </div>
   </div>
 
   <!-- Cinematic framing layers (purely visual, no JS interaction).

@@ -287,7 +287,10 @@ class Audio {
     out.gain.exponentialRampToValueAtTime(vol, when + 0.08);
     out.gain.linearRampToValueAtTime(vol * 0.82, when + Math.max(0.12, dur * 0.7));
     out.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    for (const o of oscs) { o.start(when); o.stop(when + dur + 0.05); }
+    // (Each harmonic oscillator was already started inside the harmonic
+    // loop above. The leftover `for (const o of oscs)` from the old
+    // sawtooth-based lur was throwing ReferenceError because `oscs`
+    // doesn't exist anymore — removed.)
     vib.start(when); vib.stop(when + dur + 0.05);
   }
 
@@ -1114,6 +1117,46 @@ class Valhalla {
     this._lastT = performance.now();
     this._frame = this._frame.bind(this);
     requestAnimationFrame(this._frame);
+
+    // Fire the first-run onboarding flow if this is the user's first
+    // ever visit (no localStorage flag set).
+    this._maybeShowIntro();
+  }
+
+  // First-run guided overlay. Three steps: world setup → controls →
+  // bio integration. Skip / Next buttons advance. localStorage flag
+  // prevents it from showing on subsequent visits.
+  _maybeShowIntro() {
+    try {
+      if (localStorage.getItem("valhalla.seenIntro") === "1") return;
+    } catch {}
+    const overlay = document.getElementById("introOverlay");
+    if (!overlay) return;
+    overlay.style.display = "flex";
+    let step = 1;
+    const total = 3;
+    const showStep = (n) => {
+      step = n;
+      for (const el of overlay.querySelectorAll(".intro-step")) {
+        el.style.display = (parseInt(el.dataset.step, 10) === n) ? "block" : "none";
+      }
+      const dots = overlay.querySelectorAll(".intro-dots .dot");
+      dots.forEach((d, i) => d.classList.toggle("on", i < n));
+      const nextBtn = document.getElementById("introNext");
+      if (nextBtn) nextBtn.textContent = (n === total) ? "Enter Valhalla" : "Next";
+    };
+    const dismiss = () => {
+      overlay.style.opacity = "0";
+      overlay.style.transition = "opacity .35s ease";
+      setTimeout(() => { overlay.style.display = "none"; }, 350);
+      try { localStorage.setItem("valhalla.seenIntro", "1"); } catch {}
+    };
+    document.getElementById("introNext")?.addEventListener("click", () => {
+      if (step >= total) dismiss();
+      else showStep(step + 1);
+    });
+    document.getElementById("introSkip")?.addEventListener("click", dismiss);
+    showStep(1);
   }
 
   // ---------- three setup ----------
@@ -1460,7 +1503,7 @@ class Valhalla {
       // Repurposed as snow micro-relief: when tinted cool-white via
       // material.color, the noise reads as wind-packed snow crystals.
       const colorURL = "https://threejs.org/examples/textures/terrain/grasslight-big.jpg";
-      const normURL  = "https://threejs.org/examples/textures/terrain/grasslight-big-nm.jpg";
+      // (No separate normal map — the previous URL 404'd.)
 
       loader.load(colorURL, (tex) => {
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -1475,16 +1518,11 @@ class Valhalla {
         console.warn("[Valhalla] ground PBR colour map load failed (keeping procedural)", err);
       });
 
-      loader.load(normURL, (tex) => {
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(14, 14);
-        tex.anisotropy = 8;
-        this.chunkMat.normalMap = tex;
-        this.chunkMat.normalScale = new THREE.Vector2(0.7, 0.7);
-        this.chunkMat.needsUpdate = true;
-      }, undefined, (err) => {
-        console.warn("[Valhalla] ground PBR normal map load failed (keeping procedural)", err);
-      });
+      // Normal-map URL I picked earlier (grasslight-big-nm.jpg) doesn't
+      // exist on threejs.org and returned 404. Skipped — the existing
+      // bumpMap fallback inside the procedural canvas texture already
+      // gives surface relief. If a real PBR normal map ships later,
+      // wire it in here.
     } catch (e) {
       console.warn("[Valhalla] ground texture loader setup failed", e);
     }
@@ -2167,9 +2205,12 @@ class Valhalla {
             o.frustumCulled = false;
             // Clone the material so we don't mutate cached/shared maps.
             const original = o.material;
+            // No 'skinning' option — that's not a MeshStandardMaterial
+            // property in modern Three.js (the mesh's isSkinnedMesh
+            // flag controls skinning automatically). Setting it
+            // emitted a warning per traversed mesh.
             const m = new THREE.MeshStandardMaterial({
               roughness: 0.92, metalness: 0.05,
-              skinning: true,
               envMapIntensity: 0.85,
               flatShading: false,
             });
@@ -2204,7 +2245,7 @@ class Valhalla {
             if (original) {
               if (original.normalMap)   { m.normalMap   = original.normalMap;   m.normalScale = new THREE.Vector2(0.8, 0.8); }
               if (original.aoMap)       { m.aoMap       = original.aoMap;       m.aoMapIntensity = 0.9; }
-              if (original.skinning !== undefined) m.skinning = original.skinning;
+              // (skinning prop removed — see comment above)
             }
             o.material = m;
           });
