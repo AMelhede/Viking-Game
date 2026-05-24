@@ -415,29 +415,29 @@
        luxury-brand template chrome. */
     .start{
       position:fixed;inset:0;z-index:50;
-      display:flex;align-items:center;justify-content:center;
-      padding:env(safe-area-inset-top,16px) 16px env(safe-area-inset-bottom,16px);
-      /* Heavier base darkness. the previous .82 alpha let the live 3D
-         scene (trees, character, snow particles) bleed through and
-         clash with the menu text. Now nearly opaque at edges. */
+      /* SCROLLABLE container so a long menu (with all the new
+         hero/realm/boss/quest/leaderboard/honours sections) actually
+         fits on screen and the user can scroll to see everything. */
+      display:flex;align-items:flex-start;justify-content:center;
+      padding:24px 16px 32px;
+      overflow-y:auto;
       background:radial-gradient(ellipse at center,rgba(8,6,4,.55) 0%,rgba(4,3,2,.96) 100%);
       transition:opacity .5s ease;
     }
     .start.hide{opacity:0;pointer-events:none}
-    /* SOLID CARD. opaque parchment-dark background with subtle warm
-       border. The menu reads as a real card, not as text floating on
-       a busy live-3D world. AA contrast guaranteed regardless of
-       what the canvas is rendering. */
     .start .card{
       width:100%;max-width:480px;
-      padding:60px 32px 32px;
+      padding:36px 28px 28px;
       text-align:center;
-      background:rgba(14,10,6,.88);
+      background:rgba(14,10,6,.92);
       border:1px solid rgba(212,173,106,.22);
       border-radius:12px;
       backdrop-filter:blur(18px);
       -webkit-backdrop-filter:blur(18px);
       box-shadow:0 30px 100px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.4);
+      /* Margin instead of vertical centering so the card sits at the
+         top of the scroll viewport and the user can scroll down. */
+      margin:0 auto;
     }
     .start .brand{display:none}
     /* TITLE. Cinzel keeps the cinematic gravitas. Lighter weight (600
@@ -1235,7 +1235,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524i"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524j"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which
