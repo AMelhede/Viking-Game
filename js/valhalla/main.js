@@ -5312,6 +5312,10 @@ class Valhalla {
     $("beginBtn").addEventListener("click", () => this._begin());
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
+    // SHARE RUN — generate a canvas image of the last run summary and
+    // either open native share sheet (mobile) or download the PNG.
+    const shareBtn = document.getElementById("shareRunBtn");
+    if (shareBtn) shareBtn.addEventListener("click", () => this._shareRun());
 
     // Sync dialog wiring + initial state. Auto-pull from cloud on
     // boot if the host provides ElataSync; otherwise just show local
@@ -5756,9 +5760,17 @@ class Valhalla {
       message = `📈 Your Flow time is up sharply this week vs. your 30-day average. Keep going.`;
       tone = "win";
     }
-    // 5. Streak milestone soon
+    // 5. Streak milestone soon (mention freezes if any)
     else if ((s.streak || 0) >= 2 && (s.streak || 0) < 7) {
-      message = `🔥 ${s.streak} days in a row. ${7 - s.streak} more for your 7-day streak honour.`;
+      const fz = s.streakFreezes || 0;
+      const fzNote = fz > 0 ? `  🛡 ${fz} freeze${fz > 1 ? "s" : ""} ready.` : "";
+      message = `🔥 ${s.streak} days in a row. ${7 - s.streak} more for your 7-day honour.${fzNote}`;
+      tone = "neutral";
+    }
+    // 5b. Streak high but might miss soon — show freezes
+    else if ((s.streak || 0) >= 7 && (s.streakFreezes || 0) > 0) {
+      const fz = s.streakFreezes;
+      message = `🔥 ${s.streak}-day streak. 🛡 ${fz} freeze${fz > 1 ? "s" : ""} in reserve if life gets in the way.`;
       tone = "neutral";
     }
     // 6. Welcome back
@@ -5930,6 +5942,28 @@ class Valhalla {
       }
     });
 
+    // PWA install button — wire only if browser fired beforeinstallprompt.
+    const installBtn = document.getElementById("installPwaBtn");
+    if (installBtn) {
+      if (window.__valhallaInstallPrompt) installBtn.style.display = "inline-block";
+      installBtn.addEventListener("click", async () => {
+        const promptEvt = window.__valhallaInstallPrompt;
+        if (!promptEvt) {
+          this._showSyncResult("Install prompt not available — try Add to Home Screen from your browser menu.", "warn");
+          return;
+        }
+        promptEvt.prompt();
+        const choice = await promptEvt.userChoice;
+        if (choice.outcome === "accepted") {
+          this._showSyncResult("Installed. Look for the Valhalla icon on your home screen.", "ok");
+          installBtn.style.display = "none";
+          window.__valhallaInstallPrompt = null;
+        } else {
+          this._showSyncResult("Install cancelled.", "warn");
+        }
+      });
+    }
+
     // Daily reminder notification setup.
     const remTime = document.getElementById("reminderTime");
     const remToggle = document.getElementById("reminderToggle");
@@ -6035,6 +6069,134 @@ class Valhalla {
     el.textContent = msg;
     clearTimeout(this._syncResultT);
     this._syncResultT = setTimeout(() => { el.textContent = ""; }, 5000);
+  }
+
+  // SHARE RUN — auto-generate a 1080x1080 canvas card summarising the
+  // last run (score, distance, mead, bio time, biome reached) on a
+  // Norse-themed background. Uses Web Share API on mobile or falls
+  // back to download. The card is the viral loop: every Skald who
+  // shares one is a recruitment poster for Valhalla.
+  async _shareRun() {
+    const s = Store.load();
+    const bs = this.bioSession || {};
+    const W = 1080, H = 1080;
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+
+    // Background: dark Cinzel-bronze gradient
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0,   "#1a120a");
+    bg.addColorStop(0.5, "#0e0905");
+    bg.addColorStop(1,   "#06050a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle vignette
+    const vg = ctx.createRadialGradient(W/2, H/2, W*0.3, W/2, H/2, W*0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,0.7)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Bronze border
+    ctx.strokeStyle = "rgba(212,173,106,0.5)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(30, 30, W - 60, H - 60);
+
+    // Title
+    ctx.fillStyle = "#f4d49a";
+    ctx.font = "italic 600 36px 'Cinzel', serif";
+    ctx.textAlign = "center";
+    ctx.fillText("VALHALLA · SKALD'S RUN", W/2, 130);
+
+    // Skald name
+    ctx.fillStyle = "rgba(244,212,154,0.8)";
+    ctx.font = "italic 300 30px 'Cinzel', serif";
+    ctx.fillText(`— ${Store.getSkaldName()} —`, W/2, 190);
+
+    // Big score
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 180px 'Cinzel', serif";
+    ctx.fillText(Math.floor(this.score).toLocaleString(), W/2, 410);
+
+    ctx.fillStyle = "rgba(212,173,106,0.65)";
+    ctx.font = "600 22px 'Cinzel', serif";
+    ctx.fillText("SCORE", W/2, 450);
+
+    // Three stats row
+    const statRow = (x, label, val, colour) => {
+      ctx.fillStyle = colour || "#fff";
+      ctx.font = "bold 64px 'Cinzel', serif";
+      ctx.fillText(val, x, 600);
+      ctx.fillStyle = "rgba(212,173,106,0.55)";
+      ctx.font = "600 18px 'Cinzel', serif";
+      ctx.fillText(label, x, 640);
+    };
+    statRow(W * 0.20, "DISTANCE", `${Math.round(this.distance)}m`);
+    statRow(W * 0.50, "REALM",    this.biomeName || "Midgard", "#a3b8ff");
+    statRow(W * 0.80, "MEAD",     this.mead.toString(), "#ffd066");
+
+    // Bio summary row (only if had bio data)
+    if (bs.flowSec > 0.5 || bs.calmSec > 0.5 || bs.focusedSec > 0.5) {
+      ctx.fillStyle = "rgba(212,173,106,0.55)";
+      ctx.font = "600 18px 'Cinzel', serif";
+      ctx.fillText("· BODY ·", W/2, 740);
+      const bioRow = (x, label, val, colour) => {
+        ctx.fillStyle = colour;
+        ctx.font = "bold 42px 'Cinzel', serif";
+        ctx.fillText(val, x, 810);
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.font = "600 16px 'Cinzel', serif";
+        ctx.fillText(label, x, 840);
+      };
+      if (bs.flowSec    > 0.5) bioRow(W * 0.22, "FLOW",    `${Math.round(bs.flowSec)}s`,    "#7ad9ff");
+      if (bs.focusedSec > 0.5) bioRow(W * 0.50, "FOCUSED", `${Math.round(bs.focusedSec)}s`, "#a3b8ff");
+      if (bs.calmSec    > 0.5) bioRow(W * 0.78, "CALM",    `${Math.round(bs.calmSec)}s`,    "#80d0e0");
+    }
+
+    // Streak + saga footer
+    ctx.fillStyle = "rgba(244,212,154,0.8)";
+    ctx.font = "italic 600 26px 'Cinzel', serif";
+    const fLine = [];
+    if ((s.streak || 0) > 0)      fLine.push(`🔥 ${s.streak}-day streak`);
+    if ((s.totalCycles || 0) > 0) fLine.push(`${s.totalCycles} saga${s.totalCycles > 1 ? "s" : ""} walked`);
+    ctx.fillText(fLine.join("  ·  ") || "First steps in Midgard", W/2, 940);
+
+    // Bottom-right URL
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.font = "600 18px 'Cinzel', serif";
+    ctx.textAlign = "right";
+    ctx.fillText("valhalla · brain app store", W - 60, 1020);
+
+    // Convert to blob
+    const blob = await new Promise(res => c.toBlob(res, "image/png"));
+    if (!blob) {
+      console.warn("[Share] toBlob returned null");
+      return;
+    }
+    const file = new File([blob], `valhalla-${Math.floor(this.score)}.png`, { type: "image/png" });
+
+    // Native Web Share with file if supported (mobile), else download
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "Valhalla — Skald's Run",
+          text: `I scored ${Math.floor(this.score).toLocaleString()} in Valhalla.`,
+          files: [file],
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn("[Share] native share failed, falling back to download", e);
+    }
+    // Fallback: download
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 500);
   }
 
   // Daily reminder scheduler. Fires a browser notification at the
@@ -6161,13 +6323,37 @@ class Valhalla {
     }
     s.daily = daily;
 
-    // DAILY STREAK — runs played on consecutive days.
+    // DAILY STREAK + STREAK FREEZE (Duolingo-style).
+    // - Every 7 streak days earns a freeze, max 3 stored.
+    // - If user missed exactly 1 day and has >=1 freeze, auto-consume
+    //   one and preserve the streak. Otherwise streak resets to 1.
+    // - >=2 missed days resets regardless (freezes only cover 1 day).
     if (s.lastPlayDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+      const twoDaysAgo = new Date(); twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
       const ydStr = yesterday.toISOString().slice(0, 10);
-      s.streak = (s.lastPlayDate === ydStr) ? (s.streak || 0) + 1 : 1;
+      const twoStr = twoDaysAgo.toISOString().slice(0, 10);
+      const prevStreak = s.streak || 0;
+      let consumedFreeze = false;
+      if (s.lastPlayDate === ydStr) {
+        s.streak = prevStreak + 1;
+      } else if (s.lastPlayDate === twoStr && (s.streakFreezes || 0) >= 1) {
+        // Missed exactly 1 day, freeze available — consume and extend
+        s.streakFreezes = (s.streakFreezes || 0) - 1;
+        s.streak = prevStreak + 1;
+        consumedFreeze = true;
+        s.lastFreezeUsedDate = today;
+      } else {
+        s.streak = 1;
+      }
       s.lastPlayDate = today;
+      // Earn a freeze every 7 streak days (when crossing the multiple).
+      if (s.streak > prevStreak && s.streak % 7 === 0 && (s.streakFreezes || 0) < 3) {
+        s.streakFreezes = (s.streakFreezes || 0) + 1;
+        s.lastFreezeEarnedDate = today;
+      }
+      // Stash for the nudge / over-screen to surface.
+      this._streakFreezeConsumed = consumedFreeze;
     }
     s.bestStreak = Math.max(s.bestStreak || 0, s.streak || 0);
 
