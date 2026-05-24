@@ -87,17 +87,236 @@ const BIOMES = [
 const BIOME_CYCLE_LENGTH = BIOMES.reduce((s, b) => s + b.length, 0);
 
 const STORE_KEY = "valhalla.v1";
+const SKALD_KEY = "valhalla.skaldId";
+const SKALD_NAME_KEY = "valhalla.skaldName";
 
 // ---------------- Storage ----------------
+// Cloud-ready storage layer. The save model has three layers:
+//
+//   1. LOCAL — localStorage. Always writes. Works offline. Per browser
+//      × device × origin. This is the source of truth between syncs.
+//
+//   2. PORTABLE — snapshot() / restore() / exportString() / importString().
+//      The full save as a single JSON blob the user can copy/paste or
+//      share via URL fragment. Manual cross-device sync without any
+//      backend. Bridges the gap until cloud auth is live.
+//
+//   3. CLOUD — auto-detected via window.ElataSync (provided by the
+//      Elata App Store shell when the game is hosted there). Contract:
+//        window.ElataSync = {
+//          ready: Promise,                  // resolves when sync layer alive
+//          userId: string,                  // canonical user ID
+//          load(): Promise<snapshot|null>,  // pull latest from cloud
+//          save(snapshot): Promise<void>,   // push to cloud
+//          onChange?(cb): void,             // remote update notifications
+//        };
+//      When present, Store auto-pulls on boot and auto-pushes on every
+//      save with last-write-wins merge by snapshot.savedAt.
+//
+// All three layers operate on the same JSON shape — the game code is
+// completely unaware of which layer is active.
+//
+// SKALD ID: a stable per-user identifier (16-hex + 3-word mnemonic
+// nickname) persisted in localStorage. Used as the cloud key when the
+// host doesn't provide a userId. Survives leaderboard moves and is
+// shown in the menu so users can recognise their own runs.
 const Store = {
+  // ---------- local layer ----------
   load() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
     catch { return {}; }
   },
   save(data) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {}
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(data));
+      // Best-effort cloud push; doesn't block save success.
+      this._maybeCloudPush();
+    } catch {}
+  },
+
+  // ---------- skald identity ----------
+  // Stable per-user ID. Created lazily on first call so a fresh
+  // browser doesn't trigger ID generation until it's actually needed.
+  // The mnemonic ("raven-fjord-mead") is for human display; the hex
+  // ID is what cloud/sync layers actually key off.
+  getSkaldId() {
+    let id = localStorage.getItem(SKALD_KEY);
+    if (!id) {
+      id = newSkaldId();
+      try { localStorage.setItem(SKALD_KEY, id); } catch {}
+    }
+    return id;
+  },
+  getSkaldName() {
+    let name = localStorage.getItem(SKALD_NAME_KEY);
+    if (!name) {
+      name = newSkaldName();
+      try { localStorage.setItem(SKALD_NAME_KEY, name); } catch {}
+    }
+    return name;
+  },
+
+  // ---------- portable snapshot ----------
+  // Full save as a versioned, self-describing object. This is the
+  // contract both the export string and the cloud layer use.
+  snapshot() {
+    return {
+      version: 1,
+      skaldId: this.getSkaldId(),
+      skaldName: this.getSkaldName(),
+      savedAt: Date.now(),
+      data: this.load(),
+    };
+  },
+  restore(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") throw new Error("bad snapshot");
+    if (snapshot.version !== 1) throw new Error("unsupported snapshot version " + snapshot.version);
+    if (!snapshot.data || typeof snapshot.data !== "object") throw new Error("snapshot has no data");
+    // Adopt the snapshot's identity too — restoring should make this
+    // device "be" the user who created the snapshot.
+    if (snapshot.skaldId) try { localStorage.setItem(SKALD_KEY, snapshot.skaldId); } catch {}
+    if (snapshot.skaldName) try { localStorage.setItem(SKALD_NAME_KEY, snapshot.skaldName); } catch {}
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(snapshot.data)); } catch {}
+  },
+
+  // ---------- export / import ----------
+  // Base64-URL-safe encoded JSON. Compact enough to fit in a URL
+  // fragment (typical save is ~5-10KB before encoding).
+  exportString() {
+    const json = JSON.stringify(this.snapshot());
+    // btoa needs binary string; UTF-8 may contain >127 chars, so
+    // encode through TextEncoder first to be safe with future content.
+    const bytes = new TextEncoder().encode(json);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  },
+  importString(s) {
+    if (!s || typeof s !== "string") throw new Error("empty save");
+    s = s.trim().replace(/-/g, "+").replace(/_/g, "/");
+    // Restore padding stripped by exportString.
+    while (s.length % 4) s += "=";
+    const bin = atob(s);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const json = new TextDecoder().decode(bytes);
+    this.restore(JSON.parse(json));
+  },
+
+  // Build a self-contained share URL — works offline, works on any
+  // device with the game URL, no backend needed.
+  exportUrl() {
+    const enc = this.exportString();
+    const base = location.origin + location.pathname;
+    return base + "#save=" + enc;
+  },
+
+  // On boot, if URL has #save=… offer to restore. Returns true if a
+  // restore was applied so the caller can refresh stats display.
+  tryRestoreFromUrl() {
+    const m = location.hash.match(/^#save=(.+)$/);
+    if (!m) return false;
+    const enc = m[1];
+    // Clear the hash so a refresh doesn't re-prompt.
+    try { history.replaceState(null, "", location.pathname); } catch {}
+    if (!confirm("Restore Valhalla save from this link? This will REPLACE your current progress.")) return false;
+    try {
+      this.importString(enc);
+      alert("Save restored. Welcome back.");
+      return true;
+    } catch (e) {
+      console.warn("[Store] restore from URL failed", e);
+      alert("Couldn't read that save link — it may be corrupted.");
+      return false;
+    }
+  },
+
+  // ---------- cloud sync ----------
+  // ElataSync is provided by the host (Elata App Store). If absent
+  // we're in local-only mode and every cloud op is a no-op.
+  isCloudAvailable() { return !!(typeof window !== "undefined" && window.ElataSync); },
+  cloudUserId() {
+    return (window.ElataSync && window.ElataSync.userId) || this.getSkaldId();
+  },
+  cloudStatusText() {
+    if (!this.isCloudAvailable()) return "Local only · this device";
+    return "Synced via Elata App Store";
+  },
+
+  // Pull on boot. If remote is newer than local, restore. Otherwise
+  // push local up. Last-write-wins by savedAt timestamp — good enough
+  // for a single-user game where the user only plays one device at a
+  // time. (Real concurrent multi-device would need CRDT merge, which
+  // is overkill for a high-score blob.)
+  async cloudPull() {
+    if (!this.isCloudAvailable()) return { ok: false, reason: "no_cloud" };
+    try {
+      await (window.ElataSync.ready || Promise.resolve());
+      const remote = await window.ElataSync.load();
+      const local = this.snapshot();
+      if (!remote) {
+        // Cloud is empty — push our local up so future devices have something to pull.
+        await window.ElataSync.save(local);
+        return { ok: true, action: "pushed-initial" };
+      }
+      if ((remote.savedAt || 0) > (local.savedAt || 0)) {
+        this.restore(remote);
+        return { ok: true, action: "pulled" };
+      } else if ((local.savedAt || 0) > (remote.savedAt || 0)) {
+        await window.ElataSync.save(local);
+        return { ok: true, action: "pushed" };
+      }
+      return { ok: true, action: "in-sync" };
+    } catch (e) {
+      console.warn("[Store] cloudPull failed", e);
+      return { ok: false, reason: "error", error: e };
+    }
+  },
+
+  // Best-effort push triggered by every save(). Coalesced via a 2s
+  // debounce so a flurry of writes only sends one request.
+  _cloudPushTimer: null,
+  _maybeCloudPush() {
+    if (!this.isCloudAvailable()) return;
+    if (this._cloudPushTimer) clearTimeout(this._cloudPushTimer);
+    this._cloudPushTimer = setTimeout(() => {
+      this._cloudPushTimer = null;
+      try {
+        window.ElataSync.save(this.snapshot())
+          .catch(e => console.warn("[Store] cloud push failed", e));
+      } catch (e) { console.warn("[Store] cloud push threw", e); }
+    }, 2000);
   },
 };
+
+// Generate a stable 128-bit (32-hex-char) Skald ID using
+// crypto.getRandomValues. Falls back to Math.random if the platform
+// somehow lacks WebCrypto (very unlikely in a browser running WebGL).
+function newSkaldId() {
+  const bytes = new Uint8Array(16);
+  try {
+    crypto.getRandomValues(bytes);
+  } catch {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Short, human-readable Skald name. Three words from a small Norse
+// word list, joined by hyphens (e.g. "raven-fjord-mead"). Used only
+// for display — the hex Skald ID is the actual cloud key.
+const _SKALD_WORDS = [
+  "raven","wolf","bear","stag","fox","hawk","eagle","seal","whale","boar",
+  "fjord","mead","axe","sword","shield","helm","prow","mast","hammer","rune",
+  "snow","ice","frost","storm","wind","gale","sea","wave","river","loch",
+  "asgard","midgard","odin","thor","freya","tyr","loki","mimir","balder","hel",
+  "skald","jarl","thane","wight","wyrm","norn","valk","draugr","huldra","troll",
+  "oak","ash","pine","yew","birch","rowan","fir","spruce","holly","ivy",
+];
+function newSkaldName() {
+  const pick = () => _SKALD_WORDS[Math.floor(Math.random() * _SKALD_WORDS.length)];
+  return pick() + "-" + pick() + "-" + pick();
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -1054,7 +1273,7 @@ class Valhalla {
 
     this.cognitiveState = "neutral";
     this.bpm = null;
-    this.hrv = null;          // RMSSD ms — captured for biohacker panel
+    this.hrv = null;          // RMSSD ms — captured for advanced-mode panel
     this.focusLevel = null;   // 0..1 — captured from EEG
     this.calmLevel = null;    // 0..1 — captured from EEG
     // Bio session tracking. Every frame we accumulate time in each
@@ -3546,7 +3765,7 @@ class Valhalla {
   //   3. Time-in-state counter (how long you've held this state)
   //   4. Gift meter (the always-on reward feedback loop)
   //   5. Tally of earned gifts
-  //   6. Biohacker toggle (⚙) reveals raw numbers — hidden by default
+  //   6. Advanced toggle (⚙) reveals raw numbers — hidden by default
   //
   // The previous version led with BPM and crammed mechanic-speak
   // ("+35% gift duration") on the second line. Normal users have no
@@ -3570,7 +3789,7 @@ class Valhalla {
         // Header row: eyebrow + gear toggle
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
           '<div style="font:600 9.5px/1 \'Cinzel\',serif;letter-spacing:.22em;color:rgba(212,173,106,.7);text-transform:uppercase">Your Body</div>' +
-          '<button class="biohackToggle" title="Toggle biohacker numbers" style="background:none;border:1px solid rgba(212,173,106,.3);color:rgba(212,173,106,.7);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:11px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle biohacker mode">⚙</button>' +
+          '<button class="advancedToggle" title="Toggle advanced mode (show raw numbers)" style="background:none;border:1px solid rgba(212,173,106,.3);color:rgba(212,173,106,.7);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:11px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
         '</div>' +
         // STATE NAME (big, the headline)
         '<div class="stateName" style="font:700 22px/1 \'Cinzel\',serif;color:#f4d49a;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;text-shadow:0 0 16px rgba(244,212,154,.22)"></div>' +
@@ -3591,8 +3810,8 @@ class Valhalla {
         '</div>' +
         // Earned tally
         '<div class="tally" style="font-size:10.5px;letter-spacing:.02em;color:rgba(255,255,255,.6);margin-top:9px;min-height:1.2em"></div>' +
-        // BIOHACKER NUMBERS — hidden unless toggled
-        '<div class="biohackBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,173,106,.18);font-size:10.5px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums">' +
+        // ADVANCED NUMBERS — hidden unless toggled
+        '<div class="advancedBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,173,106,.18);font-size:10.5px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums">' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">' +
             '<div>HR <span class="bhBpm" style="color:#ff8a7a;font-weight:600">—</span></div>' +
             '<div>HRV <span class="bhHrv" style="color:#80d0e0;font-weight:600">—</span></div>' +
@@ -3602,18 +3821,18 @@ class Valhalla {
         '</div>';
       document.body.appendChild(el);
       this._bioPillEl = el;
-      // Restore biohacker-mode pref from localStorage.
-      this._biohackerMode = localStorage.getItem("valhalla.biohackerMode") === "1";
-      const toggle = el.querySelector(".biohackToggle");
+      // Restore advanced-mode pref from localStorage.
+      this._advancedMode = localStorage.getItem("valhalla.advancedMode") === "1";
+      const toggle = el.querySelector(".advancedToggle");
       toggle.addEventListener("click", (e) => {
         e.preventDefault(); e.stopPropagation();
-        this._biohackerMode = !this._biohackerMode;
-        localStorage.setItem("valhalla.biohackerMode", this._biohackerMode ? "1" : "0");
-        el.querySelector(".biohackBox").style.display = this._biohackerMode ? "block" : "none";
-        toggle.style.background = this._biohackerMode ? "rgba(212,173,106,.3)" : "none";
+        this._advancedMode = !this._advancedMode;
+        localStorage.setItem("valhalla.advancedMode", this._advancedMode ? "1" : "0");
+        el.querySelector(".advancedBox").style.display = this._advancedMode ? "block" : "none";
+        toggle.style.background = this._advancedMode ? "rgba(212,173,106,.3)" : "none";
       });
-      if (this._biohackerMode) {
-        el.querySelector(".biohackBox").style.display = "block";
+      if (this._advancedMode) {
+        el.querySelector(".advancedBox").style.display = "block";
         toggle.style.background = "rgba(212,173,106,.3)";
       }
       // Track state held-for timing
@@ -3684,8 +3903,8 @@ class Valhalla {
       ? "Earned: " + tallyParts.join(" · ")
       : "Hold a state to earn rewards";
 
-    // BIOHACKER NUMBERS — only update if visible.
-    if (this._biohackerMode) {
+    // ADVANCED NUMBERS — only update if visible.
+    if (this._advancedMode) {
       const bhBpm = el.querySelector(".bhBpm");
       const bhHrv = el.querySelector(".bhHrv");
       const bhFocus = el.querySelector(".bhFocus");
@@ -4343,6 +4562,16 @@ class Valhalla {
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
 
+    // Sync dialog wiring + initial state. Auto-pull from cloud on
+    // boot if the host provides ElataSync; otherwise just show local
+    // identity. tryRestoreFromUrl is called first so a #save=… link
+    // takes precedence over the device's local save before any cloud
+    // pull can overwrite it.
+    this._wireSyncDialog();
+    Store.tryRestoreFromUrl();
+    this._refreshSkaldLine();
+    this._bootCloudSync();
+
     // Bio buttons live-mirror sensor status. Previous version was a one-
     // shot setter: button said "On" forever based on the start() return,
     // even after the sensor went to error / off. That caused the
@@ -4573,10 +4802,10 @@ class Valhalla {
           // single biggest "the SDK changes the experience" cue.
           this._scheduleHeartbeatPulse();
         }
-        // HRV (RMSSD ms) — captured for the biohacker-mode panel.
+        // HRV (RMSSD ms) — captured for the advanced-mode panel.
         if (m && typeof m.hrv === "number") this.hrv = m.hrv;
       });
-      // EEG metrics — capture focus/calm levels for biohacker-mode panel.
+      // EEG metrics — capture focus/calm levels for advanced-mode panel.
       window.Bio.on("eegMetric", (m) => {
         if (!m) return;
         if (typeof m.focus === "number") this.focusLevel = m.focus;
@@ -4678,6 +4907,140 @@ class Valhalla {
     $("bestScore").textContent = (s.bestScore || 0).toLocaleString();
     $("bestDist").textContent = `${Math.round(s.bestDist || 0)}m`;
     $("totalRuns").textContent = s.totalRuns || 0;
+  }
+
+  // Update the small "🪶 Skald · {name} · Local only" line in the
+  // start overlay. Called on boot, after cloud sync, after restore.
+  _refreshSkaldLine() {
+    const nameEl = document.getElementById("skaldNameLine");
+    const statusEl = document.getElementById("syncStatusLine");
+    if (nameEl)   nameEl.textContent   = Store.getSkaldName();
+    if (statusEl) statusEl.textContent = Store.cloudStatusText();
+  }
+
+  // Wire all the buttons inside the #syncOverlay dialog. Idempotent —
+  // safe to call once at boot.
+  _wireSyncDialog() {
+    const open = document.getElementById("openSyncDialog");
+    const close = document.getElementById("closeSyncDialog");
+    const overlay = document.getElementById("syncOverlay");
+    if (!open || !close || !overlay) return;
+
+    const refreshDialog = () => {
+      const id = Store.getSkaldId();
+      const name = Store.getSkaldName();
+      document.getElementById("syncSkaldName").textContent = name;
+      document.getElementById("syncSkaldId").textContent = id;
+      const status = document.getElementById("syncCloudStatus");
+      if (Store.isCloudAvailable()) {
+        status.innerHTML = `<span style="color:#a3e8b8;font-weight:600">● Cloud sync active</span> — your save follows you to any device signed in to Elata.`;
+      } else {
+        status.innerHTML = `<span style="color:#ffd066;font-weight:600">● Local only</span> — this device's browser. Use the buttons below to move your save, or open Valhalla inside the Elata App Store for automatic sync.`;
+      }
+    };
+
+    open.addEventListener("click", (e) => {
+      e.preventDefault();
+      refreshDialog();
+      overlay.style.display = "flex";
+    });
+    close.addEventListener("click", () => { overlay.style.display = "none"; });
+    overlay.addEventListener("click", (e) => {
+      // Click outside the card to dismiss.
+      if (e.target === overlay) overlay.style.display = "none";
+    });
+
+    // Rename — generate a new mnemonic but keep the same hex ID, so
+    // cloud sync continuity is preserved.
+    document.getElementById("syncRenameSkald").addEventListener("click", () => {
+      try { localStorage.removeItem(SKALD_NAME_KEY); } catch {}
+      Store.getSkaldName();          // regenerate
+      refreshDialog();
+      this._refreshSkaldLine();
+    });
+
+    // Copy save string to clipboard.
+    document.getElementById("syncCopySave").addEventListener("click", async () => {
+      try {
+        const s = Store.exportString();
+        await navigator.clipboard.writeText(s);
+        this._showSyncResult(`Copied ${(s.length / 1024).toFixed(1)}KB save to clipboard. Paste it on the other device.`, "ok");
+      } catch (e) {
+        // Fallback: stash in textarea so user can copy manually
+        const ta = document.getElementById("syncSavePaste");
+        ta.value = Store.exportString();
+        ta.focus(); ta.select();
+        this._showSyncResult("Clipboard blocked — save text is in the box below, copy manually.", "warn");
+      }
+    });
+
+    // Copy share link to clipboard.
+    document.getElementById("syncCopyLink").addEventListener("click", async () => {
+      try {
+        const url = Store.exportUrl();
+        await navigator.clipboard.writeText(url);
+        this._showSyncResult(`Copied share link (${(url.length / 1024).toFixed(1)}KB). Open it on the other device — your save restores automatically.`, "ok");
+      } catch {
+        const ta = document.getElementById("syncSavePaste");
+        ta.value = Store.exportUrl();
+        ta.focus(); ta.select();
+        this._showSyncResult("Clipboard blocked — link text is in the box below, copy manually.", "warn");
+      }
+    });
+
+    // Restore from pasted text. Accepts either the raw save string OR
+    // a full share URL (extracts the #save=… part).
+    document.getElementById("syncRestoreSave").addEventListener("click", () => {
+      const ta = document.getElementById("syncSavePaste");
+      let s = (ta.value || "").trim();
+      if (!s) { this._showSyncResult("Paste a save or share-link first.", "err"); return; }
+      const m = s.match(/#save=(.+)$/);
+      if (m) s = m[1];
+      if (!confirm("Restore this save? This will REPLACE your current progress on this device.")) return;
+      try {
+        Store.importString(s);
+        this._showSyncResult("Save restored! Refreshing…", "ok");
+        // Re-render stats panels.
+        setTimeout(() => {
+          this._loadStats();
+          this._refreshSkaldLine();
+          refreshDialog();
+        }, 300);
+      } catch (e) {
+        console.warn("[Sync] restore failed", e);
+        this._showSyncResult(`Couldn't restore: ${e.message || "bad save text"}`, "err");
+      }
+    });
+  }
+
+  // Tiny toast inside the sync dialog. kind: ok | warn | err
+  _showSyncResult(msg, kind) {
+    const el = document.getElementById("syncResult");
+    if (!el) return;
+    const colour = kind === "err" ? "#ff8a7a" : kind === "warn" ? "#ffd066" : "#a3e8b8";
+    el.style.color = colour;
+    el.textContent = msg;
+    clearTimeout(this._syncResultT);
+    this._syncResultT = setTimeout(() => { el.textContent = ""; }, 5000);
+  }
+
+  // On boot, if the host (Elata App Store) injected ElataSync, do an
+  // initial pull so the device immediately reflects whatever progress
+  // the user already had on other devices. Subsequent saves auto-
+  // push via Store.save → _maybeCloudPush().
+  async _bootCloudSync() {
+    if (!Store.isCloudAvailable()) return;
+    const result = await Store.cloudPull();
+    if (result.ok && result.action === "pulled") {
+      // Refresh visible state since we now have new data.
+      this._loadStats();
+      this._refreshSkaldLine();
+      console.log("[Sync] pulled save from cloud");
+    } else if (result.ok && result.action === "pushed") {
+      console.log("[Sync] pushed local save to cloud (cloud was older)");
+    } else if (result.ok && result.action === "pushed-initial") {
+      console.log("[Sync] cloud was empty; pushed local save");
+    }
   }
 
   _saveStats() {

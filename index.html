@@ -924,6 +924,74 @@
       <div class="controls-line">
         <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Lane &nbsp; <kbd>&uarr;</kbd> Jump &nbsp; <kbd>&darr;</kbd> Slide &nbsp; <kbd>P</kbd> Pause
       </div>
+
+      <!-- Sync section. Small unobtrusive line that opens a dialog
+           with full backup/restore + cloud-sync status. -->
+      <div style="margin-top:14px;font:400 12px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.55);letter-spacing:.01em">
+        <span style="opacity:.7">🪶 Skald</span>
+        <span id="skaldNameLine" style="color:#f4d49a;font-weight:600;margin:0 4px">—</span>
+        <span style="opacity:.6">·</span>
+        <span id="syncStatusLine" style="margin-left:4px">Local only</span>
+        <a href="#" id="openSyncDialog" style="margin-left:8px;color:#f4d49a;text-decoration:underline;font-weight:600">Backup &amp; sync</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backup & Sync dialog. Shown by clicking the link in the start
+       overlay. Self-contained: identity, status, manual export/import,
+       URL share, and an explainer for how it'll auto-sync once
+       running inside the Elata App Store. -->
+  <div id="syncOverlay" style="position:fixed;inset:0;z-index:80;display:none;background:rgba(8,5,3,.78);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
+    <div style="max-width:520px;width:100%;background:rgba(20,14,9,.96);border:1px solid rgba(212,173,106,.4);border-radius:14px;padding:28px 30px;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.7);max-height:90vh;overflow:auto">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <div style="font:700 22px/1.1 'Cinzel',serif;letter-spacing:.04em;color:#f4d49a">Backup &amp; Sync</div>
+        <button id="closeSyncDialog" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;padding:0;line-height:1">&times;</button>
+      </div>
+      <p style="font-size:13px;color:rgba(255,255,255,.78);line-height:1.5;margin:6px 0 16px">
+        Your progress — runs, badges, streak, bio history — lives in this browser. To carry it across devices, use one of the options below.
+      </p>
+
+      <!-- Identity -->
+      <div style="background:rgba(212,173,106,.05);border:1px solid rgba(212,173,106,.25);border-radius:8px;padding:14px 16px;margin-bottom:16px">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:8px">Your Skald</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+          <div>
+            <div id="syncSkaldName" style="font:700 18px/1.1 'Cinzel',serif;color:#f4d49a;letter-spacing:.02em">—</div>
+            <div id="syncSkaldId"   style="font:400 11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:rgba(255,255,255,.45);margin-top:2px;word-break:break-all">—</div>
+          </div>
+          <button id="syncRenameSkald" style="background:rgba(212,173,106,.12);border:1px solid rgba(212,173,106,.35);color:#f4d49a;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">New name</button>
+        </div>
+        <div id="syncCloudStatus" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4">—</div>
+      </div>
+
+      <!-- Manual export -->
+      <div style="margin-bottom:16px">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:6px">Move to another device</div>
+        <p style="font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.5;margin:6px 0 10px">
+          Copy your save, then paste it into Valhalla on the other device. Or share the link — opening it loads your save anywhere.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="syncCopySave"     style="flex:1;min-width:140px;background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy save</button>
+          <button id="syncCopyLink"     style="flex:1;min-width:140px;background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy share link</button>
+        </div>
+        <textarea id="syncSavePaste" placeholder="…or paste a save here to restore" style="width:100%;margin-top:10px;min-height:60px;background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.3);border-radius:6px;color:#fff;font:400 11px/1.4 ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;resize:vertical;box-sizing:border-box"></textarea>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button id="syncRestoreSave" style="flex:1;background:rgba(120,200,140,.15);border:1px solid rgba(120,200,140,.5);color:#a3e8b8;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Restore from paste</button>
+        </div>
+        <div id="syncResult" style="margin-top:10px;font-size:12px;color:#a3e8b8;min-height:1em"></div>
+      </div>
+
+      <!-- Cloud sync explainer -->
+      <div style="background:rgba(60,40,90,.18);border:1px solid rgba(180,140,255,.25);border-radius:8px;padding:12px 14px;margin-bottom:6px">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(200,170,255,.9);text-transform:uppercase;margin-bottom:6px">Coming with the Elata App Store</div>
+        <p style="font-size:12.5px;color:rgba(255,255,255,.78);line-height:1.5;margin:0">
+          When Valhalla is opened from your Elata account, your Skald automatically follows you to every device. No copy-paste needed. Until then, the link above is the bridge.
+        </p>
+      </div>
+
+      <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:14px;line-height:1.4">
+        Saves are JSON blobs containing your runs, badges, streak, and bio-state history. Nothing personal beyond what you've done in the game.
+      </p>
     </div>
   </div>
 
