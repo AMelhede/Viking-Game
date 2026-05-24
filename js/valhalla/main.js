@@ -2256,6 +2256,13 @@ class Valhalla {
           if (this.procPlayer) this.procPlayer.visible = false;
           this.player.add(model);
           this._realPlayer = model;
+          // VIKING GEAR — round shield (back), single-handed axe (right
+          // hip), fur cloak (shoulders). Attached to the model root so
+          // they move with the running animation as a unit. Anatomically
+          // not bone-locked (which would need rigid-bone lookup) but
+          // close enough at the camera distance + speed of play.
+          try { this._equipSoldierGear(model); }
+          catch (e) { console.warn("[Valhalla] gear attach failed", e); }
           // Set up animation mixer + grab the Run clip (Soldier has
           // Idle/Walk/Run baked in). We'll switch clips dynamically
           // later (idle on menu, run while playing).
@@ -2293,6 +2300,346 @@ class Valhalla {
       this._activeAnim.crossFadeTo(next, 0.25, false);
     }
     this._activeAnim = next;
+  }
+
+  // Build and attach procedural Viking gear to the loaded Soldier
+  // model. Items are parented to the model root (not bones) so they
+  // ride along with the run animation as a unit. At gameplay distance
+  // + speed this reads as "the Viking has gear" without needing
+  // per-bone IK that Soldier.glb doesn't ship animation tracks for.
+  _equipSoldierGear(model) {
+    if (!model) return;
+    // --- Round shield strapped to the back ----------------------------
+    const shield = new THREE.Group();
+    const woodMat = new THREE.MeshStandardMaterial({
+      color: 0x4a2e1c, roughness: 0.95, flatShading: true,
+    });
+    const ironMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2e34, metalness: 0.7, roughness: 0.45, flatShading: true,
+    });
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.08, 24), woodMat);
+    disc.rotation.z = Math.PI / 2;
+    shield.add(disc);
+    // Iron centre boss (umbo)
+    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), ironMat);
+    boss.position.x = 0.05;
+    shield.add(boss);
+    // Iron rim band
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.45, 0.035, 8, 32),
+      ironMat
+    );
+    rim.rotation.y = Math.PI / 2;
+    shield.add(rim);
+    // Cross-pattern carved stripes
+    for (let i = 0; i < 4; i++) {
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, 0.85, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x6c2620, roughness: 0.9, flatShading: true })
+      );
+      stripe.rotation.x = (Math.PI / 4) * i;
+      stripe.position.x = 0.045;
+      shield.add(stripe);
+    }
+    shield.position.set(0, 1.05, -0.18);   // on the back, ~mid-torso height
+    shield.rotation.y = Math.PI;             // facing rearward
+    model.add(shield);
+
+    // --- Hand axe at the right hip ------------------------------------
+    const axe = new THREE.Group();
+    const haft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.028, 0.55, 8),
+      new THREE.MeshStandardMaterial({ color: 0x1f1208, roughness: 0.9, flatShading: true })
+    );
+    haft.rotation.z = Math.PI / 2.2;       // hangs at hip-angle
+    axe.add(haft);
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.22, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0xb8bcc4, metalness: 0.85, roughness: 0.3, flatShading: true })
+    );
+    head.position.set(0.22, 0.07, 0);
+    axe.add(head);
+    // Bevel edge — slightly brighter strip
+    const edge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.18, 0.061),
+      new THREE.MeshStandardMaterial({ color: 0xe8edf2, metalness: 0.9, roughness: 0.15 })
+    );
+    edge.position.set(0.31, 0.07, 0);
+    axe.add(edge);
+    axe.position.set(0.28, 0.85, 0);        // right hip
+    model.add(axe);
+
+    // --- Fur cloak draped over shoulders ------------------------------
+    // A trapezoid plane behind the shoulders with a furry colour. Uses
+    // double-sided so it doesn't disappear when the camera angles past.
+    const cloakShape = new THREE.Shape();
+    cloakShape.moveTo(-0.42, 0);
+    cloakShape.lineTo(0.42, 0);
+    cloakShape.lineTo(0.58, -1.1);
+    cloakShape.lineTo(-0.58, -1.1);
+    cloakShape.lineTo(-0.42, 0);
+    const cloakGeo = new THREE.ShapeGeometry(cloakShape);
+    const cloak = new THREE.Mesh(
+      cloakGeo,
+      new THREE.MeshStandardMaterial({
+        color: 0x3a2a20, roughness: 1.0, flatShading: false,
+        side: THREE.DoubleSide,
+      })
+    );
+    cloak.position.set(0, 1.55, -0.18);
+    cloak.rotation.x = -0.12;               // hangs slightly back
+    model.add(cloak);
+    // Fur collar — short white-grey roll across shoulders
+    const collar = new THREE.Mesh(
+      new THREE.TorusGeometry(0.32, 0.07, 8, 16, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0xb8a89a, roughness: 1.0, flatShading: true })
+    );
+    collar.position.set(0, 1.55, -0.04);
+    collar.rotation.x = Math.PI / 2;
+    collar.rotation.z = Math.PI;
+    model.add(collar);
+  }
+
+  // ANIMATE longships: slow forward drift along the fjord so the
+  // distant water doesn't feel static. Each ship has its own speed and
+  // wraps around to the back of the playable range when it sails past.
+  _updateLongships(dt) {
+    if (!this.scenery) return;
+    for (const s of this.scenery) {
+      if (!s.isLongship) continue;
+      s.mesh.position.z -= (s.sailSpeed || 0.6) * dt;
+      // Wrap to behind the player when sailed past visible range.
+      if (s.mesh.position.z < this.distance - 80) {
+        s.mesh.position.z = this.distance + 300;
+      }
+      // Hull bob + sail ripple.
+      s.mesh.position.y = s.baseY + Math.sin(performance.now() * 0.0011 + s.phase) * 0.18;
+      s.mesh.rotation.z = Math.sin(performance.now() * 0.0008 + s.phase) * 0.05;
+    }
+  }
+
+  // RUNESTONES — heavy carved granite monoliths flanking the road at
+  // intervals. Built once at world init; the chunked terrain handles
+  // their wraparound by relative-z scrolling.
+  _buildRunestones() {
+    if (!this.runestones) this.runestones = new THREE.Group();
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: 0x484d52, roughness: 1.0, flatShading: true,
+    });
+    const carvedMat = new THREE.MeshStandardMaterial({
+      color: 0x1a1814, emissive: 0x806340, emissiveIntensity: 0.4,
+      roughness: 0.9, flatShading: true,
+    });
+    // 16 stones, alternating sides, every ~70m, with subtle randomness.
+    for (let i = 0; i < 16; i++) {
+      const stone = new THREE.Group();
+      const h = 2.6 + Math.random() * 1.4;
+      const w = 0.7 + Math.random() * 0.3;
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, 0.5),
+        stoneMat
+      );
+      body.position.y = h / 2;
+      stone.add(body);
+      // Top notch — chipped corner so it doesn't look mass-produced.
+      const notch = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.5, 0.3, 0.5),
+        stoneMat
+      );
+      notch.position.set(w * 0.2, h - 0.05, 0);
+      stone.add(notch);
+      // Carved rune — small emissive vertical stroke
+      const rune = new THREE.Mesh(
+        new THREE.BoxGeometry(w * 0.1, h * 0.5, 0.05),
+        carvedMat
+      );
+      rune.position.set(0, h * 0.55, 0.27);
+      stone.add(rune);
+      // Cross-stroke for variety on alternate stones
+      if (i % 2 === 0) {
+        const cross = new THREE.Mesh(
+          new THREE.BoxGeometry(w * 0.3, h * 0.06, 0.05),
+          carvedMat
+        );
+        cross.position.set(0, h * 0.65, 0.27);
+        stone.add(cross);
+      }
+      const side = i % 2 === 0 ? -1 : 1;
+      stone.position.set(side * (7.5 + Math.random() * 1.5), 0, i * 70);
+      stone.rotation.y = (Math.random() - 0.5) * 0.3;
+      this.runestones.add(stone);
+    }
+    this.scene.add(this.runestones);
+  }
+
+  // Recycle runestones behind the camera back to ahead, so they appear
+  // to extend infinitely down the road.
+  _updateRunestones() {
+    if (!this.runestones) return;
+    for (const stone of this.runestones.children) {
+      if (stone.position.z < this.distance - 30) {
+        stone.position.z += 16 * 70;        // jump 16 slots ahead
+      }
+    }
+  }
+
+  // FIRE PITS — glowing fire stacks at intervals along the roadside.
+  // Each pit has a stone ring, a flame cone (additive), and a soft
+  // point-light glow. Recycled like runestones for endless scroll.
+  _buildFirePits() {
+    if (!this.firePits) this.firePits = new THREE.Group();
+    const stoneRingMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2620, roughness: 1.0, flatShading: true,
+    });
+    const flameInnerMat = new THREE.MeshBasicMaterial({
+      color: 0xffb050, transparent: true, opacity: 0.9, depthWrite: false,
+    });
+    const flameOuterMat = new THREE.MeshBasicMaterial({
+      color: 0xff6020, transparent: true, opacity: 0.5, depthWrite: false,
+    });
+    // 8 pits, alternating sides, every ~140m, offset from runestones.
+    for (let i = 0; i < 8; i++) {
+      const pit = new THREE.Group();
+      // Stone ring — small torus on ground
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.6, 0.18, 6, 12),
+        stoneRingMat
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.18;
+      pit.add(ring);
+      // Inner bright flame
+      const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.35, 1.2, 8, 1, true),
+        flameInnerMat
+      );
+      flame.position.y = 0.8;
+      pit.add(flame);
+      // Outer halo flame
+      const halo = new THREE.Mesh(
+        new THREE.ConeGeometry(0.65, 1.7, 8, 1, true),
+        flameOuterMat
+      );
+      halo.position.y = 0.9;
+      pit.add(halo);
+      // Warm light
+      const light = new THREE.PointLight(0xff8030, 1.2, 12, 2.0);
+      light.position.y = 1.0;
+      pit.add(light);
+      // Cache for the animation loop.
+      pit.userData = { flame, halo, light, phase: Math.random() * Math.PI * 2 };
+      const side = i % 2 === 0 ? 1 : -1;
+      pit.position.set(side * (9 + Math.random() * 1), 0, 60 + i * 140);
+      this.firePits.add(pit);
+    }
+    this.scene.add(this.firePits);
+  }
+
+  _updateFirePits(dt) {
+    if (!this.firePits) return;
+    const t = performance.now() * 0.001;
+    for (const pit of this.firePits.children) {
+      const u = pit.userData;
+      if (!u) continue;
+      // Recycle behind the camera back to ahead.
+      if (pit.position.z < this.distance - 30) {
+        pit.position.z += 8 * 140;
+      }
+      // Flicker.
+      const flick = 0.8 + Math.sin(t * 9 + u.phase) * 0.15 + Math.random() * 0.1;
+      u.flame.scale.set(flick, 0.85 + Math.sin(t * 7 + u.phase) * 0.2, flick);
+      u.halo.scale.set(flick * 1.1, 0.9 + Math.cos(t * 5 + u.phase) * 0.2, flick * 1.1);
+      u.light.intensity = 1.1 + Math.sin(t * 8 + u.phase) * 0.4;
+    }
+  }
+
+  // HUGINN & MUNINN — Odin's two ravens, always circling above the
+  // player. Replaces the older 5-wing scenery with two named birds
+  // each made of body + 2 wings + tail. They orbit at different
+  // radii and heights so they read as distinct individuals.
+  _buildOdinsRavens() {
+    // Remove old generic ravens scenery if it exists.
+    if (this.ravens) {
+      this.scene.remove(this.ravens);
+      this.ravens = null;
+    }
+    this.odinRavens = new THREE.Group();
+    const bodyMatHuginn = new THREE.MeshStandardMaterial({
+      color: 0x0a0a0a, roughness: 0.7, metalness: 0.1, flatShading: true,
+    });
+    const bodyMatMuninn = new THREE.MeshStandardMaterial({
+      color: 0x18141a, roughness: 0.75, metalness: 0.1, flatShading: true,
+    });
+    const beakMat = new THREE.MeshStandardMaterial({
+      color: 0x60564a, roughness: 0.6, metalness: 0.2, flatShading: true,
+    });
+    const mkRaven = (mat, opts) => {
+      const grp = new THREE.Group();
+      // Body — small ovoid
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), mat);
+      body.scale.set(1, 0.6, 1.5);
+      grp.add(body);
+      // Head
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), mat);
+      head.position.set(0, 0.05, 0.42);
+      grp.add(head);
+      // Beak
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.18, 4), beakMat);
+      beak.rotation.x = Math.PI / 2;
+      beak.position.set(0, 0.04, 0.6);
+      grp.add(beak);
+      // Wings — long thin boxes
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.22), mat);
+      wingL.position.set(-0.5, 0, 0);
+      grp.add(wingL);
+      const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.22), mat);
+      wingR.position.set(0.5, 0, 0);
+      grp.add(wingR);
+      // Tail
+      const tail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), mat);
+      tail.position.set(0, 0, -0.4);
+      grp.add(tail);
+      grp.userData = {
+        wingL, wingR, ...opts,
+      };
+      return grp;
+    };
+    // Huginn — closer, faster, lower
+    this._huginn = mkRaven(bodyMatHuginn, {
+      name: "Huginn", radius: 8, height: 9, speed: 0.7, phase: 0,
+    });
+    this.odinRavens.add(this._huginn);
+    // Muninn — wider, slower, higher
+    this._muninn = mkRaven(bodyMatMuninn, {
+      name: "Muninn", radius: 13, height: 12, speed: 0.45, phase: Math.PI,
+    });
+    this.odinRavens.add(this._muninn);
+    this.scene.add(this.odinRavens);
+  }
+
+  _updateOdinsRavens(dt) {
+    if (!this.odinRavens || !this._huginn || !this._muninn) return;
+    const tt = performance.now() * 0.001;
+    this.odinRavens.position.set(
+      this.player ? this.player.position.x : 0,
+      0,
+      this.distance
+    );
+    for (const raven of [this._huginn, this._muninn]) {
+      const u = raven.userData;
+      const ang = u.phase + tt * u.speed;
+      raven.position.set(
+        Math.cos(ang) * u.radius,
+        u.height,
+        Math.sin(ang) * u.radius
+      );
+      // Face direction of motion
+      raven.rotation.y = -ang + Math.PI / 2;
+      // Wing flap — outer wing tips raise/lower
+      const flap = Math.sin(tt * 8 + u.phase * 2) * 0.5;
+      u.wingL.rotation.z = -flap;
+      u.wingR.rotation.z = flap;
+    }
   }
 
   _buildSnow() {
@@ -2355,54 +2702,98 @@ class Valhalla {
   }
 
   _buildScenery() {
-    // Distant longships in the fjord water (eye candy)
-    for (let i = 0; i < 4; i++) {
+    // LONGSHIP FLEET — 6 ships of varying sizes drifting down the fjord
+    // on both sides. Each gets its own sail speed so they don't move
+    // in lockstep. The fjord-sailing animation is driven by
+    // _updateLongships per-frame.
+    for (let i = 0; i < 6; i++) {
       const ship = new THREE.Group();
+      // Tapered hull — curved bow + stern via cylinder + box hybrid.
+      // Three nested boxes for that classic clinker silhouette.
       const hull = new THREE.Mesh(
-        new THREE.BoxGeometry(8, 1.4, 2.6),
-        new THREE.MeshStandardMaterial({ color: 0x3a2614, roughness: 0.9, flatShading: true })
+        new THREE.BoxGeometry(9, 1.5, 2.8),
+        new THREE.MeshStandardMaterial({ color: 0x3a2614, roughness: 0.92, flatShading: true })
       );
       ship.add(hull);
-      const sail = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.4, 3.2),
-        new THREE.MeshStandardMaterial({ color: 0xb0b6bc, roughness: 0.9, side: THREE.DoubleSide })
+      // Underbelly — slightly darker, wider at midship
+      const keel = new THREE.Mesh(
+        new THREE.BoxGeometry(7, 0.6, 2.4),
+        new THREE.MeshStandardMaterial({ color: 0x251510, roughness: 0.95, flatShading: true })
       );
-      sail.position.y = 2.6;
-      sail.rotation.y = Math.PI / 2;
-      ship.add(sail);
-      const stripe = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.4, 0.6),
-        new THREE.MeshStandardMaterial({ color: 0x9c2a26, side: THREE.DoubleSide })
+      keel.position.y = -0.85;
+      ship.add(keel);
+      // Dragon-head prow — small triangular wedge at front
+      const prow = new THREE.Mesh(
+        new THREE.ConeGeometry(0.55, 1.2, 4),
+        new THREE.MeshStandardMaterial({ color: 0x4a2e1a, roughness: 0.85, flatShading: true })
       );
-      stripe.position.y = 2.6;
-      stripe.rotation.y = Math.PI / 2;
-      ship.add(stripe);
+      prow.rotation.z = -Math.PI / 2;
+      prow.position.set(4.7, 0.4, 0);
+      ship.add(prow);
+      // Stern post — vertical curved board
+      const stern = new THREE.Mesh(
+        new THREE.BoxGeometry(0.25, 1.8, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x4a2e1a, roughness: 0.85, flatShading: true })
+      );
+      stern.position.set(-4.6, 0.9, 0);
+      ship.add(stern);
+      // Mast
       const mast = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.1, 5, 6),
+        new THREE.CylinderGeometry(0.12, 0.12, 5.5, 6),
         new THREE.MeshStandardMaterial({ color: 0x2a1a10 })
       );
-      mast.position.y = 2.4;
+      mast.position.y = 2.6;
       ship.add(mast);
+      // Sail — square with horizontal red stripe (classic Norse pattern)
+      const sailColours = [0xd8d4c8, 0xe2dcd0, 0xc8c0b0];
+      const sail = new THREE.Mesh(
+        new THREE.PlaneGeometry(5.0, 3.6),
+        new THREE.MeshStandardMaterial({
+          color: sailColours[i % sailColours.length],
+          roughness: 0.95, side: THREE.DoubleSide,
+        })
+      );
+      sail.position.y = 2.8;
+      sail.rotation.y = Math.PI / 2;
+      ship.add(sail);
+      // Red stripe on sail
+      const stripe = new THREE.Mesh(
+        new THREE.PlaneGeometry(5.0, 0.7),
+        new THREE.MeshStandardMaterial({ color: 0x9c2a26, side: THREE.DoubleSide })
+      );
+      stripe.position.set(0, 2.8 + (Math.random() - 0.5) * 0.8, 0);
+      stripe.rotation.y = Math.PI / 2;
+      ship.add(stripe);
+      // Shield rack along the side — six small disks
+      for (let k = 0; k < 6; k++) {
+        const shield = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.35, 0.35, 0.04, 12),
+          new THREE.MeshStandardMaterial({
+            color: [0xa83020, 0x2a4878, 0xa07028, 0xa83020][k % 4],
+            roughness: 0.85, flatShading: true,
+          })
+        );
+        shield.rotation.x = Math.PI / 2;
+        shield.position.set(-2.2 + k * 0.9, 0.4, 1.45);
+        ship.add(shield);
+      }
       const side = i % 2 === 0 ? -1 : 1;
-      ship.position.set(side * (54 + Math.random() * 6), -1.2, 40 + i * 60);
-      ship.rotation.y = side * Math.PI / 2 + (Math.random() - 0.5) * 0.2;
+      ship.position.set(side * (50 + Math.random() * 12), -1.2, 40 + i * 80);
+      ship.rotation.y = side * Math.PI / 2 + (Math.random() - 0.5) * 0.15;
       this.scene.add(ship);
-      this.scenery.push({ mesh: ship, baseY: -1.2, phase: Math.random() * Math.PI * 2 });
+      this.scenery.push({
+        mesh: ship, baseY: -1.2, phase: Math.random() * Math.PI * 2,
+        isLongship: true,
+        sailSpeed: 0.4 + Math.random() * 0.6,    // each ship its own pace
+      });
     }
 
-    // Ravens circling overhead
-    this.ravens = new THREE.Group();
-    for (let i = 0; i < 5; i++) {
-      const wingGeo = new THREE.BoxGeometry(0.8, 0.04, 0.14);
-      const ravenMat = new THREE.MeshBasicMaterial({ color: 0x0a0a0a, fog: true });
-      const wing = new THREE.Mesh(wingGeo, ravenMat);
-      wing.userData.phase = Math.random() * Math.PI * 2;
-      wing.userData.r = 18 + Math.random() * 10;
-      wing.userData.h = 12 + Math.random() * 6;
-      wing.userData.speed = 0.5 + Math.random() * 0.4;
-      this.ravens.add(wing);
-    }
-    this.scene.add(this.ravens);
+    // RUNESTONES along the roadside (Task #15)
+    this._buildRunestones();
+    // FIRE PITS along the roadside (Task #16)
+    this._buildFirePits();
+    // HUGINN + MUNINN — Odin's ravens circling the player (Task #17)
+    this._buildOdinsRavens();
   }
 
   _buildHUD() {
@@ -6048,19 +6439,19 @@ class Valhalla {
     this.water[0].material.uniforms["time"].value += dt;
     this.water[1].material.uniforms["time"].value += dt;
 
-    // ravens
-    const tt = performance.now() * 0.001;
-    this.ravens.position.set(this.player.position.x, 0, this.distance);
-    for (const w of this.ravens.children) {
-      const p = w.userData.phase + tt * w.userData.speed;
-      w.position.set(Math.cos(p) * w.userData.r, w.userData.h, Math.sin(p) * w.userData.r);
-      w.rotation.y = -p;
-      // wing flap
-      w.scale.y = 1 + Math.sin(tt * 14 + w.userData.phase * 3) * 0.4;
-    }
+    // Huginn + Muninn — Odin's ravens always orbit the player
+    this._updateOdinsRavens(dt);
+    // Longship fleet sailing past
+    this._updateLongships(dt);
+    // Runestones + fire pits recycle behind→ahead
+    this._updateRunestones();
+    this._updateFirePits(dt);
 
-    // scenery bobs
+    // scenery bobs — only the non-longship pieces (longships have their
+    // own bob logic inside _updateLongships that combines forward sail
+    // with the wave bob).
     for (const s of this.scenery) {
+      if (s.isLongship) continue;
       s.mesh.position.y = s.baseY + Math.sin(performance.now() * 0.0011 + s.phase) * 0.08;
     }
 
@@ -6192,14 +6583,11 @@ class Valhalla {
       this.water[0].material.uniforms["time"].value += dt;
       this.water[1].material.uniforms["time"].value += dt;
     }
-    const tt = performance.now() * 0.001;
-    if (this.ravens) {
-      for (const w of this.ravens.children) {
-        const p = w.userData.phase + tt * w.userData.speed;
-        w.position.set(Math.cos(p) * w.userData.r, w.userData.h, Math.sin(p) * w.userData.r);
-        w.rotation.y = -p;
-      }
-    }
+    // Menu-screen raven orbit: spin Odin's two ravens at a slow,
+    // dreamlike cadence around the spotlit player. _updateOdinsRavens
+    // handles its own time math; we just need to call it here so the
+    // birds don't freeze on the title screen.
+    this._updateOdinsRavens(dt);
   }
 
   _updateHUD() {
