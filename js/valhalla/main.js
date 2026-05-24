@@ -1839,18 +1839,25 @@ class Valhalla {
     else sun.position.set(40, 50, -10);
     if (this.renderer.shadowMap.enabled) {
       sun.castShadow = true;
-      // 1024² shadow map even on high — bigger doesn't help at our
-      // camera distance and doubles cost. Tight frustum around the
-      // play area for crisp resolution.
-      sun.shadow.mapSize.set(1024, 1024);
+      // Shadow map sized by tier. 1024 on high, 512 on medium.
+      // 'low' disables shadowMap entirely upstream.
+      sun.shadow.mapSize.set(
+        this.quality === "high" ? 1024 : 512,
+        this.quality === "high" ? 1024 : 512
+      );
       sun.shadow.camera.near = 1;
-      sun.shadow.camera.far = 180;
-      sun.shadow.camera.left   = -35;
-      sun.shadow.camera.right  =  35;
-      sun.shadow.camera.top    =  30;
-      sun.shadow.camera.bottom = -30;
-      sun.shadow.bias = -0.0004;
-      sun.shadow.normalBias = 0.04;
+      sun.shadow.camera.far = 90;
+      // VERY tight frustum — only the play strip + a small buffer.
+      // The old 35×30 was way too big; most of the shadow map was
+      // wasted on areas the camera couldn't see. Now 18×20 = ~5x
+      // higher effective resolution for the same map size, AND
+      // fewer casters fall inside the frustum so the pass is faster.
+      sun.shadow.camera.left   = -18;
+      sun.shadow.camera.right  =  18;
+      sun.shadow.camera.top    =  20;
+      sun.shadow.camera.bottom = -20;
+      sun.shadow.bias = -0.0005;
+      sun.shadow.normalBias = 0.05;
     }
     this.sun = sun;
     this.scene.add(sun);
@@ -3381,25 +3388,26 @@ class Valhalla {
     // is the single biggest "real Viking world" cue.
     this._loadRealHorses();
 
-    // SHADOW PASS — make every scenery mesh cast a shadow against the
-    // sun, except the ravens (above the player; their shadow would
-    // never land in frame) and the flame/halo cones (additive, no
-    // shadow). The runestones in particular look infinitely more
-    // grounded once they throw a long shadow across the road.
-    const shadowOn = (root) => {
+    // SHADOW PASS — ONLY enable receiveShadow on scenery. Casting is
+    // the expensive operation (re-renders the scene from sun POV).
+    // The procedural Player + Soldier + in-game obstacles cast (set
+    // elsewhere); scenery only receives. This drops the shadow caster
+    // list from ~180 to ~30 — the main cause of the user's reported
+    // lag after enabling shadows last commit.
+    const recvOn = (root) => {
       if (!root) return;
       root.traverse((o) => {
         if (!o.isMesh) return;
         const isAdditive = o.material && (o.material.transparent && !o.material.depthWrite);
         if (isAdditive) return;
-        o.castShadow = true;
+        o.castShadow = false;
         o.receiveShadow = true;
       });
     };
-    for (const s of this.scenery) shadowOn(s.mesh);
-    shadowOn(this.runestones);
-    shadowOn(this.firePits);
-    shadowOn(this.pines);
+    for (const s of this.scenery) recvOn(s.mesh);
+    recvOn(this.runestones);
+    recvOn(this.firePits);
+    recvOn(this.pines);
   }
 
   _buildHUD() {
@@ -4899,6 +4907,8 @@ class Valhalla {
       if (k === "shift") { this.sprint = true; return; }
       if (k === "p") { this._togglePause(); return; }
       if (k === "m") { this.audio.setMuted(!this.audio.muted); return; }
+      // ~ or ` shows the FPS overlay (debug / perf-investigation aid)
+      if (k === "~" || k === "`") { this._toggleFpsOverlay(); return; }
       const a = keyToAction[k];
       if (a) this._doAction(a);
     });
@@ -6740,7 +6750,104 @@ class Valhalla {
       this._idleFrame = (this._idleFrame || 0) + 1;
       if ((this._idleFrame & 1) === 0) this._render();
     }
+    // FPS sampling + runtime quality auto-downgrade.
+    this._sampleFps(realDt);
     requestAnimationFrame(this._frame);
+  }
+
+  // Rolling FPS via EMA. When sustained <25 fps in-game, auto-downgrade
+  // heavy features one at a time (HDRI off → shadow map smaller → no
+  // shadows). When >55 fps for sustained period, leave settings as-is
+  // (we don't auto-upgrade because that causes oscillation).
+  _sampleFps(dt) {
+    if (!this._fpsState) {
+      this._fpsState = { ema: 60, since: performance.now(), badStart: 0, downgrades: 0 };
+    }
+    const f = this._fpsState;
+    const fps = 1 / Math.max(0.001, dt);
+    // EMA with ~1s time constant
+    f.ema = f.ema * 0.9 + fps * 0.1;
+
+    // Update visible FPS overlay (if shown)
+    if (this._fpsOverlay && (performance.now() - (f.lastDisplayed || 0) > 250)) {
+      f.lastDisplayed = performance.now();
+      this._fpsOverlay.textContent = `${f.ema.toFixed(0)} fps · ${this.quality}${f.downgrades ? ` · auto-down ×${f.downgrades}` : ""}`;
+      this._fpsOverlay.style.color = f.ema > 50 ? "#a3e8b8" : f.ema > 30 ? "#ffd066" : "#ff8a7a";
+    }
+
+    // Only auto-downgrade during active play
+    if (!this.running || this.paused) { f.badStart = 0; return; }
+    if (f.ema < 25) {
+      if (!f.badStart) f.badStart = performance.now();
+      // Sustained 3s of <25fps → step down
+      if (performance.now() - f.badStart > 3000 && f.downgrades < 3) {
+        f.downgrades++;
+        f.badStart = 0;
+        this._autoDowngrade(f.downgrades);
+      }
+    } else {
+      f.badStart = 0;
+    }
+  }
+
+  // Step-down ladder. Each step is non-destructive (no reload needed).
+  _autoDowngrade(step) {
+    if (step === 1) {
+      // Step 1: drop HDRI environment (often the biggest hit on
+      // weaker GPUs because every PBR material samples it).
+      if (this.scene.environment) {
+        const env = this.scene.environment;
+        this.scene.environment = null;
+        try { env.dispose(); } catch {}
+        console.warn("[Valhalla] auto-downgrade #1: dropped HDRI environment");
+        this._fpsToast("Auto-downgrade: HDRI off");
+      }
+    } else if (step === 2) {
+      // Step 2: shrink shadow map.
+      if (this.sun && this.sun.shadow) {
+        this.sun.shadow.mapSize.set(256, 256);
+        this.sun.shadow.map?.dispose?.();
+        this.sun.shadow.map = null;
+        console.warn("[Valhalla] auto-downgrade #2: shadow map -> 256");
+        this._fpsToast("Auto-downgrade: shadows reduced");
+      }
+    } else if (step === 3) {
+      // Step 3: disable shadows entirely.
+      this.renderer.shadowMap.enabled = false;
+      if (this.sun) this.sun.castShadow = false;
+      console.warn("[Valhalla] auto-downgrade #3: shadows disabled");
+      this._fpsToast("Auto-downgrade: shadows off — consider Graphics → Low");
+    }
+  }
+
+  // Tiny non-blocking toast for downgrade notifications.
+  _fpsToast(msg) {
+    let t = document.getElementById("fpsToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "fpsToast";
+      t.style.cssText = "position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;padding:8px 14px;background:rgba(60,8,8,.9);color:#ffd066;border:1px solid rgba(255,200,100,.5);border-radius:6px;font:600 12px/1.2 -apple-system,system-ui,sans-serif;letter-spacing:.04em;box-shadow:0 6px 24px rgba(0,0,0,.7);pointer-events:none;opacity:0;transition:opacity .25s ease";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = "1";
+    clearTimeout(this._fpsToastT);
+    this._fpsToastT = setTimeout(() => { t.style.opacity = "0"; }, 4000);
+  }
+
+  // Toggle FPS overlay. Bound to a key (~) so power users can debug.
+  _toggleFpsOverlay() {
+    if (this._fpsOverlay) {
+      this._fpsOverlay.remove();
+      this._fpsOverlay = null;
+      return;
+    }
+    const el = document.createElement("div");
+    el.id = "fpsOverlay";
+    el.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:60;padding:5px 9px;background:rgba(0,0,0,.65);color:#a3e8b8;border:1px solid rgba(255,255,255,.15);border-radius:5px;font:600 11px/1 ui-monospace,Menlo,Consolas,monospace;pointer-events:none";
+    el.textContent = "— fps";
+    document.body.appendChild(el);
+    this._fpsOverlay = el;
   }
 
   _update(dt) {
