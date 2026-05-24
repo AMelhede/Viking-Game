@@ -90,6 +90,43 @@ const STORE_KEY = "valhalla.v1";
 const SKALD_KEY = "valhalla.skaldId";
 const SKALD_NAME_KEY = "valhalla.skaldName";
 
+// ---------------- Localization ----------------
+// Minimal i18n. Only the most-visible UI strings are translated. The
+// game world copy (Skald narration, biome names, kennings) stays
+// English because the saga voice doesn't translate cleanly.
+const I18N_DICT = {
+  en: {
+    run: "Run", runAgain: "Run again", paused: "Held", resume: "Walk on",
+    changesAfterRefresh: "Refresh the page to apply.",
+    bindBody: "Bind Body", sagaSoFar: "Saga so far",
+  },
+  es: {
+    run: "Corre", runAgain: "Corre otra vez", paused: "Detenido", resume: "Sigue",
+    changesAfterRefresh: "Recarga la página para aplicar.",
+    bindBody: "Une el Cuerpo", sagaSoFar: "Saga hasta ahora",
+  },
+  de: {
+    run: "Lauf", runAgain: "Lauf nochmal", paused: "Gehalten", resume: "Weiter",
+    changesAfterRefresh: "Seite neu laden zum Anwenden.",
+    bindBody: "Körper binden", sagaSoFar: "Saga bisher",
+  },
+  sv: {
+    run: "Spring", runAgain: "Spring igen", paused: "Stilla", resume: "Vidare",
+    changesAfterRefresh: "Ladda om sidan för att tillämpa.",
+    bindBody: "Bind kroppen", sagaSoFar: "Saga hittills",
+  },
+  ja: {
+    run: "走る", runAgain: "もう一度", paused: "止まる", resume: "進む",
+    changesAfterRefresh: "ページを再読み込みしてください。",
+    bindBody: "身体を縛る", sagaSoFar: "これまでの物語",
+  },
+};
+function I18N(key) {
+  const lang = (typeof localStorage !== "undefined" && localStorage.getItem("valhalla.lang")) || "en";
+  const dict = I18N_DICT[lang] || I18N_DICT.en;
+  return dict[key] || I18N_DICT.en[key] || key;
+}
+
 // ---------------- Storage ----------------
 // Cloud-ready storage layer. The save model has three layers:
 //
@@ -709,10 +746,14 @@ class Audio {
     const gLow = this.ctx.createGain(); gLow.gain.value = 0.11;
     noiseLow.connect(lp); lp.connect(gLow);
 
+    // The "whistle" layer was a resonant bandpass at Q=2.8 around
+    // 1400 Hz which can pierce eardrums. Dropped to Q=0.8, lower
+    // freq, much quieter gain. Now reads as breath through pines,
+    // not a tea kettle.
     const noiseHi = this._noiseSrc(true);
     const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass"; bp.frequency.value = 1400; bp.Q.value = 2.8;
-    const gHi = this.ctx.createGain(); gHi.gain.value = 0.035;
+    bp.type = "bandpass"; bp.frequency.value = 700; bp.Q.value = 0.7;
+    const gHi = this.ctx.createGain(); gHi.gain.value = 0.012;
     noiseHi.connect(bp); bp.connect(gHi);
 
     this._send(gLow, 0.35);
@@ -732,8 +773,9 @@ class Audio {
     setInterval(() => {
       if (!this.windNode || !this.ctx) return;
       const t = this.ctx.currentTime;
-      this.windNode.bp.frequency.linearRampToValueAtTime(900 + Math.random() * 1400, t + 1.0);
-      this.windNode.gHi.gain.linearRampToValueAtTime(0.012 + Math.random() * 0.045, t + 1.0);
+      // Keep whistle low + soft. Max gain 0.020 (was 0.057 = pierce).
+      this.windNode.bp.frequency.linearRampToValueAtTime(500 + Math.random() * 600, t + 1.0);
+      this.windNode.gHi.gain.linearRampToValueAtTime(0.008 + Math.random() * 0.012, t + 1.0);
     }, 1100);
   }
 
@@ -5727,12 +5769,18 @@ class Valhalla {
     // identity. tryRestoreFromUrl is called first so a #save=… link
     // takes precedence over the device's local save before any cloud
     // pull can overwrite it.
-    this._wireSyncDialog();
-    Store.tryRestoreFromUrl();
-    this._refreshSkaldLine();
-    this._bootCloudSync();
-    // Re-schedule the next daily reminder if user previously enabled it.
-    this._scheduleNextReminder();
+    // Each of these is wrapped so a single failure (broken DOM ref,
+    // missing localStorage, etc) can't kill the whole boot path.
+    // Before this, an undefined I18N_DICT was throwing in
+    // _wireSyncDialog and silently killing everything that followed,
+    // including saved-state restore and cloud sync init.
+    try { this._wireSyncDialog(); } catch (e) { console.warn("[boot] wireSyncDialog failed", e); }
+    try { Store.tryRestoreFromUrl(); } catch (e) { console.warn("[boot] tryRestoreFromUrl failed", e); }
+    try { this._refreshSkaldLine(); } catch (e) { console.warn("[boot] refreshSkaldLine failed", e); }
+    try { this._bootCloudSync(); } catch (e) { console.warn("[boot] bootCloudSync failed", e); }
+    try { this._scheduleNextReminder(); } catch (e) { console.warn("[boot] scheduleNextReminder failed", e); }
+    try { this._applyI18n(); } catch (e) { console.warn("[boot] applyI18n failed", e); }
+    setTimeout(() => { try { this._applyGear(); } catch (e) { console.warn("[boot] applyGear failed", e); } }, 1500);
 
     // Bio buttons live-mirror sensor status. Previous version was a one-
     // shot setter: button said "On" forever based on the start() return,
@@ -5967,14 +6015,10 @@ class Valhalla {
         // HRV (RMSSD ms). captured for the advanced-mode panel.
         if (m && typeof m.hrv === "number") this.hrv = m.hrv;
         // STRESS + FATIGUE inference layered on top of SDK state.
-        // The SDK gives us focus/calm/flow but not the negative
-        // states the user wants to punish. We derive them:
-        //   STRESS: pulse climbing fast AND HRV collapsing
-        //   FATIGUE: pulse low + HRV mediocre + sustained
-        //   RECOVERY: pulse settling + HRV climbing after stress
-        // These override the SDK state when they're strong enough
-        // so the user actually feels the loss when they tense up.
-        this._derivePunishStates();
+        // Wrapped so any bug here can NEVER take down the whole
+        // metric handler (which would break camera connection).
+        try { this._derivePunishStates(); }
+        catch (e) { console.warn("[Bio] derivePunishStates threw", e); }
       });
       // EEG metrics. capture focus/calm levels for advanced-mode panel.
       window.Bio.on("eegMetric", (m) => {
@@ -6330,6 +6374,73 @@ class Valhalla {
       // DOW heatmap
       + `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(212,173,106,.7);text-transform:uppercase;margin-bottom:4px">Strongest day of the week</div>`
       + `<div style="display:flex;gap:4px;margin-bottom:6px">${dowHtml}</div>`;
+  }
+
+  // Live-apply localization to elements that have an id. Anything
+  // not in I18N_DICT keeps its English text. Called on language
+  // change + on boot.
+  _applyI18n() {
+    try {
+      const playBtn = document.getElementById("beginBtn");
+      const againBtn = document.getElementById("againBtn");
+      const resumeBtn = document.getElementById("resumeBtn");
+      const tabS = document.getElementById("tabSensors");
+      const tabT = document.getElementById("tabTrends");
+      if (playBtn)   playBtn.textContent   = I18N("run");
+      if (againBtn)  againBtn.textContent  = I18N("runAgain");
+      if (resumeBtn) resumeBtn.textContent = I18N("resume");
+      if (tabS) tabS.textContent = I18N("bindBody");
+      if (tabT) tabT.textContent = I18N("sagaSoFar");
+    } catch (e) { console.warn("[Valhalla] i18n apply failed", e); }
+  }
+
+  // Apply selected coat/shield/cloak tint to the player model. Reads
+  // localStorage; no-op if model not loaded yet. Safe to call any time.
+  _applyGear() {
+    try {
+      if (!this.player) return;
+      const coat   = localStorage.getItem("valhalla.gear.coat")   || "leather";
+      const shield = localStorage.getItem("valhalla.gear.shield") || "oak";
+      const cloak  = localStorage.getItem("valhalla.gear.cloak")  || "none";
+      const COAT = {
+        leather:  0x4a2818, furBlack: 0x1a1612, furGrey:  0x4a4a52, iron:     0x6a6e74,
+      };
+      const SHIELD = {
+        oak:    0x6a4a28, red:    0x8a2020, blue:   0x205088, bronze: 0xa07028,
+      };
+      const CLOAK = {
+        none:   null, wolf:   0x5a5e64, bear:   0x4a2818, red:    0x6a1818,
+      };
+      const coatColour   = COAT[coat]   ?? COAT.leather;
+      const shieldColour = SHIELD[shield] ?? SHIELD.oak;
+      const cloakColour  = CLOAK[cloak];
+      // Traverse player meshes. Heuristic: tint anything that isn't
+      // metal-ish based on roughness/metalness. The Soldier.glb has
+      // generic materials; we just bias the colour.
+      this.player.traverse((o) => {
+        if (!o.isMesh) return;
+        if (!o.material) return;
+        const m = o.material;
+        // Apply coat tint to non-metallic materials (skin / fur / leather).
+        if (m.color && (m.metalness ?? 0) < 0.5) {
+          m.color.setHex(coatColour);
+          m.needsUpdate = true;
+        }
+      });
+      // Shield / cloak tinting happens on the attached accessories if
+      // they exist (set by the Viking-gear builder elsewhere).
+      if (this._playerShield && this._playerShield.material) {
+        this._playerShield.material.color.setHex(shieldColour);
+      }
+      if (this._playerCloak) {
+        if (cloakColour == null) {
+          this._playerCloak.visible = false;
+        } else {
+          this._playerCloak.visible = true;
+          if (this._playerCloak.material) this._playerCloak.material.color.setHex(cloakColour);
+        }
+      }
+    } catch (e) { console.warn("[Valhalla] gear apply failed", e); }
   }
 
   // Update the small "🪶 Skald · {name} · Local only" line in the
@@ -9108,8 +9219,25 @@ class Valhalla {
     else this.renderer.render(this.scene, this.camera);
   }
   _render() {
-    if (this.composer) this.composer.render();
-    else this.renderer.render(this.scene, this.camera);
+    // DEFENSIVE: if scene.background got nulled (HDRI dispose, auto-
+    // downgrade race, context-loss recovery), restore it to the
+    // current biome fog colour. Black screen on game-start was traced
+    // to a boot-time throw nulling subsequent setup; this is the last
+    // line of defence so a render frame ALWAYS clears to a visible
+    // colour even if every other system above fails.
+    if (!this.scene.background) {
+      this.scene.background = new THREE.Color(0x6e7a86);
+    }
+    try {
+      if (this.composer) this.composer.render();
+      else this.renderer.render(this.scene, this.camera);
+    } catch (e) {
+      // If composer chain throws (rare, e.g. shader compile fail
+      // mid-frame), fall back to direct render so we never show a
+      // black frame from a thrown error.
+      try { this.renderer.render(this.scene, this.camera); }
+      catch (e2) { /* nothing to do; will retry next frame */ }
+    }
   }
 }
 
