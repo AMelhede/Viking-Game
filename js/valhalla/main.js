@@ -1,40 +1,40 @@
-// 3D viking runner. Three lanes, jump+slide. Reads window.Bio if present.
+﻿// 3D viking runner. Three lanes, jump+slide. Reads window.Bio if present.
 
 import * as THREE from "three";
 import { Water } from "three/addons/objects/Water.js";
 // Real atmospheric Sky shader (Hosek-Wilkie scattering with sun position).
-// This replaces the previous custom gradient-sphere — Hosek-Wilkie is
+// This replaces the previous custom gradient-sphere. Hosek-Wilkie is
 // the same physically-based model used in feature films for daytime sky.
 import { Sky } from "three/addons/objects/Sky.js";
-// Postprocessing — three layered passes turn procedural geometry into
+// Postprocessing. three layered passes turn procedural geometry into
 // something that reads as "real lit world":
-//   Bloom    — emissive highlights bleed (runes/Mjölnir/fire)
-//   SSAO     — screen-space ambient occlusion grounds objects in
+//   Bloom   . emissive highlights bleed (runes/Mjölnir/fire)
+//   SSAO    . screen-space ambient occlusion grounds objects in
 //              contact shadows (the single biggest "object weight"
 //              cue in cinematic games; rocks/trees stop floating)
-//   LUT      — cinematic colour grade via channel-mix shader (cool
-//              shadows, warm highlights, desaturate midtones —
+//   LUT     . cinematic colour grade via channel-mix shader (cool
+//              shadows, warm highlights, desaturate midtones . 
 //              same grade family as Northman / Vikings / The 13th
 //              Warrior)
-//   FXAA     — final AA pass over the post chain
+//   FXAA    . final AA pass over the post chain
 import { EffectComposer }   from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass }       from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass }  from "three/addons/postprocessing/UnrealBloomPass.js";
 import { SSAOPass }         from "three/addons/postprocessing/SSAOPass.js";
 import { ShaderPass }       from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader }       from "three/addons/shaders/FXAAShader.js";
-// HDRI image-based lighting — feeds every PBR material a real-world
+// HDRI image-based lighting. feeds every PBR material a real-world
 // environment map so reflections + sky-lit colour come for free.
 import { RGBELoader }       from "three/addons/loaders/RGBELoader.js";
 // Real rigged GLB character loading. The Soldier.glb hosted on
 // threejs.org/examples is a CC0 rigged human with built-in walk/run
-// animations — when it loads it replaces the capsule player and gives
+// animations. when it loads it replaces the capsule player and gives
 // the world its single biggest "this is real not a toy" cue.
 // NOTE: Three.js r160's SkeletonUtils exports individual functions
 // (clone, retargetClip, ...), NOT a `SkeletonUtils` object. Importing
 // the wrong symbol previously broke the entire module load (game
 // wouldn't start at all). We only load Soldier once and never clone
-// him, so the import was unnecessary in the first place — removed.
+// him, so the import was unnecessary in the first place. removed.
 import { GLTFLoader }       from "three/addons/loaders/GLTFLoader.js";
 
 // Lane 0 = visually leftmost on screen. Because the camera looks toward +Z
@@ -64,7 +64,7 @@ const MAX_SPEED = 60;
 // flavour without rewriting the melody. `boss` names the entrance
 // encounter that fires at the start of each biome (after Midgard).
 // 120m each so realms cycle within a normal 30s run. At BASE_SPEED
-// 22 m/s that's first transition in ~5.5s — Midgard is brief on
+// 22 m/s that's first transition in ~5.5s. Midgard is brief on
 // purpose so the player sees Jötunheim's icy palette + JÖTUNN boss
 // within their first attempts. Boss spawns 30m ahead so they meet
 // the boss within ~1.5s of the entrance banner firing.
@@ -82,7 +82,7 @@ const BIOMES = [
     sky: [0xb08038, 0xe8b860, 0xffe8b0, 0xe8c878], pitch: 4,
     boss: "valkyrie" },
 ];
-// Total cycle length — after this the player loops back to Midgard
+// Total cycle length. after this the player loops back to Midgard
 // with biomeCycle++ for the score modifier.
 const BIOME_CYCLE_LENGTH = BIOMES.reduce((s, b) => s + b.length, 0);
 
@@ -93,15 +93,15 @@ const SKALD_NAME_KEY = "valhalla.skaldName";
 // ---------------- Storage ----------------
 // Cloud-ready storage layer. The save model has three layers:
 //
-//   1. LOCAL — localStorage. Always writes. Works offline. Per browser
+//   1. LOCAL. localStorage. Always writes. Works offline. Per browser
 //      × device × origin. This is the source of truth between syncs.
 //
-//   2. PORTABLE — snapshot() / restore() / exportString() / importString().
+//   2. PORTABLE. snapshot() / restore() / exportString() / importString().
 //      The full save as a single JSON blob the user can copy/paste or
 //      share via URL fragment. Manual cross-device sync without any
 //      backend. Bridges the gap until cloud auth is live.
 //
-//   3. CLOUD — auto-detected via window.ElataSync (provided by the
+//   3. CLOUD. auto-detected via window.ElataSync (provided by the
 //      Elata App Store shell when the game is hosted there). Contract:
 //        window.ElataSync = {
 //          ready: Promise,                  // resolves when sync layer alive
@@ -113,7 +113,7 @@ const SKALD_NAME_KEY = "valhalla.skaldName";
 //      When present, Store auto-pulls on boot and auto-pushes on every
 //      save with last-write-wins merge by snapshot.savedAt.
 //
-// All three layers operate on the same JSON shape — the game code is
+// All three layers operate on the same JSON shape. the game code is
 // completely unaware of which layer is active.
 //
 // SKALD ID: a stable per-user identifier (16-hex + 3-word mnemonic
@@ -172,7 +172,7 @@ const Store = {
     if (!snapshot || typeof snapshot !== "object") throw new Error("bad snapshot");
     if (snapshot.version !== 1) throw new Error("unsupported snapshot version " + snapshot.version);
     if (!snapshot.data || typeof snapshot.data !== "object") throw new Error("snapshot has no data");
-    // Adopt the snapshot's identity too — restoring should make this
+    // Adopt the snapshot's identity too. restoring should make this
     // device "be" the user who created the snapshot.
     if (snapshot.skaldId) try { localStorage.setItem(SKALD_KEY, snapshot.skaldId); } catch {}
     if (snapshot.skaldName) try { localStorage.setItem(SKALD_NAME_KEY, snapshot.skaldName); } catch {}
@@ -203,7 +203,7 @@ const Store = {
     this.restore(JSON.parse(json));
   },
 
-  // Build a self-contained share URL — works offline, works on any
+  // Build a self-contained share URL. works offline, works on any
   // device with the game URL, no backend needed.
   exportUrl() {
     const enc = this.exportString();
@@ -226,7 +226,7 @@ const Store = {
       return true;
     } catch (e) {
       console.warn("[Store] restore from URL failed", e);
-      alert("Couldn't read that save link — it may be corrupted.");
+      alert("Couldn't read that save link. it may be corrupted.");
       return false;
     }
   },
@@ -244,7 +244,7 @@ const Store = {
   },
 
   // Pull on boot. If remote is newer than local, restore. Otherwise
-  // push local up. Last-write-wins by savedAt timestamp — good enough
+  // push local up. Last-write-wins by savedAt timestamp. good enough
   // for a single-user game where the user only plays one device at a
   // time. (Real concurrent multi-device would need CRDT merge, which
   // is overkill for a high-score blob.)
@@ -255,7 +255,7 @@ const Store = {
       const remote = await window.ElataSync.load();
       const local = this.snapshot();
       if (!remote) {
-        // Cloud is empty — push our local up so future devices have something to pull.
+        // Cloud is empty. push our local up so future devices have something to pull.
         await window.ElataSync.save(local);
         return { ok: true, action: "pushed-initial" };
       }
@@ -304,7 +304,7 @@ function newSkaldId() {
 
 // Short, human-readable Skald name. Three words from a small Norse
 // word list, joined by hyphens (e.g. "raven-fjord-mead"). Used only
-// for display — the hex Skald ID is the actual cloud key.
+// for display. the hex Skald ID is the actual cloud key.
 const _SKALD_WORDS = [
   "raven","wolf","bear","stag","fox","hawk","eagle","seal","whale","boar",
   "fjord","mead","axe","sword","shield","helm","prow","mast","hammer","rune",
@@ -321,20 +321,20 @@ function newSkaldName() {
 const $ = (id) => document.getElementById(id);
 
 // ---------------- NorseAudio ----------------
-// Procedural audio for Valhalla. No samples — everything synthesized in
+// Procedural audio for Valhalla. No samples. everything synthesized in
 // WebAudio. The aim is to sound like you've actually been transported to
 // the Viking Age: longhall acoustics, lur horn carrying across a fjord,
 // frame drum and skald-chant over a smoke-fire. Reverb is a cheap multi-
 // tap delay with feedback (no impulse response). Music is built from
 // layered procedural instruments:
 //
-//   Lur            — long brass-like signal horn. 3 detuned saws through
+//   Lur           . long brass-like signal horn. 3 detuned saws through
 //                    a sweeping lowpass with 5.2 Hz vibrato in sustain.
-//   Tagelharpa     — bowed Sami lyre. 2 detuned saws through a bandpass,
+//   Tagelharpa    . bowed Sami lyre. 2 detuned saws through a bandpass,
 //                    plus quiet high-passed pink noise for bow friction.
-//   Frame drum     — sine kick (90→32 Hz) + filtered noise skin slap.
-//   Throat chant   — sawtooth + 6 harmonics through three vowel formants.
-//   Animal horn    — short FM tone for bell/blessing pickups.
+//   Frame drum    . sine kick (90→32 Hz) + filtered noise skin slap.
+//   Throat chant  . sawtooth + 6 harmonics through three vowel formants.
+//   Animal horn   . short FM tone for bell/blessing pickups.
 //
 // Modal centre: D Phrygian (D Eb F G A Bb C). The flat-2nd gives the
 // "Northern" minor flavour without sounding like generic minor.
@@ -371,7 +371,7 @@ class Audio {
       this.master.connect(this.ctx.destination);
 
       // Reverb: single delay + filtered feedback. The previous 4-tap
-      // network was double CPU for marginal acoustic benefit — a single
+      // network was double CPU for marginal acoustic benefit. a single
       // delay with feedback through a lowpass actually models a real
       // hall response perfectly well and halves the audio node count.
       const wet = this.ctx.createGain();
@@ -407,7 +407,7 @@ class Audio {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     return buf;
   }
-  // Voss-McCartney pink noise — much warmer than white for wind/breath.
+  // Voss-McCartney pink noise. much warmer than white for wind/breath.
   _makePinkBuffer(sec) {
     const len = Math.floor(this.ctx.sampleRate * sec);
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -443,13 +443,13 @@ class Audio {
   }
 
   // --- instruments -----------------------------------------------------
-  // Lur horn — REAL brass timbre via additive synthesis. Real brass has
+  // Lur horn. REAL brass timbre via additive synthesis. Real brass has
   // a specific harmonic series with peaks shaped by lip-tension and bore
   // resonance. We build the tone as a sum of sine harmonics with the
   // amplitudes of an actual French-horn / lur spectrum (measured by
   // acoustical engineers: H1=1.0, H2=0.78, H3=0.66, H4=0.52, H5=0.36,
   // H6=0.28, H7=0.18, H8=0.11). On attack the higher harmonics swell
-  // in slightly later (brass "bloom") — that's the bright sting you
+  // in slightly later (brass "bloom"). that's the bright sting you
   // hear when a real horn note starts. No sawtooth-through-filter
   // buzziness, no synth tell.
   _lur(when, freq, dur, vol = 0.18) {
@@ -457,9 +457,9 @@ class Audio {
     const out = ctx.createGain();
     out.gain.value = 0;
 
-    // Spectral envelope — published brass-instrument values, normalised.
+    // Spectral envelope. published brass-instrument values, normalised.
     const HARM = [1.00, 0.78, 0.66, 0.52, 0.36, 0.28, 0.18, 0.11];
-    // Per-harmonic attack offset (in seconds) — higher harmonics bloom
+    // Per-harmonic attack offset (in seconds). higher harmonics bloom
     // ~15-40ms after the fundamental, gives the real "brass surge".
     const HOFF = [0.00, 0.012, 0.022, 0.030, 0.045, 0.060, 0.075, 0.090];
     // 5.2 Hz lip vibrato, applied as detune on the fundamental.
@@ -474,7 +474,7 @@ class Audio {
       o.frequency.value = freq * (h + 1);
       // Slight detune so harmonics don't beat into a flat texture.
       o.detune.value = (Math.random() - 0.5) * 4;
-      // Vibrato on the partial — multiplied by harmonic number so higher
+      // Vibrato on the partial. multiplied by harmonic number so higher
       // harmonics vibrate proportionally, just like a real instrument.
       vibG.connect(o.detune);
       const g = ctx.createGain();
@@ -489,7 +489,7 @@ class Audio {
       o.start(tStart); o.stop(when + dur + 0.05);
     }
     // Tiny breath noise mixed in for the "air in the bore" quality
-    // (real brass is never pure-tone — there's always a whisper).
+    // (real brass is never pure-tone. there's always a whisper).
     const breath = this._noiseSrc(true);
     const breathFil = ctx.createBiquadFilter();
     breathFil.type = "bandpass"; breathFil.frequency.value = freq * 4;
@@ -509,11 +509,11 @@ class Audio {
     // (Each harmonic oscillator was already started inside the harmonic
     // loop above. The leftover `for (const o of oscs)` from the old
     // sawtooth-based lur was throwing ReferenceError because `oscs`
-    // doesn't exist anymore — removed.)
+    // doesn't exist anymore. removed.)
     vib.start(when); vib.stop(when + dur + 0.05);
   }
 
-  // Tagelharpa — KARPLUS-STRONG plucked-string physical model. This is
+  // Tagelharpa. KARPLUS-STRONG plucked-string physical model. This is
   // how real strings actually work: a delay line of length 1/freq
   // seconds, filled with a noise burst (the pluck), feeds back through
   // a one-pole lowpass that simulates string damping. The natural
@@ -528,13 +528,13 @@ class Audio {
     // The feedback delay line. maxDelayTime > our delay so it doesn't clamp.
     const delay = ctx.createDelay(0.05);
     delay.delayTime.value = delaySec;
-    // One-pole lowpass in the feedback path — controls how fast harmonics
+    // One-pole lowpass in the feedback path. controls how fast harmonics
     // decay. Higher Q + lower cutoff = darker, longer-sustaining string.
     const damping = ctx.createBiquadFilter();
     damping.type = "lowpass";
     damping.frequency.value = Math.min(4000, freq * 10);
     damping.Q.value = 0.4;
-    // Feedback gain — set just below 1 so the string sustains then decays.
+    // Feedback gain. set just below 1 so the string sustains then decays.
     // Lower = shorter pluck; higher = ringing harp. ~0.985 is realistic.
     const fb = ctx.createGain();
     fb.gain.value = 0.985;
@@ -553,7 +553,7 @@ class Audio {
     noise.connect(pluck); pluck.connect(delay);
     noise.start(when); noise.stop(when + delaySec + 0.02);
 
-    // Bow-noise overlay — quiet high-passed pink for the friction tone
+    // Bow-noise overlay. quiet high-passed pink for the friction tone
     // that real bowed strings have (tagelharpa is bowed, not plucked,
     // but Karplus-Strong models the resonance perfectly; the bow noise
     // adds the sustained excitation character).
@@ -575,15 +575,15 @@ class Audio {
     out.gain.exponentialRampToValueAtTime(0.0001, when + dur);
   }
 
-  // Frame drum — PHYSICAL MEMBRANE MODES. A real drumhead has multiple
+  // Frame drum. PHYSICAL MEMBRANE MODES. A real drumhead has multiple
   // resonant modes at non-harmonic ratios (the (0,1), (1,1), (2,1) modes
   // of a circular membrane are at ratios ~1, 1.59, 2.14 of the
-  // fundamental). We excite all three with a single noise burst — they
+  // fundamental). We excite all three with a single noise burst. they
   // ring together for the rich "thud-PFFf" attack you get from a real
   // skin drum being struck. Much more natural than a swept sine kick.
   _drum(when, vol = 0.42) {
     const ctx = this.ctx;
-    // The strike — a 4ms broadband noise burst that hits all modes at once.
+    // The strike. a 4ms broadband noise burst that hits all modes at once.
     const burst = this._noiseSrc(false);
     const burstG = ctx.createGain();
     burstG.gain.setValueAtTime(vol * 1.6, when);
@@ -594,7 +594,7 @@ class Audio {
 
     const out = ctx.createGain(); out.gain.value = 1;
 
-    // Membrane modes — measured Bessel-function ratios for a circular
+    // Membrane modes. measured Bessel-function ratios for a circular
     // drumhead. Each mode is a high-Q bandpass that rings when struck.
     // Fundamental at ~85Hz for a real Viking frame drum (about 35cm hide).
     const MODES = [
@@ -614,7 +614,7 @@ class Audio {
       g.gain.exponentialRampToValueAtTime(0.0001, when + m.decay);
       burstG.connect(bp); bp.connect(g); g.connect(out);
     }
-    // Stick attack — sharp transient slap, high-passed noise so it has
+    // Stick attack. sharp transient slap, high-passed noise so it has
     // the wood-on-skin "crack" without competing with the body.
     const slap = this._noiseSrc(false);
     const slapHP = ctx.createBiquadFilter();
@@ -698,7 +698,7 @@ class Audio {
     this.ensure();
     if (!this.ctx || this.windNode) return;
     // LAYERED WIND: two pink-noise streams through different filters
-    // — the high-passed one becomes the "whistling through pines"
+    //. the high-passed one becomes the "whistling through pines"
     // overtone, the low-passed one is the bulk wash. Together this
     // sounds like real outdoor wind, not a single white-noise hiss.
     // The previous single-LP version was the "shit and fraud" wind
@@ -737,7 +737,7 @@ class Audio {
     }, 1100);
   }
 
-  // FIRE CRACKLE — continuous looped texture for the camp ambience.
+  // FIRE CRACKLE. continuous looped texture for the camp ambience.
   // Built from two layers:
   //   * Brown noise through a lowpass = the bass "whoosh" of the fire
   //   * Random tiny noise bursts = the snap/crackle/pop of embers
@@ -757,7 +757,7 @@ class Audio {
     const gWash = ctx.createGain(); gWash.gain.value = 0.32;
     noise.connect(lp); lp.connect(gWash); gWash.connect(master);
     noise.start();
-    // 2) Crackle scheduler — random small bursts of HP-filtered noise.
+    // 2) Crackle scheduler. random small bursts of HP-filtered noise.
     // Each burst is 30–80ms with a sharp envelope.
     const scheduleCrackle = () => {
       if (!this.fireNode || !this.ctx) return;
@@ -791,7 +791,7 @@ class Audio {
     this.fireNode.master.gain.linearRampToValueAtTime(target, this.ctx.currentTime + 0.3);
   }
 
-  // FOOTSTEP — short crunch sound when player stamps a footprint in
+  // FOOTSTEP. short crunch sound when player stamps a footprint in
   // snow. Brown noise burst with low-pass filtering and exponential
   // envelope. Pitch + amplitude randomized so consecutive steps don't
   // sound identical (the dead giveaway of fake game audio).
@@ -835,7 +835,7 @@ class Audio {
     this.ambientTimer = setTimeout(tick, 4000 + Math.random() * 4000);
   }
 
-  // Short wind gust — pink noise with a low-pass swept up then down,
+  // Short wind gust. pink noise with a low-pass swept up then down,
   // simulating a real gust moving past the listener.
   _windGust(when) {
     const ctx = this.ctx;
@@ -855,7 +855,7 @@ class Audio {
     n.start(when); n.stop(when + 2.6);
   }
 
-  // Distant lur horn — a single long note at low volume with massive
+  // Distant lur horn. a single long note at low volume with massive
   // reverb send. Sells the idea that other skalds / signal-watchers
   // are out there in the fjord network.
   _distantHorn(when) {
@@ -912,7 +912,7 @@ class Audio {
 
     const ROOT = 73.42;                                  // D2
     const SCALE = { D:1, Eb:1.0667, F:1.1852, G:1.3333, A:1.5, Bb:1.6, C:1.7778 };
-    const BEAT = 0.72;          // slower tempo — feels more breath-heavy
+    const BEAT = 0.72;          // slower tempo. feels more breath-heavy
     const BAR  = BEAT * 4;
     const LOOP = BAR * 4;
 
@@ -939,10 +939,10 @@ class Audio {
       if (Math.abs(diff) > 0.01) this._musicPitch += Math.sign(diff) * Math.min(Math.abs(diff), 1);
       const pitchMul = Math.pow(2, this._musicPitch / 12);
       const root = ROOT * pitchMul;
-      // Long lur drone holds the root for the whole loop — quieter so
+      // Long lur drone holds the root for the whole loop. quieter so
       // it sits under everything as the seabed of the music.
       this._lur(t0, root, LOOP, 0.075);
-      // Tagelharpa melody only on EVEN loops — gives the music room
+      // Tagelharpa melody only on EVEN loops. gives the music room
       // to breathe instead of beating you over the head with the same
       // phrase every 11.5 seconds.
       if ((this._beat % 2) === 0) {
@@ -962,7 +962,7 @@ class Audio {
       } else if ((this._beat % 4) === 3) {
         this._chant(t0 + 4 * BEAT, root * 2, 6 * BEAT, 0.05, "a");
       }
-      // Distant lur call sometimes mid-loop — gives the world the
+      // Distant lur call sometimes mid-loop. gives the world the
       // sense that other skalds are signalling across the fjord.
       if ((this._beat % 3) === 2) {
         this._lur(t0 + 8 * BEAT, root * 1.5, 3 * BEAT, 0.035);
@@ -1034,7 +1034,7 @@ class Audio {
     n.start(t); n.stop(t + 0.34);
   }
 
-  // Snow crunch lane-change tick — short, sharp, quiet.
+  // Snow crunch lane-change tick. short, sharp, quiet.
   laneChange() {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;
@@ -1246,7 +1246,7 @@ class Audio {
         break;
       }
       case "mjolnir": {
-        // THUNDERCLAP — broadband noise + sub-bass shock + bell ring.
+        // THUNDERCLAP. broadband noise + sub-bass shock + bell ring.
         const n = this._noiseSrc(false);
         const hp = this.ctx.createBiquadFilter();
         hp.type = "highpass"; hp.frequency.value = 300;
@@ -1357,25 +1357,25 @@ class Valhalla {
     this.scenery = [];         // decorative trees etc with z
     this.mountains = [];
 
-    // Active powerup state — each value is seconds remaining; 0 = inactive.
+    // Active powerup state. each value is seconds remaining; 0 = inactive.
     // Internal keys are slot names; user-facing labels are Norse gods/relics.
     this.power = {
-      shield: 0,  // Tyr's Aegis     — invuln (god of war, sacrificed his hand)
-      speed:  0,  // Sleipnir         — Odin's 8-legged steed, gallop speed
-      mult:   0,  // Bragi's Saga     — god of poetry, x2 score
-      magnet: 0,  // Freja's Tears    — pulls mead (she wept tears of gold)
-      ship:   0,  // Skíðblaðnir      — Freyr's magical longship, flight
-      thor:   0,  // Mjölnir          — Thor's hammer, lightning clears obstacles
-      odin:   0,  // Huginn & Muninn  — Odin's ravens, foresight (slow-mo)
+      shield: 0,  // Tyr's Aegis    . invuln (god of war, sacrificed his hand)
+      speed:  0,  // Sleipnir        . Odin's 8-legged steed, gallop speed
+      mult:   0,  // Bragi's Saga    . god of poetry, x2 score
+      magnet: 0,  // Freja's Tears   . pulls mead (she wept tears of gold)
+      ship:   0,  // Skíðblaðnir     . Freyr's magical longship, flight
+      thor:   0,  // Mjölnir         . Thor's hammer, lightning clears obstacles
+      odin:   0,  // Huginn & Muninn . Odin's ravens, foresight (slow-mo)
     };
     // Per-power max durations, used by HUD pill fill calculations.
     this.powerMax = { shield: 6, speed: 5, mult: 8, magnet: 6, ship: 6, thor: 4.5, odin: 6 };
 
     this.cognitiveState = "neutral";
     this.bpm = null;
-    this.hrv = null;          // RMSSD ms — captured for advanced-mode panel
-    this.focusLevel = null;   // 0..1 — captured from EEG
-    this.calmLevel = null;    // 0..1 — captured from EEG
+    this.hrv = null;          // RMSSD ms. captured for advanced-mode panel
+    this.focusLevel = null;   // 0..1. captured from EEG
+    this.calmLevel = null;    // 0..1. captured from EEG
     // Bio session tracking. Every frame we accumulate time in each
     // useful state. Drives:
     //   * bio-gift spawn (12s in flow/focused/calm → free powerup)
@@ -1384,9 +1384,16 @@ class Valhalla {
     this.bioSession = {
       flowSec: 0, focusedSec: 0, calmSec: 0, berserkerSec: 0,
       meditationSec: 0,
+      // Punish state tracking (loss aversion). Time in these is what
+      // we surface in the menu nudge for "yesterday the storm took
+      // you for Xs" warnings.
+      stressSec: 0, fatigueSec: 0,
       sumHR: 0, hrSamples: 0, peakHR: 0,
+      sumHRV: 0, hrvSamples: 0,
       giftAccumSec: 0,           // counts up while in a "good" state
+      giftLossAccumSec: 0,       // counts up while in stress, drains giftAccumSec
       giftsEarned: 0,
+      giftsLost: 0,              // count of gifts denied due to stress
       durationBonusApplied: 0,   // count of powerups extended by bio
     };
 
@@ -1410,7 +1417,7 @@ class Valhalla {
     this._buildPlayer();
     this._buildSnow();
     this._buildScenery();
-    // Atmospheric layers — god rays cutting through scene + drifting
+    // Atmospheric layers. god rays cutting through scene + drifting
     // mist at ground level. Cheap additive sprites, big realism win.
     this._buildGodRays();
     this._buildMist();
@@ -1495,7 +1502,7 @@ class Valhalla {
     // so the sharpness loss is invisible, but the perf win is the
     // single biggest one available. User has repeatedly reported lag
     // even after every other optimisation; this is the last lever.
-    // ADAPTIVE QUALITY — auto-detect rough GPU tier so weak machines
+    // ADAPTIVE QUALITY. auto-detect rough GPU tier so weak machines
     // get a downgrade path without forcing every user into 1980s mode.
     // GPU vendor sniffing via WEBGL_debug_renderer_info is the best
     // we can do in a browser. Default 'auto' falls back to 'high' on
@@ -1512,7 +1519,7 @@ class Valhalla {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.95;
-    // SHADOWS — one directional sun caster, 1024² max even on high.
+    // SHADOWS. one directional sun caster, 1024² max even on high.
     // 2048² doubles the shader cost for marginal visual win at our
     // distances. Disabled entirely on 'low'.
     if (quality === "high" || quality === "medium") {
@@ -1536,7 +1543,7 @@ class Valhalla {
     this.scene.background = fogColor.clone();
 
     // Camera lifted higher (4.0 → 5.5) and tilted down more so the
-    // player sees further down the lane — addresses "hard to see"
+    // player sees further down the lane. addresses "hard to see"
     // feedback. FOV widened 48° → 55° for more peripheral coverage.
     // Far clip extended to 50000 so the Sky.js skybox (sits at radius
     // 5000+) is inside the frustum.
@@ -1546,7 +1553,7 @@ class Valhalla {
 
     // --- Postprocessing pipeline -------------------------------------
     // RenderPass → UnrealBloomPass → FXAA → screen.
-    // Bloom is tuned so only material values > 0.85 actually bleed —
+    // Bloom is tuned so only material values > 0.85 actually bleed . 
     // strong on runes / mead / Mjölnir / Surtr's sword / aurora, but
     // doesn't wash out the snow.
     try {
@@ -1572,17 +1579,17 @@ class Valhalla {
           this.composer.addPass(ssao);
           this.ssaoPass = ssao;
         } catch (e) {
-          console.warn("[Valhalla] SSAO init failed — continuing", e);
+          console.warn("[Valhalla] SSAO init failed. continuing", e);
         }
       }
 
-      // Bloom — strength 0.25 + threshold 0.95, only true emissives
+      // Bloom. strength 0.25 + threshold 0.95, only true emissives
       // bleed (Mjölnir / runes / fire / mead halo). Quarter-res buffer.
       const bloom = new UnrealBloomPass(new THREE.Vector2(w * 0.4, h * 0.4), 0.25, 0.5, 0.95);
       this.composer.addPass(bloom);
       this.bloomPass = bloom;
 
-      // CINEMATIC LUT — custom shader pass that approximates the
+      // CINEMATIC LUT. custom shader pass that approximates the
       // Northman/Vikings colour grade: shadows pushed cool (cyan-blue),
       // highlights pushed warm (amber), midtones desaturated. Plus a
       // gentle film-curve contrast lift. This is the SAME function
@@ -1623,7 +1630,7 @@ class Valhalla {
           }
         `,
       };
-      // LUT only on 'high' — it's a full-screen shader pass that adds
+      // LUT only on 'high'. it's a full-screen shader pass that adds
       // ~1ms on weak GPUs. ACES filmic + HDRI already give us the
       // cinematic colour grade; LUT is the cherry on top.
       if (this.quality === "high") {
@@ -1641,16 +1648,16 @@ class Valhalla {
       this.composer.addPass(fxaa);
       this.fxaaPass = fxaa;
     } catch (e) {
-      console.warn("[Valhalla] postprocessing init failed — falling back", e);
+      console.warn("[Valhalla] postprocessing init failed. falling back", e);
       this.composer = null;
     }
 
-    // IBL is now driven by the Sky.js shader directly (see _buildSky —
+    // IBL is now driven by the Sky.js shader directly (see _buildSky . 
     // PMREM samples the procedural sky into an env map). No CDN
     // dependency, no GPU crash risk, env always matches the current
     // realm's atmosphere. The optional HDRI override stays as a flag
     // for users who want to test with a real captured sky.
-    // HDRI environment OFF by default — perf trade-off after
+    // HDRI environment OFF by default. perf trade-off after
     // repeated user lag reports. The PMREM prefilter + 1k HDR fetch
     // HDRI environment is ON BY DEFAULT now (the user's "looks 1980"
     // call). It's gated inside _loadEnvironment by this.quality; weak
@@ -1667,7 +1674,7 @@ class Valhalla {
     // restore it; on restore, the composer needs a re-render.
     this.canvas.addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
-      console.warn("[Valhalla] WebGL context lost — waiting for restore");
+      console.warn("[Valhalla] WebGL context lost. waiting for restore");
     }, false);
     this.canvas.addEventListener("webglcontextrestored", () => {
       console.warn("[Valhalla] WebGL context restored");
@@ -1694,7 +1701,7 @@ class Valhalla {
       // 'high' really only differs in shadow map resolution; pixelRatio
       // is now capped everywhere. Mobile / mid-laptop GPUs marketed as
       // "RTX 3050 Mobile" or "Radeon Graphics integrated" really aren't
-      // high tier — they're medium. Default everything else to medium.
+      // high tier. they're medium. Default everything else to medium.
       if (/apple.*(m1|m2|m3) (max|ultra|pro)/.test(r)) return "high";
       if (/rtx (40|30|20)([6-9]0)/.test(r)) return "high";    // RTX x060 and up
       if (/rx (6|7)[7-9]00/.test(r)) return "high";           // RX 6700+
@@ -1703,7 +1710,7 @@ class Valhalla {
     } catch { return "medium"; }
   }
 
-  // REAL PBR TEXTURE LIBRARY — loads CC0 Polyhaven textures (snow,
+  // REAL PBR TEXTURE LIBRARY. loads CC0 Polyhaven textures (snow,
   // stone, wood, iron) via their CDN. Each material gets albedo +
   // normal + roughness so flat-coloured procedural meshes suddenly
   // gain surface detail without any geometry change. Loaded once,
@@ -1712,7 +1719,7 @@ class Valhalla {
   // Polyhaven serves CC0 textures from dl.polyhaven.org with proper
   // CORS. Pattern: /file/ph-assets/Textures/jpg/1k/{slug}/{slug}_{map}_1k.jpg
   // Maps used: diff (albedo), nor_gl (OpenGL normal), rough (roughness).
-  // If any texture 404s the material just falls back to its colour —
+  // If any texture 404s the material just falls back to its colour . 
   // no breakage, just less detail.
   _loadPbrTextureLibrary() {
     if (this._pbrLib) return this._pbrLib;
@@ -1770,7 +1777,7 @@ class Valhalla {
   }
 
   _loadEnvironment() {
-    // HDRI environment — gives every PBR material (Soldier.glb, props,
+    // HDRI environment. gives every PBR material (Soldier.glb, props,
     // armour) realistic reflections/ambient. This is the single
     // biggest visual upgrade from "1980 wireframe" to "modern
     // cinematic render". Skipped on 'low' to keep weak GPUs alive.
@@ -1799,7 +1806,7 @@ class Valhalla {
             console.warn("[Valhalla] HDRI load failed, trying fallback", err);
             tryLoad(fallback, true);
           } else {
-            console.warn("[Valhalla] HDRI fallback also failed — IBL disabled", err);
+            console.warn("[Valhalla] HDRI fallback also failed. IBL disabled", err);
           }
         });
       };
@@ -1810,7 +1817,7 @@ class Valhalla {
   }
 
   _buildSky() {
-    // REAL ATMOSPHERIC SKY — Three.js Sky uses the Hosek-Wilkie analytical
+    // REAL ATMOSPHERIC SKY. Three.js Sky uses the Hosek-Wilkie analytical
     // model for daytime sky radiance. Same physical model used in film
     // VFX. Sun position drives all colour automatically: at low sun
     // angle (winter Nordic afternoon) the horizon glows warm orange,
@@ -1826,7 +1833,7 @@ class Valhalla {
     // Rayleigh (no deep blue zenith), high Mie (diffuse cloudy
     // horizon). The previous "golden hour" settings + bloom made the
     // sky bright white. References: The Northman, Vikings TV, The
-    // 13th Warrior — all overcast, low contrast, oppressive weather.
+    // 13th Warrior. all overcast, low contrast, oppressive weather.
     // That's the Nordic look the user actually wants.
     u["turbidity"].value        = 10.0;
     u["rayleigh"].value         = 0.5;
@@ -1835,7 +1842,7 @@ class Valhalla {
     this.sky = sky;
     this.scene.add(sky);
 
-    // Sun JUST below horizon for overcast diffuse skylight feel —
+    // Sun JUST below horizon for overcast diffuse skylight feel . 
     // no direct sun disk, no golden glare, just heavy cloudy sky.
     const elevation = 4;
     const azimuth   = 200;
@@ -1847,7 +1854,7 @@ class Valhalla {
 
     // Sky-driven IBL is opt-in. PMREMGenerator + cloned Sky shader
     // crashed the GPU context for some users (similar to the HDRI
-    // path in round 9). The IBL is a "nice to have" — the warm sun
+    // path in round 9). The IBL is a "nice to have". the warm sun
     // + cold rim + warm bounce lighting setup in _buildLights already
     // gives good contrast without it. Enable via:
     //   localStorage.setItem("valhalla.sky_ibl", "1") and reload
@@ -1923,13 +1930,13 @@ class Valhalla {
   }
 
   _buildLights() {
-    // Lighting now plays alongside the Sky.js IBL — the env map gives
+    // Lighting now plays alongside the Sky.js IBL. the env map gives
     // us full hemispheric sky-coloured ambient automatically, so we
     // can drop the hemi-light and rely on three punchy directional
     // sources: warm key, cold rim, soft fill. Higher contrast than
     // before, addresses "hard to see" + "looks washed out".
 
-    // OVERCAST LIGHTING — cinematic Nordic overcast: soft warm-cool
+    // OVERCAST LIGHTING. cinematic Nordic overcast: soft warm-cool
     // hemisphere skylight + one directional sun (now with real
     // shadows on high/medium) + a cold rim for silhouette separation
     // against fog. References: The Northman, Vikings, 13th Warrior.
@@ -1951,7 +1958,7 @@ class Valhalla {
       );
       sun.shadow.camera.near = 1;
       sun.shadow.camera.far = 90;
-      // VERY tight frustum — only the play strip + a small buffer.
+      // VERY tight frustum. only the play strip + a small buffer.
       // The old 35×30 was way too big; most of the shadow map was
       // wasted on areas the camera couldn't see. Now 18×20 = ~5x
       // higher effective resolution for the same map size, AND
@@ -1966,11 +1973,11 @@ class Valhalla {
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
-    // Rim light removed — the HDRI + hemi + sun trio is enough now
+    // Rim light removed. the HDRI + hemi + sun trio is enough now
     // that exposure is bumped. One less directional light = perf win.
   }
 
-  // Real CC0 PBR texture loader — pulls colour + normal maps from
+  // Real CC0 PBR texture loader. pulls colour + normal maps from
   // threejs.org's official examples CDN (stable, CORS-safe, won't
   // 404 next week). Loads async and swaps into the ground material
   // when ready. Procedural canvas texture is the immediate fallback
@@ -1983,7 +1990,7 @@ class Valhalla {
       // Repurposed as snow micro-relief: when tinted cool-white via
       // material.color, the noise reads as wind-packed snow crystals.
       const colorURL = "https://threejs.org/examples/textures/terrain/grasslight-big.jpg";
-      // (No separate normal map — the previous URL 404'd.)
+      // (No separate normal map. the previous URL 404'd.)
 
       loader.load(colorURL, (tex) => {
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -1999,7 +2006,7 @@ class Valhalla {
       });
 
       // Normal-map URL I picked earlier (grasslight-big-nm.jpg) doesn't
-      // exist on threejs.org and returned 404. Skipped — the existing
+      // exist on threejs.org and returned 404. Skipped. the existing
       // bumpMap fallback inside the procedural canvas texture already
       // gives surface relief. If a real PBR normal map ships later,
       // wire it in here.
@@ -2016,7 +2023,7 @@ class Valhalla {
     const geo = new THREE.PlaneGeometry(GROUND_WIDTH, CHUNK_LENGTH, segW, segL);
     geo.rotateX(-Math.PI / 2);
 
-    // PBR snow with sheen — real snow has a velvety sheen from sub-
+    // PBR snow with sheen. real snow has a velvety sheen from sub-
     // surface scattering off ice crystals. MeshPhysicalMaterial.sheen
     // models exactly that. Combined with the procedural noise texture
     // as both colour and bump, the ground now reads as actual packed
@@ -2148,7 +2155,7 @@ class Valhalla {
     const tmp = new THREE.Object3D();
 
     const TREE_COUNT = 140;
-    // Trunk now uses a LatheGeometry from a tapered+jagged profile —
+    // Trunk now uses a LatheGeometry from a tapered+jagged profile . 
     // breaks the perfect cylinder silhouette that screamed "procedural".
     // Slight bark roughness on the radius gives the trunk a real edge
     // contour when backlit.
@@ -2232,7 +2239,7 @@ class Valhalla {
     caps.instanceMatrix.needsUpdate = true;
     decor.add(trunks, lows, mids, tops, caps);
 
-    // Rocks — vertex-displaced icosahedron, much more organic than the
+    // Rocks. vertex-displaced icosahedron, much more organic than the
     // perfect dodecahedron. Each instance gets a unique random rotation
     // so the same geometry reads as a hundred different rocks.
     const ROCK_COUNT = 26;
@@ -2258,7 +2265,7 @@ class Valhalla {
       const side = Math.random() < 0.5 ? -1 : 1;
       const x = side * (6.5 + Math.random() * 26);
       const z = zStart + Math.random() * CHUNK_LENGTH;
-      // Non-uniform rock scale — boulders are oblate not spherical.
+      // Non-uniform rock scale. boulders are oblate not spherical.
       const r = 0.5 + Math.random() * 1.6;
       const sx = r * (0.7 + Math.random() * 0.6);
       const sy = r * (0.5 + Math.random() * 0.7);
@@ -2306,6 +2313,10 @@ class Valhalla {
       waterColor: 0x1a2030,         // deeper Nordic fjord blue-grey
       distortionScale: 2.2,         // more ripple detail
       fog: true,
+      // alpha < 1 lets the dark water colour show through reflection
+      // for that deep-fjord look (full reflection looks like a chrome
+      // sheet which breaks the misty atmosphere).
+      alpha: 0.95,
     });
     const left = makeWater();
     left.rotation.x = -Math.PI / 2;
@@ -2317,7 +2328,7 @@ class Valhalla {
     this.scene.add(right);
     this.water = [left, right];
 
-    // Real water normal map — swap in over the procedural one for
+    // Real water normal map. swap in over the procedural one for
     // proper photographic ripples. threejs.org/examples ships this
     // texture; same CORS path as Soldier.glb and Horse.glb.
     try {
@@ -2334,7 +2345,7 @@ class Valhalla {
     } catch (e) { console.warn("[Valhalla] water normals load failed", e); }
   }
 
-  // GOD RAYS — cheap, beautiful. Six additive radial-gradient planes
+  // GOD RAYS. cheap, beautiful. Six additive radial-gradient planes
   // anchored to the sun direction, fading by distance. Reads as
   // sunlight cutting through the canopy / mist without needing the
   // expensive GodRaysPass shader.
@@ -2386,7 +2397,7 @@ class Valhalla {
     this.godRays.position.x = this.player ? this.player.position.x * 0.3 : 0;
     for (const ray of this.godRays.children) {
       const u = ray.userData;
-      // Subtle breathing — opacity fluctuates 0.6-1.0 of baseline so
+      // Subtle breathing. opacity fluctuates 0.6-1.0 of baseline so
       // the rays feel alive (like light pulsing through moving clouds).
       ray.material.opacity = (ray.material.opacity || 0.1) *
         (0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * u.driftSpeed * 4 + u.phase)));
@@ -2395,7 +2406,7 @@ class Valhalla {
     }
   }
 
-  // VOLUMETRIC MIST — drifting low ground sprites. 12 quads with a
+  // VOLUMETRIC MIST. drifting low ground sprites. 12 quads with a
   // soft-edged white-grey texture, alpha-blended, scrolling slowly.
   // Cheap atmospheric depth.
   _buildMist() {
@@ -2537,7 +2548,7 @@ class Valhalla {
 
     // Body silhouette upgraded from stacked boxes to capsule + cone
     // geometry. CapsuleGeometry is just a cylinder with hemispheres on
-    // both ends — gives a continuous shoulder-to-hip volume that reads
+    // both ends. gives a continuous shoulder-to-hip volume that reads
     // as a real human torso instead of "minecraft figure". Materials
     // stay non-emissive earthy wool (madder/woad/walnut palette).
     const body = new THREE.Mesh(
@@ -2547,7 +2558,7 @@ class Valhalla {
     body.position.y = 1.05;
     grp.add(body);
 
-    // Over-tunic / surcoat — a slightly wider lower band in darker wool.
+    // Over-tunic / surcoat. a slightly wider lower band in darker wool.
     const tunic = new THREE.Mesh(
       new THREE.CylinderGeometry(0.40, 0.46, 0.45, 14),
       new THREE.MeshStandardMaterial({ color: 0x36281c, roughness: 0.95, flatShading: false })
@@ -2555,7 +2566,7 @@ class Valhalla {
     tunic.position.y = 0.62;
     grp.add(tunic);
 
-    // Tooled leather belt — torus reads as a real cinched belt.
+    // Tooled leather belt. torus reads as a real cinched belt.
     const belt = new THREE.Mesh(
       new THREE.TorusGeometry(0.42, 0.06, 8, 18),
       new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 0.55, metalness: 0.25 })
@@ -2571,7 +2582,7 @@ class Valhalla {
     buckle.position.set(0, 0.85, 0.42);
     grp.add(buckle);
 
-    // Head — sphere, slightly elongated, weathered skin tone.
+    // Head. sphere, slightly elongated, weathered skin tone.
     const head = new THREE.Mesh(
       new THREE.SphereGeometry(0.30, 18, 14),
       new THREE.MeshStandardMaterial({ color: 0xcfa07b, roughness: 0.7, flatShading: false })
@@ -2580,7 +2591,7 @@ class Valhalla {
     head.position.y = 1.78;
     grp.add(head);
 
-    // Auburn beard — capsule shape so it actually wraps the jaw.
+    // Auburn beard. capsule shape so it actually wraps the jaw.
     const beard = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.16, 0.10, 4, 10),
       new THREE.MeshStandardMaterial({ color: 0x6a3214, roughness: 0.95, flatShading: false })
@@ -2589,7 +2600,7 @@ class Valhalla {
     beard.position.set(0, 1.55, 0.18);
     grp.add(beard);
 
-    // Helmet — historically-accurate spangenhelm style. NO HORNS (the
+    // Helmet. historically-accurate spangenhelm style. NO HORNS (the
     // horned-helmet image is a 19th-century Wagner-opera invention; no
     // Viking-age helmet ever had them). Weathered iron with a centre
     // ridge and a nose-guard for that real-world Norse silhouette.
@@ -2600,7 +2611,7 @@ class Valhalla {
     helmet.position.y = 2.02;
     helmet.castShadow = true;
     grp.add(helmet);
-    // Centre ridge band — iron strip running front-to-back across the crown.
+    // Centre ridge band. iron strip running front-to-back across the crown.
     const helmRidge = new THREE.Mesh(
       new THREE.BoxGeometry(0.08, 0.04, 0.74),
       new THREE.MeshStandardMaterial({ color: 0x2a2d32, roughness: 0.4, metalness: 0.8 })
@@ -2614,7 +2625,7 @@ class Valhalla {
     noseGuard.position.set(0, 1.84, 0.30);
     grp.add(noseGuard);
 
-    // Arms — capsules so shoulders + elbows + hands read as one volume.
+    // Arms. capsules so shoulders + elbows + hands read as one volume.
     const armMat = new THREE.MeshStandardMaterial({ color: 0x5a4838, roughness: 0.95, flatShading: false });
     const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.55, 4, 10), armMat);
     armL.position.set(-0.48, 1.05, 0);
@@ -2623,7 +2634,7 @@ class Valhalla {
     armR.position.x = 0.48;
     grp.add(armR);
 
-    // Trouser legs — capsules in darker wool / oiled leather tone.
+    // Trouser legs. capsules in darker wool / oiled leather tone.
     const legMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.95, flatShading: false });
     const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.5, 4, 10), legMat);
     legL.position.set(-0.18, 0.4, 0);
@@ -2631,7 +2642,7 @@ class Valhalla {
     const legR = legL.clone();
     legR.position.x = 0.18;
     grp.add(legR);
-    // Cross-bound leg wraps (winningas) — three thin dark stripes per
+    // Cross-bound leg wraps (winningas). three thin dark stripes per
     // shin so the legs read as Viking-age dress.
     const wrapMat = new THREE.MeshStandardMaterial({ color: 0x0e0805, roughness: 1.0 });
     for (const lx of [-0.18, 0.18]) {
@@ -2662,7 +2673,7 @@ class Valhalla {
     axeHead.rotation.z = -0.3;
     grp.add(axeHead);
 
-    // Shield on back — weathered linden-wood planks with iron rim and
+    // Shield on back. weathered linden-wood planks with iron rim and
     // iron boss. Wood pigment is desaturated ochre, not the cartoonish
     // red it was previously (Viking shields WERE often painted, but
     // saturated arcade-red reads as "game prop" not "weathered gear").
@@ -2673,7 +2684,7 @@ class Valhalla {
     shield.rotation.x = Math.PI / 2;
     shield.position.set(0, 1.05, -0.32);
     grp.add(shield);
-    // Plank seams — three thin dark stripes across the face for texture.
+    // Plank seams. three thin dark stripes across the face for texture.
     for (let i = -1; i <= 1; i++) {
       const seam = new THREE.Mesh(
         new THREE.BoxGeometry(0.86, 0.018, 0.02),
@@ -2697,7 +2708,7 @@ class Valhalla {
     grp.add(shieldBoss);
 
     // Save references for animation. `procPlayer` holds the procedural
-    // mesh assembly we just built — it's the placeholder shown until
+    // mesh assembly we just built. it's the placeholder shown until
     // the real GLB rigged character loads from CDN. Same parent group
     // is reused so all the bio aura / shield glow / Mjölnir aura code
     // keeps working without any rewire.
@@ -2751,7 +2762,7 @@ class Valhalla {
     this._fpIdx = 0;
     this._fpAccum = 0;
 
-    // BREATH PUFFS — small Points cloud rising + drifting back from the
+    // BREATH PUFFS. small Points cloud rising + drifting back from the
     // player's mouth. In a cold Norse realm you can see your own breath.
     // This single detail does more for "I'm a living person in this
     // world" than any HUD element. 24 reusable particles cycling.
@@ -2770,7 +2781,7 @@ class Valhalla {
     grp.add(breath);
     this._breath = { points: breath, life: breathLife, lastEmit: 0 };
 
-    // Bio aura — a soft glowing sphere wrapped around the player whose
+    // Bio aura. a soft glowing sphere wrapped around the player whose
     // colour is driven by the cognitive state. Starts invisible; comes
     // on the moment a biosignal is active. This is the player's visible
     // proof that the body/mind is actually doing something to the game.
@@ -2789,7 +2800,7 @@ class Valhalla {
   // Async-load a real rigged 3D human from threejs.org's CC0 model
   // library and swap him in for the procedural capsule placeholder.
   // Soldier.glb is a complete human with built-in walk/run/idle
-  // animations — once it lands the player goes from "stack of
+  // animations. once it lands the player goes from "stack of
   // capsules" to "actual person", which is the single biggest
   // "looks like real Earth" upgrade available without an asset
   // pipeline of our own.
@@ -2800,7 +2811,7 @@ class Valhalla {
       loader.load(URL, (gltf) => {
         try {
           // Use gltf.scene directly. We never load Soldier twice, so
-          // we don't need SkeletonUtils.clone — that was only required
+          // we don't need SkeletonUtils.clone. that was only required
           // when re-using a rigged model. Direct use preserves the
           // bone bindings the AnimationMixer needs.
           const model = gltf.scene;
@@ -2822,7 +2833,7 @@ class Valhalla {
             o.receiveShadow = true;
             // Clone the material so we don't mutate cached/shared maps.
             const original = o.material;
-            // No 'skinning' option — that's not a MeshStandardMaterial
+            // No 'skinning' option. that's not a MeshStandardMaterial
             // property in modern Three.js (the mesh's isSkinnedMesh
             // flag controls skinning automatically). Setting it
             // emitted a warning per traversed mesh.
@@ -2852,17 +2863,17 @@ class Valhalla {
               m.color = new THREE.Color(0x1a1208);             // dark leather
               m.roughness = 0.7;
             } else {
-              // Default to wool — better than military camo for anything
+              // Default to wool. better than military camo for anything
               // we couldn't classify.
               m.color = new THREE.Color(0x5a4838);
               m.roughness = 0.95;
             }
-            // Preserve any normal/AO map the original had — gives micro-detail
+            // Preserve any normal/AO map the original had. gives micro-detail
             // even though we override the colour.
             if (original) {
               if (original.normalMap)   { m.normalMap   = original.normalMap;   m.normalScale = new THREE.Vector2(0.8, 0.8); }
               if (original.aoMap)       { m.aoMap       = original.aoMap;       m.aoMapIntensity = 0.9; }
-              // (skinning prop removed — see comment above)
+              // (skinning prop removed. see comment above)
             }
             o.material = m;
           });
@@ -2870,7 +2881,7 @@ class Valhalla {
           if (this.procPlayer) this.procPlayer.visible = false;
           this.player.add(model);
           this._realPlayer = model;
-          // VIKING GEAR — round shield (back), single-handed axe (right
+          // VIKING GEAR. round shield (back), single-handed axe (right
           // hip), fur cloak (shoulders). Attached to the model root so
           // they move with the running animation as a unit. Anatomically
           // not bone-locked (which would need rigid-bone lookup) but
@@ -2973,7 +2984,7 @@ class Valhalla {
     );
     head.position.set(0.22, 0.07, 0);
     axe.add(head);
-    // Bevel edge — slightly brighter strip
+    // Bevel edge. slightly brighter strip
     const edge = new THREE.Mesh(
       new THREE.BoxGeometry(0.04, 0.18, 0.061),
       new THREE.MeshStandardMaterial({ color: 0xe8edf2, metalness: 0.9, roughness: 0.15 })
@@ -3003,7 +3014,7 @@ class Valhalla {
     cloak.position.set(0, 1.55, -0.18);
     cloak.rotation.x = -0.12;               // hangs slightly back
     model.add(cloak);
-    // Fur collar — short white-grey roll across shoulders
+    // Fur collar. short white-grey roll across shoulders
     const collar = new THREE.Mesh(
       new THREE.TorusGeometry(0.32, 0.07, 8, 16, Math.PI),
       new THREE.MeshStandardMaterial({ color: 0xb8a89a, roughness: 1.0, flatShading: true })
@@ -3032,12 +3043,12 @@ class Valhalla {
     }
   }
 
-  // RUNESTONES — heavy carved granite monoliths flanking the road at
+  // RUNESTONES. heavy carved granite monoliths flanking the road at
   // intervals. Built once at world init; the chunked terrain handles
   // their wraparound by relative-z scrolling.
   _buildRunestones() {
     if (!this.runestones) this.runestones = new THREE.Group();
-    // REAL PBR STONE — Polyhaven aerial_rocks_02 tinted toward weathered
+    // REAL PBR STONE. Polyhaven aerial_rocks_02 tinted toward weathered
     // granite. Adds genuine surface detail (cracks, lichen, micro-
     // shading) to what were previously flat-colour boxes.
     const stoneMat = this._pbrMaterial("stone", {
@@ -3059,14 +3070,14 @@ class Valhalla {
       );
       body.position.y = h / 2;
       stone.add(body);
-      // Top notch — chipped corner so it doesn't look mass-produced.
+      // Top notch. chipped corner so it doesn't look mass-produced.
       const notch = new THREE.Mesh(
         new THREE.BoxGeometry(w * 0.5, 0.3, 0.5),
         stoneMat
       );
       notch.position.set(w * 0.2, h - 0.05, 0);
       stone.add(notch);
-      // Carved rune — small emissive vertical stroke
+      // Carved rune. small emissive vertical stroke
       const rune = new THREE.Mesh(
         new THREE.BoxGeometry(w * 0.1, h * 0.5, 0.05),
         carvedMat
@@ -3101,7 +3112,7 @@ class Valhalla {
     }
   }
 
-  // FIRE PITS — glowing fire stacks at intervals along the roadside.
+  // FIRE PITS. glowing fire stacks at intervals along the roadside.
   // Each pit has a stone ring, a flame cone (additive), and a soft
   // point-light glow. Recycled like runestones for endless scroll.
   _buildFirePits() {
@@ -3118,7 +3129,7 @@ class Valhalla {
     });
     // 8 pits, alternating sides, every ~140m, offset from runestones.
     // 4 pits not 8. WebGL caps useful dynamic lights at ~4; we use NONE
-    // here — emissive materials read as fire without the per-pixel
+    // here. emissive materials read as fire without the per-pixel
     // shader cost. Flame meshes are additive sprites that sell the
     // warmth visually without ever touching the lighting pipeline.
     for (let i = 0; i < 4; i++) {
@@ -3130,7 +3141,7 @@ class Valhalla {
       ring.rotation.x = Math.PI / 2;
       ring.position.y = 0.18;
       pit.add(ring);
-      // Inner bright flame (emissive — no light needed)
+      // Inner bright flame (emissive. no light needed)
       const flame = new THREE.Mesh(
         new THREE.ConeGeometry(0.35, 1.2, 8, 1, true),
         flameInnerMat
@@ -3162,16 +3173,16 @@ class Valhalla {
       if (pit.position.z < this.distance - 30) {
         pit.position.z += 4 * 280;
       }
-      // Flicker via scale only — no light to update.
+      // Flicker via scale only. no light to update.
       const flick = 0.85 + Math.sin(t * 8 + u.phase) * 0.12;
       u.flame.scale.set(flick, 0.9 + Math.sin(t * 6 + u.phase) * 0.15, flick);
       u.halo.scale.set(flick * 1.1, 0.95 + Math.cos(t * 4 + u.phase) * 0.15, flick * 1.1);
     }
   }
 
-  // PINE FOREST — 12 conifers lining the far meadow on both sides.
+  // PINE FOREST. 12 conifers lining the far meadow on both sides.
   // Each is a stacked-cone silhouette (3 cones, dark green) on a PBR
-  // wood-textured trunk. Cheap geometry, lots of presence — the
+  // wood-textured trunk. Cheap geometry, lots of presence. the
   // single biggest "this is a real Nordic forest" cue.
   _buildPineForest() {
     if (!this.pines) this.pines = new THREE.Group();
@@ -3193,7 +3204,7 @@ class Valhalla {
       );
       trunk.position.y = h * 0.225;
       tree.add(trunk);
-      // Three stacked cones of decreasing radius — classic pine shape.
+      // Three stacked cones of decreasing radius. classic pine shape.
       const needleMat = baseNeedleMat.clone();
       // Slight per-tree colour variation so the forest doesn't look mass-produced.
       needleMat.color.offsetHSL(
@@ -3211,6 +3222,17 @@ class Valhalla {
         cone.position.y = h * 0.45 + k * conh * 0.6;
         tree.add(cone);
       }
+      // SNOW CAP. single small white cone on the top crown so every
+      // pine has the wind-driven snow accumulation classic of every
+      // Nordic forest reference shot. Cheap (one mesh per tree) and
+      // dramatically lifts the realism.
+      const snowMat = new THREE.MeshStandardMaterial({
+        color: 0xf0f4f8, roughness: 0.9, metalness: 0.0,
+        flatShading: true, envMapIntensity: 0.4,
+      });
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.9, 8), snowMat);
+      cap.position.y = h * 0.45 + 3 * (h * 0.36) * 0.6 - 0.1;
+      tree.add(cap);
       // Far side of the road, well past the runestone strip so they
       // read as distant forest not roadside obstacle.
       const side = i % 2 === 0 ? -1 : 1;
@@ -3234,7 +3256,7 @@ class Valhalla {
     }
   }
 
-  // HUGINN & MUNINN — Odin's two ravens, always circling above the
+  // HUGINN & MUNINN. Odin's two ravens, always circling above the
   // player. Replaces the older 5-wing scenery with two named birds
   // each made of body + 2 wings + tail. They orbit at different
   // radii and heights so they read as distinct individuals.
@@ -3245,7 +3267,7 @@ class Valhalla {
       this.ravens = null;
     }
     this.odinRavens = new THREE.Group();
-    // Procedural placeholder shells — these stay visible immediately
+    // Procedural placeholder shells. these stay visible immediately
     // while the real Stork.glb loads async. The same orbit code in
     // _updateOdinsRavens drives both.
     const bodyMatHuginn = new THREE.MeshStandardMaterial({
@@ -3295,7 +3317,7 @@ class Valhalla {
   }
 
   // Load real animated Stork.glb (threejs CDN) and use two clones as
-  // Huginn + Muninn. Stork has a fly animation baked in — perfect for
+  // Huginn + Muninn. Stork has a fly animation baked in. perfect for
   // the orbit. Tinted dark for raven plumage. If load fails we keep
   // the procedural shells, no breakage.
   _loadRealRavens() {
@@ -3351,7 +3373,7 @@ class Valhalla {
           }
         },
         undefined,
-        (err) => console.warn("[Valhalla] Stork.glb load failed — keeping procedural ravens", err)
+        (err) => console.warn("[Valhalla] Stork.glb load failed. keeping procedural ravens", err)
       );
     } catch (e) {
       console.warn("[Valhalla] raven loader setup failed", e);
@@ -3391,7 +3413,7 @@ class Valhalla {
   }
 
   // Load real animated Horse.glb (threejs CDN) and scatter 3 horses
-  // in the distant meadows. Vikings rode horses — this single addition
+  // in the distant meadows. Vikings rode horses. this single addition
   // sells "real Viking world" more than any procedural box ever will.
   _loadRealHorses() {
     try {
@@ -3446,7 +3468,7 @@ class Valhalla {
     }
   }
 
-  // Per-frame horse update — animate gallop + recycle behind→ahead so
+  // Per-frame horse update. animate gallop + recycle behind→ahead so
   // the meadows always have life moving through them.
   _updateRealHorses(dt) {
     if (!this._horses) return;
@@ -3461,9 +3483,9 @@ class Valhalla {
     }
   }
 
-  // BATTLE HELMS — load DamagedHelmet (Khronos glTF reference asset)
+  // BATTLE HELMS. load DamagedHelmet (Khronos glTF reference asset)
   // and scatter 4 around the meadow as battlefield mementos. The
-  // model is THE PBR reference asset — every metalness/roughness
+  // model is THE PBR reference asset. every metalness/roughness
   // pixel was authored; reads as authentic battered metal under our
   // HDRI environment. Same async/fallback pattern as Horse/Stork.
   _loadBattleHelms() {
@@ -3526,17 +3548,17 @@ class Valhalla {
     }
   }
 
-  // CC0 VIKING-ERA PROPS — real authored GLB models from the
+  // CC0 VIKING-ERA PROPS. real authored GLB models from the
   // Polygonal Mind medieval-fair pack, served via jsdelivr CDN with
   // proper CORS (verified). This is the actual leap from procedural
   // boxes to authored 3D scenery.
   //
   // Loaded:
-  //   * Tabern.glb       — Viking longhouse silhouette in the meadow
-  //   * Barrel.glb       — mead barrels clustered around fire pits
-  //   * Cart.glb         — abandoned wooden cart on the path
-  //   * Lamp.glb         — torch posts lining the road
-  //   * SignPost.glb     — wooden waymarkers
+  //   * Tabern.glb      . Viking longhouse silhouette in the meadow
+  //   * Barrel.glb      . mead barrels clustered around fire pits
+  //   * Cart.glb        . abandoned wooden cart on the path
+  //   * Lamp.glb        . torch posts lining the road
+  //   * SignPost.glb    . wooden waymarkers
   //
   // Each loader is independent so partial failures don't take down
   // the whole set. Configurable count + placement strategy per type.
@@ -3545,7 +3567,7 @@ class Valhalla {
     const cdnBase = "https://cdn.jsdelivr.net/gh/ToxSam/cc0-models-Polygonal-Mind@main/projects/medieval-fair/";
     this._vikingProps = { tabern: [], barrel: [], cart: [], lamp: [], signpost: [] };
 
-    // Tabern — 3 Viking longhouses far in the meadow background.
+    // Tabern. 3 Viking longhouses far in the meadow background.
     loader.load(cdnBase + "Tabern.glb", (gltf) => {
       try {
         for (let i = 0; i < 3; i++) {
@@ -3553,7 +3575,7 @@ class Valhalla {
           t.scale.setScalar(2.8);
           t.traverse((o) => {
             if (!o.isMesh) return;
-            o.castShadow = false;     // far background — no shadow cost
+            o.castShadow = false;     // far background. no shadow cost
             o.receiveShadow = true;
             o.frustumCulled = false;
           });
@@ -3567,7 +3589,7 @@ class Valhalla {
       } catch (e) { console.warn("[Valhalla] Tabern setup failed", e); }
     }, undefined, (err) => console.warn("[Valhalla] Tabern.glb failed", err));
 
-    // Barrels — clusters of 2-3 near each fire pit-ish location.
+    // Barrels. clusters of 2-3 near each fire pit-ish location.
     loader.load(cdnBase + "Barrel.glb", (gltf) => {
       try {
         for (let i = 0; i < 10; i++) {
@@ -3589,7 +3611,7 @@ class Valhalla {
       } catch (e) { console.warn("[Valhalla] Barrel setup failed", e); }
     }, undefined, (err) => console.warn("[Valhalla] Barrel.glb failed", err));
 
-    // Carts — 2 abandoned wooden carts at roadside intervals.
+    // Carts. 2 abandoned wooden carts at roadside intervals.
     loader.load(cdnBase + "Cart.glb", (gltf) => {
       try {
         for (let i = 0; i < 2; i++) {
@@ -3611,7 +3633,7 @@ class Valhalla {
       } catch (e) { console.warn("[Valhalla] Cart setup failed", e); }
     }, undefined, (err) => console.warn("[Valhalla] Cart.glb failed", err));
 
-    // Lamps — torch posts dense along the road, 6 of them.
+    // Lamps. torch posts dense along the road, 6 of them.
     loader.load(cdnBase + "Lamp.glb", (gltf) => {
       try {
         for (let i = 0; i < 6; i++) {
@@ -3632,7 +3654,7 @@ class Valhalla {
       } catch (e) { console.warn("[Valhalla] Lamp setup failed", e); }
     }, undefined, (err) => console.warn("[Valhalla] Lamp.glb failed", err));
 
-    // SignPosts — 4 waymarkers between major realm transitions.
+    // SignPosts. 4 waymarkers between major realm transitions.
     loader.load(cdnBase + "SignPost.glb", (gltf) => {
       try {
         for (let i = 0; i < 4; i++) {
@@ -3653,6 +3675,78 @@ class Valhalla {
         console.log("[Valhalla] SignPosts loaded");
       } catch (e) { console.warn("[Valhalla] SignPost setup failed", e); }
     }, undefined, (err) => console.warn("[Valhalla] SignPost.glb failed", err));
+  }
+
+  // VIKING NPC WARRIORS. clone Soldier.glb for 4 NPCs standing at
+  // longhouse positions with varied material tints. Each gets the
+  // idle animation from the model. Brings the longhouse area to life.
+  _loadVikingNPCs() {
+    try {
+      const loader = new GLTFLoader();
+      loader.load("https://threejs.org/examples/models/gltf/Soldier.glb", (gltf) => {
+        try {
+          this._vikingNPCs = [];
+          // Find the idle animation (Soldier.glb has Idle/Walk/Run)
+          const idleClip = gltf.animations.find(c => /idle/i.test(c.name)) || gltf.animations[0];
+          // 4 NPCs with different coats. clan colours
+          const variants = [
+            { coat: 0x3a2818, fur: 0x6a5040, name: "Bjorn" },     // dark brown leather + tan fur
+            { coat: 0x2a1818, fur: 0x4a3030, name: "Eirik" },     // wine-leather + ruddy fur
+            { coat: 0x1a2a3a, fur: 0x5a6a7a, name: "Sigrun" },    // sea-blue leather + grey fur
+            { coat: 0x2a2a2a, fur: 0x5a5050, name: "Olaf" },      // black leather + smoke fur
+          ];
+          for (let i = 0; i < variants.length; i++) {
+            const v = variants[i];
+            const npc = gltf.scene.clone(true);
+            npc.scale.setScalar(1.2);
+            // Tint the materials per variant
+            npc.traverse((o) => {
+              if (!o.isMesh) return;
+              o.castShadow = true;
+              o.receiveShadow = false;
+              o.frustumCulled = false;
+              if (o.material) {
+                o.material = new THREE.MeshStandardMaterial({
+                  color: i % 2 === 0 ? v.coat : v.fur,
+                  roughness: 0.82, metalness: 0.0,
+                  envMapIntensity: 0.6,
+                });
+              }
+            });
+            // Position near each longhouse (taberns are at ~180 + i*380).
+            const side = i % 2 === 0 ? -1 : 1;
+            npc.position.set(
+              side * (22 + Math.random() * 5),
+              0,
+              200 + i * 380 + (Math.random() - 0.5) * 30
+            );
+            npc.rotation.y = Math.random() * Math.PI * 2;
+            // Idle animation, randomised offset so they don't all
+            // breathe in unison.
+            const mixer = new THREE.AnimationMixer(npc);
+            if (idleClip) {
+              const action = mixer.clipAction(idleClip);
+              action.time = Math.random() * idleClip.duration;
+              action.play();
+            }
+            this.scene.add(npc);
+            this._vikingNPCs.push({ mesh: npc, mixer });
+          }
+          console.log("[Valhalla] Viking NPCs loaded (4 warriors)");
+        } catch (e) { console.warn("[Valhalla] NPC setup failed", e); }
+      }, undefined, (err) => console.warn("[Valhalla] NPC Soldier.glb failed", err));
+    } catch (e) { console.warn("[Valhalla] NPC loader setup failed", e); }
+  }
+
+  _updateVikingNPCs(dt) {
+    if (!this._vikingNPCs) return;
+    for (const n of this._vikingNPCs) {
+      if (n.mixer) n.mixer.update(dt);
+      // Recycle behind→ahead so the world is always populated.
+      if (n.mesh.position.z - this.distance < -30) {
+        n.mesh.position.z += 4 * 380;
+      }
+    }
   }
 
   // Recycle Viking props behind→ahead per type-specific spacing.
@@ -3686,9 +3780,9 @@ class Valhalla {
       (err) => console.warn("[Valhalla] snowflake sprite failed (keeping square dots)", err)
     );
 
-    // Close snow — orig 350 → repeatedly halved → now 20. Floor.
+    // Close snow. orig 350 → repeatedly halved → now 20. Floor.
     {
-      const count = 10;     // halved from 20 — atmosphere not snowstorm
+      const count = 10;     // halved from 20. atmosphere not snowstorm
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -3709,7 +3803,7 @@ class Valhalla {
 
     // Far layer orig 1800 → now 120. Floor.
     {
-      const count = 60;     // halved from 120 — atmosphere not snowstorm
+      const count = 60;     // halved from 120. atmosphere not snowstorm
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 140;
@@ -3730,7 +3824,7 @@ class Valhalla {
   }
 
   _buildScenery() {
-    // LONGSHIP FLEET — 3 ships (was 6) drifting down the fjord. Halved
+    // LONGSHIP FLEET. 3 ships (was 6) drifting down the fjord. Halved
     // for perf + visual breathing room: 60 meshes was crowding both the
     // GPU and the eye. Each gets its own sail speed so they don't move
     // in lockstep.
@@ -3744,13 +3838,13 @@ class Valhalla {
     });
     for (let i = 0; i < 3; i++) {
       const ship = new THREE.Group();
-      // Tapered hull — curved bow + stern via cylinder + box hybrid.
+      // Tapered hull. curved bow + stern via cylinder + box hybrid.
       const hull = new THREE.Mesh(new THREE.BoxGeometry(9, 1.5, 2.8), hullPbr);
       ship.add(hull);
       const keel = new THREE.Mesh(new THREE.BoxGeometry(7, 0.6, 2.4), keelPbr);
       keel.position.y = -0.85;
       ship.add(keel);
-      // Dragon-head prow — small triangular wedge at front
+      // Dragon-head prow. small triangular wedge at front
       const prow = new THREE.Mesh(
         new THREE.ConeGeometry(0.55, 1.2, 4),
         new THREE.MeshStandardMaterial({ color: 0x4a2e1a, roughness: 0.85, flatShading: true })
@@ -3758,7 +3852,7 @@ class Valhalla {
       prow.rotation.z = -Math.PI / 2;
       prow.position.set(4.7, 0.4, 0);
       ship.add(prow);
-      // Stern post — vertical curved board
+      // Stern post. vertical curved board
       const stern = new THREE.Mesh(
         new THREE.BoxGeometry(0.25, 1.8, 0.6),
         new THREE.MeshStandardMaterial({ color: 0x4a2e1a, roughness: 0.85, flatShading: true })
@@ -3772,7 +3866,7 @@ class Valhalla {
       );
       mast.position.y = 2.6;
       ship.add(mast);
-      // Sail — square with horizontal red stripe (classic Norse pattern)
+      // Sail. square with horizontal red stripe (classic Norse pattern)
       const sailColours = [0xd8d4c8, 0xe2dcd0, 0xc8c0b0];
       const sail = new THREE.Mesh(
         new THREE.PlaneGeometry(5.0, 3.6),
@@ -3792,7 +3886,7 @@ class Valhalla {
       stripe.position.set(0, 2.8 + (Math.random() - 0.5) * 0.8, 0);
       stripe.rotation.y = Math.PI / 2;
       ship.add(stripe);
-      // Shield rack along the side — six small disks
+      // Shield rack along the side. six small disks
       for (let k = 0; k < 6; k++) {
         const shield = new THREE.Mesh(
           new THREE.CylinderGeometry(0.35, 0.35, 0.04, 12),
@@ -3816,7 +3910,7 @@ class Valhalla {
       });
     }
 
-    // PINE FOREST — scattered pines lining the far meadow. The Nordic
+    // PINE FOREST. scattered pines lining the far meadow. The Nordic
     // world without pines is wrong (every Northman/Vikings reference
     // shot has them silhouetted against the fjord). Pre-built once,
     // recycled by per-frame z-wrap.
@@ -3825,33 +3919,38 @@ class Valhalla {
     this._buildRunestones();
     // FIRE PITS along the roadside (Task #16)
     this._buildFirePits();
-    // HUGINN + MUNINN — Odin's ravens circling the player (Task #17)
+    // HUGINN + MUNINN. Odin's ravens circling the player (Task #17)
     this._buildOdinsRavens();
-    // REAL HORSES — async load 3 animated Horse.glb instances and
+    // REAL HORSES. async load 3 animated Horse.glb instances and
     // scatter them in the distant meadows. Vikings rode horses; this
     // is the single biggest "real Viking world" cue.
     this._loadRealHorses();
-    // BATTLE HELMS — DamagedHelmet.glb scattered on the road as a
+    // BATTLE HELMS. DamagedHelmet.glb scattered on the road as a
     // memento mori (fallen warrior left their helmet behind). Real
     // high-quality PBR model with worn metal + leather straps + dents
-    // — reads as authentic Viking-age helm and shows off the HDRI
+    //. reads as authentic Viking-age helm and shows off the HDRI
     // environment lighting / reflections.
     this._loadBattleHelms();
-    // CC0 VIKING-ERA PROPS — verified via jsdelivr CDN with proper
+    // CC0 VIKING-ERA PROPS. verified via jsdelivr CDN with proper
     // CORS (ToxSam/cc0-models-Polygonal-Mind medieval-fair pack).
     // Real authored GLB models replace key procedural scenery:
-    //   * Tabern.glb     — full Viking longhouse silhouette
-    //   * Barrel.glb     — mead barrels around fire pits
-    //   * Cart.glb       — abandoned wooden cart on the road
-    //   * Lamp.glb       — wooden torch posts lining the path
-    //   * SignPost.glb   — wooden waymarkers
+    //   * Tabern.glb    . full Viking longhouse silhouette
+    //   * Barrel.glb    . mead barrels around fire pits
+    //   * Cart.glb      . abandoned wooden cart on the road
+    //   * Lamp.glb      . wooden torch posts lining the path
+    //   * SignPost.glb  . wooden waymarkers
     this._loadVikingProps();
+    // VIKING NPC WARRIORS. cloned Soldier.glb (already-loaded model)
+    // with varied material tints standing around the longhouses. Real
+    // animated Viking NPCs populating the world; uses the model we
+    // know works (the player), so no extra CDN risk.
+    this._loadVikingNPCs();
 
-    // SHADOW PASS — ONLY enable receiveShadow on scenery. Casting is
+    // SHADOW PASS. ONLY enable receiveShadow on scenery. Casting is
     // the expensive operation (re-renders the scene from sun POV).
     // The procedural Player + Soldier + in-game obstacles cast (set
     // elsewhere); scenery only receives. This drops the shadow caster
-    // list from ~180 to ~30 — the main cause of the user's reported
+    // list from ~180 to ~30. the main cause of the user's reported
     // lag after enabling shadows last commit.
     const recvOn = (root) => {
       if (!root) return;
@@ -3895,14 +3994,14 @@ class Valhalla {
     // Bio aura colour + intensity per state. Targets are eased toward in
     // _updateBioAura each frame so transitions are smooth, not jarring.
     const PALETTE = {
-      flow:        { hex: 0xa0ecff, opacity: 0.42 },  // cyan-white — peak performance
-      berserker:   { hex: 0xff6048, opacity: 0.55 },  // red — rage
-      focused:     { hex: 0xa0c0ff, opacity: 0.32 },  // calm blue — locked-in
-      meditation:  { hex: 0x70e8a8, opacity: 0.28 },  // soft green — restorative
-      frantic:     { hex: 0xff80e0, opacity: 0.42 },  // magenta — chaotic
-      aroused:     { hex: 0xffb060, opacity: 0.32 },  // orange — charged
-      calm:        { hex: 0x80d0e0, opacity: 0.22 },  // pale cyan — at peace
-      distracted:  { hex: 0x808898, opacity: 0.18 },  // grey — drift
+      flow:        { hex: 0xa0ecff, opacity: 0.42 },  // cyan-white. peak performance
+      berserker:   { hex: 0xff6048, opacity: 0.55 },  // red. rage
+      focused:     { hex: 0xa0c0ff, opacity: 0.32 },  // calm blue. locked-in
+      meditation:  { hex: 0x70e8a8, opacity: 0.28 },  // soft green. restorative
+      frantic:     { hex: 0xff80e0, opacity: 0.42 },  // magenta. chaotic
+      aroused:     { hex: 0xffb060, opacity: 0.32 },  // orange. charged
+      calm:        { hex: 0x80d0e0, opacity: 0.22 },  // pale cyan. at peace
+      distracted:  { hex: 0x808898, opacity: 0.18 },  // grey. drift
       neutral:     { hex: 0xffffff, opacity: 0.00 },  // off
     };
     const p = PALETTE[state] || PALETTE.neutral;
@@ -3926,7 +4025,7 @@ class Valhalla {
     }
   }
 
-  // TAB info panel — info on demand. The always-visible HUD shows only
+  // TAB info panel. info on demand. The always-visible HUD shows only
   // distance + lives + active powers + biome banner; everything else
   // (score, BPM, state, controls, legend) lives in this panel. Press
   // TAB to open/close. Auto-pauses gameplay while open so the player
@@ -3939,10 +4038,10 @@ class Valhalla {
       $$("infoBiome").textContent = this.biomeName + (this.biomeCycle > 0 ? "  ·  ×" + (this.biomeCycle + 1) : "");
       $$("infoDist").textContent  = Math.round(this.distance) + " m";
       $$("infoScore").textContent = Math.floor(this.score).toLocaleString();
-      $$("infoBpm").textContent   = this.bpm ? this.bpm + " bpm" : "—";
+      $$("infoBpm").textContent   = this.bpm ? this.bpm + " bpm" : ". ";
       $$("infoState").textContent = this.cognitiveState && this.cognitiveState !== "neutral"
         ? (this.cognitiveState.charAt(0).toUpperCase() + this.cognitiveState.slice(1))
-        : "—";
+        : ". ";
       // Auto-pause if playing.
       if (this.running && !this.over && !this.paused) {
         this._wasPlayingBeforeInfo = true;
@@ -3961,7 +4060,7 @@ class Valhalla {
     }
   }
 
-  // Heartbeat pulse — paces a soft visual pulse to the player's BPM so
+  // Heartbeat pulse. paces a soft visual pulse to the player's BPM so
   // the world physically beats with their body. The rPPG sensor reports
   // BPM ~4×/sec, not per-beat, so we INFER the next-beat timing from
   // BPM (60/bpm seconds between beats) and schedule a chain of pulses
@@ -3984,7 +4083,7 @@ class Valhalla {
   }
   _heartbeatPulse() {
     if (!this.running) return;
-    // Tiny camera kick — magnitude 0.06 is just barely perceptible,
+    // Tiny camera kick. magnitude 0.06 is just barely perceptible,
     // exactly the feeling of feeling your own pulse in the world.
     this._shake(0.06, 0.08);
     // Brief darkening pulse via a reused overlay element.
@@ -4047,7 +4146,7 @@ class Valhalla {
       this.scene.fog.color.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
       this.scene.background.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
     }
-    // Sky.js uniforms — ease toward the active biome's atmospheric
+    // Sky.js uniforms. ease toward the active biome's atmospheric
     // settings. Different realms have radically different atmospheres
     // and the Hosek-Wilkie shader handles colour fully procedurally
     // from those four numbers, no manual gradient stops needed.
@@ -4058,7 +4157,7 @@ class Valhalla {
       u["rayleigh"].value        += (this._skyTarget.rayleigh        - u["rayleigh"].value)        * ease;
       u["mieCoefficient"].value  += (this._skyTarget.mieCoefficient  - u["mieCoefficient"].value)  * ease;
       u["mieDirectionalG"].value += (this._skyTarget.mieDirectionalG - u["mieDirectionalG"].value) * ease;
-      // Sun elevation can swing too — Asgard high noon, Helheim low.
+      // Sun elevation can swing too. Asgard high noon, Helheim low.
       if (this._skySunTarget) {
         u["sunPosition"].value.lerp(this._skySunTarget, ease);
       }
@@ -4072,7 +4171,7 @@ class Valhalla {
     this.biomeName = b.name;
     this._biomeFogTarget.setHex(b.fog);
     this._biomeSkyTargets = b.sky.map(c => new THREE.Color(c));
-    // Sky.js parameter targets per biome — these drive the atmosphere
+    // Sky.js parameter targets per biome. these drive the atmosphere
     // through Hosek-Wilkie scattering for radically different looks.
     // All four realms on the SAME overcast baseline. Asgard had
     // rayleigh 0.6 + sun elev 12° which Sky.js rendered as bright
@@ -4099,19 +4198,27 @@ class Valhalla {
     }
     this._showBiomeBanner(b.name);
     this._updateBiomeChip();
-    // Score reward for crossing — scales with cycle count.
+    // Score reward for crossing. scales with cycle count.
     const reward = 300 + this.biomeCycle * 200;
     this.score += reward;
     this._popText(`+${reward}`, "gold", 0, -50);
-    // Spawn the entrance encounter — a giant boss mesh that scrolls past
+    // Spawn the entrance encounter. a giant boss mesh that scrolls past
     // and a curated obstacle pattern. Skips Midgard (the spawn realm).
-    if (b.boss) this._spawnBoss(b.boss);
+    //
+    // ODIN. climactic 5th-realm boss. On every Asgard entry from
+    // cycle >= 4, replace the standard Valkyrie blessing with the
+    // All-Father himself. Real saga-ending encounter.
+    let bossType = b.boss;
+    if (b.name === "Asgard" && (this.biomeCycle || 0) >= 4) {
+      bossType = "odin";
+    }
+    if (bossType) this._spawnBoss(bossType);
   }
 
   // Persistent realm chip in the HUD top-bar so the player always knows
-  // which realm they're in (the banner is transient — this is the
+  // which realm they're in (the banner is transient. this is the
   // permanent indicator).
-  // Aurora borealis — two huge curved ribbon planes above the player,
+  // Aurora borealis. two huge curved ribbon planes above the player,
   // animated via a custom shader. Built lazily on first Asgard entry
   // and shown/hidden via setVisible. Uses additive blending + emissive
   // colours > 1.0 so the bloom pass turns it into real sky-light.
@@ -4185,7 +4292,7 @@ class Valhalla {
     }
     const b = BIOMES[this.biomeIdx];
     el.textContent = b.name + (this.biomeCycle > 0 ? "  ·  ×" + (this.biomeCycle + 1) : "");
-    // Bronze stays constant across realms — keeps the inscription
+    // Bronze stays constant across realms. keeps the inscription
     // legible regardless of fog colour. Realm identity comes from
     // the actual sky + fog colour shift, not the text colour.
     el.style.color = "rgba(201,165,92,0.86)";
@@ -4213,13 +4320,13 @@ class Valhalla {
       el.style.opacity = "0";
       el.style.transform = "translate(-50%, -50%) translateY(-18px)";
     }, 2600);
-    // SAGA NARRATION — fire the Skald's line a beat after the banner
+    // SAGA NARRATION. fire the Skald's line a beat after the banner
     // settles. Different line each biome; special line on full saga
     // cycle (Midgard re-entry after Asgard).
     setTimeout(() => this._showSkaldNarration(name), 700);
   }
 
-  // SKALD NARRATION — italic poetic line shown below the biome banner.
+  // SKALD NARRATION. italic poetic line shown below the biome banner.
   // Curated text per realm, with a special "saga reborn" line when the
   // player returns to Midgard after completing a full cycle.
   _showSkaldNarration(biomeName) {
@@ -4235,16 +4342,16 @@ class Valhalla {
       document.body.appendChild(el);
       this._skaldEl = el;
     }
-    // SAGA LINES — curated Norse-flavoured one-liners per realm.
+    // SAGA LINES. curated Norse-flavoured one-liners per realm.
     // Different first-cycle vs returning lines so the saga has arc.
     const FIRST = {
       Midgard:    "Midgard. Where every Skald begins.",
-      "Jötunheim":"Jötunheim. Home of the frost giants. Tread lightly — Ymir's children do not forgive.",
+      "Jötunheim":"Jötunheim. Home of the frost giants. Tread lightly. Ymir's children do not forgive.",
       Muspelheim: "Muspelheim. Surtr's flame. The road runs through the source of the world's ending.",
       Asgard:     "Asgard. Bifröst opens for those who proved themselves on the road.",
     };
     const RETURN = {
-      Midgard:    `Midgard again. Saga ${this.biomeCycle + 1} — the gods have not forgotten you.`,
+      Midgard:    `Midgard again. Saga ${this.biomeCycle + 1}. the gods have not forgotten you.`,
       "Jötunheim":"Jötunheim. Frost knows your name now.",
       Muspelheim: "Muspelheim. The flame remembers your last passing.",
       Asgard:     "Asgard. Odin watches. Walk well.",
@@ -4266,7 +4373,7 @@ class Valhalla {
   }
 
   // Boss encounter. A large character mesh appears ~80m ahead and scrolls
-  // past the player as the world moves. The mesh is decorative — the
+  // past the player as the world moves. The mesh is decorative. the
   // actual "encounter" is a curated obstacle pattern spawned alongside,
   // tuned to the boss's specialty (lane-pressure, slide-walls, fly-bys).
   // Surviving the pattern is the implicit win condition.
@@ -4278,7 +4385,7 @@ class Valhalla {
     let label = "BOSS";
     if (type === "jotunn") {
       label = "JÖTUNN";
-      // Frost giant — towering blocky humanoid in pale-blue.
+      // Frost giant. towering blocky humanoid in pale-blue.
       const skin = new THREE.MeshStandardMaterial({
         color: 0x9eb8d0, roughness: 0.85, flatShading: true,
         emissive: 0x304050, emissiveIntensity: 0.25,
@@ -4306,7 +4413,7 @@ class Valhalla {
       grp.position.set(0, 0, ahead);
     } else if (type === "surtr") {
       label = "SURTR";
-      // Fire jötunn — full humanoid silhouette (not just torso+head
+      // Fire jötunn. full humanoid silhouette (not just torso+head
       // which user was correctly reporting as "a red block"). Same
       // proportions as Jötunn but darker stone with molten cracks
       // glowing through. ALL the body parts now.
@@ -4318,7 +4425,7 @@ class Valhalla {
       torso.position.y = 4.2; grp.add(torso);
       const head = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), stone);
       head.position.y = 7.7; grp.add(head);
-      // Arms — same as Jötunn proportions, tagged so we can animate
+      // Arms. same as Jötunn proportions, tagged so we can animate
       // them swinging during idle (held above the head with the sword).
       const armL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.2), stone);
       armL.position.set(-2.4, 4.5, 0); grp.add(armL);
@@ -4329,7 +4436,7 @@ class Valhalla {
         const leg = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.6, 1.4), stone);
         leg.position.set(sx, 1.4, 0); grp.add(leg);
       }
-      // Glowing eyes — twin emissive dots on the head.
+      // Glowing eyes. twin emissive dots on the head.
       for (const sx of [-0.35, 0.35]) {
         const eye = new THREE.Mesh(
           new THREE.SphereGeometry(0.18, 8, 6),
@@ -4351,7 +4458,7 @@ class Valhalla {
       grp.position.set(0, 0, ahead);
     } else if (type === "valkyrie") {
       label = "VALKYRIE";
-      // Winged blessing — not a fight. Golden silhouette with outspread wings.
+      // Winged blessing. not a fight. Golden silhouette with outspread wings.
       const gold = new THREE.MeshStandardMaterial({
         color: 0xf0d090, roughness: 0.3, metalness: 0.8,
         emissive: 0xffb060, emissiveIntensity: 0.6,
@@ -4372,6 +4479,89 @@ class Valhalla {
       grp.position.set(0, 0, ahead);
       // Valkyrie blesses the player: a 5s 3x score multiplier window.
       this._activatePowerup("mult", 5);
+    } else if (type === "odin") {
+      // ODIN. All-Father. Climactic 5th-cycle Asgard encounter.
+      // Towering robed figure: dark cloak, two ravens at his shoulders,
+      // Gungnir (spear) raised, single glowing eye (he gave up the other).
+      label = "ODIN";
+      const robe = new THREE.MeshStandardMaterial({
+        color: 0x1a1218, roughness: 0.9, flatShading: true,
+        emissive: 0x4030a0, emissiveIntensity: 0.18,
+      });
+      const skin = new THREE.MeshStandardMaterial({
+        color: 0x705848, roughness: 0.85, flatShading: true,
+      });
+      // Torso. long robe taper
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 3.0, 6.5, 8), robe);
+      torso.position.y = 4.5; grp.add(torso);
+      // Cloak shoulders. flared trapezoid
+      const cloak = new THREE.Mesh(new THREE.ConeGeometry(3.3, 2.2, 8, 1, true), robe);
+      cloak.position.y = 7.2; grp.add(cloak);
+      // Head
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 12, 8), skin);
+      head.position.y = 8.8; grp.add(head);
+      // Beard. long pointed cone
+      const beard = new THREE.Mesh(
+        new THREE.ConeGeometry(0.55, 1.4, 8),
+        new THREE.MeshStandardMaterial({ color: 0xc8c0b0, roughness: 0.95, flatShading: true })
+      );
+      beard.position.set(0, 8.0, 0.6);
+      beard.rotation.x = Math.PI;
+      grp.add(beard);
+      // Hat brim. wide flat disc (broad-brimmed hat / wanderer's hat)
+      const hat = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.6, 1.6, 0.15, 12),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.95, flatShading: true })
+      );
+      hat.position.y = 9.5; grp.add(hat);
+      const crown = new THREE.Mesh(
+        new THREE.ConeGeometry(0.9, 1.5, 8),
+        new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 0.95, flatShading: true })
+      );
+      crown.position.y = 10.4; grp.add(crown);
+      // Single glowing eye
+      const eye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0x80c0ff })
+      );
+      eye.position.set(0.25, 8.85, 0.78);
+      grp.add(eye);
+      // The other socket. dark hollow
+      const socket = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      socket.position.set(-0.25, 8.85, 0.78);
+      grp.add(socket);
+      // Gungnir. long spear raised in right hand
+      const spear = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.10, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.7, flatShading: true })
+      );
+      spear.position.set(2.8, 8, 0);
+      grp.add(spear);
+      const spearTip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.22, 1.2, 6),
+        new THREE.MeshStandardMaterial({
+          color: 0xe0e8f0, roughness: 0.2, metalness: 0.95,
+          emissive: 0x8090ff, emissiveIntensity: 0.4,
+        })
+      );
+      spearTip.position.set(2.8, 12.2, 0);
+      grp.add(spearTip);
+      // Two raven companions at the shoulders (Huginn + Muninn)
+      for (const sx of [-1.5, 1.5]) {
+        const r = new THREE.Mesh(
+          new THREE.SphereGeometry(0.3, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.8, flatShading: true })
+        );
+        r.position.set(sx, 8.3, 0.3);
+        r.scale.set(1, 0.7, 1.5);
+        grp.add(r);
+      }
+      grp.position.set(0, 0, ahead);
+      // Tag the boss group so per-frame anim can animate ravens / glow
+      grp.userData.odinFx = { eye, spearTip, t0: performance.now() };
     }
     this.scene.add(grp);
     // Banner mesh above the boss naming them.
@@ -4382,12 +4572,12 @@ class Valhalla {
 
     // Boss has HP. Player damages it by surviving hazards in the encounter
     // pattern, collecting runes during the fight, and being in Flow state
-    // (the bio path to victory). Valkyrie is the only non-combat boss —
+    // (the bio path to victory). Valkyrie is the only non-combat boss . 
     // she gives a blessing, doesn't fight.
-    const HP_BY_TYPE = { jotunn: 100, surtr: 130, valkyrie: 1 };
+    const HP_BY_TYPE = { jotunn: 100, surtr: 130, valkyrie: 1, odin: 300 };
     const hpMax = HP_BY_TYPE[type] || 100;
 
-    // HP bar — two stacked planes (background + foreground fill).
+    // HP bar. two stacked planes (background + foreground fill).
     // Floats above the boss as a sprite so it always faces camera.
     const hpBg = new THREE.Mesh(
       new THREE.PlaneGeometry(5.0, 0.35),
@@ -4414,7 +4604,7 @@ class Valhalla {
 
     // Curated obstacle pattern. Each successfully-dodged obstacle inside
     // this encounter applies damage in the per-frame collision branch
-    // (see _update — checks o.encounterBoss).
+    // (see _update. checks o.encounterBoss).
     const patternZ = ahead + 14;
     const tag = (o) => { if (o) o.encounterBoss = true; };
     if (type === "jotunn") {
@@ -4432,19 +4622,35 @@ class Valhalla {
       for (let i = 0; i < 5; i++) {
         this._spawnRune(i % 3, patternZ + i * 8);
       }
-      // No combat — kill her HP immediately so we don't show a bar.
+      // No combat. kill her HP immediately so we don't show a bar.
       this._bossActor.hpMax = 0;
       hpBg.visible = false; hpFill.visible = false;
+    } else if (type === "odin") {
+      // ODIN. climactic, longer pattern, all hazard types mixed.
+      // Beams to slide under, fire pits to jump, lane obstacles, and
+      // a final dense rune cluster (the only way to reliably hit the
+      // 300 HP threshold within the encounter window).
+      this._spawnBeam(patternZ);            tag(this.obstacles[this.obstacles.length - 1]);
+      tag(this._spawnObstacleAt(2, patternZ + 12));
+      this._spawnFirePit(0, patternZ + 24); tag(this.obstacles[this.obstacles.length - 1]);
+      tag(this._spawnObstacleAt(1, patternZ + 36));
+      this._spawnBeam(patternZ + 48);       tag(this.obstacles[this.obstacles.length - 1]);
+      tag(this._spawnObstacleAt(0, patternZ + 60));
+      this._spawnFirePit(2, patternZ + 72); tag(this.obstacles[this.obstacles.length - 1]);
+      // Rune storm. Odin's runes are how you actually take him down.
+      for (let i = 0; i < 6; i++) {
+        this._spawnRune(i % 3, patternZ + 84 + i * 7);
+      }
     }
 
-    // Show the 4s tutorial popup — explicit "how to kill this boss"
+    // Show the 4s tutorial popup. explicit "how to kill this boss"
     // hint that even a first-timer can grok. Valkyrie gets a friendlier
     // variant since she's a blessing, not a fight.
     this._showBossTutorial(label, hpMax, type);
   }
 
   // Big-text popup that briefly explains how to deal damage to the boss
-  // currently on-stage. Auto-dismisses after 4s. Idempotent — replacing
+  // currently on-stage. Auto-dismisses after 4s. Idempotent. replacing
   // a popup before it finishes resets the timer.
   _showBossTutorial(label, hpMax, type) {
     const el = document.getElementById("bossTutorial");
@@ -4453,7 +4659,7 @@ class Valhalla {
     const hpEl = document.getElementById("bossTutorialHp");
     if (nameEl) nameEl.textContent = label;
     if (hpEl) hpEl.textContent = hpMax > 0 ? `HP ${hpMax}` : "BLESSING";
-    // Valkyrie variant — swap the "how to damage" rows for a single
+    // Valkyrie variant. swap the "how to damage" rows for a single
     // "collect her runes" line so users don't try to attack her.
     // Reach into the popup's body rows (the .col flex container).
     const rows = el.querySelector("div[style*='flex-direction:column']");
@@ -4510,7 +4716,7 @@ class Valhalla {
     }
     // Floating damage number near the boss (in-world sprite).
     this._popText(`-${Math.round(amount)}`, "rune", 0, -50);
-    // Screen-space damage float on the HP bar — bigger, colour-coded by
+    // Screen-space damage float on the HP bar. bigger, colour-coded by
     // source so the player can SEE which input is hurting the boss.
     // Continuous flow/berserker damage accumulates into integer chunks
     // so we don't spam tiny "+0.08" floats every frame.
@@ -4524,7 +4730,7 @@ class Valhalla {
   _accumBossDmg(amount, source) {
     if (!this._bossDmgAccum) this._bossDmgAccum = { rune: 0, dodge: 0, flow: 0, berserker: 0 };
     if (amount >= 5) {
-      // Discrete big hit — show immediately and don't touch the accumulator.
+      // Discrete big hit. show immediately and don't touch the accumulator.
       this._spawnBossDmgFloat(Math.round(amount), source);
       return;
     }
@@ -4576,7 +4782,7 @@ class Valhalla {
     this.hud.glory.classList.add("on");
     setTimeout(() => this.hud.glory.classList.remove("on"), 600);
     if (this.audio?.power) this.audio.power("mjolnir");
-    // Death animation — boss tilts and falls. Real removal happens
+    // Death animation. boss tilts and falls. Real removal happens
     // when the per-frame update sees defeated + far enough behind.
     b.fallTimer = 0;
   }
@@ -4589,38 +4795,50 @@ class Valhalla {
     this._popText(`${b.type.toUpperCase()} ESCAPES`, "combo", 0, -20);
   }
 
-  // BIO SESSION TRACKER — the visible value prop of the Elata SDK.
+  // BIO SESSION TRACKER. the visible value prop of the Elata SDK.
   // Accumulates per-frame: time in each cognitive state, HR samples,
   // and progress toward the next "gift". Every 12 seconds of
   // continuous flow/focused/calm earns the player a free powerup
-  // — direct cause and effect, no abstract score multiplier.
+  //. direct cause and effect, no abstract score multiplier.
   // Drives the always-visible bio pill in the HUD and the end-of-run
   // report. This is THE feedback loop that justifies the SDK.
   _updateBioSession(dt) {
     const s = this.bioSession;
     if (!s) return;
-    // HR sampling — running average + peak.
+    // HR + HRV sampling. running average + peak.
     if (this.bpm && this.bpm > 30) {
       s.sumHR += this.bpm * dt;
       s.hrSamples += dt;
       if (this.bpm > s.peakHR) s.peakHR = this.bpm;
     }
-    // Per-state time accumulation.
+    if (this.hrv && this.hrv > 5) {
+      s.sumHRV += this.hrv * dt;
+      s.hrvSamples += dt;
+    }
+    // Per-state time accumulation, now including punish states.
     const cs = this.cognitiveState;
     if (cs === "flow")        s.flowSec       += dt;
     if (cs === "focused")     s.focusedSec    += dt;
     if (cs === "calm")        s.calmSec       += dt;
     if (cs === "berserker")   s.berserkerSec  += dt;
     if (cs === "meditation")  s.meditationSec += dt;
+    if (cs === "stress")      s.stressSec     += dt;
+    if (cs === "fatigue")     s.fatigueSec    += dt;
 
-    // GIFT CYCLE — flow/focused/calm advance the meter; other states
-    // pause or slowly drain it. Once at 12s, fire a bio gift in front
-    // of the player. Flow advances faster than calm — it's the
-    // highest-skill state.
+    // GIFT CYCLE with LOSS AVERSION. Positive states advance the meter;
+    // PUNISH states actively drain it. The user feels the cost of
+    // tensing up, not just the reward of relaxing. This is what makes
+    // the bio integration actually motivate behavioural change.
     const positive = (cs === "flow")    ? 1.8
                    : (cs === "focused") ? 1.3
                    : (cs === "calm")    ? 1.0
+                   : (cs === "meditation") ? 0.6
                    : 0;
+    const drain = (cs === "stress")     ? 1.4    // stress drains FASTER than calm builds
+                : (cs === "fatigue")    ? 0.8
+                : (cs === "frantic")    ? 0.5
+                : (cs === "distracted") ? 0.3
+                : 0;
     if (positive > 0) {
       s.giftAccumSec += dt * positive;
       if (s.giftAccumSec >= 12) {
@@ -4628,18 +4846,26 @@ class Valhalla {
         s.giftsEarned++;
         this._spawnBioGift(cs);
       }
-    } else {
-      // Drain slightly if state is bad — frantic / distracted lose
-      // ground, neutral just pauses.
-      if (cs === "frantic" || cs === "distracted") {
-        s.giftAccumSec = Math.max(0, s.giftAccumSec - dt * 0.5);
+    } else if (drain > 0) {
+      const before = s.giftAccumSec;
+      s.giftAccumSec = Math.max(0, s.giftAccumSec - dt * drain);
+      s.giftLossAccumSec += (before - s.giftAccumSec);
+      // If a near-full meter was just emptied by stress, count it as
+      // a lost gift and tell the user EXPLICITLY (loss aversion is
+      // strongest when the loss is visible).
+      if (before > 10 && s.giftAccumSec < before - 1.5) {
+        s.giftsLost++;
+        if (cs === "stress" && !this._stressWarnedAt || (performance.now() - (this._stressWarnedAt || 0)) > 8000) {
+          this._stressWarnedAt = performance.now();
+          this._popText("WOLF AT THE DOOR", "combo", 0, 30);
+        }
       }
     }
     // Drive the bio status pill HUD.
     this._updateBioStatusPill();
   }
 
-  // Bio-triggered gift spawn — free powerup ahead of the player as
+  // Bio-triggered gift spawn. free powerup ahead of the player as
   // direct reward for biological self-regulation. Picks a gift
   // appropriate to the state.
   _spawnBioGift(state) {
@@ -4669,7 +4895,7 @@ class Valhalla {
   //   3. Time-in-state counter (how long you've held this state)
   //   4. Gift meter (the always-on reward feedback loop)
   //   5. Tally of earned gifts
-  //   6. Advanced toggle (⚙) reveals raw numbers — hidden by default
+  //   6. Advanced toggle (⚙) reveals raw numbers. hidden by default
   //
   // The previous version led with BPM and crammed mechanic-speak
   // ("+35% gift duration") on the second line. Normal users have no
@@ -4697,12 +4923,12 @@ class Valhalla {
           '<div style="font-size:9px;letter-spacing:.22em;color:rgba(212,173,106,.55);text-transform:uppercase;font-weight:600">Your state</div>' +
           '<button class="advancedToggle" title="Show raw numbers" style="pointer-events:auto;background:none;border:1px solid rgba(212,173,106,.25);color:rgba(212,173,106,.6);width:18px;height:18px;border-radius:3px;cursor:pointer;font-size:9px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
         '</div>' +
-        // STATE — colour dot + name on one line, NOT a big Cinzel headline
+        // STATE. colour dot + name on one line, NOT a big Cinzel headline
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">' +
           '<span class="stateDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d4ad6a;box-shadow:0 0 8px #d4ad6a"></span>' +
           '<span class="stateName" style="font-size:13.5px;font-weight:700;color:#f4d49a;letter-spacing:.04em;text-transform:uppercase"></span>' +
         '</div>' +
-        // Meaning — small body type
+        // Meaning. small body type
         '<div class="stateMeaning" style="font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.35;margin-bottom:9px;min-height:1.35em"></div>' +
         // Gift meter
         '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">' +
@@ -4715,10 +4941,10 @@ class Valhalla {
         '<div class="tally" style="font-size:10px;letter-spacing:.01em;color:rgba(255,255,255,.5);margin-top:7px;min-height:1em"></div>' +
         '<div class="advancedBox" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(212,173,106,.15);font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">' +
-            '<div>HR <span class="bhBpm" style="color:#ff8a7a;font-weight:600">—</span></div>' +
-            '<div>HRV <span class="bhHrv" style="color:#80d0e0;font-weight:600">—</span></div>' +
-            '<div>Focus <span class="bhFocus" style="color:#a3b8ff;font-weight:600">—</span></div>' +
-            '<div>Calm <span class="bhCalm" style="color:#80d0e0;font-weight:600">—</span></div>' +
+            '<div>HR <span class="bhBpm" style="color:#ff8a7a;font-weight:600">. </span></div>' +
+            '<div>HRV <span class="bhHrv" style="color:#80d0e0;font-weight:600">. </span></div>' +
+            '<div>Focus <span class="bhFocus" style="color:#a3b8ff;font-weight:600">. </span></div>' +
+            '<div>Calm <span class="bhCalm" style="color:#80d0e0;font-weight:600">. </span></div>' +
           '</div>' +
         '</div>';
       document.body.appendChild(el);
@@ -4745,23 +4971,28 @@ class Valhalla {
     const s = this.bioSession;
     const cs = this.cognitiveState || "neutral";
 
-    // STATE → display name + meaning. Plain English, emotional, no
-    // mechanics-speak. The point is the player feels "the game is
-    // responding to me" not "I understand the percentage modifiers".
+    // STATE display. Viking-saga voice. Two REWARD states, two
+    // NEUTRAL states, three PUNISH states. Loss aversion: stress and
+    // panic actively cost the player (slower scoring, lost meters,
+    // reduced gift cycle). Reward states give bonuses. The user only
+    // sees the kenning name + one short consequence line, never
+    // numbers (unless advanced mode is on).
     const STATE_UI = {
-      flow:       { name: "FLOW",        meaning: "You're in the zone — the world bends around you.",        colour: "#7ad9ff" },
-      focused:    { name: "FOCUSED",     meaning: "Sharp mind. Your aim is true and rewards come faster.",   colour: "#a3b8ff" },
-      calm:       { name: "CALM",        meaning: "Steady breath. The gods are noticing — gifts incoming.", colour: "#80d0e0" },
-      berserker:  { name: "BERSERKER",   meaning: "Battle fury! Score boosts and bosses bleed for you.",     colour: "#ff8c5a" },
-      meditation: { name: "MEDITATION",  meaning: "Mind at rest — the road feels slower, hazards easier.",   colour: "#c5a3ff" },
-      aroused:    { name: "AROUSED",     meaning: "Your pulse is up — speed and intensity rising.",          colour: "#ffaa70" },
-      frantic:    { name: "FRANTIC",     meaning: "Heart racing — careful, but every point counts double.",  colour: "#ff7060" },
-      distracted: { name: "DISTRACTED",  meaning: "Mind is wandering — settle in to earn rewards.",          colour: "#998a78" },
-      neutral:    { name: "STEADY",      meaning: "Find calm or focus to earn god-gifts.",                   colour: "#d4ad6a" },
+      flow:       { name: "DEEP FLOW",   meaning: "The path widens. Score swells, bosses bleed.",        colour: "#7ad9ff", penalty: false },
+      focused:    { name: "KEEN EYE",    meaning: "Aim is true. Gifts come faster.",                      colour: "#a3b8ff", penalty: false },
+      calm:       { name: "STILL WATER", meaning: "The breath holds steady. The gods watch and approve.", colour: "#80d0e0", penalty: false },
+      meditation: { name: "DEEP HALL",   meaning: "The road slows for you. Hazards softer.",              colour: "#c5a3ff", penalty: false },
+      berserker:  { name: "BLOOD-WROTH", meaning: "Fury wakes. Score doubles, boss-iron yields.",         colour: "#ff8c5a", penalty: false },
+      aroused:    { name: "QUICKENED",   meaning: "Pulse climbs. Speed rises, hazards bite harder.",      colour: "#ffaa70", penalty: false },
+      frantic:    { name: "STORM-HEART", meaning: "Heart races. Each point counts double, but watch the road.", colour: "#ff7060", penalty: false },
+      stress:     { name: "WOLF-WORRY",  meaning: "The wolf in your chest. Gift-meter falls back.",       colour: "#c84030", penalty: true },
+      fatigue:    { name: "OAR-WEARY",   meaning: "Your blood runs slow. Multiplier weakens.",            colour: "#7a5040", penalty: true },
+      distracted: { name: "WIND-MINDED", meaning: "Thought scatters. No gifts find you yet.",             colour: "#998a78", penalty: true },
+      neutral:    { name: "WALKING",     meaning: "Find calm or sharp mind. Gifts answer both.",          colour: "#d4ad6a", penalty: false },
     };
     const warming = !live || (!this.bpm && cs === "neutral");
     const ui = warming
-      ? { name: "WARMING UP", meaning: "Sensors locking on… face the camera, sit still for a moment.", colour: "#d4ad6a" }
+      ? { name: "READING", meaning: "The gods are taking your measure. Sit still. Face the light.", colour: "#d4ad6a", penalty: false }
       : (STATE_UI[cs] || STATE_UI.neutral);
 
     const stateEl = el.querySelector(".stateName");
@@ -4788,20 +5019,20 @@ class Valhalla {
       ? "Earned: " + tallyParts.join(" · ")
       : "Hold a state to earn rewards";
 
-    // ADVANCED NUMBERS — only update if visible.
+    // ADVANCED NUMBERS. only update if visible.
     if (this._advancedMode) {
       const bhBpm = el.querySelector(".bhBpm");
       const bhHrv = el.querySelector(".bhHrv");
       const bhFocus = el.querySelector(".bhFocus");
       const bhCalm = el.querySelector(".bhCalm");
-      bhBpm.textContent   = this.bpm ? Math.round(this.bpm) : "—";
-      bhHrv.textContent   = this.hrv != null ? Math.round(this.hrv) + "ms" : "—";
-      bhFocus.textContent = (this.focusLevel != null) ? Math.round(this.focusLevel * 100) + "%" : "—";
-      bhCalm.textContent  = (this.calmLevel != null)  ? Math.round(this.calmLevel * 100) + "%"  : "—";
+      bhBpm.textContent   = this.bpm ? Math.round(this.bpm) : ". ";
+      bhHrv.textContent   = this.hrv != null ? Math.round(this.hrv) + "ms" : ". ";
+      bhFocus.textContent = (this.focusLevel != null) ? Math.round(this.focusLevel * 100) + "%" : ". ";
+      bhCalm.textContent  = (this.calmLevel != null)  ? Math.round(this.calmLevel * 100) + "%"  : ". ";
     }
   }
 
-  // WORLD-SPACE MARKERS — HTML icons projected to the screen
+  // WORLD-SPACE MARKERS. HTML icons projected to the screen
   // position of every active obstacle/powerup/mead/rune so the
   // player CANNOT confuse them. Bypasses all the 3D shader
   // ambiguity that's been confusing the user for many rounds.
@@ -4828,13 +5059,13 @@ class Valhalla {
     const POW_INITIAL = { shield:"T", speed:"S", mult:"B", magnet:"F",
                           ship:"S", thor:"M", odin:"O" };
 
-    // CLUTTER PASS — previously every visible obstacle and collectible
+    // CLUTTER PASS. previously every visible obstacle and collectible
     // got an emoji marker, turning the screen into an arcade UI ribbon.
     // First-principles: markers only earn their place when the 3D
     // silhouette is genuinely ambiguous. So we now show only:
     //   * Boss-encounter obstacles (the player NEEDS to know to dodge
-    //     these to damage the boss — context matters)
-    //   * Powerups (the unique visual that's hardest to parse at speed —
+    //     these to damage the boss. context matters)
+    //   * Powerups (the unique visual that's hardest to parse at speed . 
     //     the player must distinguish god-gift powerups from mead/runes)
     //   * Runestones during an active boss fight (they're the ranged attack)
     // Regular obstacles + mead + non-fight runes get NO marker; the
@@ -4858,7 +5089,7 @@ class Valhalla {
       const c = this.collectibles[i];
       const sz = c.spawnAt - this.distance;
       if (sz < 4 || sz > 60) continue;
-      // Mead never gets a marker — gold horns are obvious.
+      // Mead never gets a marker. gold horns are obvious.
       if (c.type === "mead") continue;
       // Runes only when there's a boss fight (they're the attack).
       if (c.type === "rune" && !inFight) continue;
@@ -4870,7 +5101,7 @@ class Valhalla {
       });
     }
 
-    // Sync DOM children to items. Simple "wipe and rebuild" — fewer
+    // Sync DOM children to items. Simple "wipe and rebuild". fewer
     // than ~15 markers at any time so the cost is negligible.
     let html = "";
     for (const it of items) {
@@ -4882,7 +5113,7 @@ class Valhalla {
       if (tmp.z > 1 || tmp.x < -1.05 || tmp.x > 1.05 || tmp.y < -1.05 || tmp.y > 1.05) continue;
       const sx = (tmp.x * 0.5 + 0.5) * W;
       const sy = (-tmp.y * 0.5 + 0.5) * H;
-      // Scale size with distance — closer markers are bigger.
+      // Scale size with distance. closer markers are bigger.
       const scale = Math.max(0.55, Math.min(1, 25 / Math.max(8, distFromPlayer)));
       const fontSize = (it.size * scale) | 0;
       html += `<div style="position:absolute;left:${sx | 0}px;top:${sy | 0}px;`
@@ -4898,7 +5129,7 @@ class Valhalla {
     host.innerHTML = html;
   }
 
-  // Breath puffs — emit one new particle ~every 0.6s from the
+  // Breath puffs. emit one new particle ~every 0.6s from the
   // player's "mouth" (y ≈ 1.7 in player-local space, slightly forward).
   // Each particle ages over ~1.4s: rises, drifts back, expands, fades.
   // 24 particles in a ring buffer; reuse the slot once a particle dies.
@@ -4908,7 +5139,7 @@ class Valhalla {
     const pos = b.points.geometry.attributes.position;
     const life = b.life;
     b.lastEmit += dt;
-    // Emit faster when sprint / higher HR — breathing harder.
+    // Emit faster when sprint / higher HR. breathing harder.
     const interval = 0.55 / Math.max(0.7, this.speed / BASE_SPEED);
     if (b.lastEmit >= interval) {
       b.lastEmit = 0;
@@ -4948,7 +5179,7 @@ class Valhalla {
     const mat = this._bioAura.material;
     // Opacity ease.
     mat.opacity += (this._bioAuraTargetOpacity - mat.opacity) * Math.min(1, dt * 3);
-    // Colour ease — Color.lerp gives perceptual mid-tones.
+    // Colour ease. Color.lerp gives perceptual mid-tones.
     mat.color.lerp(this._bioAuraTargetColor, Math.min(1, dt * 2.5));
     // Subtle breathing pulse at ~0.4 Hz so the aura feels alive.
     if (this._bioAuraTargetOpacity > 0.01) {
@@ -5121,7 +5352,7 @@ class Valhalla {
     );
     handle.position.y = -0.05;
     group.add(handle);
-    // Lightning "sparks" — four thin emissive boxes that we'll spin per frame.
+    // Lightning "sparks". four thin emissive boxes that we'll spin per frame.
     const sparks = [];
     for (let i = 0; i < 4; i++) {
       const s = new THREE.Mesh(
@@ -5146,7 +5377,7 @@ class Valhalla {
   }
 
   // Odin's ravens: Huginn (thought) + Muninn (memory) circle the player's
-  // head. Cheap diamond silhouettes — black with very subtle gold rim.
+  // head. Cheap diamond silhouettes. black with very subtle gold rim.
   _addOdinRavens() {
     if (this._odinRavens) return;
     const group = new THREE.Group();
@@ -5161,7 +5392,7 @@ class Valhalla {
         })
       );
       bird.add(body);
-      // Wings — two thin planes that flap on the wing axis.
+      // Wings. two thin planes that flap on the wing axis.
       for (const side of [-1, 1]) {
         const wing = new THREE.Mesh(
           new THREE.PlaneGeometry(0.30, 0.10),
@@ -5186,7 +5417,7 @@ class Valhalla {
     this._odinRavens = null;
   }
 
-  // Lightning strike at a world position — vertical jagged beam that
+  // Lightning strike at a world position. vertical jagged beam that
   // flashes white-blue then fades over ~0.35s. Used by Mjölnir to
   // visualise each auto-strike. Cheap two-segment plane, no shaders.
   _lightningStrike(worldPos, lane) {
@@ -5217,7 +5448,7 @@ class Valhalla {
     this._shake(0.2, 0.12);
   }
 
-  // Per-frame god-power visual update — spin Mjölnir sparks, orbit ravens.
+  // Per-frame god-power visual update. spin Mjölnir sparks, orbit ravens.
   // Called from _update with the time-scaled dt.
   _updateGodPowers(dt) {
     if (this._thorAura) {
@@ -5240,7 +5471,7 @@ class Valhalla {
         const ang = t * 1.8 + b.userData.phase;
         b.position.set(Math.cos(ang) * 1.2, Math.sin(t * 2 + i) * 0.15, Math.sin(ang) * 1.2);
         b.rotation.y = -ang + Math.PI / 2;
-        // Flap wings — children index 1+ are wings.
+        // Flap wings. children index 1+ are wings.
         for (let w = 1; w < b.children.length; w++) {
           const wing = b.children[w];
           if (wing.userData.side !== undefined) {
@@ -5465,10 +5696,31 @@ class Valhalla {
     $("beginBtn").addEventListener("click", () => this._begin());
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
-    // SHARE RUN — generate a canvas image of the last run summary and
+    // SHARE RUN. generate a canvas image of the last run summary and
     // either open native share sheet (mobile) or download the PNG.
     const shareBtn = document.getElementById("shareRunBtn");
     if (shareBtn) shareBtn.addEventListener("click", () => this._shareRun());
+
+    // Menu accordion tabs (BIND BODY / SAGA SO FAR). Mutually exclusive.
+    // Re-clicking the active tab collapses both. Compact menu instead
+    // of the giant always-on bio + trends block.
+    const tabS = document.getElementById("tabSensors");
+    const tabT = document.getElementById("tabTrends");
+    const pS = document.getElementById("panelSensors");
+    const pT = document.getElementById("panelTrends");
+    if (tabS && tabT && pS && pT) {
+      const setActive = (which) => {
+        const sOn = which === "s";
+        const tOn = which === "t";
+        pS.style.display = sOn ? "block" : "none";
+        pT.style.display = tOn ? "block" : "none";
+        tabS.style.background = sOn ? "rgba(212,173,106,.20)" : "rgba(212,173,106,.06)";
+        tabT.style.background = tOn ? "rgba(212,173,106,.20)" : "rgba(212,173,106,.06)";
+        if (tOn) this._renderMenuTrends();
+      };
+      tabS.addEventListener("click", () => setActive(pS.style.display === "block" ? null : "s"));
+      tabT.addEventListener("click", () => setActive(pT.style.display === "block" ? null : "t"));
+    }
 
     // Sync dialog wiring + initial state. Auto-pull from cloud on
     // boot if the host provides ElataSync; otherwise just show local
@@ -5485,7 +5737,7 @@ class Valhalla {
     // Bio buttons live-mirror sensor status. Previous version was a one-
     // shot setter: button said "On" forever based on the start() return,
     // even after the sensor went to error / off. That caused the
-    // "camera turned off automatically" complaint — the chip in the HUD
+    // "camera turned off automatically" complaint. the chip in the HUD
     // updated correctly but the menu button kept lying. Now the button
     // text is driven by the actual sensor state via the Bio event bus.
     const wireBioBtn = (btn, key) => {
@@ -5537,7 +5789,7 @@ class Valhalla {
             btn.title = detail || "Not supported in this browser";
             break;
           default:
-            // "off" — only revert if we don't have an active error message
+            // "off". only revert if we don't have an active error message
             if (!lastErrorMsg) {
               btn.textContent = originalText;
               btn.disabled = false;
@@ -5572,7 +5824,7 @@ class Valhalla {
           return;
         }
         const opts = {}; opts[key] = true;
-        // Optimistic UI — the warming status event will land in ~50ms.
+        // Optimistic UI. the warming status event will land in ~50ms.
         setVisualState("warming");
         try {
           const r = await window.Bio.start(opts);
@@ -5595,14 +5847,14 @@ class Valhalla {
     // Detect Web Bluetooth availability at boot and surface the most
     // common failure modes up front so the player doesn't click "Pair"
     // only to get a generic browser error. Most users on Safari / iOS /
-    // Firefox simply can't use the EEG path — better to say that than
+    // Firefox simply can't use the EEG path. better to say that than
     // let them keep trying.
     const hint = $("bioBleHint");
     const eegBtn = $("bioEegBtn");
     if (hint && eegBtn) {
       if (typeof navigator === "undefined" || !navigator.bluetooth) {
         const ua = (typeof navigator !== "undefined" ? navigator.userAgent : "") || "";
-        let msg = "Your browser doesn't support Web Bluetooth — try Chrome or Edge on desktop.";
+        let msg = "Your browser doesn't support Web Bluetooth. try Chrome or Edge on desktop.";
         if (/iPhone|iPad|iPod/.test(ua))                msg = "iOS doesn't allow Web Bluetooth. Open this on Chrome/Edge desktop to pair a Muse.";
         else if (/Firefox/.test(ua))                    msg = "Firefox doesn't support Web Bluetooth yet. Use Chrome or Edge to pair a Muse.";
         else if (/Safari/.test(ua) && !/Chrome/.test(ua)) msg = "Safari doesn't support Web Bluetooth. Use Chrome or Edge to pair a Muse.";
@@ -5611,7 +5863,7 @@ class Valhalla {
         eegBtn.disabled = true;
         eegBtn.title = msg;
       } else if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-        hint.textContent = "Web Bluetooth requires HTTPS or localhost. Run start-game.bat / node server.js — don't double-click index.html.";
+        hint.textContent = "Web Bluetooth requires HTTPS or localhost. Run start-game.bat / node server.js. don't double-click index.html.";
         hint.style.display = "block";
         eegBtn.disabled = true;
       } else {
@@ -5622,7 +5874,7 @@ class Valhalla {
       }
     }
 
-    // EEG DIAGNOSE link — clickable, runs all environment checks and
+    // EEG DIAGNOSE link. clickable, runs all environment checks and
     // attempts a pair, then prints a detailed report inline. The user
     // can screenshot the report so we can pinpoint exactly which
     // stage of pairing is failing (Bluetooth API, WASM, GATT, Muse
@@ -5650,12 +5902,12 @@ class Valhalla {
         try {
           const r = await window.Bio?.start?.({ eeg: true });
           if (r?.eeg?.ok) {
-            push("Result", "OK — sensor live (state should be 'warming' or 'live')");
+            push("Result", "OK. sensor live (state should be 'warming' or 'live')");
           } else {
             push("Result.ok",      String(r?.eeg?.ok));
-            push("Result.reason",  String(r?.eeg?.reason || "—"));
-            push("Result.message", String(r?.eeg?.message || "—"));
-            push("Result.attempts",String(r?.eeg?.attempts || "—"));
+            push("Result.reason",  String(r?.eeg?.reason || ". "));
+            push("Result.message", String(r?.eeg?.message || ". "));
+            push("Result.attempts",String(r?.eeg?.attempts || ". "));
           }
         } catch (err) {
           push("Threw",   err?.name || "Error");
@@ -5705,17 +5957,26 @@ class Valhalla {
           this.bpm = Math.round(m.bpm);
           this.hud.bpmTxt.textContent = `${this.bpm} bpm`;
           this.hud.bioRow.classList.add("on");
-          // HEARTBEAT IMPACT — every detected beat sends a real pulse
+          // HEARTBEAT IMPACT. every detected beat sends a real pulse
           // through the world. Scheduled as a chain of soft camera
           // kicks + screen pulses paced to the player's actual BPM,
           // so the game LITERALLY beats with their body. This is the
           // single biggest "the SDK changes the experience" cue.
           this._scheduleHeartbeatPulse();
         }
-        // HRV (RMSSD ms) — captured for the advanced-mode panel.
+        // HRV (RMSSD ms). captured for the advanced-mode panel.
         if (m && typeof m.hrv === "number") this.hrv = m.hrv;
+        // STRESS + FATIGUE inference layered on top of SDK state.
+        // The SDK gives us focus/calm/flow but not the negative
+        // states the user wants to punish. We derive them:
+        //   STRESS: pulse climbing fast AND HRV collapsing
+        //   FATIGUE: pulse low + HRV mediocre + sustained
+        //   RECOVERY: pulse settling + HRV climbing after stress
+        // These override the SDK state when they're strong enough
+        // so the user actually feels the loss when they tense up.
+        this._derivePunishStates();
       });
-      // EEG metrics — capture focus/calm levels for advanced-mode panel.
+      // EEG metrics. capture focus/calm levels for advanced-mode panel.
       window.Bio.on("eegMetric", (m) => {
         if (!m) return;
         if (typeof m.focus === "number") this.focusLevel = m.focus;
@@ -5732,6 +5993,10 @@ class Valhalla {
           this.hud.bpmTxt.textContent = "Face the camera";
         } else if (s.status === "live") {
           this.hud.bioRow.classList.add("on");
+          // FIRST-TIME CALIBRATION RITUAL. show a 60s breathing
+          // guide once per profile lifetime so the SDK has a real
+          // baseline to compare against. Skippable.
+          this._maybeStartCalibration();
         }
         this._refreshBioLiveFlag();
       });
@@ -5773,7 +6038,7 @@ class Valhalla {
   // Drive the body.bio-live CSS flag. The nudge pill in the corner
   // hides immediately once any sensor activates. Additionally, after
   // the player has seen it once on a successful run start we hide it
-  // permanently for that session — "rich in the background" means
+  // permanently for that session. "rich in the background" means
   // we shouldn't keep nagging.
   _refreshBioLiveFlag() {
     if (!window.Bio || typeof window.Bio.status !== "function") return;
@@ -5817,13 +6082,13 @@ class Valhalla {
     $("bestScore").textContent = (s.bestScore || 0).toLocaleString();
     $("bestDist").textContent = `${Math.round(s.bestDist || 0)}m`;
     $("totalRuns").textContent = s.totalRuns || 0;
-    // Nudge + trends — depend on history, so refresh whenever stats reload.
+    // Nudge. trends are lazy-rendered on tab open so they don't run
+    // every menu paint.
     this._renderMenuNudge();
-    this._renderMenuTrends();
     this._renderSagaLine();
   }
 
-  // Show the user's saga progression on the menu — total cycles
+  // Show the user's saga progression on the menu. total cycles
   // completed + current realm if mid-run, or a poetic "next realm"
   // teaser if they've never reached Asgard.
   _renderSagaLine() {
@@ -5884,58 +6149,76 @@ class Valhalla {
     const flow30 = flowSum(last30);
     const flow7avg = flow7 / Math.max(1, last7.length);
 
-    // PRIORITY LADDER — most-urgent / most-meaningful first.
+    // PRIORITY LADDER, Viking-saga voice (no AI cheer, no em-dashes).
+    // Loss-aversion bias: framed around what's slipping away, not
+    // what's offered. "Your streak will die" hits harder than "keep
+    // your streak". Sources of phrasing: Havamal, Saxo Grammaticus,
+    // The Northman, Vikings TV. Short. Hard.
     let message = null;
     let tone = "neutral";
 
-    // 1. Streak in jeopardy
+    // 1. Streak in jeopardy (LOSS-FRAMED, urgent)
     if (daysSincePlay >= 1 && (s.streak || 0) >= 2 && lastPlayed !== today) {
       const streak = s.streak;
-      message = `🔥 Your ${streak}-day streak is at risk — play today to keep it alive.`;
+      message = `Your ${streak}-day fire grows cold. Run now or lose it.`;
       tone = "urgent";
     }
-    // 2. Best-ever flow week
+    // 2. Stress accumulating (NEW, loss-framed). If yesterday had
+    // notable stress time, surface it as a warning rather than a stat.
+    else if (daily[yesterday] && (daily[yesterday].stressSec || 0) > 60) {
+      message = `Yesterday the storm took you for ${Math.round(daily[yesterday].stressSec)}s. Breathe truer today.`;
+      tone = "urgent";
+    }
+    // 3. Best-ever flow week (PRAISE, sparse)
     else if (flow7 > 0 && (s.bestWeekFlowSec || 0) < flow7) {
-      message = `🌊 Your best Flow week ever — ${Math.round(flow7)}s across 7 days. The gods favour you.`;
+      message = `Seven days of deeper Flow than any before. The gods write your name down.`;
       tone = "win";
-      // Lock in the new high-water mark so we don't celebrate it again next session.
       const next = Store.load();
       next.bestWeekFlowSec = flow7;
       Store.save(next);
     }
-    // 3. Calm peak from yesterday → beat it
+    // 4. Yesterday's calm record to beat (CHALLENGE, loss-framed)
     else if (daily[yesterday] && daily[yesterday].calmSec > 30) {
-      message = `☁ Yesterday you held Calm for ${Math.round(daily[yesterday].calmSec)}s — try to beat it today.`;
+      message = `Yesterday you held the cold ${Math.round(daily[yesterday].calmSec)}s. Hold it longer or be the lesser.`;
       tone = "challenge";
     }
-    // 4. Trend up
+    // 5. Trend up (PRAISE)
     else if (flow30 > 0 && flow7avg > flow30 / 30 * 1.3) {
-      message = `📈 Your Flow time is up sharply this week vs. your 30-day average. Keep going.`;
+      message = `Your Flow rises sharply. The path opens for those who keep walking it.`;
       tone = "win";
     }
-    // 5. Streak milestone soon (mention freezes if any)
+    // 6. Recovery low (loss-framed warning)
+    else if (daily[yesterday] && daily[yesterday].hrvAvg && daily[yesterday].hrvAvg < 25) {
+      message = `Your body bears yesterday's weight. Move gently, breathe long.`;
+      tone = "urgent";
+    }
+    // 7. Streak milestone close (FOMO + freeze reminder)
     else if ((s.streak || 0) >= 2 && (s.streak || 0) < 7) {
       const fz = s.streakFreezes || 0;
-      const fzNote = fz > 0 ? `  🛡 ${fz} freeze${fz > 1 ? "s" : ""} ready.` : "";
-      message = `🔥 ${s.streak} days in a row. ${7 - s.streak} more for your 7-day honour.${fzNote}`;
+      const fzNote = fz > 0 ? ` (${fz} freeze in your bag)` : "";
+      message = `Day ${s.streak} kept. ${7 - s.streak} more and you carry the 7-fire.${fzNote}`;
       tone = "neutral";
     }
-    // 5b. Streak high but might miss soon — show freezes
+    // 8. Big streak, freezes available
     else if ((s.streak || 0) >= 7 && (s.streakFreezes || 0) > 0) {
       const fz = s.streakFreezes;
-      message = `🔥 ${s.streak}-day streak. 🛡 ${fz} freeze${fz > 1 ? "s" : ""} in reserve if life gets in the way.`;
+      message = `${s.streak} fires kept. ${fz} freeze${fz > 1 ? "s" : ""} held back, in case the storm takes a day.`;
       tone = "neutral";
     }
-    // 6. Welcome back
+    // 9. Long absence
     else if (daysSincePlay >= 2) {
-      message = `⚔ Welcome back. It's been ${daysSincePlay} days — your Skald has been watching the horizon.`;
+      message = `${daysSincePlay} days the horn lay silent. The road remembers your weight.`;
       tone = "neutral";
     }
-    // 7. First-of-day greeting
+    // 10. First-of-day, time-flavoured (no "Welcome Skald" cheer)
     else if (lastPlayed !== today) {
       const hr = new Date().getHours();
-      const greeting = hr < 12 ? "Morning" : hr < 17 ? "Afternoon" : "Evening";
-      message = `${greeting}, Skald. The realms await.`;
+      const line = hr < 6  ? "The fire is low. Run before the others wake."
+                : hr < 12 ? "First light. The road is yours alone."
+                : hr < 17 ? "The sun crosses. Time to test the legs."
+                : hr < 21 ? "Sky bleeds. Run while it still holds."
+                          : "Long-dark. The ravens are watching.";
+      message = line;
       tone = "neutral";
     }
 
@@ -5948,7 +6231,7 @@ class Valhalla {
     el.style.borderColor = borderColours[tone] || borderColours.neutral;
   }
 
-  // 30-day trends panel — bar chart of flow seconds per day +
+  // 30-day trends panel. bar chart of flow seconds per day +
   // day-of-week heatmap showing when the user plays best.
   _renderMenuTrends() {
     const body = document.getElementById("menuTrendsBody");
@@ -5957,63 +6240,96 @@ class Valhalla {
     const daily = s.daily || {};
     const dayKeys = Object.keys(daily).sort();
     if (dayKeys.length === 0) {
-      body.innerHTML = `<div style="opacity:.6;font-size:11.5px">Play a run to start building your trends.</div>`;
+      body.innerHTML = `<div style="opacity:.6;font-size:11.5px;padding:10px 0">Walk one road. Numbers will follow.</div>`;
       return;
     }
 
-    // 30-day flow chart
+    // Build 30-day arrays per metric.
     const today = new Date();
-    const flow = [];
+    const days = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(today); d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
-      const day = daily[key];
-      flow.push({ key, fs: day?.flowSec || 0, runs: day?.runs || 0 });
+      const day = daily[key] || {};
+      // "Calm-time" combines flow + focused + calm + meditation. that's
+      // the abstracted "good bio time" the user gets credit for, even
+      // if they don't know what each state means.
+      const calm = (day.flowSec || 0) + (day.focusedSec || 0)
+                 + (day.calmSec || 0) + (day.meditationSec || 0);
+      const storm = (day.stressSec || 0) + (day.fatigueSec || 0);
+      days.push({
+        key,
+        score: day.bestScore || 0,
+        runs: day.runs || 0,
+        calm, storm,
+      });
     }
-    const maxFlow = Math.max(1, ...flow.map(f => f.fs));
-    const totalFlow = flow.reduce((sum, f) => sum + f.fs, 0);
-    const activeDays = flow.filter(f => f.runs > 0).length;
+    const maxCalm  = Math.max(1, ...days.map(d => d.calm));
+    const maxScore = Math.max(1, ...days.map(d => d.score));
+    const totalCalm  = days.reduce((s, d) => s + d.calm, 0);
+    const totalStorm = days.reduce((s, d) => s + d.storm, 0);
+    const totalRuns  = days.reduce((s, d) => s + d.runs, 0);
+    const activeDays = days.filter(d => d.runs > 0).length;
+    const bestRun    = Math.max(0, ...days.map(d => d.score));
+    const todayKey   = new Date().toISOString().slice(0, 10);
 
-    // Day-of-week aggregation
+    // Bar renderer (height-scaled, today highlighted)
+    const bar = (val, max, baseColour, today) => {
+      const h = Math.round((val / max) * 32);
+      const c = val === 0 ? "rgba(212,173,106,.10)"
+              : today ? "#f4d49a"
+              : baseColour;
+      return `<div style="width:6px;height:${Math.max(2, h)}px;background:${c};border-radius:1px;flex-shrink:0"></div>`;
+    };
+    const calmBars  = days.map(d => bar(d.calm,  maxCalm,  "rgba(122,217,255,.6)", d.key === todayKey)).join("");
+    const stormBars = days.map(d => bar(d.storm, maxCalm,  "rgba(200,64,48,.55)",  d.key === todayKey)).join("");
+    const scoreBars = days.map(d => bar(d.score, maxScore, "rgba(212,173,106,.65)", d.key === todayKey)).join("");
+
+    // Day-of-week best
     const dowNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dowFlow = [0, 0, 0, 0, 0, 0, 0];
-    const dowRuns = [0, 0, 0, 0, 0, 0, 0];
+    const dowCalm = [0,0,0,0,0,0,0];
     for (const k of dayKeys) {
-      const dow = new Date(k).getDay();
-      dowFlow[dow] += daily[k].flowSec || 0;
-      dowRuns[dow] += daily[k].runs || 0;
+      const d = daily[k];
+      const calm = (d.flowSec || 0) + (d.focusedSec || 0) + (d.calmSec || 0) + (d.meditationSec || 0);
+      dowCalm[new Date(k).getDay()] += calm;
     }
-    const maxDow = Math.max(1, ...dowFlow);
-    const bestDow = dowFlow.indexOf(Math.max(...dowFlow));
-
-    // 30-day bar chart
-    const flowBars = flow.map(f => {
-      const h = Math.round((f.fs / maxFlow) * 36);
-      const today = f.key === new Date().toISOString().slice(0, 10);
-      const c = f.runs === 0 ? "rgba(212,173,106,.12)" : today ? "#f4d49a" : "rgba(122,217,255,.55)";
-      return `<div style="width:6px;height:${Math.max(2, h)}px;background:${c};border-radius:1px;flex-shrink:0" title="${f.key}: ${Math.round(f.fs)}s flow, ${f.runs} runs"></div>`;
-    }).join("");
-
-    // Day-of-week heatmap
+    const maxDow = Math.max(1, ...dowCalm);
+    const bestDow = dowCalm.indexOf(Math.max(...dowCalm));
     const dowHtml = dowNames.map((n, i) => {
-      const intensity = dowFlow[i] / maxDow;
-      const op = 0.15 + intensity * 0.7;
-      const isBest = i === bestDow && dowFlow[i] > 0;
+      const op = 0.15 + (dowCalm[i] / maxDow) * 0.7;
+      const isBest = i === bestDow && dowCalm[i] > 0;
       return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">`
-           + `<div style="width:100%;height:22px;background:rgba(122,217,255,${op});border-radius:3px;${isBest ? "outline:1.5px solid #f4d49a;" : ""}"></div>`
-           + `<div style="font-size:9px;letter-spacing:.04em;color:rgba(255,255,255,${isBest ? ".95" : ".5"})">${n}</div>`
+           + `<div style="width:100%;height:18px;background:rgba(122,217,255,${op});border-radius:3px;${isBest ? "outline:1.5px solid #f4d49a;" : ""}"></div>`
+           + `<div style="font-size:9px;letter-spacing:.04em;color:rgba(255,255,255,${isBest ? ".95" : ".45"})">${n}</div>`
            + `</div>`;
     }).join("");
 
+    // Hard-readable summary line in saga voice. NO em-dashes.
+    const summary = `${activeDays} days walked. ${totalRuns} runs.`
+                  + ` Best run ${bestRun.toLocaleString()}.`;
+
     body.innerHTML =
-        `<div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.65);margin-bottom:6px;letter-spacing:.02em">`
-      + `<span>${activeDays} active days · ${Math.round(totalFlow)}s flow total</span>`
-      + `<span style="color:#f4d49a">Best: ${dowNames[bestDow]}</span>`
+        `<div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-bottom:10px;letter-spacing:.02em">${summary}</div>`
+      // BIO row: calm above the line, stress below the line
+      + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
+      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(122,217,255,.7);text-transform:uppercase">Steady time</div>`
+      +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">${Math.round(totalCalm)}s · 30 days</div>`
       + `</div>`
-      + `<div style="font-size:9.5px;letter-spacing:.18em;color:rgba(212,173,106,.55);text-transform:uppercase;margin-bottom:4px;font-weight:600">Last 30 days · flow</div>`
-      + `<div style="display:flex;align-items:flex-end;gap:2px;height:40px;margin-bottom:14px">${flowBars}</div>`
-      + `<div style="font-size:9.5px;letter-spacing:.18em;color:rgba(212,173,106,.55);text-transform:uppercase;margin-bottom:4px;font-weight:600">Best day of week</div>`
-      + `<div style="display:flex;gap:4px;margin-bottom:4px">${dowHtml}</div>`;
+      + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:6px;border-bottom:1px solid rgba(212,173,106,.18);padding-bottom:2px">${calmBars}</div>`
+      + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
+      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(200,64,48,.75);text-transform:uppercase">Storm time</div>`
+      +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">${Math.round(totalStorm)}s · what you want to shrink</div>`
+      + `</div>`
+      + `<div style="display:flex;align-items:flex-end;gap:2px;height:24px;margin-bottom:14px">${stormBars}</div>`
+      // SCORE row
+      + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
+      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(244,212,154,.75);text-transform:uppercase">Best score / day</div>`
+      +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">peak ${bestRun.toLocaleString()}</div>`
+      + `</div>`
+      + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:14px">${scoreBars}</div>`
+      // DOW heatmap
+      + `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(212,173,106,.7);text-transform:uppercase;margin-bottom:4px">Strongest day of the week</div>`
+      + `<div style="display:flex;gap:4px;margin-bottom:6px">${dowHtml}</div>`;
   }
 
   // Update the small "🪶 Skald · {name} · Local only" line in the
@@ -6025,7 +6341,7 @@ class Valhalla {
     if (statusEl) statusEl.textContent = Store.cloudStatusText();
   }
 
-  // Wire all the buttons inside the #syncOverlay dialog. Idempotent —
+  // Wire all the buttons inside the #syncOverlay dialog. Idempotent . 
   // safe to call once at boot.
   _wireSyncDialog() {
     const open = document.getElementById("openSyncDialog");
@@ -6040,9 +6356,9 @@ class Valhalla {
       document.getElementById("syncSkaldId").textContent = id;
       const status = document.getElementById("syncCloudStatus");
       if (Store.isCloudAvailable()) {
-        status.innerHTML = `<span style="color:#a3e8b8;font-weight:600">● Cloud sync active</span> — your save follows you to any device signed in to Elata.`;
+        status.innerHTML = `<span style="color:#a3e8b8;font-weight:600">● Cloud sync active</span>. your save follows you to any device signed in to Elata.`;
       } else {
-        status.innerHTML = `<span style="color:#ffd066;font-weight:600">● Local only</span> — this device's browser. Use the buttons below to move your save, or open Valhalla inside the Elata App Store for automatic sync.`;
+        status.innerHTML = `<span style="color:#ffd066;font-weight:600">● Local only</span>. this device's browser. Use the buttons below to move your save, or open Valhalla inside the Elata App Store for automatic sync.`;
       }
     };
 
@@ -6057,7 +6373,7 @@ class Valhalla {
       if (e.target === overlay) overlay.style.display = "none";
     });
 
-    // Rename — generate a new mnemonic but keep the same hex ID, so
+    // Rename. generate a new mnemonic but keep the same hex ID, so
     // cloud sync continuity is preserved.
     document.getElementById("syncRenameSkald").addEventListener("click", () => {
       try { localStorage.removeItem(SKALD_NAME_KEY); } catch {}
@@ -6077,7 +6393,7 @@ class Valhalla {
         const ta = document.getElementById("syncSavePaste");
         ta.value = Store.exportString();
         ta.focus(); ta.select();
-        this._showSyncResult("Clipboard blocked — save text is in the box below, copy manually.", "warn");
+        this._showSyncResult("Clipboard blocked. save text is in the box below, copy manually.", "warn");
       }
     });
 
@@ -6086,23 +6402,114 @@ class Valhalla {
       try {
         const url = Store.exportUrl();
         await navigator.clipboard.writeText(url);
-        this._showSyncResult(`Copied share link (${(url.length / 1024).toFixed(1)}KB). Open it on the other device — your save restores automatically.`, "ok");
+        this._showSyncResult(`Copied share link (${(url.length / 1024).toFixed(1)}KB). Open it on the other device. your save restores automatically.`, "ok");
       } catch {
         const ta = document.getElementById("syncSavePaste");
         ta.value = Store.exportUrl();
         ta.focus(); ta.select();
-        this._showSyncResult("Clipboard blocked — link text is in the box below, copy manually.", "warn");
+        this._showSyncResult("Clipboard blocked. link text is in the box below, copy manually.", "warn");
       }
     });
 
-    // PWA install button — wire only if browser fired beforeinstallprompt.
+    // GEAR PICKER. coat/shield/cloak. Tints the player model on
+    // selection (live; no refresh). Persists to localStorage so the
+    // Skald keeps the look across sessions and devices (synced via
+    // Store snapshot since the picker writes through Store).
+    const wireGear = (id, key) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = localStorage.getItem("valhalla.gear." + key) || el.value;
+      el.addEventListener("change", () => {
+        localStorage.setItem("valhalla.gear." + key, el.value);
+        this._applyGear();
+      });
+    };
+    wireGear("gearCoat",   "coat");
+    wireGear("gearShield", "shield");
+    wireGear("gearCloak",  "cloak");
+
+    // FRIENDS LEADERBOARD. add by pasted Skald ID, list shows them
+    // with their latest known score (synced via ElataSync if present;
+    // otherwise just shows the IDs as placeholders for when sync
+    // wires up via the app store).
+    const friendInput = document.getElementById("friendIdInput");
+    const friendAddBtn = document.getElementById("friendAddBtn");
+    const friendList = document.getElementById("friendList");
+    const friendCount = document.getElementById("friendCount");
+    const refreshFriends = () => {
+      const s = Store.load();
+      const friends = s.friends || [];
+      friendCount.textContent = `${friends.length} friend${friends.length === 1 ? "" : "s"}`;
+      friendList.innerHTML = friends.length === 0
+        ? `<div style="opacity:.5;font-size:11px;padding:4px 0">No friends yet. share your Skald ID with someone.</div>`
+        : friends.map((f, i) =>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(212,173,106,.08)">`
+          + `<span style="color:#f4d49a;font-weight:600">${(f.name || "?").slice(0, 24)}</span>`
+          + `<span style="color:rgba(255,255,255,.55);font-size:10px;font-family:ui-monospace,monospace">${(f.id || "").slice(0, 12)}…</span>`
+          + `<span style="color:rgba(122,217,255,.8);font-weight:600">${(f.bestScore || 0).toLocaleString()}</span>`
+          + `<button data-fi="${i}" class="friendDel" style="background:none;border:none;color:rgba(255,100,100,.5);cursor:pointer;font-size:14px;padding:0 4px">×</button>`
+          + `</div>`
+        ).join("");
+      // Wire delete buttons
+      friendList.querySelectorAll(".friendDel").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = parseInt(btn.dataset.fi);
+          const s = Store.load();
+          s.friends = (s.friends || []).filter((_, idx) => idx !== i);
+          Store.save(s);
+          refreshFriends();
+        });
+      });
+    };
+    if (friendAddBtn) {
+      friendAddBtn.addEventListener("click", () => {
+        const id = (friendInput.value || "").trim();
+        if (id.length < 8) { this._showSyncResult("Skald ID looks too short.", "err"); return; }
+        if (id === Store.getSkaldId()) { this._showSyncResult("That's your own ID.", "warn"); return; }
+        const s = Store.load();
+        s.friends = s.friends || [];
+        if (s.friends.find(f => f.id === id)) { this._showSyncResult("Already in your friends.", "warn"); return; }
+        // Optimistic add. if ElataSync provides a friend lookup we'll
+        // hydrate name+bestScore later; otherwise placeholder values.
+        s.friends.push({ id, name: id.slice(0, 8), bestScore: 0, addedAt: Date.now() });
+        Store.save(s);
+        friendInput.value = "";
+        refreshFriends();
+        this._showSyncResult("Friend added. They'll appear with their next published run.", "ok");
+        // If host provides a friend-fetch API, kick off a hydrate.
+        if (window.ElataSync?.fetchFriend) {
+          window.ElataSync.fetchFriend(id).then(data => {
+            if (!data) return;
+            const ss = Store.load();
+            const f = (ss.friends || []).find(x => x.id === id);
+            if (f) { Object.assign(f, data); Store.save(ss); refreshFriends(); }
+          }).catch(() => {});
+        }
+      });
+    }
+    refreshFriends();
+
+    // LANGUAGE PICKER. persists; applies on next refresh.
+    const langPicker = document.getElementById("langPicker");
+    if (langPicker) {
+      langPicker.value = localStorage.getItem("valhalla.lang") || (navigator.language || "en").slice(0, 2);
+      if (!I18N_DICT[langPicker.value]) langPicker.value = "en";
+      langPicker.addEventListener("change", () => {
+        localStorage.setItem("valhalla.lang", langPicker.value);
+        this._showSyncResult(I18N("changesAfterRefresh"), "ok");
+        // Live-apply the strings we have IDs for, even before refresh.
+        this._applyI18n();
+      });
+    }
+
+    // PWA install button. wire only if browser fired beforeinstallprompt.
     const installBtn = document.getElementById("installPwaBtn");
     if (installBtn) {
       if (window.__valhallaInstallPrompt) installBtn.style.display = "inline-block";
       installBtn.addEventListener("click", async () => {
         const promptEvt = window.__valhallaInstallPrompt;
         if (!promptEvt) {
-          this._showSyncResult("Install prompt not available — try Add to Home Screen from your browser menu.", "warn");
+          this._showSyncResult("Install prompt not available. try Add to Home Screen from your browser menu.", "warn");
           return;
         }
         promptEvt.prompt();
@@ -6132,10 +6539,10 @@ class Valhalla {
       }
       if (remStatus) {
         if (perm === "unsupported") remStatus.textContent = "Browser doesn't support notifications";
-        else if (perm === "denied") remStatus.textContent = "Notifications blocked — re-enable in browser settings";
-        else if (enabled && perm === "granted") remStatus.textContent = `On — your Skald will call at ${time} when the tab is open`;
-        else if (enabled) remStatus.textContent = "Pending — click Enable to grant permission";
-        else remStatus.textContent = "Off — Skald won't bug you";
+        else if (perm === "denied") remStatus.textContent = "Notifications blocked. re-enable in browser settings";
+        else if (enabled && perm === "granted") remStatus.textContent = `On. your Skald will call at ${time} when the tab is open`;
+        else if (enabled) remStatus.textContent = "Pending. click Enable to grant permission";
+        else remStatus.textContent = "Off. Skald won't bug you";
       }
     };
     refreshReminderUI();
@@ -6154,7 +6561,7 @@ class Valhalla {
           let perm = Notification.permission;
           if (perm === "default") perm = await Notification.requestPermission();
           if (perm !== "granted") {
-            this._showSyncResult("Permission denied — enable in browser settings.", "err");
+            this._showSyncResult("Permission denied. enable in browser settings.", "err");
             refreshReminderUI();
             return;
           }
@@ -6174,12 +6581,12 @@ class Valhalla {
       });
     }
 
-    // Graphics quality picker — applies on next refresh.
+    // Graphics quality picker. applies on next refresh.
     const qPicker = document.getElementById("qualityPicker");
     const qCurrent = document.getElementById("qualityCurrent");
     if (qPicker && qCurrent) {
       qPicker.value = localStorage.getItem("valhalla.quality") || "";
-      qCurrent.textContent = `Detected: ${this.quality || "—"}`;
+      qCurrent.textContent = `Detected: ${this.quality || ". "}`;
       qPicker.addEventListener("change", () => {
         const v = qPicker.value;
         if (v) localStorage.setItem("valhalla.quality", v);
@@ -6224,7 +6631,138 @@ class Valhalla {
     this._syncResultT = setTimeout(() => { el.textContent = ""; }, 5000);
   }
 
-  // SHARE RUN — auto-generate a 1080x1080 canvas card summarising the
+  // DERIVE PUNISH STATES from the raw bio signal. Layered on top of
+  // the SDK's positive-state classification. Sets this.cognitiveState
+  // to "stress" / "fatigue" / "recovery" when the body signals show
+  // these clearly, OVERRIDING the SDK state. This is the loss-aversion
+  // engine: the user feels the cost of tensing up, not just the
+  // reward of relaxing.
+  //
+  // Heuristics use rolling 8-sample windows of BPM + HRV. SDK fires
+  // ~4 Hz so the window is ~2 seconds.
+  _derivePunishStates() {
+    if (!this._bpmWindow) { this._bpmWindow = []; this._hrvWindow = []; this._lastPunish = 0; }
+    if (typeof this.bpm === "number") {
+      this._bpmWindow.push(this.bpm);
+      if (this._bpmWindow.length > 8) this._bpmWindow.shift();
+    }
+    if (typeof this.hrv === "number") {
+      this._hrvWindow.push(this.hrv);
+      if (this._hrvWindow.length > 8) this._hrvWindow.shift();
+    }
+    if (this._bpmWindow.length < 4) return;
+    const avg = (arr) => arr.reduce((s, v) => s + v, 0) / arr.length;
+    const bpmAvg = avg(this._bpmWindow);
+    const hrvAvg = this._hrvWindow.length >= 3 ? avg(this._hrvWindow) : null;
+    const bpmRecent = this._bpmWindow[this._bpmWindow.length - 1];
+    const bpmDelta = bpmRecent - bpmAvg;
+
+    // STRESS: pulse spiking AND (if EEG available) low calm. Also
+    // pulse simply running 25+ above session baseline.
+    const stressed = (bpmDelta > 8 && hrvAvg !== null && hrvAvg < 25)
+                  || (bpmRecent > 95 && this.calmLevel !== null && this.calmLevel < 0.3);
+    // FATIGUE: sustained low pulse, low HRV, no positive cognitive state.
+    const fatigued = bpmRecent < 60 && hrvAvg !== null && hrvAvg < 22
+                  && this.focusLevel !== null && this.focusLevel < 0.3;
+
+    // Don't fight the SDK if it asserted a strong positive state
+    // recently (the user is genuinely in flow).
+    const positive = ["flow", "focused", "calm", "berserker", "meditation"];
+    const sdkPositive = positive.includes(this.cognitiveState);
+    const now = performance.now();
+    if (stressed && !sdkPositive && (now - this._lastPunish) > 1500) {
+      this._lastPunish = now;
+      this.cognitiveState = "stress";
+      this._updateMultiplier("stress");
+    } else if (fatigued && !sdkPositive && (now - this._lastPunish) > 1500) {
+      this._lastPunish = now;
+      this.cognitiveState = "fatigue";
+      this._updateMultiplier("fatigue");
+    }
+  }
+
+  // BIO CALIBRATION RITUAL. 60s 4-4-6 box-breathing overlay shown
+  // the first time a sensor goes live for this profile. Records bio
+  // baseline at completion. Skippable. Skipped permanently once
+  // completed (per-profile flag).
+  _maybeStartCalibration() {
+    const s = Store.load();
+    if (s.calibrationDone) return;
+    if (this._calibrationActive) return;
+    // Don't pop the ritual mid-run.
+    if (this.running) return;
+    this._runCalibrationRitual();
+  }
+
+  _runCalibrationRitual() {
+    const overlay = document.getElementById("bioCalibration");
+    const label = document.getElementById("calibLabel");
+    const circle = document.getElementById("calibCircle");
+    const counter = document.getElementById("calibCounter");
+    const progress = document.getElementById("calibProgressText");
+    const skip = document.getElementById("calibSkip");
+    if (!overlay) return;
+    this._calibrationActive = true;
+    overlay.style.display = "flex";
+
+    // Box pattern: inhale 4s -> hold 4s -> exhale 6s = 14s per cycle.
+    // 6 cycles = 84s, but we cap at 6 cycles ≈ 60-90s. Skip allowed any time.
+    const PHASES = [
+      { name: "Breathe in",   dur: 4, scale: 1.7, colour: "rgba(122,217,255,.5)" },
+      { name: "Hold",         dur: 4, scale: 1.7, colour: "rgba(244,212,154,.4)" },
+      { name: "Breathe out",  dur: 6, scale: 1.0, colour: "rgba(122,217,255,.2)" },
+    ];
+    const TOTAL_CYCLES = 6;
+    let cycle = 0;
+    let phaseIdx = 0;
+    let phaseStart = performance.now();
+    let stopped = false;
+
+    const cleanup = (completed) => {
+      stopped = true;
+      overlay.style.display = "none";
+      this._calibrationActive = false;
+      if (completed) {
+        const s = Store.load();
+        s.calibrationDone = true;
+        s.calibrationDate = new Date().toISOString().slice(0, 10);
+        // Capture baselines if we have them
+        if (this.bpm) s.calibrationBaselineBpm = this.bpm;
+        Store.save(s);
+        console.log("[Valhalla] calibration ritual completed");
+      }
+    };
+    skip.onclick = () => cleanup(false);
+
+    const tick = () => {
+      if (stopped) return;
+      const phase = PHASES[phaseIdx];
+      const t = (performance.now() - phaseStart) / 1000;
+      const remaining = Math.max(0, phase.dur - t);
+      counter.textContent = Math.ceil(remaining).toString();
+      label.textContent = phase.name;
+      // Animate circle on phase entry
+      if (t < 0.05) {
+        circle.style.transition = `transform ${phase.dur}s cubic-bezier(.4,.0,.2,1),background ${phase.dur}s ease`;
+        circle.style.transform = `scale(${phase.scale})`;
+        circle.style.background = `radial-gradient(circle,${phase.colour} 0%,rgba(122,217,255,.05) 60%,transparent 100%)`;
+      }
+      if (t >= phase.dur) {
+        phaseIdx = (phaseIdx + 1) % PHASES.length;
+        if (phaseIdx === 0) {
+          cycle++;
+          progress.textContent = `Cycle ${cycle + 1} / ${TOTAL_CYCLES}`;
+          if (cycle >= TOTAL_CYCLES) { cleanup(true); return; }
+        }
+        phaseStart = performance.now();
+      }
+      requestAnimationFrame(tick);
+    };
+    progress.textContent = `Cycle 1 / ${TOTAL_CYCLES}`;
+    tick();
+  }
+
+  // SHARE RUN. auto-generate a 1080x1080 canvas card summarising the
   // last run (score, distance, mead, bio time, biome reached) on a
   // Norse-themed background. Uses Web Share API on mobile or falls
   // back to download. The card is the viral loop: every Skald who
@@ -6266,7 +6804,7 @@ class Valhalla {
     // Skald name
     ctx.fillStyle = "rgba(244,212,154,0.8)";
     ctx.font = "italic 300 30px 'Cinzel', serif";
-    ctx.fillText(`— ${Store.getSkaldName()} —`, W/2, 190);
+    ctx.fillText(`.  ${Store.getSkaldName()} . `, W/2, 190);
 
     // Big score
     ctx.fillStyle = "#fff";
@@ -6334,7 +6872,7 @@ class Valhalla {
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: "Valhalla — Skald's Run",
+          title: "Valhalla. Skald's Run",
           text: `I scored ${Math.floor(this.score).toLocaleString()} in Valhalla.`,
           files: [file],
         });
@@ -6354,7 +6892,7 @@ class Valhalla {
 
   // Daily reminder scheduler. Fires a browser notification at the
   // user-chosen time. Note: this only works while the tab is open
-  // (no service worker yet — that comes in Phase 4b PWA pass).
+  // (no service worker yet. that comes in Phase 4b PWA pass).
   _scheduleNextReminder() {
     if (this._reminderHandle) { clearTimeout(this._reminderHandle); this._reminderHandle = null; }
     if (localStorage.getItem("valhalla.reminderEnabled") !== "1") return;
@@ -6373,7 +6911,7 @@ class Valhalla {
         const streak = s.streak || 0;
         const bodyLine = streak >= 2
           ? `Keep your ${streak}-day streak alive. The realms await.`
-          : "Time for Valhalla — the realms await.";
+          : "Time for Valhalla. the realms await.";
         new Notification("⚔ Your Skald calls", {
           body: bodyLine,
           icon: "/favicon.ico",
@@ -6412,7 +6950,7 @@ class Valhalla {
     s.totalScore = (s.totalScore || 0) + this.score;
     s.totalMead = (s.totalMead || 0) + this.mead;
 
-    // LIFETIME STATS — the spine of the badge progression. Accumulates
+    // LIFETIME STATS. the spine of the badge progression. Accumulates
     // across every run forever so badges have a real long-term curve.
     const bs = this.bioSession || {};
     const life = s.lifetime || {};
@@ -6428,7 +6966,7 @@ class Valhalla {
     life.calmSec    = (life.calmSec    || 0) + (bs.calmSec || 0);
     s.lifetime = life;
 
-    // SAGA PROGRESS — record the farthest realm reached and total
+    // SAGA PROGRESS. record the farthest realm reached and total
     // full cycles completed. Drives the menu's saga line + future
     // honour-based content unlocks.
     const realmOrder = ["Midgard", "Jötunheim", "Muspelheim", "Asgard"];
@@ -6439,7 +6977,7 @@ class Valhalla {
     // to Midgard after Asgard. Save the max we've ever reached.
     s.totalCycles = Math.max(s.totalCycles || 0, this.biomeCycle || 0);
 
-    // LEADERBOARD — top 10 scores all-time, kept in localStorage.
+    // LEADERBOARD. top 10 scores all-time, kept in localStorage.
     const board = Array.isArray(s.leaderboard) ? s.leaderboard.slice() : [];
     const today = new Date().toISOString().slice(0, 10);
     board.push({
@@ -6451,22 +6989,36 @@ class Valhalla {
     board.sort((a, b) => b.score - a.score);
     s.leaderboard = board.slice(0, 10);
 
-    // DAILY ROLLUP — keyed by YYYY-MM-DD. Powers the 7-day chart on
-    // the game-over screen so users can see their progression over
-    // time, not just one number that resets to "no runs yet".
+    // DAILY ROLLUP. keyed by YYYY-MM-DD. Powers the trends panel +
+    // nudge engine. Now also tracks PUNISH state seconds (stress /
+    // fatigue) for loss-aversion nudges, and HRV average for the
+    // recovery-warning nudge.
     const daily = s.daily || {};
     const today_ = daily[today] || {
-      flowSec: 0, focusedSec: 0, calmSec: 0,
+      flowSec: 0, focusedSec: 0, calmSec: 0, meditationSec: 0,
+      stressSec: 0, fatigueSec: 0,
       runs: 0, bestScore: 0, bossKills: 0, runes: 0, distance: 0,
+      hrvAvg: 0, hrvSamples: 0,
     };
     today_.runs      += 1;
     today_.flowSec   += (bs.flowSec || 0);
     today_.focusedSec+= (bs.focusedSec || 0);
     today_.calmSec   += (bs.calmSec || 0);
+    today_.meditationSec = (today_.meditationSec || 0) + (bs.meditationSec || 0);
+    today_.stressSec  = (today_.stressSec || 0) + (bs.stressSec || 0);
+    today_.fatigueSec = (today_.fatigueSec || 0) + (bs.fatigueSec || 0);
     today_.bossKills += (this.runBossKills || 0);
     today_.runes     += (this.runRunes || 0);
     today_.distance  += Math.round(this.distance);
     today_.bestScore = Math.max(today_.bestScore, Math.floor(this.score));
+    // HRV running avg across the day so the recovery nudge has real data.
+    if (bs.hrvSamples > 0) {
+      const todayHRV = bs.sumHRV / bs.hrvSamples;
+      const prevSamples = today_.hrvSamples || 0;
+      const newSamples = prevSamples + bs.hrvSamples;
+      today_.hrvAvg = ((today_.hrvAvg || 0) * prevSamples + todayHRV * bs.hrvSamples) / newSamples;
+      today_.hrvSamples = newSamples;
+    }
     daily[today] = today_;
     // Prune anything older than 60 days so localStorage doesn't bloat.
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
@@ -6491,7 +7043,7 @@ class Valhalla {
       if (s.lastPlayDate === ydStr) {
         s.streak = prevStreak + 1;
       } else if (s.lastPlayDate === twoStr && (s.streakFreezes || 0) >= 1) {
-        // Missed exactly 1 day, freeze available — consume and extend
+        // Missed exactly 1 day, freeze available. consume and extend
         s.streakFreezes = (s.streakFreezes || 0) - 1;
         s.streak = prevStreak + 1;
         consumedFreeze = true;
@@ -6510,7 +7062,7 @@ class Valhalla {
     }
     s.bestStreak = Math.max(s.bestStreak || 0, s.streak || 0);
 
-    // TIERED BADGES — unlocked from lifetime stats. The unlock loop is
+    // TIERED BADGES. unlocked from lifetime stats. The unlock loop is
     // driven by the _allBadges() definitions themselves so adding a
     // new badge is one line of data, not new code paths.
     const badges = new Set(s.badges || []);
@@ -6545,67 +7097,67 @@ class Valhalla {
     }
   }
 
-  // TIERED BADGES — Bronze/Silver/Gold/Mythic for each progression
+  // TIERED BADGES. Bronze/Silver/Gold/Mythic for each progression
   // axis. Real long-term retention: ~40 badges, most need lifetime
   // play to unlock. Each tier's threshold is 4-8x the previous so the
   // unlock cadence stays satisfying for a long time.
   _allBadges() {
     return [
-      // FIRST STEPS — earliest unlocks, day-1 reinforcement
+      // FIRST STEPS. earliest unlocks, day-1 reinforcement
       { id: "first_run",      label: "First Run",       icon: "🏃", metric: "runs", threshold: 1,   group: "Journey", tier: "Bronze" },
       { id: "ten_runs",       label: "Wanderer",        icon: "🧭", metric: "runs", threshold: 10,  group: "Journey", tier: "Silver" },
       { id: "fifty_runs",     label: "Pilgrim",         icon: "⛺", metric: "runs", threshold: 50,  group: "Journey", tier: "Gold"   },
       { id: "two_fifty_runs", label: "Saga-Bearer",     icon: "📜", metric: "runs", threshold: 250, group: "Journey", tier: "Mythic" },
 
-      // DISTANCE — single run best
+      // DISTANCE. single run best
       { id: "dist_500",   label: "500m",   icon: "🏔", metric: "bestDist", threshold: 500,   group: "Distance", tier: "Bronze" },
       { id: "dist_1k",    label: "1km",    icon: "🛡", metric: "bestDist", threshold: 1000,  group: "Distance", tier: "Silver" },
       { id: "dist_5k",    label: "5km",    icon: "⚓", metric: "bestDist", threshold: 5000,  group: "Distance", tier: "Gold"   },
       { id: "dist_25k",   label: "25km",   icon: "🐉", metric: "bestDist", threshold: 25000, group: "Distance", tier: "Mythic" },
 
-      // SCORE — single run best
+      // SCORE. single run best
       { id: "score_5k",   label: "5K Skald",  icon: "⚔", metric: "bestScore", threshold: 5000,   group: "Score", tier: "Bronze" },
       { id: "score_25k",  label: "25K Jarl",  icon: "👑", metric: "bestScore", threshold: 25000,  group: "Score", tier: "Silver" },
       { id: "score_100k", label: "100K King", icon: "🏰", metric: "bestScore", threshold: 100000, group: "Score", tier: "Gold"   },
       { id: "score_500k", label: "Allfather", icon: "🌟", metric: "bestScore", threshold: 500000, group: "Score", tier: "Mythic" },
 
-      // STREAK — daily play retention
+      // STREAK. daily play retention
       { id: "streak_3",   label: "3-Day Streak",  icon: "🔥", metric: "streak", threshold: 3,   group: "Streak", tier: "Bronze" },
       { id: "streak_7",   label: "7-Day Streak",  icon: "⚡", metric: "streak", threshold: 7,   group: "Streak", tier: "Silver" },
       { id: "streak_30",  label: "30-Day Streak", icon: "🌙", metric: "streak", threshold: 30,  group: "Streak", tier: "Gold"   },
       { id: "streak_100", label: "100-Day Streak",icon: "☀", metric: "streak", threshold: 100, group: "Streak", tier: "Mythic" },
 
-      // BOSS KILLS — lifetime
+      // BOSS KILLS. lifetime
       { id: "boss_1",     label: "First Slay",     icon: "🗡", metric: "lifeBoss", threshold: 1,    group: "Bosses", tier: "Bronze" },
       { id: "boss_10",    label: "Giant-Slayer",   icon: "⚔", metric: "lifeBoss", threshold: 10,   group: "Bosses", tier: "Silver" },
       { id: "boss_50",    label: "Berserker-King", icon: "🪓", metric: "lifeBoss", threshold: 50,   group: "Bosses", tier: "Gold"   },
       { id: "boss_250",   label: "Ragnarök",       icon: "💀", metric: "lifeBoss", threshold: 250,  group: "Bosses", tier: "Mythic" },
 
-      // RUNES — lifetime collected
+      // RUNES. lifetime collected
       { id: "rune_10",    label: "First Runes",   icon: "ᚱ", metric: "lifeRunes", threshold: 10,    group: "Runes", tier: "Bronze" },
       { id: "rune_100",   label: "Rune-Reader",   icon: "ᚦ", metric: "lifeRunes", threshold: 100,   group: "Runes", tier: "Silver" },
       { id: "rune_1000",  label: "Runemaster",    icon: "ᚷ", metric: "lifeRunes", threshold: 1000,  group: "Runes", tier: "Gold"   },
       { id: "rune_10000", label: "Skald of Mímir",icon: "ᚹ", metric: "lifeRunes", threshold: 10000, group: "Runes", tier: "Mythic" },
 
-      // FLOW — lifetime seconds (the headline bio achievement)
+      // FLOW. lifetime seconds (the headline bio achievement)
       { id: "flow_30",    label: "Touch of Flow",   icon: "🌊", metric: "lifeFlow", threshold: 30,   group: "Flow", tier: "Bronze" },
       { id: "flow_5m",    label: "5 min in Flow",   icon: "🧠", metric: "lifeFlow", threshold: 300,  group: "Flow", tier: "Silver" },
       { id: "flow_30m",   label: "30 min in Flow",  icon: "💫", metric: "lifeFlow", threshold: 1800, group: "Flow", tier: "Gold"   },
       { id: "flow_3h",    label: "Lord of Flow",    icon: "🔱", metric: "lifeFlow", threshold: 10800,group: "Flow", tier: "Mythic" },
 
-      // CALM — lifetime seconds (the breathwork badge)
+      // CALM. lifetime seconds (the breathwork badge)
       { id: "calm_1m",    label: "Settled Mind",  icon: "🍃", metric: "lifeCalm", threshold: 60,    group: "Calm", tier: "Bronze" },
       { id: "calm_15m",   label: "Calm Spirit",   icon: "🪷", metric: "lifeCalm", threshold: 900,   group: "Calm", tier: "Silver" },
       { id: "calm_2h",    label: "Sage",          icon: "🧘", metric: "lifeCalm", threshold: 7200,  group: "Calm", tier: "Gold"   },
       { id: "calm_10h",   label: "Bodhisattva",   icon: "☯", metric: "lifeCalm", threshold: 36000, group: "Calm", tier: "Mythic" },
 
-      // FOCUS — lifetime seconds
+      // FOCUS. lifetime seconds
       { id: "focus_1m",  label: "Sharpened",       icon: "👁", metric: "lifeFocused", threshold: 60,    group: "Focus", tier: "Bronze" },
       { id: "focus_15m", label: "Hawk-Eyed",       icon: "🦅", metric: "lifeFocused", threshold: 900,   group: "Focus", tier: "Silver" },
       { id: "focus_2h",  label: "Eyes of Heimdall",icon: "🌈", metric: "lifeFocused", threshold: 7200,  group: "Focus", tier: "Gold"   },
       { id: "focus_10h", label: "All-Seeing",      icon: "🔮", metric: "lifeFocused", threshold: 36000, group: "Focus", tier: "Mythic" },
 
-      // GIFTS — bio-earned powerups (validates the SDK loop)
+      // GIFTS. bio-earned powerups (validates the SDK loop)
       { id: "gift_1",    label: "First Gift",   icon: "🎁", metric: "lifeGifts", threshold: 1,    group: "Gifts", tier: "Bronze" },
       { id: "gift_25",   label: "Blessed",      icon: "✨", metric: "lifeGifts", threshold: 25,   group: "Gifts", tier: "Silver" },
       { id: "gift_100",  label: "Favoured",     icon: "🏵", metric: "lifeGifts", threshold: 100,  group: "Gifts", tier: "Gold"   },
@@ -6671,7 +7223,7 @@ class Valhalla {
       ? `<span style="color:#f4d49a">Best bio day this week 🎉</span>`
       : (thisDay > 0
           ? `${Math.round(thisDay)}s of bio-state today`
-          : `No bio-state yet today — pair to start`);
+          : `No bio-state yet today. pair to start`);
 
     // ----- Leaderboard ------------------------------------------------
     const todayScore = Math.floor(this.score);
@@ -6747,7 +7299,7 @@ class Valhalla {
         + `</div>`;
     }).join("");
 
-    // Newly unlocked this run — surface them prominently as a NEW
+    // Newly unlocked this run. surface them prominently as a NEW
     // HONOURS strip; the rest of the badges are collapsed.
     const beforeIds = new Set(this._badgeIdsBeforeRun || []);
     const newlyEarned = [...earned].filter(id => !beforeIds.has(id));
@@ -6934,7 +7486,7 @@ class Valhalla {
     } else {
       bb.classList.add("none");
     }
-    // END-OF-RUN BIO REPORT — the receipt that justifies the SDK.
+    // END-OF-RUN BIO REPORT. the receipt that justifies the SDK.
     // Inject a "Body" section into the run-over card with this run's
     // physiological summary. Only shows if a sensor was active at any
     // point (hrSamples > 0 OR any positive state accumulated).
@@ -6945,7 +7497,7 @@ class Valhalla {
   }
 
   // Build / refresh the bio report on the game-over screen. Pure DOM
-  // injection — finds the .over .card and appends/updates a section.
+  // injection. finds the .over .card and appends/updates a section.
   _injectBioReport() {
     const card = document.querySelector("#overOverlay .card");
     if (!card) return;
@@ -7015,7 +7567,7 @@ class Valhalla {
     // hazards at all. The player gets to land in the world, see the HUD,
     // grab some mead, and watch the first realm transition fire at 250m
     // before anything tries to kill them. This is what "addictive" needs
-    // — the first 5 seconds have to feel like discovery, not punishment.
+    //. the first 5 seconds have to feel like discovery, not punishment.
     const inGrace = this.distance < 100;
 
     // Pattern-safety rules. Some hazards are unavoidable if you can't
@@ -7030,28 +7582,28 @@ class Valhalla {
 
     const r = Math.random();
     if (r < 0.20 && !inGrace) {
-      // Single-lane obstacle — easy to dodge, no cooldown needed.
+      // Single-lane obstacle. easy to dodge, no cooldown needed.
       const lane = (Math.random() * 3) | 0;
       this._spawnObstacle(lane, zWorld);
     } else if (r < 0.34 && !tooCloseToHard) {
-      // Two-lane block (one safe lane). Hard — gate by cooldown.
+      // Two-lane block (one safe lane). Hard. gate by cooldown.
       const safe = (Math.random() * 3) | 0;
       for (let i = 0; i < 3; i++) if (i !== safe) this._spawnObstacle(i, zWorld);
       this._lastHardZ = zWorld;
     } else if (r < 0.45 && !tooCloseToHard) {
-      // Slide-under beam — gate by cooldown.
+      // Slide-under beam. gate by cooldown.
       this._spawnBeam(zWorld);
       this._lastHardZ = zWorld;
     } else if (r < 0.55 && !tooCloseToHard) {
-      // Jump-over fire pit — gate by cooldown.
+      // Jump-over fire pit. gate by cooldown.
       this._spawnFirePit((Math.random() * 3) | 0, zWorld);
       this._lastHardZ = zWorld;
     } else if (r < 0.65 && !tooCloseToHard) {
-      // Slide-under ravens — gate by cooldown.
+      // Slide-under ravens. gate by cooldown.
       this._spawnRavens(zWorld);
       this._lastHardZ = zWorld;
     } else {
-      // Empty wave or cooldown — collectibles only.
+      // Empty wave or cooldown. collectibles only.
     }
 
     // Mead cluster in a single lane (arc or line). First horn in the
@@ -7072,7 +7624,7 @@ class Valhalla {
     }
 
     // God-blessing orbs. Triples the previous spawn rate (8% → 24%)
-    // and unlocks the great relics much earlier — the user-reported
+    // and unlocks the great relics much earlier. the user-reported
     // "no powerups" issue was just rarity. Now you see one every
     // ~3-4 waves which is ~60-80m apart.
     if (Math.random() < 0.24) {
@@ -7287,7 +7839,7 @@ class Valhalla {
 
   // Action labels (JUMP/SLIDE/DODGE) were tutorial scaffolding that
   // broke immersion. The player learns the verbs in 2-3 tries and after
-  // that the floating words are just noise. Disabled — keep the
+  // that the floating words are just noise. Disabled. keep the
   // function as a no-op so existing call sites still work but emit
   // nothing. The colour-coded ground rings + obstacle silhouettes
   // already telegraph the action clearly enough.
@@ -7350,7 +7902,7 @@ class Valhalla {
 
   _spawnMead(lane, zWorld, baseY = 1.2, leadDecal = false) {
     const grp = new THREE.Group();
-    // Drinking horn — bone/ivory tone, NO emissive (a horn doesn't glow).
+    // Drinking horn. bone/ivory tone, NO emissive (a horn doesn't glow).
     // Slight metallic on the iron rim only.
     const horn = new THREE.Mesh(
       new THREE.ConeGeometry(0.22, 0.8, 10),
@@ -7366,7 +7918,7 @@ class Valhalla {
     grp.add(rim);
     grp.position.set(LANES[lane], baseY, zWorld);
     this.scene.add(grp);
-    // Only the first mead in a cluster gets a decal — otherwise we'd
+    // Only the first mead in a cluster gets a decal. otherwise we'd
     // litter the path. The cluster is one "loot lane" event.
     let decal = null;
     if (leadDecal) {
@@ -7378,7 +7930,7 @@ class Valhalla {
   }
 
   _spawnRune(lane, zWorld) {
-    // Carved standing runestone — weathered grey granite slab with three
+    // Carved standing runestone. weathered grey granite slab with three
     // faintly-glowing etched runes. Far more "ancient Norse holy site"
     // than the previous cartoon cyan crystal that just floated in midair.
     const grp = new THREE.Group();
@@ -7448,7 +8000,7 @@ class Valhalla {
     };
     const spec = PUSPECS[type];
     const grp = new THREE.Group();
-    // Core orb — gift of the gods. Strong emissive so the bloom pass
+    // Core orb. gift of the gods. Strong emissive so the bloom pass
     // turns it into a real lantern of divine light, not a flat sphere.
     const core = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 18, 14),
@@ -7458,21 +8010,21 @@ class Valhalla {
       })
     );
     grp.add(core);
-    // Halo — larger and slightly more opaque.
+    // Halo. larger and slightly more opaque.
     const halo = new THREE.Mesh(
       new THREE.SphereGeometry(1.05, 14, 10),
       new THREE.MeshBasicMaterial({ color: spec.halo, transparent: true, opacity: 0.32, depthWrite: false })
     );
     grp.add(halo);
-    // Powerup name banners removed — they made the world feel like a
+    // Powerup name banners removed. they made the world feel like a
     // tutorial. The orb's distinct halo colour + icon silhouette is
     // enough to identify the relic. The pickup announcement (big
     // floating text on activate) is when the player learns the name.
-    // Icon symbol inside the orb — small white silhouette that reads at
+    // Icon symbol inside the orb. small white silhouette that reads at
     // distance even when the player is sprinting. One shape per god/relic.
     const W = new THREE.MeshBasicMaterial({ color: 0xffffff });
     let icon;
-    if (spec.sym === "shield") {                      // Tyr — round shield with boss
+    if (spec.sym === "shield") {                      // Tyr. round shield with boss
       icon = new THREE.Group();
       const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), W);
       disc.rotation.x = Math.PI / 2;
@@ -7480,20 +8032,20 @@ class Valhalla {
       const boss = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), W);
       boss.position.z = 0.05;
       icon.add(boss);
-    } else if (spec.sym === "hoof") {                 // Sleipnir — galloping hoofprint (kite)
+    } else if (spec.sym === "hoof") {                 // Sleipnir. galloping hoofprint (kite)
       icon = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.32, 4), W);
       icon.rotation.x = Math.PI / 2;
-    } else if (spec.sym === "rune") {                 // Bragi — rune-stone (vertical bar with cross)
+    } else if (spec.sym === "rune") {                 // Bragi. rune-stone (vertical bar with cross)
       icon = new THREE.Group();
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.38, 0.06), W);
       icon.add(bar);
       const cross = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.06, 0.06), W);
       icon.add(cross);
-    } else if (spec.sym === "tear") {                 // Freja — tear-drop
+    } else if (spec.sym === "tear") {                 // Freja. tear-drop
       icon = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.32, 12), W);
-    } else if (spec.sym === "ship") {                 // Skíðblaðnir — longship silhouette
+    } else if (spec.sym === "ship") {                 // Skíðblaðnir. longship silhouette
       icon = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.14), W);
-    } else if (spec.sym === "hammer") {               // Mjölnir — boxy hammer head + short handle
+    } else if (spec.sym === "hammer") {               // Mjölnir. boxy hammer head + short handle
       icon = new THREE.Group();
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.20, 0.18), W);
       head.position.y = 0.07;
@@ -7501,22 +8053,22 @@ class Valhalla {
       const handle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.28, 0.06), W);
       handle.position.y = -0.13;
       icon.add(handle);
-    } else if (spec.sym === "ravens") {               // Odin — two stacked diamond birds
+    } else if (spec.sym === "ravens") {               // Odin. two stacked diamond birds
       icon = new THREE.Group();
       for (let i = 0; i < 2; i++) {
         const b = new THREE.Mesh(new THREE.OctahedronGeometry(0.10, 0), W);
         b.position.set(i === 0 ? -0.10 : 0.10, i === 0 ? 0.08 : -0.06, 0);
         icon.add(b);
       }
-    } else {                                          // default fallback — diamond
+    } else {                                          // default fallback. diamond
       icon = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), W);
     }
     icon.position.z = 0.05;
     grp.add(icon);
 
-    // BEACON — vertical pillar of light shooting up from the orb so
+    // BEACON. vertical pillar of light shooting up from the orb so
     // the player spots it from far away even through heavy fog. This
-    // is THE fix for "I can't see what's a powerup" — the pillar is
+    // is THE fix for "I can't see what's a powerup". the pillar is
     // 18m tall, additive-blended, fog-aware so it fades naturally
     // with distance. God's halo colour at top.
     const beaconGeo = new THREE.CylinderGeometry(0.22, 0.22, 18, 8, 1, true);
@@ -7531,7 +8083,7 @@ class Valhalla {
 
     grp.position.set(LANES[lane], 1.6, zWorld);
     this.scene.add(grp);
-    // Reward decal — the god's halo colour on the ground, so the player can
+    // Reward decal. the god's halo colour on the ground, so the player can
     // distinguish at a glance from the red danger rings.
     const rewardDecal = this._makeGroundDecal(spec.halo, 1.3, false);
     rewardDecal.position.set(LANES[lane], 0.06, zWorld);
@@ -7540,7 +8092,7 @@ class Valhalla {
       pwType: type, value: spec.value, ang: 0, baseY: 1.6, decal: rewardDecal });
   }
 
-  // Canvas-rendered text sprite. Three.js has no native text — we draw the
+  // Canvas-rendered text sprite. Three.js has no native text. we draw the
   // label to a 2D canvas, wrap it in a CanvasTexture, then put it on a
   // Sprite that always faces the camera. Used for floating powerup names.
   _makeTextSprite(text, accent = 0xffffff) {
@@ -7602,7 +8154,7 @@ class Valhalla {
       log.position.y = 0.25;
       grp.add(log);
     }
-    // Flames — stacked tetrahedra. Material is BasicMaterial in HDR
+    // Flames. stacked tetrahedra. Material is BasicMaterial in HDR
     // colour space (values > 1) so the bloom pass picks them up as
     // real fire light spilling everywhere around the pit, not flat
     // triangle decals. Each tier uses progressively brighter values.
@@ -7629,7 +8181,7 @@ class Valhalla {
     }
     grp.add(flames);
     grp.userData.flames = flames;
-    // No PointLight — multiple fire obstacles on screen + 4 scenery
+    // No PointLight. multiple fire obstacles on screen + 4 scenery
     // pits would burst WebGL's dynamic-light budget. Emissive flame
     // materials read as fire on their own.
     grp.position.set(LANES[lane], 0, zWorld);
@@ -7639,7 +8191,7 @@ class Valhalla {
     decal.position.set(LANES[lane], 0.06, zWorld);
     this.scene.add(decal);
 
-    // JUMP label — orange accent matches the fire colour.
+    // JUMP label. orange accent matches the fire colour.
     this._addActionLabel(grp, "JUMP", 3.0, 0xff9020);
     this.obstacles.push({
       mesh: grp, lane, spawnAt: zWorld, type: "fire",
@@ -7694,7 +8246,7 @@ class Valhalla {
       this.scene.add(d);
       decals.push(d);
     }
-    // SLIDE label — same red as the beam since the verb is identical.
+    // SLIDE label. same red as the beam since the verb is identical.
     this._addActionLabel(grp, "SLIDE", 3.5, 0xff3030);
     this.obstacles.push({
       mesh: grp, lane: -1, spawnAt: zWorld, type: "ravens",
@@ -7709,7 +8261,7 @@ class Valhalla {
     // Track an EMA of frame time so we can drop quality if the GPU is
     // struggling. Updates every frame, ~1s smoothing.
     this._frameEMA = this._frameEMA == null ? realDt : (this._frameEMA * 0.95 + realDt * 0.05);
-    // Adaptive post — disable heavy passes if running below 40 FPS
+    // Adaptive post. disable heavy passes if running below 40 FPS
     // sustained, re-enable above 50 FPS. Hysteresis prevents flicker.
     // SSAO drops first (most expensive), bloom second.
     if (this.ssaoPass) {
@@ -7804,7 +8356,7 @@ class Valhalla {
       this.renderer.shadowMap.enabled = false;
       if (this.sun) this.sun.castShadow = false;
       console.warn("[Valhalla] auto-downgrade #3: shadows disabled");
-      this._fpsToast("Auto-downgrade: shadows off — consider Graphics → Low");
+      this._fpsToast("Auto-downgrade: shadows off. consider Graphics → Low");
     }
   }
 
@@ -7833,7 +8385,7 @@ class Valhalla {
     const el = document.createElement("div");
     el.id = "fpsOverlay";
     el.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:60;padding:5px 9px;background:rgba(0,0,0,.65);color:#a3e8b8;border:1px solid rgba(255,255,255,.15);border-radius:5px;font:600 11px/1 ui-monospace,Menlo,Consolas,monospace;pointer-events:none";
-    el.textContent = "— fps";
+    el.textContent = ".  fps";
     document.body.appendChild(el);
     this._fpsOverlay = el;
   }
@@ -7849,7 +8401,7 @@ class Valhalla {
     // The base ramp is the same as before. Then bio directly modulates:
     //   - Heart rate: each BPM above 70 bumps speed by 0.6%, capped at
     //     +30% (so 120 BPM = +30% speed, which is the "panic / berserker
-    //     fast" feeling — and you'll lose if you can't calm down)
+    //     fast" feeling. and you'll lose if you can't calm down)
     //   - Cognitive state: flow halves the speed bump (you stay in
     //     control), meditation gives a 10% slow.
     //   - Powerup: speed gives +35%, ship +25%.
@@ -7894,7 +8446,7 @@ class Valhalla {
       const animSpeed = Math.max(0.5, this.speed / BASE_SPEED);
       this._mixer.update(dt * animSpeed);
     }
-    // Aurora ribbons — gentle drift / sway. No shader uniforms now;
+    // Aurora ribbons. gentle drift / sway. No shader uniforms now;
     // we just rotate them subtly so the curtains look alive.
     if (this._aurora) {
       const t = performance.now() * 0.0004;
@@ -7905,7 +8457,7 @@ class Valhalla {
         m.position.x = Math.sin(t * 0.7 + i) * 8;
       }
     }
-    // Boss actor — scrolls with the world, idles dramatically, fights,
+    // Boss actor. scrolls with the world, idles dramatically, fights,
     // dies. Now also drives the screen-space HP banner for unambiguous
     // boss-fight UI (the in-world bar above the head was easy to miss).
     const bossBanner = document.getElementById("bossBanner");
@@ -7927,7 +8479,7 @@ class Valhalla {
           this._bossActor = null;
         }
       } else {
-        // BIGGER, more dramatic idle. Was a quiet 0.18m bob — easy
+        // BIGGER, more dramatic idle. Was a quiet 0.18m bob. easy
         // to miss. Now 0.45m bob + 0.12rad sway, slightly faster.
         // The boss visibly BREATHES + ROCKS.
         b.idle += dt;
@@ -7948,7 +8500,7 @@ class Valhalla {
         if (this.cognitiveState === "flow")        this._damageBoss(5 * dt, "flow");
         else if (this.cognitiveState === "berserker") this._damageBoss(3 * dt, "berserker");
 
-        // SCREEN-SPACE BOSS BANNER — always-visible HP + name + hint
+        // SCREEN-SPACE BOSS BANNER. always-visible HP + name + hint
         // while the boss is in front of the player.
         if (bossBanner && sz > -10) {
           bossBanner.style.display = "block";
@@ -7977,17 +8529,27 @@ class Valhalla {
         b.hpFill.position.x = -(w * (1 - pct)) * 0.5;
       }
     } else {
-      // No boss — make sure banner is hidden.
+      // No boss. make sure banner is hidden.
       if (bossBanner) bossBanner.style.display = "none";
     }
 
     // forward distance
     this.distance += this.speed * dt;
 
-    // score multipliers stack: bio state + combo + 2x powerup
-    const flowMul = (this.cognitiveState === "flow") ? 2.0 :
-                    (this.cognitiveState === "focused") ? 1.4 :
-                    (this.cognitiveState === "berserker") ? 1.5 : 1.0;
+    // SCORE MULTIPLIERS STACK: bio state + combo + powerup, with
+    // LOSS AVERSION applied as a punish-state penalty (stress and
+    // fatigue actively reduce score, not just deny bonus). User
+    // can FEEL their body costing them points.
+    const cs = this.cognitiveState;
+    const flowMul = (cs === "flow")       ? 2.0 :
+                    (cs === "focused")    ? 1.4 :
+                    (cs === "berserker")  ? 1.5 :
+                    (cs === "calm")       ? 1.1 :
+                    (cs === "meditation") ? 0.95 :       // tradeoff: slow but easier
+                    (cs === "stress")     ? 0.55 :       // PENALTY: storm-heart loses
+                    (cs === "fatigue")    ? 0.7 :        // PENALTY: oar-weary, weak swing
+                    (cs === "distracted") ? 0.85 :       // mild penalty
+                    1.0;
     const powerMul = this.power.mult > 0 ? 2.0 : 1.0;
     this.score += dt * this.speed * 0.6 * (1 + this.combo * 0.05) * flowMul * powerMul;
 
@@ -8053,13 +8615,13 @@ class Valhalla {
         fp.userData.spawnAt = this.distance;
         fp.material.opacity = 0.45;
         this._fpIdx = (this._fpIdx + 1) % this.footprints.length;
-        // SNOW CRUNCH — each footprint plays a randomised crunch.
+        // SNOW CRUNCH. each footprint plays a randomised crunch.
         // Single biggest 'this is real' cue at running speed.
         if (this.audio?.footstep) this.audio.footstep();
       }
     }
 
-    // FIRE PROXIMITY — fade fire-crackle ambience up when near any
+    // FIRE PROXIMITY. fade fire-crackle ambience up when near any
     // fire pit (scenery or obstacle). Squared falloff, max ~12m.
     if (this.audio?.setFireProximity) {
       let nearest = Infinity;
@@ -8128,7 +8690,7 @@ class Valhalla {
       1.0 + this.playerY * 0.4 + shakeY * 0.5,
       28
     );
-    // Camera lean reverted — setting camera.rotation.z directly AFTER
+    // Camera lean reverted. setting camera.rotation.z directly AFTER
     // lookAt() flipped the view upside-down in some frames (the user
     // saw "you are walking on the opposite"). The visual lean was
     // not worth the orientation risk; the existing footfall bob +
@@ -8201,7 +8763,7 @@ class Valhalla {
           }
         }
       }
-      // Mjölnir — while Thor's hammer is in your grasp, any obstacle that
+      // Mjölnir. while Thor's hammer is in your grasp, any obstacle that
       // enters the 25m forward strike-cone is destroyed by lightning before
       // it can touch you. Plays a faint thunder rumble + bonus score, and
       // flags the obstacle as consumed so the standard collision branch
@@ -8220,7 +8782,7 @@ class Valhalla {
       const hitWindow = Math.max(1.0, Math.min(2.0, this.speed * dt * 1.5));
       // Tyr's Aegis (shield), Skíðblaðnir (ship), and Mjölnir (thor) all
       // grant invulnerability. Huginn & Muninn (odin) gives foresight via
-      // slow-mo only — the player still has to dodge.
+      // slow-mo only. the player still has to dodge.
       const invul = this.invuln > 0 || this.power.shield > 0
                  || this.power.ship > 0  || this.power.thor > 0;
       if (Math.abs(sz) < hitWindow && !o._consumed) {
@@ -8281,7 +8843,7 @@ class Valhalla {
       }
       c.mesh.position.z = sz;
       c.ang += dt * 3;
-      // Runestones are heavy carved granite — they don't spin or hover.
+      // Runestones are heavy carved granite. they don't spin or hover.
       // Everything else (mead horns, powerup orbs) gets the magical bob.
       if (c.type !== "rune") {
         c.mesh.rotation.y = c.ang;
@@ -8317,7 +8879,7 @@ class Valhalla {
           setTimeout(() => this.hud.glory.classList.remove("on"), 350);
           // Track for lifetime/daily stats.
           this.runRunes = (this.runRunes || 0) + 1;
-          // Runes hit the active boss HARD — they're the player's main
+          // Runes hit the active boss HARD. they're the player's main
           // ranged attack during a fight.
           if (this._bossActor && !this._bossActor.defeated) {
             this._damageBoss(40, "rune");
@@ -8353,7 +8915,7 @@ class Valhalla {
     this.water[0].material.uniforms["time"].value += dt;
     this.water[1].material.uniforms["time"].value += dt;
 
-    // Huginn + Muninn — Odin's ravens always orbit the player
+    // Huginn + Muninn. Odin's ravens always orbit the player
     this._updateOdinsRavens(dt);
     // Real animated horses galloping through the meadows
     this._updateRealHorses(dt);
@@ -8365,11 +8927,12 @@ class Valhalla {
     this._updatePineForest();
     this._updateBattleHelms();
     this._updateVikingProps();
+    this._updateVikingNPCs(dt);
     // Atmospheric layers
     this._updateGodRays(dt);
     this._updateMist(dt);
 
-    // scenery bobs — only the non-longship pieces (longships have their
+    // scenery bobs. only the non-longship pieces (longships have their
     // own bob logic inside _updateLongships that combines forward sail
     // with the wave bob).
     for (const s of this.scenery) {
@@ -8412,7 +8975,7 @@ class Valhalla {
     this.audio.hit();
     this._flash();
     this._shake(0.55, 0.35);
-    // LIVES SYNC FIX — update HUD lives counter IMMEDIATELY on
+    // LIVES SYNC FIX. update HUD lives counter IMMEDIATELY on
     // collision instead of waiting for the next _updateHUD() at
     // end-of-frame. User reported the counter felt out-of-sync with
     // the hit. Also pop a big visible "-1" floater so the loss is
@@ -8596,3 +9159,4 @@ if (document.readyState === "loading") {
 } else {
   boot();
 }
+

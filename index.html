@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -35,19 +35,22 @@
     body.playing .hud{opacity:1;visibility:visible}
     .hud > *{pointer-events:auto}
 
-    /* FIRST-RUN ONBOARDING — three-step guided overlay. Higher z-index
+    /* FIRST-RUN ONBOARDING. three-step guided overlay. Higher z-index
        than the start menu so it's the first thing a new player sees. */
     .intro{
       position:fixed;inset:0;z-index:70;
       display:flex;align-items:center;justify-content:center;
       padding:16px;
-      background:radial-gradient(ellipse at center,rgba(8,6,4,.62) 0%,rgba(4,3,2,.96) 100%);
+      /* Opaque backdrop so the menu doesn't bleed through the card. */
+      background:rgba(4,3,2,.97);
+      backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
     }
     .intro-card{
       width:100%;max-width:520px;padding:42px 36px 22px;
-      background:rgba(14,10,6,.94);border:1px solid rgba(212,173,106,.32);
-      border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.7);
+      background:rgba(14,10,6,1);border:1px solid rgba(212,173,106,.45);
+      border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.8),0 0 60px rgba(212,173,106,.05);
+      max-height:90vh;overflow-y:auto;
     }
     .intro-eyebrow{
       font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
@@ -103,9 +106,9 @@
 
     /* CINEMATIC FRAMING. Three stacked layers that immediately read
        as "film" instead of "phone game":
-         .letterbox  — top + bottom hard black bars (movie aspect)
-         .vignette-cine — deep corner darkness (RDR2/Hellblade signature)
-         .grain      — animated film grain texture (every Viking film) */
+         .letterbox . top + bottom hard black bars (movie aspect)
+         .vignette-cine. deep corner darkness (RDR2/Hellblade signature)
+         .grain     . animated film grain texture (every Viking film) */
     .letterbox{
       position:fixed;left:0;right:0;pointer-events:none;z-index:30;
       background:#000;height:0;transition:height .9s cubic-bezier(.6,.02,.3,1);
@@ -143,7 +146,7 @@
       100% {transform:translate(0,0)}
     }
 
-    /* Intro fade — when Play is pressed, the game fades from black
+    /* Intro fade. when Play is pressed, the game fades from black
        over 1.4s. Echoes the opening of a film. Triggered by adding
        body.cinematic-intro at the moment _begin fires; removed after. */
     .introfade{
@@ -153,7 +156,7 @@
     body.cinematic-intro .introfade{opacity:1;transition:none}
     body.playing.cinematic-intro .introfade{opacity:0}
 
-    /* Cinematic HUD — looks like rune carvings on parchment, not phone-
+    /* Cinematic HUD. looks like rune carvings on parchment, not phone-
        app chips. Bronze on dark, Cinzel serif, no chunky cards. The
        only ALWAYS-VISIBLE elements are distance and lives. Score, BPM,
        state, controls, legend all live behind TAB. */
@@ -166,7 +169,7 @@
     }
     /* Top-left stat block: SCORE on top, DISTANCE under it. Both Cinzel
        bronze, no card, look like inscriptions. Score is back because
-       the user explicitly asked for it — gamification feedback matters
+       the user explicitly asked for it. gamification feedback matters
        even with a cinematic look. */
     .stat{
       font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;
@@ -177,7 +180,7 @@
       color:rgba(201,165,92,.55)}
     .stat .val{font:700 30px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.02em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);display:block}
-    /* Lives — bronze inscription top-right. */
+    /* Lives. bronze inscription top-right. */
     .stat.lives{
       font:700 26px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.18em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);
@@ -207,7 +210,7 @@
     .stat.score .mult.focused{background:#a3b8ff;color:#001a3a}
 
     /* Full-screen bio state vignette. Strong saturated edges so the
-       cognitive state is undeniable — previous version was too subtle
+       cognitive state is undeniable. previous version was too subtle
        and the user couldn't see any impact ("no reason to use webcam
        or muse experience doesn't change whatsoever"). Now alpha goes
        up to ~45% at the edges, with the centre still fully transparent
@@ -226,7 +229,7 @@
     body[data-bio-state="calm"]::after      {background:radial-gradient(ellipse at center,rgba(128,208,224,0) 30%,rgba(128,208,224,.26) 100%)}
     body[data-bio-state="distracted"]::after{background:radial-gradient(ellipse at center,rgba(128,136,152,0) 30%,rgba(128,136,152,.24) 100%)}
 
-    /* Legend — bigger, readable, still atmospheric. The earlier
+    /* Legend. bigger, readable, still atmospheric. The earlier
        Cinzel-small was a misjudgement; user couldn't read it. Now
        14px with .10em spacing, bigger 10px dots with stronger glow. */
     .legend{
@@ -245,10 +248,10 @@
       box-shadow:0 0 10px currentColor,0 0 2px rgba(0,0,0,.8)}
     .legend span{display:inline-flex;align-items:center}
 
-    /* Bio nudge — REMOVED from always-visible. */
+    /* Bio nudge. REMOVED from always-visible. */
     .bionudge{display:none}
 
-    /* TAB info panel — full info-on-demand. Hidden by default; shown
+    /* TAB info panel. full info-on-demand. Hidden by default; shown
        when player presses TAB or clicks the distance reading. Reveals
        Score, BPM, cognitive state, controls, legend, current realm.
        Cinzel-styled parchment look, not a generic dialog. */
@@ -284,7 +287,7 @@
     .infopanel .hint-line{margin-top:18px;font-size:10.5px;color:rgba(230,218,192,.4);
       text-align:center;letter-spacing:.2em;text-transform:uppercase}
 
-    /* Bio chips — hidden by default. The player aura (in-world) IS
+    /* Bio chips. hidden by default. The player aura (in-world) IS
        the indicator that bio is active. Bio details reappear in the
        TAB info panel. */
     .bio{display:none}
@@ -311,8 +314,8 @@
     .touch .left .pad{grid-template-columns:64px 64px}
     .touch .right .pad{grid-template-columns:64px}
 
-    /* Controls hint — readable, atmospheric. Only the actual ARROW
-       controls (which work in the game) are shown — A/D/W/S still
+    /* Controls hint. readable, atmospheric. Only the actual ARROW
+       controls (which work in the game) are shown. A/D/W/S still
        work but the user explicitly asked for the arrow indicators
        since those are universally recognised. Bigger text, bigger
        kbd outlines. Fades out 6s in. */
@@ -330,7 +333,7 @@
       border-radius:3px;font:inherit;font-size:12px;color:#d4ad6a;letter-spacing:0;
     }
 
-    /* Active powerup strip — also Cinzel inscription style. No more
+    /* Active powerup strip. also Cinzel inscription style. No more
        pill-cards. Sits below the distance reading. Only visible when
        a power is active. */
     .power-hud{
@@ -405,7 +408,7 @@
       opacity:0;transition:opacity .2s ease}
     .vignette.on{opacity:1}
 
-    /* START MENU — rebalanced. Cinzel ONLY for the title; clean sans
+    /* START MENU. rebalanced. Cinzel ONLY for the title; clean sans
        for everything else so the page reads like a real film title
        card (heavy serif title + clean sans subtitles) instead of
        luxury-brand template chrome. */
@@ -413,14 +416,14 @@
       position:fixed;inset:0;z-index:50;
       display:flex;align-items:center;justify-content:center;
       padding:env(safe-area-inset-top,16px) 16px env(safe-area-inset-bottom,16px);
-      /* Heavier base darkness — the previous .82 alpha let the live 3D
+      /* Heavier base darkness. the previous .82 alpha let the live 3D
          scene (trees, character, snow particles) bleed through and
          clash with the menu text. Now nearly opaque at edges. */
       background:radial-gradient(ellipse at center,rgba(8,6,4,.55) 0%,rgba(4,3,2,.96) 100%);
       transition:opacity .5s ease;
     }
     .start.hide{opacity:0;pointer-events:none}
-    /* SOLID CARD — opaque parchment-dark background with subtle warm
+    /* SOLID CARD. opaque parchment-dark background with subtle warm
        border. The menu reads as a real card, not as text floating on
        a busy live-3D world. AA contrast guaranteed regardless of
        what the canvas is rendering. */
@@ -436,7 +439,7 @@
       box-shadow:0 30px 100px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.4);
     }
     .start .brand{display:none}
-    /* TITLE — Cinzel keeps the cinematic gravitas. Lighter weight (600
+    /* TITLE. Cinzel keeps the cinematic gravitas. Lighter weight (600
        not 700), tighter letter-spacing (.08 not .14), softer glow. */
     .start h1{
       font:600 64px/1 'Cinzel',serif;
@@ -445,7 +448,7 @@
       color:#d4ad6a;
       text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 60px rgba(212,173,106,.15);
     }
-    /* TAGLINE — sans, normal case, BRIGHT WHITE for max readability
+    /* TAGLINE. sans, normal case, BRIGHT WHITE for max readability
        against the parchment-dark card. User explicitly couldn't read
        the previous bronze-at-70%-alpha. */
     .start .tag{
@@ -453,7 +456,7 @@
       color:rgba(255,255,255,.94);
       margin:0 auto 40px;max-width:360px;letter-spacing:.005em;
     }
-    /* PLAY — solid fill, not outline-template. Bronze-on-dark, real
+    /* PLAY. solid fill, not outline-template. Bronze-on-dark, real
        button-feel. Sans label. */
     .start .play{
       display:block;margin:0 auto 30px;cursor:pointer;
@@ -469,7 +472,7 @@
       box-shadow:0 10px 36px rgba(212,173,106,.4),0 1px 0 rgba(255,255,255,.35) inset;
     }
     .start .play:active{transform:translateY(0)}
-    /* Stats — sans-serif numerics, bronze value + white label */
+    /* Stats. sans-serif numerics, bronze value + white label */
     .start .ministats{
       display:flex;gap:20px;justify-content:center;align-items:baseline;
       font:400 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
@@ -478,7 +481,7 @@
     }
     .start .ministats .v{color:#f4d49a;font-weight:700;margin-right:6px;font-variant-numeric:tabular-nums}
     .start .ministats .sep{opacity:.4}
-    /* Biosignal block — sans, proper case, readable like a real form */
+    /* Biosignal block. sans, proper case, readable like a real form */
     .start .bio-sect{
       margin:8px auto 0;max-width:420px;text-align:left;
       padding:22px 0 4px;
@@ -498,7 +501,7 @@
       font-style:normal;font:500 10px/1 inherit;letter-spacing:.22em;
       color:rgba(212,173,106,.4);text-transform:uppercase;
     }
-    /* Body copy throughout the biosignal block — WHITE for max
+    /* Body copy throughout the biosignal block. WHITE for max
        readability, bigger, with bronze used ONLY for accent (bold)
        and row-label headers. */
     .start .bio-sect p{
@@ -544,7 +547,7 @@
     }
     .start .brandmark{display:none}
 
-    /* Run-over — same rebalance: Cinzel ONLY for the headline, sans
+    /* Run-over. same rebalance: Cinzel ONLY for the headline, sans
        for everything else. Filled Play button matching start menu. */
     .over{
       position:fixed;inset:0;z-index:60;
@@ -636,7 +639,7 @@
   </style>
 
   <!-- Three.js on jsDelivr (Cloudflare-backed CDN). Was unpkg before
-       — got a "Slow loading / Three.js blocked by your network" report
+      . got a "Slow loading / Three.js blocked by your network" report
        on a connection where unpkg.com loads slowly. jsDelivr hits
        Cloudflare's PoPs globally and is less commonly blocked by
        corporate/ISP filters than unpkg, so the all-in fetch of 11
@@ -728,7 +731,7 @@
   <div class="glory" id="glory"></div>
   <div class="vignette" id="vignette"></div>
 
-  <!-- World-space markers — HTML icons projected to the 2D screen
+  <!-- World-space markers. HTML icons projected to the 2D screen
        position of every obstacle / powerup / mead / rune. Updated
        per frame in main.js _updateWorldMarkers. Unambiguous: ⚠
        red over dangers, ⭐ gold over powerups, 🪙 gold over mead,
@@ -736,7 +739,7 @@
        and unmissable regardless of 3D shader state. -->
   <div id="worldMarkers" style="position:fixed;inset:0;pointer-events:none;z-index:14;overflow:hidden"></div>
 
-  <!-- Screen-space boss banner — appears top-centre when a boss is
+  <!-- Screen-space boss banner. appears top-centre when a boss is
        on-stage. Big HP bar + name + how-to-kill hint. -->
   <div id="bossBanner" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:15;pointer-events:none;display:none;width:min(560px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
     <div style="font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#f4d49a;text-shadow:0 2px 10px rgba(0,0,0,.9);margin-bottom:8px" id="bossBannerName">JÖTUNN</div>
@@ -747,7 +750,7 @@
     <div id="bossBannerHint" style="font-size:11.5px;color:rgba(255,255,255,.85);margin-top:8px;letter-spacing:.04em">Hit with <span style="color:#60d0ff;font-weight:700">ᚱ runes +40</span> · Dodge for <span style="color:#ffd066;font-weight:700">+25</span> · Stay in <span style="color:#7ad9ff;font-weight:700">Flow +5/s</span></div>
   </div>
 
-  <!-- Boss-encounter tutorial popup — appears in the centre of the
+  <!-- Boss-encounter tutorial popup. appears in the centre of the
        screen for 4s when a boss spawns. Explains explicitly how to
        deal damage. Dismisses itself; player can tap to dismiss early. -->
   <div id="bossTutorial" style="position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;display:none;width:min(420px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;padding:24px 28px;background:rgba(14,10,6,.92);border:1px solid rgba(212,173,106,.45);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);backdrop-filter:blur(12px);opacity:0;transition:opacity .35s ease,transform .35s ease">
@@ -761,37 +764,38 @@
     </div>
   </div>
 
-  <!-- FIRST-RUN ONBOARDING — three-step guided overlay shown only on
+  <!-- FIRST-RUN ONBOARDING. three-step guided overlay shown only on
        the very first visit (stored via localStorage.valhalla.seenIntro).
        Walks a new player through: world setup → controls → bio (opt) →
        Play. Each step has its own panel with a Next/Skip footer. -->
   <div class="intro" id="introOverlay" style="display:none">
     <div class="intro-card">
       <div class="intro-step" data-step="1">
-        <div class="intro-eyebrow">Welcome to Valhalla</div>
-        <h2>You are a Viking running the realms of Norse myth.</h2>
-        <p>Race through Midgard, Jötunheim, Muspelheim, and Asgard.
-          Dodge what's red, grab what's gold, slay the bosses you meet.</p>
+        <div class="intro-eyebrow">Bind your name</div>
+        <h2>You are the Skald who runs between realms.</h2>
+        <p>Four worlds wait. Midgard for mortals. Jötunheim for frost-kin.
+          Muspelheim for fire. Asgard for the gods. Cross all four and your saga begins again,
+          harder. Walk the road long enough and Odin himself looks up.</p>
+        <p style="margin-top:14px">Red means death. Gold means gift. The road is your test.</p>
       </div>
       <div class="intro-step" data-step="2" style="display:none">
-        <div class="intro-eyebrow">Controls</div>
-        <h2>Use the arrow keys.</h2>
+        <div class="intro-eyebrow">Move</div>
+        <h2>Arrow keys. Or swipe on glass.</h2>
         <div class="intro-keys">
-          <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd><div>Change lane</div></div>
-          <div><kbd>&uarr;</kbd><div>Jump</div></div>
-          <div><kbd>&darr;</kbd><div>Slide</div></div>
-          <div><kbd>P</kbd><div>Pause</div></div>
+          <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd><div>Step left, step right</div></div>
+          <div><kbd>&uarr;</kbd><div>Leap</div></div>
+          <div><kbd>&darr;</kbd><div>Slide low</div></div>
+          <div><kbd>P</kbd><div>Hold the world</div></div>
         </div>
-        <p>Watch for <span style="color:#ff7060;font-weight:700">red ⚠</span> dangers and
-          <span style="color:#f4d49a;font-weight:700">gold ⭐</span> gifts above the world.</p>
+        <p>Touch screen: swipe to step, swipe up to leap, down to slide.</p>
       </div>
       <div class="intro-step" data-step="3" style="display:none">
-        <div class="intro-eyebrow">Your body changes the game</div>
-        <h2>Optional: connect your webcam or a Muse headband.</h2>
-        <p>When you stay <b>calm</b> or <b>focused</b>, the gods drop you free powerups
-          and your powerups last longer. <br/><br/>
-          You can skip this and play without it — the game works fine. But the more your
-          body settles, the more the world rewards you.</p>
+        <div class="intro-eyebrow">Bind body</div>
+        <h2>Your blood and breath change the road.</h2>
+        <p>Let the gods read you. Through your face: pulse, breath, the heat in your chest.
+          Through the Muse band: focus, calm, deep flow. The gods favour the still and punish the storm-hearted.</p>
+        <p style="margin-top:14px"><b>Calm pays you. Stress costs you.</b> The road runs harder when your body fights itself.
+          Skip this and you run blind. Bind even one sensor and the world opens.</p>
       </div>
       <div class="intro-footer">
         <button class="intro-skip" id="introSkip">Skip</button>
@@ -812,11 +816,11 @@
   <div class="letterbox bot"></div>
   <div class="introfade"></div>
 
-  <!-- Sensor-off nudge — bottom-right pill (currently display:none).
+  <!-- Sensor-off nudge. bottom-right pill (currently display:none).
        Wording kept jargon-free in case it's ever surfaced again. -->
   <div class="bionudge" id="bioNudge">⚡ Use webcam or headband → 2× score</div>
 
-  <!-- Visual-language legend — bottom-left, only shown for first
+  <!-- Visual-language legend. bottom-left, only shown for first
        20s of a fresh run. Reachable any time via TAB. -->
   <div class="legend" id="legend">
     <span><span class="dot" style="background:#ff2818"></span>Dodge</span>
@@ -825,15 +829,15 @@
     <span><span class="dot" style="background:#ffc060"></span>Mead</span>
   </div>
 
-  <!-- TAB info panel — info on demand. Hidden by default. -->
+  <!-- TAB info panel. info on demand. Hidden by default. -->
   <div class="infopanel" id="infopanel">
     <div class="card">
       <h3>Skald's Tally</h3>
       <div class="row"><span class="k">Realm</span><span class="v" id="infoBiome">Midgard</span></div>
       <div class="row"><span class="k">Distance</span><span class="v" id="infoDist">0 m</span></div>
       <div class="row"><span class="k">Score</span><span class="v" id="infoScore">0</span></div>
-      <div class="row"><span class="k">Heart Rate</span><span class="v" id="infoBpm">—</span></div>
-      <div class="row"><span class="k">State</span><span class="v" id="infoState">—</span></div>
+      <div class="row"><span class="k">Heart Rate</span><span class="v" id="infoBpm">. </span></div>
+      <div class="row"><span class="k">State</span><span class="v" id="infoState">. </span></div>
       <div class="leg">
         <span><span class="dot" style="background:#ff2818"></span>Dodge</span>
         <span><span class="dot" style="background:#ffd066"></span>Gift</span>
@@ -891,9 +895,9 @@
   <div class="start" id="startOverlay">
     <div class="card">
       <h1>Valhalla</h1>
-      <div class="tag">Run the realms. Earn the gods' favour with body and mind.</div>
+      <div class="tag" id="menuTag">Eight realms wait. Bring strong breath and a sharp eye.</div>
 
-      <button class="play" id="beginBtn">Play</button>
+      <button class="play" id="beginBtn">Run</button>
 
       <div class="ministats">
         <span><span class="v" id="bestScore">0</span>best</span>
@@ -903,56 +907,81 @@
         <span><span class="v" id="totalRuns">0</span>runs</span>
       </div>
 
-      <!-- NUDGE — personalised message based on daily bio history.
-           Computed by _renderMenuNudge on every menu open. Hidden on
-           first-ever launch (no history). -->
-      <div id="menuNudge" style="display:none;margin:14px 0 4px;padding:12px 16px;background:linear-gradient(135deg,rgba(212,173,106,.08),rgba(120,200,180,.04));border:1px solid rgba(212,173,106,.28);border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
-        <div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.75);text-transform:uppercase;margin-bottom:6px">✦ A Word From Your Skald</div>
-        <div id="menuNudgeText" style="font-size:13px;color:rgba(255,255,255,.88);line-height:1.5"></div>
+      <!-- Skald's word. Personalised line based on bio history. Always
+           one short phrase, never a paragraph. Hidden on first launch. -->
+      <div id="menuNudge" style="display:none;margin:14px 0 4px;padding:10px 14px;background:linear-gradient(135deg,rgba(212,173,106,.08),rgba(120,200,180,.04));border-left:2px solid rgba(212,173,106,.5);border-radius:0 4px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
+        <div id="menuNudgeText" style="font:italic 500 13px/1.45 'Cinzel',serif;color:rgba(244,212,154,.9);letter-spacing:.01em"></div>
       </div>
 
-      <!-- TRENDS — collapsed by default, expands to show 30-day bio
-           progression + day-of-week heatmap. Power-user / motivation
-           feature without cluttering the cinematic menu. -->
-      <details id="menuTrends" style="margin:6px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
-        <summary style="cursor:pointer;list-style:none;outline:none;padding:8px 0;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.65);text-transform:uppercase">▸ Your trends</summary>
-        <div id="menuTrendsBody" style="padding:8px 0 6px;font-size:12px;color:rgba(255,255,255,.78)"></div>
-      </details>
+      <!-- TWO TOGGLE TABS replace the verbose old bio-sect + trends
+           split. Compact, one click each. Default collapsed. -->
+      <div style="display:flex;gap:6px;margin:14px 0 0">
+        <button id="tabSensors" class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">Bind Body</button>
+        <button id="tabTrends"  class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">Saga so far</button>
+      </div>
 
-      <div class="bio-sect">
-        <p>The gods watch your body. <b>Stay calm</b> to earn their gifts; <b>focus</b> to claim greater power.</p>
+      <!-- SENSORS PANEL (collapsed by default). Webcam vs Muse now
+           clearly differentiated so the user wants BOTH, not one. -->
+      <div id="panelSensors" style="display:none;margin-top:12px;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
+        <p style="font-size:12.5px;color:rgba(255,255,255,.78);line-height:1.5;margin-bottom:12px">The blood-sight (face) and the mind-sight (band) feed the gods different truths. Bind one or both.</p>
         <div class="biorow">
           <div class="tt">
-            <div class="t">Heart</div>
-            <div class="d">Read through your webcam.</div>
+            <div class="t">Blood-sight (face)</div>
+            <div class="d">Your heart drumming. Quickens the gift-meter, warns of stress, beats the world with your pulse.</div>
           </div>
-          <button id="bioHrBtn">Use webcam</button>
+          <button id="bioHrBtn">Open</button>
         </div>
         <div class="biorow">
           <div class="tt">
-            <div class="t">Mind</div>
-            <div class="d">Pair a Muse headband. Turn it on, unpair it from your phone first.
-              <a href="#" id="bioEegDiag" style="display:inline-block;margin-left:6px;color:#f4d49a;text-decoration:underline;font-weight:600">Diagnose</a>
+            <div class="t">Mind-sight (Muse band)</div>
+            <div class="d">Your inner tides. Triggers Flow (double score, slay bosses faster), opens meditation slowdown, unlocks Asgard runes.
+              <a href="#" id="bioEegDiag" style="display:inline-block;margin-left:6px;color:#f4d49a;text-decoration:underline;font-weight:600">Test the band</a>
             </div>
           </div>
-          <button id="bioEegBtn">Pair</button>
+          <button id="bioEegBtn">Bind</button>
         </div>
-        <div id="bioBleHint" style="display:none;font:400 13.5px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;letter-spacing:.01em;color:rgba(255,255,255,.88);margin-top:18px;padding:16px 18px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.28);border-radius:8px"></div>
-        <div id="bioEegDiagOut" style="display:none;font:400 13px/1.55 ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;color:#f4d49a;margin-top:14px;padding:14px 16px;background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.35);border-radius:6px;white-space:pre-wrap;text-align:left"></div>
+        <p style="font-size:11px;color:rgba(212,173,106,.7);line-height:1.5;margin-top:10px;font-style:italic">Both bound: True-sight. The rarest gifts. Doubled streak rewards.</p>
+        <div id="bioBleHint" style="display:none;font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;letter-spacing:.01em;color:rgba(255,255,255,.88);margin-top:14px;padding:12px 14px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.28);border-radius:6px"></div>
+        <div id="bioEegDiagOut" style="display:none;font:400 12px/1.5 ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;color:#f4d49a;margin-top:12px;padding:12px 14px;background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.35);border-radius:6px;white-space:pre-wrap;text-align:left"></div>
+      </div>
+
+      <!-- TRENDS PANEL (collapsed by default). Bio + score side by side. -->
+      <div id="panelTrends" style="display:none;margin-top:12px">
+        <div id="menuTrendsBody" style="text-align:left;font-size:12px;color:rgba(255,255,255,.78);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif"></div>
       </div>
 
       <div class="controls-line">
         <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Lane &nbsp; <kbd>&uarr;</kbd> Jump &nbsp; <kbd>&darr;</kbd> Slide &nbsp; <kbd>P</kbd> Pause
       </div>
 
-      <!-- Sync line — tiny, unobtrusive. Only visible on the menu
-           (the .start overlay), not during cinematic gameplay. -->
-      <div style="margin-top:14px;font:400 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.42);letter-spacing:.01em">
-        <span id="skaldNameLine" style="color:rgba(244,212,154,.7);font-weight:600">—</span>
-        <span style="opacity:.5;margin:0 4px">·</span>
+      <!-- Footer: Skald identity + sync. Unobtrusive bottom line. -->
+      <div style="margin-top:12px;font:400 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.42);letter-spacing:.01em">
+        <span style="opacity:.6">Skald </span><span id="skaldNameLine" style="color:rgba(244,212,154,.78);font-weight:600">unknown</span>
+        <span style="opacity:.4;margin:0 4px">·</span>
         <span id="syncStatusLine" style="opacity:.7">Local only</span>
-        <a href="#" id="openSyncDialog" style="margin-left:8px;color:rgba(244,212,154,.8);text-decoration:underline;font-weight:500">Backup &amp; sync</a>
+        <a href="#" id="openSyncDialog" style="margin-left:8px;color:rgba(244,212,154,.85);text-decoration:underline;font-weight:500">Backup &amp; sync</a>
       </div>
+    </div>
+  </div>
+
+  <!-- BIO CALIBRATION RITUAL. 60s 4-4-6 box-breathing overlay
+       triggered after a sensor goes live for the first time in a
+       session. Steady inhale 4s -> hold 4s -> exhale 6s. The breathing
+       circle expands/holds/contracts in sync. Captures baseline at end. -->
+  <div id="bioCalibration" style="position:fixed;inset:0;z-index:75;display:none;background:radial-gradient(circle at center,rgba(8,14,22,.7) 0%,rgba(4,6,12,.95) 70%);backdrop-filter:blur(12px);align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:#fff;text-align:center">
+    <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.32em;color:rgba(244,212,154,.7);text-transform:uppercase;margin-bottom:20px">Calibration ritual</div>
+    <div id="calibLabel" style="font:700 38px/1.2 'Cinzel',serif;color:#f4d49a;letter-spacing:.04em;margin-bottom:30px;text-shadow:0 0 24px rgba(244,212,154,.35)">Breathe in</div>
+    <!-- Breathing circle. pure CSS, animates via setProperty -->
+    <div style="position:relative;width:280px;height:280px;display:flex;align-items:center;justify-content:center;margin-bottom:30px">
+      <div id="calibCircle" style="position:absolute;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(122,217,255,.4) 0%,rgba(122,217,255,.08) 60%,transparent 100%);border:1.5px solid rgba(122,217,255,.55);transition:transform 1s cubic-bezier(.4,.0,.2,1),background 1s ease"></div>
+      <div id="calibCounter" style="position:relative;font:600 56px/1 'Cinzel',serif;color:#fff;font-variant-numeric:tabular-nums">4</div>
+    </div>
+    <div style="font:400 14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.65);max-width:420px;margin:0 auto 30px;padding:0 20px">
+      Sit still, settle your shoulders, and follow the circle. Inhale 4 · hold 4 · exhale 6. We're learning your baseline so the gods can read you.
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div id="calibProgressText" style="font-size:11px;color:rgba(244,212,154,.7);letter-spacing:.12em;font:600 11px/1 'Cinzel',serif;text-transform:uppercase">Cycle 1 / 6</div>
+      <button id="calibSkip" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.6);padding:6px 14px;border-radius:5px;cursor:pointer;font-size:11px;letter-spacing:.04em">Skip</button>
     </div>
   </div>
 
@@ -967,7 +996,7 @@
         <button id="closeSyncDialog" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;padding:0;line-height:1">&times;</button>
       </div>
       <p style="font-size:13px;color:rgba(255,255,255,.78);line-height:1.5;margin:6px 0 16px">
-        Your progress — runs, badges, streak, bio history — lives in this browser. To carry it across devices, use one of the options below.
+        Your progress. runs, badges, streak, bio history. lives in this browser. To carry it across devices, use one of the options below.
       </p>
 
       <!-- Identity -->
@@ -975,19 +1004,19 @@
         <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:8px">Your Skald</div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
           <div>
-            <div id="syncSkaldName" style="font:700 18px/1.1 'Cinzel',serif;color:#f4d49a;letter-spacing:.02em">—</div>
-            <div id="syncSkaldId"   style="font:400 11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:rgba(255,255,255,.45);margin-top:2px;word-break:break-all">—</div>
+            <div id="syncSkaldName" style="font:700 18px/1.1 'Cinzel',serif;color:#f4d49a;letter-spacing:.02em">. </div>
+            <div id="syncSkaldId"   style="font:400 11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:rgba(255,255,255,.45);margin-top:2px;word-break:break-all">. </div>
           </div>
           <button id="syncRenameSkald" style="background:rgba(212,173,106,.12);border:1px solid rgba(212,173,106,.35);color:#f4d49a;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">New name</button>
         </div>
-        <div id="syncCloudStatus" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4">—</div>
+        <div id="syncCloudStatus" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4">. </div>
       </div>
 
       <!-- Manual export -->
       <div style="margin-bottom:16px">
         <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:6px">Move to another device</div>
         <p style="font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.5;margin:6px 0 10px">
-          Copy your save, then paste it into Valhalla on the other device. Or share the link — opening it loads your save anywhere.
+          Copy your save, then paste it into Valhalla on the other device. Or share the link. opening it loads your save anywhere.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="syncCopySave"     style="flex:1;min-width:140px;background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy save</button>
@@ -1008,7 +1037,74 @@
         </p>
       </div>
 
-      <!-- PWA install — only visible when the browser fires
+      <!-- VIKING GEAR. pick coat / shield / cloak. Persists per-Skald
+           and tints the player model accordingly. -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:8px">Your gear</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Coat</div>
+            <select id="gearCoat" style="width:100%;background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
+              <option value="leather">Leather (brown)</option>
+              <option value="furBlack">Black fur</option>
+              <option value="furGrey">Grey fur</option>
+              <option value="iron">Iron mail</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Shield</div>
+            <select id="gearShield" style="width:100%;background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
+              <option value="oak">Oak (raw)</option>
+              <option value="red">Red rim</option>
+              <option value="blue">Blue rim</option>
+              <option value="bronze">Bronze boss</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Cloak</div>
+            <select id="gearCloak" style="width:100%;background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
+              <option value="none">None</option>
+              <option value="wolf">Wolf grey</option>
+              <option value="bear">Bear brown</option>
+              <option value="red">Bloodred</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRIENDS LEADERBOARD. paste a friend's Skald ID to add them.
+           Their last published run shows on the over-screen. Hook into
+           ElataSync if available; falls back to manual add otherwise. -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px">
+          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase">Skald friends</div>
+          <span id="friendCount" style="font-size:10px;color:rgba(255,255,255,.5)">0 friends</span>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4;margin-bottom:8px">Paste a friend's Skald ID to follow their runs. Your last run is published automatically.</div>
+        <div style="display:flex;gap:8px">
+          <input id="friendIdInput" type="text" placeholder="paste skald id…" style="flex:1;background:rgba(0,0,0,.4);color:#fff;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:6px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace">
+          <button id="friendAddBtn" style="background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:6px 12px;border-radius:5px;cursor:pointer;font-weight:600;font-size:11px;letter-spacing:.04em">Add</button>
+        </div>
+        <div id="friendList" style="margin-top:8px;font-size:11px"></div>
+      </div>
+
+      <!-- LANGUAGE. picker for menu/HUD localization. Applies on
+           refresh. Falls back to English if browser language not in
+           supported set. -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase">Language</div>
+          <select id="langPicker" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="de">Deutsch</option>
+            <option value="sv">Svenska</option>
+            <option value="ja">日本語</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- PWA install. only visible when the browser fires
            beforeinstallprompt (Chrome/Edge/Android). Hidden on
            Safari/iOS (they have native Add-to-Homescreen instead). -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
@@ -1028,7 +1124,7 @@
           <input id="reminderTime" type="time" value="20:00" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;font-family:inherit">
           <button id="reminderToggle" style="background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:12px">Enable</button>
         </div>
-        <div id="reminderStatus" style="font-size:10.5px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.4">Off — Skald won't bug you</div>
+        <div id="reminderStatus" style="font-size:10.5px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.4">Off. Skald won't bug you</div>
       </div>
 
       <!-- Graphics quality -->
@@ -1036,13 +1132,13 @@
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div>
             <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:4px">Graphics</div>
-            <div id="qualityCurrent" style="font-size:11px;color:rgba(255,255,255,.55)">Detected: —</div>
+            <div id="qualityCurrent" style="font-size:11px;color:rgba(255,255,255,.55)">Detected: . </div>
           </div>
           <select id="qualityPicker" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">
             <option value="">Auto (recommended)</option>
-            <option value="high">High — HDRI + shadows</option>
-            <option value="medium">Medium — shadows, no HDRI</option>
-            <option value="low">Low — fastest, no HDRI/shadows</option>
+            <option value="high">High. HDRI + shadows</option>
+            <option value="medium">Medium. shadows, no HDRI</option>
+            <option value="low">Low. fastest, no HDRI/shadows</option>
           </select>
         </div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.42);margin-top:6px;line-height:1.4">
@@ -1081,7 +1177,7 @@
 
   <script type="module" src="./js/valhalla/main.js"></script>
   <script>
-    // Service worker registration — gives offline cache + install
+    // Service worker registration. gives offline cache + install
     // capability. Failures are non-fatal (no SW = the game just doesn't
     // install, but everything else works).
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
@@ -1092,7 +1188,7 @@
       });
     }
 
-    // PWA install prompt — capture the beforeinstallprompt event and
+    // PWA install prompt. capture the beforeinstallprompt event and
     // expose a button in the menu sync dialog if the browser allows.
     window.__valhallaInstallPrompt = null;
     window.addEventListener("beforeinstallprompt", (e) => {
@@ -1105,3 +1201,4 @@
   </script>
 </body>
 </html>
+
