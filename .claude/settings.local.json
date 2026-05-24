@@ -44,7 +44,13 @@
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" pull --ff-only origin main)",
       "Bash(node --input-type=module -e \"import\\('./js/valhalla/main.js'\\).then\\(\\(\\)=>console.log\\('OK'\\)\\).catch\\(e=>console.error\\('FAIL:',e.message\\)\\)\")",
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" log --oneline -1)",
-      "Bash(node --check js/valhalla/main.js)"
+      "Bash(node --check js/valhalla/main.js)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:poly.pizza)",
+      "Bash(curl -sI \"https://raw.githubusercontent.com/ToxSam/cc0-models-Polygonal-Mind/main/projects/medieval-fair/Barrel.glb\")",
+      "Bash(curl -sI \"https://cdn.jsdelivr.net/gh/ToxSam/cc0-models-Polygonal-Mind@main/projects/medieval-fair/Tabern.glb\")"
     ]
   }
 }

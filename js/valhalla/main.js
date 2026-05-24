@@ -3526,6 +3526,150 @@ class Valhalla {
     }
   }
 
+  // CC0 VIKING-ERA PROPS — real authored GLB models from the
+  // Polygonal Mind medieval-fair pack, served via jsdelivr CDN with
+  // proper CORS (verified). This is the actual leap from procedural
+  // boxes to authored 3D scenery.
+  //
+  // Loaded:
+  //   * Tabern.glb       — Viking longhouse silhouette in the meadow
+  //   * Barrel.glb       — mead barrels clustered around fire pits
+  //   * Cart.glb         — abandoned wooden cart on the path
+  //   * Lamp.glb         — torch posts lining the road
+  //   * SignPost.glb     — wooden waymarkers
+  //
+  // Each loader is independent so partial failures don't take down
+  // the whole set. Configurable count + placement strategy per type.
+  _loadVikingProps() {
+    const loader = new GLTFLoader();
+    const cdnBase = "https://cdn.jsdelivr.net/gh/ToxSam/cc0-models-Polygonal-Mind@main/projects/medieval-fair/";
+    this._vikingProps = { tabern: [], barrel: [], cart: [], lamp: [], signpost: [] };
+
+    // Tabern — 3 Viking longhouses far in the meadow background.
+    loader.load(cdnBase + "Tabern.glb", (gltf) => {
+      try {
+        for (let i = 0; i < 3; i++) {
+          const t = gltf.scene.clone(true);
+          t.scale.setScalar(2.8);
+          t.traverse((o) => {
+            if (!o.isMesh) return;
+            o.castShadow = false;     // far background — no shadow cost
+            o.receiveShadow = true;
+            o.frustumCulled = false;
+          });
+          const side = i % 2 === 0 ? -1 : 1;
+          t.position.set(side * (30 + Math.random() * 6), 0, 180 + i * 380);
+          t.rotation.y = Math.random() * Math.PI * 2;
+          this.scene.add(t);
+          this._vikingProps.tabern.push(t);
+        }
+        console.log("[Valhalla] Tabern loaded (Viking longhouses)");
+      } catch (e) { console.warn("[Valhalla] Tabern setup failed", e); }
+    }, undefined, (err) => console.warn("[Valhalla] Tabern.glb failed", err));
+
+    // Barrels — clusters of 2-3 near each fire pit-ish location.
+    loader.load(cdnBase + "Barrel.glb", (gltf) => {
+      try {
+        for (let i = 0; i < 10; i++) {
+          const b = gltf.scene.clone(true);
+          b.scale.setScalar(1.1);
+          b.traverse((o) => {
+            if (!o.isMesh) return;
+            o.castShadow = true;
+            o.receiveShadow = false;
+            o.frustumCulled = false;
+          });
+          const side = i % 2 === 0 ? -1 : 1;
+          b.position.set(side * (8 + Math.random() * 4), 0, 80 + i * 95 + (Math.random() - 0.5) * 30);
+          b.rotation.y = Math.random() * Math.PI * 2;
+          this.scene.add(b);
+          this._vikingProps.barrel.push(b);
+        }
+        console.log("[Valhalla] Barrels loaded");
+      } catch (e) { console.warn("[Valhalla] Barrel setup failed", e); }
+    }, undefined, (err) => console.warn("[Valhalla] Barrel.glb failed", err));
+
+    // Carts — 2 abandoned wooden carts at roadside intervals.
+    loader.load(cdnBase + "Cart.glb", (gltf) => {
+      try {
+        for (let i = 0; i < 2; i++) {
+          const c = gltf.scene.clone(true);
+          c.scale.setScalar(1.3);
+          c.traverse((o) => {
+            if (!o.isMesh) return;
+            o.castShadow = true;
+            o.receiveShadow = false;
+            o.frustumCulled = false;
+          });
+          const side = i % 2 === 0 ? -1 : 1;
+          c.position.set(side * (10 + Math.random() * 3), 0, 150 + i * 460);
+          c.rotation.y = (Math.random() - 0.5) * Math.PI;
+          this.scene.add(c);
+          this._vikingProps.cart.push(c);
+        }
+        console.log("[Valhalla] Carts loaded");
+      } catch (e) { console.warn("[Valhalla] Cart setup failed", e); }
+    }, undefined, (err) => console.warn("[Valhalla] Cart.glb failed", err));
+
+    // Lamps — torch posts dense along the road, 6 of them.
+    loader.load(cdnBase + "Lamp.glb", (gltf) => {
+      try {
+        for (let i = 0; i < 6; i++) {
+          const l = gltf.scene.clone(true);
+          l.scale.setScalar(1.5);
+          l.traverse((o) => {
+            if (!o.isMesh) return;
+            o.castShadow = true;
+            o.receiveShadow = false;
+            o.frustumCulled = false;
+          });
+          const side = i % 2 === 0 ? -1 : 1;
+          l.position.set(side * 7.2, 0, 60 + i * 140);
+          this.scene.add(l);
+          this._vikingProps.lamp.push(l);
+        }
+        console.log("[Valhalla] Lamps loaded");
+      } catch (e) { console.warn("[Valhalla] Lamp setup failed", e); }
+    }, undefined, (err) => console.warn("[Valhalla] Lamp.glb failed", err));
+
+    // SignPosts — 4 waymarkers between major realm transitions.
+    loader.load(cdnBase + "SignPost.glb", (gltf) => {
+      try {
+        for (let i = 0; i < 4; i++) {
+          const s = gltf.scene.clone(true);
+          s.scale.setScalar(1.3);
+          s.traverse((o) => {
+            if (!o.isMesh) return;
+            o.castShadow = true;
+            o.receiveShadow = false;
+            o.frustumCulled = false;
+          });
+          const side = i % 2 === 0 ? 1 : -1;     // opposite side from lamps
+          s.position.set(side * 9, 0, 110 + i * 230);
+          s.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+          this.scene.add(s);
+          this._vikingProps.signpost.push(s);
+        }
+        console.log("[Valhalla] SignPosts loaded");
+      } catch (e) { console.warn("[Valhalla] SignPost setup failed", e); }
+    }, undefined, (err) => console.warn("[Valhalla] SignPost.glb failed", err));
+  }
+
+  // Recycle Viking props behind→ahead per type-specific spacing.
+  _updateVikingProps() {
+    if (!this._vikingProps) return;
+    const wrap = (arr, span) => {
+      for (const m of arr) {
+        if (m.position.z - this.distance < -30) m.position.z += arr.length * span;
+      }
+    };
+    wrap(this._vikingProps.tabern,   380);
+    wrap(this._vikingProps.barrel,    95);
+    wrap(this._vikingProps.cart,     460);
+    wrap(this._vikingProps.lamp,     140);
+    wrap(this._vikingProps.signpost, 230);
+  }
+
   _buildSnow() {
     // Two layers of snow particles:
     // 1. CLOSE flakes - small count, big, very visible, RIGHT in front of
@@ -3693,6 +3837,15 @@ class Valhalla {
     // — reads as authentic Viking-age helm and shows off the HDRI
     // environment lighting / reflections.
     this._loadBattleHelms();
+    // CC0 VIKING-ERA PROPS — verified via jsdelivr CDN with proper
+    // CORS (ToxSam/cc0-models-Polygonal-Mind medieval-fair pack).
+    // Real authored GLB models replace key procedural scenery:
+    //   * Tabern.glb     — full Viking longhouse silhouette
+    //   * Barrel.glb     — mead barrels around fire pits
+    //   * Cart.glb       — abandoned wooden cart on the road
+    //   * Lamp.glb       — wooden torch posts lining the path
+    //   * SignPost.glb   — wooden waymarkers
+    this._loadVikingProps();
 
     // SHADOW PASS — ONLY enable receiveShadow on scenery. Casting is
     // the expensive operation (re-renders the scene from sun POV).
@@ -8211,6 +8364,7 @@ class Valhalla {
     this._updateFirePits(dt);
     this._updatePineForest();
     this._updateBattleHelms();
+    this._updateVikingProps();
     // Atmospheric layers
     this._updateGodRays(dt);
     this._updateMist(dt);
