@@ -918,27 +918,71 @@
       <h1>Valhalla</h1>
       <div class="tag" id="menuTag">Eight realms wait. Bring strong breath and a sharp eye.</div>
 
-      <button class="play" id="beginBtn">Run</button>
-
-      <div class="ministats">
-        <span><span class="v" id="bestScore">0</span>best</span>
-        <span class="sep">&middot;</span>
-        <span><span class="v" id="bestDist">0m</span>furthest</span>
-        <span class="sep">&middot;</span>
-        <span><span class="v" id="totalRuns">0</span>runs</span>
+      <!-- HERO ROW: streak fire + best + furthest in big readable type. -->
+      <div id="heroRow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:18px 0 14px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
+        <div style="padding:10px 6px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);border-radius:6px">
+          <div id="heroStreak" style="font:700 22px/1 'Cinzel',serif;color:#ff8c5a;text-shadow:0 0 14px rgba(255,140,90,.4)">🔥 0</div>
+          <div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.65);text-transform:uppercase;margin-top:4px;font-weight:600">day streak</div>
+        </div>
+        <div style="padding:10px 6px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);border-radius:6px">
+          <div id="heroBest" style="font:700 22px/1 'Cinzel',serif;color:#f4d49a">0</div>
+          <div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.65);text-transform:uppercase;margin-top:4px;font-weight:600">best score</div>
+        </div>
+        <div style="padding:10px 6px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);border-radius:6px">
+          <div id="heroDist" style="font:700 22px/1 'Cinzel',serif;color:#a3b8ff">0m</div>
+          <div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.65);text-transform:uppercase;margin-top:4px;font-weight:600">furthest</div>
+        </div>
       </div>
 
-      <!-- Skald's word. Personalised line based on bio history. Always
-           one short phrase, never a paragraph. Hidden on first launch. -->
-      <div id="menuNudge" style="display:none;margin:14px 0 4px;padding:10px 14px;background:linear-gradient(135deg,rgba(212,173,106,.08),rgba(120,200,180,.04));border-left:2px solid rgba(212,173,106,.5);border-radius:0 4px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
+      <!-- Skald's word. -->
+      <div id="menuNudge" style="display:none;margin:0 0 14px;padding:10px 14px;background:linear-gradient(135deg,rgba(212,173,106,.08),rgba(120,200,180,.04));border-left:2px solid rgba(212,173,106,.5);border-radius:0 4px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
         <div id="menuNudgeText" style="font:italic 500 13px/1.45 'Cinzel',serif;color:rgba(244,212,154,.9);letter-spacing:.01em"></div>
       </div>
 
-      <!-- TWO TOGGLE TABS replace the verbose old bio-sect + trends
-           split. Compact, one click each. Default collapsed. -->
+      <button class="play" id="beginBtn">Run</button>
+
+      <!-- REALM PATH. Visual progression bar with each realm as a stop.
+           Player's furthest realm is highlighted; future realms are dim.
+           Built/repainted by _renderRealmPath. -->
+      <div style="margin:18px 0 6px;font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase;text-align:left">The road</div>
+      <div id="realmPath" style="display:flex;align-items:center;justify-content:space-between;gap:0;margin-bottom:14px;height:46px"></div>
+
+      <!-- BOSS ROSTER. Four bosses with kill-count + last-defeated status.
+           Locked until the realm is reached. -->
+      <div style="margin:14px 0 6px;font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase;text-align:left">Foes met</div>
+      <div id="bossRoster" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:14px"></div>
+
+      <!-- TODAY'S CHALLENGE. One daily quest with a reward. Resets at
+           local midnight. _renderDailyQuest populates it. -->
+      <div id="dailyQuest" style="margin:14px 0;padding:11px 14px;background:linear-gradient(135deg,rgba(122,217,255,.08),rgba(122,217,255,.02));border:1px solid rgba(122,217,255,.28);border-radius:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+          <div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(122,217,255,.85);text-transform:uppercase">Today's deed</div>
+          <div id="dailyQuestProgress" style="font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums"></div>
+        </div>
+        <div id="dailyQuestText" style="font-size:12.5px;color:#fff;line-height:1.4"></div>
+        <div id="dailyQuestReward" style="font-size:10.5px;color:rgba(244,212,154,.75);margin-top:3px;font-style:italic"></div>
+      </div>
+
+      <!-- TOP 5 LEADERBOARD. Always-visible (no click required). -->
+      <div style="margin:14px 0 6px;display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase">Skald's roll</div>
+        <div style="font:400 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.4)">your top runs</div>
+      </div>
+      <div id="topRuns" style="margin-bottom:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif"></div>
+
+      <!-- RECENT HONOURS. Last 4 unlocked + next 2 to unlock with progress. -->
+      <div style="margin:14px 0 6px;display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase">Honours</div>
+        <div id="honoursCount" style="font:400 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.4)">0 / 40</div>
+      </div>
+      <div id="honoursRow" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px"></div>
+
+      <button class="play" id="beginBtn2" style="margin-top:8px;width:100%;background:rgba(212,173,106,.12);color:#f4d49a;border:1px solid rgba(212,173,106,.45);padding:11px;border-radius:8px;cursor:pointer;font:600 13px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase">Run</button>
+
+      <!-- TWO TOGGLE TABS for body sensors + extended saga details. -->
       <div style="display:flex;gap:6px;margin:14px 0 0">
         <button id="tabSensors" class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">Bind Body</button>
-        <button id="tabTrends"  class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">Saga so far</button>
+        <button id="tabTrends"  class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">More trends</button>
       </div>
 
       <!-- SENSORS PANEL. Minimal. Two buttons, two tooltips on hover.
@@ -1191,7 +1235,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524h"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524i"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which

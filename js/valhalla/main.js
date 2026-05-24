@@ -4822,8 +4822,20 @@ class Valhalla {
     const b = this._bossActor;
     if (!b || b.defeated) return;
     b.defeated = true;
-    // Track for lifetime/daily stats.
+    // Track for lifetime/daily stats + PER-BOSS kill counts (drives
+    // the boss roster on the menu).
     this.runBossKills = (this.runBossKills || 0) + 1;
+    try {
+      const st = Store.load();
+      st.bossKills = st.bossKills || {};
+      st.bossKills[b.type] = (st.bossKills[b.type] || 0) + 1;
+      // Daily-quest progress hook for "Slay 2 bosses today".
+      if (st.dailyQuest && st.dailyQuest.id === "bossKill2" && !st.dailyQuest.done) {
+        st.dailyQuest.progress = (st.dailyQuest.progress || 0) + 1;
+        if (st.dailyQuest.progress >= 2) { st.dailyQuest.done = true; this.score += 500; }
+      }
+      Store.save(st);
+    } catch (e) { console.warn("[boss kill stats]", e); }
     // Big reward scaling with biome cycle.
     const reward = 1000 + this.biomeCycle * 500;
     this.score += reward;
@@ -5744,6 +5756,9 @@ class Valhalla {
     }
 
     $("beginBtn").addEventListener("click", () => this._begin());
+    // Second Run button at the bottom of the menu (below leaderboard/honours).
+    const beginBtn2 = document.getElementById("beginBtn2");
+    if (beginBtn2) beginBtn2.addEventListener("click", () => this._begin());
     $("againBtn").addEventListener("click", () => { $("overOverlay").classList.remove("show"); this._begin(); });
     $("resumeBtn").addEventListener("click", () => this._togglePause());
     // SHARE RUN. generate a canvas image of the last run summary and
@@ -6159,10 +6174,198 @@ class Valhalla {
     $("bestScore").textContent = (s.bestScore || 0).toLocaleString();
     $("bestDist").textContent = `${Math.round(s.bestDist || 0)}m`;
     $("totalRuns").textContent = s.totalRuns || 0;
-    // Nudge. trends are lazy-rendered on tab open so they don't run
-    // every menu paint.
+    // Full menu chrome render: hero / realm path / boss roster / quest
+    // / leaderboard / honours. All visible at a glance every menu open.
+    this._renderMenuChrome();
     this._renderMenuNudge();
     this._renderSagaLine();
+  }
+
+  // FULL MENU CHROME. Builds every dynamic block visible on the start
+  // overlay. Idempotent: safe to call on every menu open.
+  _renderMenuChrome() {
+    const s = Store.load();
+    // ----- HERO ROW -------------------------------------------------
+    const streak = s.streak || 0;
+    const heroStreakEl = document.getElementById("heroStreak");
+    const heroBestEl   = document.getElementById("heroBest");
+    const heroDistEl   = document.getElementById("heroDist");
+    if (heroStreakEl) heroStreakEl.innerHTML = `🔥 ${streak}`;
+    if (heroBestEl)   heroBestEl.textContent = (s.bestScore || 0).toLocaleString();
+    if (heroDistEl)   heroDistEl.textContent = `${Math.round(s.bestDist || 0)}m`;
+
+    // ----- REALM PATH -----------------------------------------------
+    this._renderRealmPath(s);
+    // ----- BOSS ROSTER ----------------------------------------------
+    this._renderBossRoster(s);
+    // ----- DAILY QUEST ----------------------------------------------
+    this._renderDailyQuest(s);
+    // ----- TOP RUNS -------------------------------------------------
+    this._renderTopRuns(s);
+    // ----- HONOURS ROW ----------------------------------------------
+    this._renderHonoursRow(s);
+  }
+
+  // Visual realm progression bar. Each realm is a node; the player's
+  // farthest-ever realm + cycles complete are highlighted.
+  _renderRealmPath(s) {
+    const host = document.getElementById("realmPath");
+    if (!host) return;
+    const realms = [
+      { key: "Midgard",    short: "MID",  icon: "🌲", colour: "#5a8c5a" },
+      { key: "Jötunheim",  short: "JÖT",  icon: "❄",  colour: "#7aa8d0" },
+      { key: "Muspelheim", short: "MUS",  icon: "🔥", colour: "#d06a40" },
+      { key: "Asgard",     short: "ASG",  icon: "⚡", colour: "#f4d49a" },
+    ];
+    const cycles = s.totalCycles || 0;
+    const farthest = s.farthestRealm || "Midgard";
+    const farthestIdx = realms.findIndex(r => r.key === farthest);
+    let html = "";
+    for (let i = 0; i < realms.length; i++) {
+      const r = realms[i];
+      const reached = i <= farthestIdx || cycles > 0;
+      const isFarthest = i === farthestIdx && cycles === 0;
+      const op = reached ? 1 : 0.28;
+      const ringColour = reached ? r.colour : "rgba(212,173,106,.28)";
+      html += `<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;opacity:${op}" title="${r.key}${reached ? " · reached" : " · locked"}">`
+            + `<div style="width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);border:2px solid ${ringColour};display:flex;align-items:center;justify-content:center;font-size:16px;${isFarthest ? `box-shadow:0 0 16px ${r.colour};` : ""}">${r.icon}</div>`
+            + `<div style="font:600 9px/1 'Cinzel',serif;letter-spacing:.12em;color:${reached ? "#f4d49a" : "rgba(255,255,255,.35)"};margin-top:5px">${r.short}</div>`
+            + `</div>`;
+      // Connector line (not after last)
+      if (i < realms.length - 1) {
+        const lineOp = (i < farthestIdx || cycles > 0) ? 0.6 : 0.18;
+        html += `<div style="flex:1;height:1px;background:linear-gradient(90deg,${realms[i].colour}${Math.round(lineOp*255).toString(16).padStart(2,"0")},${realms[i+1].colour}${Math.round(lineOp*255).toString(16).padStart(2,"0")});margin:0 4px"></div>`;
+      }
+    }
+    if (cycles > 0) {
+      html += `<div style="margin-left:8px;padding:3px 7px;background:rgba(244,212,154,.15);border:1px solid rgba(244,212,154,.4);border-radius:10px;font:700 10px/1 'Cinzel',serif;color:#f4d49a;letter-spacing:.04em">${cycles}× saga</div>`;
+    }
+    host.innerHTML = html;
+  }
+
+  // Boss roster. 4 boss cards with kill count + locked/unlocked state.
+  _renderBossRoster(s) {
+    const host = document.getElementById("bossRoster");
+    if (!host) return;
+    const BOSSES = [
+      { key: "jotunn",   name: "JÖTUNN",   realm: "Jötunheim",  icon: "❄", colour: "#7aa8d0" },
+      { key: "surtr",    name: "SURTR",    realm: "Muspelheim", icon: "🔥", colour: "#d06a40" },
+      { key: "valkyrie", name: "VALKYRIE", realm: "Asgard",     icon: "✦", colour: "#f4d49a" },
+      { key: "odin",     name: "ODIN",     realm: "Asgard ×5",  icon: "👁", colour: "#c5a3ff" },
+    ];
+    const kills = s.bossKills || {};
+    const realms = ["Midgard","Jötunheim","Muspelheim","Asgard"];
+    const farthestIdx = realms.indexOf(s.farthestRealm || "Midgard");
+    const cycles = s.totalCycles || 0;
+    let html = "";
+    for (const b of BOSSES) {
+      const reqIdx = realms.indexOf(b.realm.split(" ")[0]);
+      const reqCycles = b.key === "odin" ? 4 : 0;
+      const unlocked = (farthestIdx >= reqIdx || cycles > 0) && cycles >= reqCycles;
+      const n = kills[b.key] || 0;
+      const op = unlocked ? 1 : 0.32;
+      const border = unlocked ? b.colour : "rgba(212,173,106,.18)";
+      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:8px 4px;background:rgba(0,0,0,.4);border:1px solid ${border};border-radius:5px;opacity:${op}" title="${b.name} — ${b.realm}${unlocked ? "" : " · LOCKED"}">`
+           + `<div style="font-size:18px;line-height:1;margin-bottom:4px">${b.icon}</div>`
+           + `<div style="font:700 9.5px/1 'Cinzel',serif;color:${unlocked ? "#f4d49a" : "rgba(255,255,255,.4)"};letter-spacing:.06em;margin-bottom:3px">${b.name}</div>`
+           + `<div style="font:600 10px/1 'Cinzel',serif;color:${unlocked && n > 0 ? "#a3e8b8" : "rgba(255,255,255,.4)"};font-variant-numeric:tabular-nums">${unlocked ? (n + " slain") : "locked"}</div>`
+           + `</div>`;
+    }
+    host.innerHTML = html;
+  }
+
+  // Daily quest. One quest per day, persisted via dailyQuest:{date,id,progress,done}.
+  // On first menu open of a new day, generate a fresh quest. Progress
+  // is incremented in _saveStats / per-event hooks (already accumulated
+  // in this.bioSession). Reward is +200 mead currency on completion.
+  _renderDailyQuest(s) {
+    const host = document.getElementById("dailyQuest");
+    const textEl = document.getElementById("dailyQuestText");
+    const progEl = document.getElementById("dailyQuestProgress");
+    const rewardEl = document.getElementById("dailyQuestReward");
+    if (!host || !textEl || !progEl || !rewardEl) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const QUESTS = [
+      { id: "dist1500",  text: "Run 1500m in a single road.",            target: 1500, unit: "m", reward: "+300 score on completion" },
+      { id: "flow60",    text: "Hold Deep Flow for 60 seconds today.",   target: 60,   unit: "s", reward: "+1 streak freeze" },
+      { id: "calm120",   text: "Hold Still Water for 2 minutes today.",  target: 120,  unit: "s", reward: "Bronze honour boost" },
+      { id: "bossKill2", text: "Slay 2 bosses today.",                   target: 2,    unit: "",  reward: "+500 score" },
+      { id: "runes10",   text: "Collect 10 rune-stones today.",          target: 10,   unit: "",  reward: "Asgard speed-up" },
+      { id: "score3k",   text: "Score 3,000+ in one run today.",         target: 3000, unit: "",  reward: "Bronze honour boost" },
+    ];
+    let q = s.dailyQuest;
+    if (!q || q.date !== today) {
+      // Rotate quest by day-of-year hash so it changes daily but is stable.
+      const dayHash = today.split("-").reduce((h, x) => h + parseInt(x, 10), 0);
+      const chosen = QUESTS[dayHash % QUESTS.length];
+      q = { date: today, id: chosen.id, progress: 0, done: false };
+      const ns = Store.load();
+      ns.dailyQuest = q;
+      Store.save(ns);
+    }
+    const def = QUESTS.find(qq => qq.id === q.id) || QUESTS[0];
+    textEl.textContent = def.text;
+    progEl.textContent = q.done ? "✓ DONE" : `${q.progress}${def.unit} / ${def.target}${def.unit}`;
+    rewardEl.textContent = q.done ? "Reward claimed." : `Reward: ${def.reward}`;
+    host.style.borderColor = q.done ? "rgba(120,220,180,.55)" : "rgba(122,217,255,.28)";
+  }
+
+  // Top 5 personal leaderboard. Always visible. Each row: medal/rank,
+  // score, distance, date. Today's runs highlighted.
+  _renderTopRuns(s) {
+    const host = document.getElementById("topRuns");
+    if (!host) return;
+    const board = (s.leaderboard || []).slice(0, 5);
+    const today = new Date().toISOString().slice(0, 10);
+    if (board.length === 0) {
+      host.innerHTML = `<div style="opacity:.55;font-size:11.5px;font-style:italic;padding:6px 0">No runs walked. Walk one.</div>`;
+      return;
+    }
+    let html = "";
+    for (let i = 0; i < board.length; i++) {
+      const b = board[i];
+      const isToday = b.date === today;
+      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+      const colour = isToday ? "#f4d49a" : "rgba(255,255,255,.78)";
+      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:12.5px;color:${colour};letter-spacing:.01em">`
+           + `<span style="min-width:28px">${medal}</span>`
+           + `<span style="flex:1;font-weight:${isToday ? 700 : 500};font-variant-numeric:tabular-nums">${b.score.toLocaleString()}</span>`
+           + `<span style="opacity:.7;font-variant-numeric:tabular-nums">${b.dist}m</span>`
+           + `<span style="opacity:.5;font-size:10.5px;margin-left:10px">${b.date.slice(5)}</span>`
+           + `</div>`;
+    }
+    host.innerHTML = html;
+  }
+
+  // Honours row — last 4 unlocked + next 2 unlocked. Always 6 cells.
+  _renderHonoursRow(s) {
+    const host = document.getElementById("honoursRow");
+    const countEl = document.getElementById("honoursCount");
+    if (!host) return;
+    const all = (typeof this._allBadges === "function") ? this._allBadges() : [];
+    const earnedSet = new Set(s.badges || []);
+    const earned = all.filter(b => earnedSet.has(b.id));
+    const unearned = all.filter(b => !earnedSet.has(b.id));
+    if (countEl) countEl.textContent = `${earned.length} / ${all.length}`;
+    // Take last 4 earned + next 2 to unlock.
+    const showEarned = earned.slice(-4);
+    const showNext = unearned.slice(0, 2);
+    const cells = [...showEarned, ...showNext];
+    if (cells.length === 0) {
+      host.innerHTML = `<div style="grid-column:1/-1;font-size:11px;color:rgba(255,255,255,.4);text-align:center;padding:8px 0;font-style:italic">Earn honours as you walk the road.</div>`;
+      return;
+    }
+    let html = "";
+    for (const b of cells) {
+      const got = earnedSet.has(b.id);
+      const op = got ? 1 : 0.28;
+      const c  = got ? "#f4d49a" : "rgba(255,255,255,.5)";
+      html += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:${op};padding:5px 2px;background:rgba(0,0,0,.35);border:1px solid ${got ? "rgba(244,212,154,.35)" : "rgba(212,173,106,.12)"};border-radius:5px" title="${b.label || b.id}">`
+           + `<div style="font-size:18px;line-height:1">${b.icon || "✦"}</div>`
+           + `<div style="font:600 8px/1 'Cinzel',serif;letter-spacing:.06em;color:${c};text-align:center;text-transform:uppercase">${(b.label || b.id).slice(0, 12)}</div>`
+           + `</div>`;
+    }
+    host.innerHTML = html;
   }
 
   // Show the user's saga progression on the menu. total cycles
@@ -7109,6 +7312,33 @@ class Valhalla {
     life.focusedSec = (life.focusedSec || 0) + (bs.focusedSec || 0);
     life.calmSec    = (life.calmSec    || 0) + (bs.calmSec || 0);
     s.lifetime = life;
+
+    // DAILY QUEST progress. Hooked to the per-run totals so the menu's
+    // "Today's deed" tile actually fills in as you play. Reward is
+    // applied to this run's score at game-over too if it just completed.
+    try {
+      const q = s.dailyQuest;
+      const todayK = new Date().toISOString().slice(0, 10);
+      if (q && q.date === todayK && !q.done) {
+        let inc = 0;
+        if (q.id === "dist1500")  inc = Math.round(this.distance);
+        if (q.id === "score3k")   inc = Math.floor(this.score);
+        if (q.id === "runes10")   inc = (this.runRunes || 0);
+        if (q.id === "flow60")    inc = Math.round(bs.flowSec || 0);
+        if (q.id === "calm120")   inc = Math.round((bs.calmSec || 0) + (bs.focusedSec || 0) + (bs.meditationSec || 0));
+        // dist1500/score3k are single-run thresholds (best of), others are daily-cumulative.
+        if (q.id === "dist1500" || q.id === "score3k") {
+          q.progress = Math.max(q.progress || 0, inc);
+        } else {
+          q.progress = (q.progress || 0) + inc;
+        }
+        const targets = { dist1500:1500, score3k:3000, runes10:10, flow60:60, calm120:120, bossKill2:2 };
+        if (q.progress >= (targets[q.id] || 1)) {
+          q.done = true;
+          this._popText("DEED FULFILLED", "rune", 0, -60);
+        }
+      }
+    } catch (e) { console.warn("[daily quest update]", e); }
 
     // SAGA PROGRESS. record the farthest realm reached and total
     // full cycles completed. Drives the menu's saga line + future
