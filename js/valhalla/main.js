@@ -2927,6 +2927,71 @@ class Valhalla {
     }
   }
 
+  // PINE FOREST — 12 conifers lining the far meadow on both sides.
+  // Each is a stacked-cone silhouette (3 cones, dark green) on a PBR
+  // wood-textured trunk. Cheap geometry, lots of presence — the
+  // single biggest "this is a real Nordic forest" cue.
+  _buildPineForest() {
+    if (!this.pines) this.pines = new THREE.Group();
+    const trunkMat = this._pbrMaterial("wood", {
+      color: new THREE.Color(0x4a3220), repeat: 0.6, normalScale: 1.2,
+    });
+    // Deep evergreen with subtle variation per tree (set after clone).
+    const baseNeedleMat = new THREE.MeshStandardMaterial({
+      color: 0x1c3a1e, roughness: 0.85, metalness: 0.0,
+      flatShading: true, envMapIntensity: 0.5,
+    });
+    for (let i = 0; i < 12; i++) {
+      const tree = new THREE.Group();
+      const h = 5.5 + Math.random() * 2.5;       // 5.5–8m tall
+      // Trunk
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.28, h * 0.45, 7),
+        trunkMat
+      );
+      trunk.position.y = h * 0.225;
+      tree.add(trunk);
+      // Three stacked cones of decreasing radius — classic pine shape.
+      const needleMat = baseNeedleMat.clone();
+      // Slight per-tree colour variation so the forest doesn't look mass-produced.
+      needleMat.color.offsetHSL(
+        (Math.random() - 0.5) * 0.04,
+        (Math.random() - 0.5) * 0.1,
+        (Math.random() - 0.5) * 0.05
+      );
+      for (let k = 0; k < 3; k++) {
+        const r = 1.6 - k * 0.45;
+        const conh = h * 0.36;
+        const cone = new THREE.Mesh(
+          new THREE.ConeGeometry(r, conh, 8),
+          needleMat
+        );
+        cone.position.y = h * 0.45 + k * conh * 0.6;
+        tree.add(cone);
+      }
+      // Far side of the road, well past the runestone strip so they
+      // read as distant forest not roadside obstacle.
+      const side = i % 2 === 0 ? -1 : 1;
+      tree.position.set(
+        side * (15 + Math.random() * 8),
+        0,
+        i * 80 + (Math.random() - 0.5) * 30
+      );
+      tree.rotation.y = Math.random() * Math.PI * 2;
+      this.pines.add(tree);
+    }
+    this.scene.add(this.pines);
+  }
+
+  _updatePineForest() {
+    if (!this.pines) return;
+    for (const tree of this.pines.children) {
+      if (tree.position.z < this.distance - 40) {
+        tree.position.z += 12 * 80;
+      }
+    }
+  }
+
   // HUGINN & MUNINN — Odin's two ravens, always circling above the
   // player. Replaces the older 5-wing scenery with two named birds
   // each made of body + 2 wings + tail. They orbit at different
@@ -2938,6 +3003,9 @@ class Valhalla {
       this.ravens = null;
     }
     this.odinRavens = new THREE.Group();
+    // Procedural placeholder shells — these stay visible immediately
+    // while the real Stork.glb loads async. The same orbit code in
+    // _updateOdinsRavens drives both.
     const bodyMatHuginn = new THREE.MeshStandardMaterial({
       color: 0x0a0a0a, roughness: 0.7, metalness: 0.1, flatShading: true,
     });
@@ -2949,46 +3017,103 @@ class Valhalla {
     });
     const mkRaven = (mat, opts) => {
       const grp = new THREE.Group();
-      // Body — small ovoid
       const body = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), mat);
       body.scale.set(1, 0.6, 1.5);
       grp.add(body);
-      // Head
       const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), mat);
       head.position.set(0, 0.05, 0.42);
       grp.add(head);
-      // Beak
       const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.18, 4), beakMat);
       beak.rotation.x = Math.PI / 2;
       beak.position.set(0, 0.04, 0.6);
       grp.add(beak);
-      // Wings — long thin boxes
       const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.22), mat);
       wingL.position.set(-0.5, 0, 0);
       grp.add(wingL);
       const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.22), mat);
       wingR.position.set(0.5, 0, 0);
       grp.add(wingR);
-      // Tail
       const tail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.35), mat);
       tail.position.set(0, 0, -0.4);
       grp.add(tail);
-      grp.userData = {
-        wingL, wingR, ...opts,
-      };
+      grp.userData = { wingL, wingR, isProc: true, ...opts };
       return grp;
     };
-    // Huginn — closer, faster, lower
     this._huginn = mkRaven(bodyMatHuginn, {
       name: "Huginn", radius: 8, height: 9, speed: 0.7, phase: 0,
     });
     this.odinRavens.add(this._huginn);
-    // Muninn — wider, slower, higher
     this._muninn = mkRaven(bodyMatMuninn, {
       name: "Muninn", radius: 13, height: 12, speed: 0.45, phase: Math.PI,
     });
     this.odinRavens.add(this._muninn);
     this.scene.add(this.odinRavens);
+    // Kick off async upgrade to real Stork.glb model with flapping anim.
+    this._loadRealRavens();
+  }
+
+  // Load real animated Stork.glb (threejs CDN) and use two clones as
+  // Huginn + Muninn. Stork has a fly animation baked in — perfect for
+  // the orbit. Tinted dark for raven plumage. If load fails we keep
+  // the procedural shells, no breakage.
+  _loadRealRavens() {
+    try {
+      const loader = new GLTFLoader();
+      loader.load(
+        "https://threejs.org/examples/models/gltf/Stork.glb",
+        (gltf) => {
+          try {
+            const mkReal = (existingShell, tint) => {
+              // SkeletonUtils.clone would be best for rigged models,
+              // but Stork.glb's animation is morph/keyframe so a deep
+              // scene clone is fine and avoids the import.
+              const model = gltf.scene.clone(true);
+              model.scale.setScalar(0.18);    // Stork is huge by default
+              // Override material to dark raven-feather. Traverse all meshes.
+              model.traverse((o) => {
+                if (!o.isMesh) return;
+                o.castShadow = false; o.receiveShadow = false;
+                o.frustumCulled = false;
+                o.material = new THREE.MeshStandardMaterial({
+                  color: tint,
+                  roughness: 0.75,
+                  metalness: 0.08,
+                  envMapIntensity: 0.6,
+                });
+              });
+              // Each raven gets its own animation mixer playing the
+              // flap clip at its own speed.
+              const mixer = new THREE.AnimationMixer(model);
+              const clip = gltf.animations[0];
+              if (clip) {
+                const action = mixer.clipAction(clip);
+                action.play();
+              }
+              return { model, mixer };
+            };
+            const huginnReal = mkReal(this._huginn, 0x0a0a0a);
+            const muninnReal = mkReal(this._muninn, 0x1a1418);
+            // Swap procedurals OUT and reals IN at the same orbit slot.
+            this._huginn.clear();    // drop the placeholder boxes
+            this._muninn.clear();
+            this._huginn.add(huginnReal.model);
+            this._muninn.add(muninnReal.model);
+            // Stash mixers on userData so _updateOdinsRavens can tick them.
+            this._huginn.userData.mixer = huginnReal.mixer;
+            this._muninn.userData.mixer = muninnReal.mixer;
+            this._huginn.userData.isProc = false;
+            this._muninn.userData.isProc = false;
+            console.log("[Valhalla] real Stork ravens loaded");
+          } catch (e) {
+            console.warn("[Valhalla] raven swap-in failed", e);
+          }
+        },
+        undefined,
+        (err) => console.warn("[Valhalla] Stork.glb load failed — keeping procedural ravens", err)
+      );
+    } catch (e) {
+      console.warn("[Valhalla] raven loader setup failed", e);
+    }
   }
 
   _updateOdinsRavens(dt) {
@@ -3007,12 +3132,90 @@ class Valhalla {
         u.height,
         Math.sin(ang) * u.radius
       );
-      // Face direction of motion
+      // Face direction of motion. Stork model is oriented +X by default,
+      // we want it heading along the tangent (orbit direction).
       raven.rotation.y = -ang + Math.PI / 2;
-      // Wing flap — outer wing tips raise/lower
-      const flap = Math.sin(tt * 8 + u.phase * 2) * 0.5;
-      u.wingL.rotation.z = -flap;
-      u.wingR.rotation.z = flap;
+      if (u.isProc) {
+        // Procedural placeholder: flap via wing rotation.
+        const flap = Math.sin(tt * 8 + u.phase * 2) * 0.5;
+        u.wingL.rotation.z = -flap;
+        u.wingR.rotation.z = flap;
+      } else if (u.mixer) {
+        // Real Stork: drive its baked fly animation. Scale playback
+        // speed by orbit speed so faster Huginn flaps faster.
+        u.mixer.update(dt * (u.speed > 0.5 ? 1.4 : 1.0));
+      }
+    }
+  }
+
+  // Load real animated Horse.glb (threejs CDN) and scatter 3 horses
+  // in the distant meadows. Vikings rode horses — this single addition
+  // sells "real Viking world" more than any procedural box ever will.
+  _loadRealHorses() {
+    try {
+      const loader = new GLTFLoader();
+      loader.load(
+        "https://threejs.org/examples/models/gltf/Horse.glb",
+        (gltf) => {
+          try {
+            this._horses = [];
+            const clip = gltf.animations[0];
+            for (let i = 0; i < 3; i++) {
+              const horse = gltf.scene.clone(true);
+              horse.scale.setScalar(0.015);    // Horse.glb is big
+              // Material override: weathered brown/grey coat
+              const coats = [0x4a3220, 0x2a1c14, 0x6a5040];
+              horse.traverse((o) => {
+                if (!o.isMesh) return;
+                o.castShadow = true;
+                o.receiveShadow = false;
+                o.frustumCulled = false;
+                o.material = new THREE.MeshStandardMaterial({
+                  color: coats[i % coats.length],
+                  roughness: 0.85,
+                  metalness: 0.0,
+                  envMapIntensity: 0.7,
+                });
+              });
+              // Position: far meadow on alternating sides, spread out.
+              const side = i % 2 === 0 ? -1 : 1;
+              horse.position.set(side * (22 + Math.random() * 8), 0, 60 + i * 90);
+              horse.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+              // Each horse has its own mixer playing the gallop loop.
+              const mixer = new THREE.AnimationMixer(horse);
+              if (clip) mixer.clipAction(clip).play();
+              this.scene.add(horse);
+              this._horses.push({
+                mesh: horse, mixer,
+                sideZ: 80,           // spacing for recycle wrap
+                speed: 4 + Math.random() * 2,    // m/s along the road
+              });
+            }
+            console.log("[Valhalla] real horses loaded");
+          } catch (e) {
+            console.warn("[Valhalla] horse setup failed", e);
+          }
+        },
+        undefined,
+        (err) => console.warn("[Valhalla] Horse.glb load failed", err)
+      );
+    } catch (e) {
+      console.warn("[Valhalla] horse loader setup failed", e);
+    }
+  }
+
+  // Per-frame horse update — animate gallop + recycle behind→ahead so
+  // the meadows always have life moving through them.
+  _updateRealHorses(dt) {
+    if (!this._horses) return;
+    for (const h of this._horses) {
+      if (h.mixer) h.mixer.update(dt);
+      // Horses canter forward at their own speed (relative to ground).
+      h.mesh.position.z += h.speed * dt;
+      // Wrap when they pass beyond visible range.
+      if (h.mesh.position.z - this.distance > 220) {
+        h.mesh.position.z = this.distance - 80;
+      }
     }
   }
 
@@ -3162,12 +3365,21 @@ class Valhalla {
       });
     }
 
+    // PINE FOREST — scattered pines lining the far meadow. The Nordic
+    // world without pines is wrong (every Northman/Vikings reference
+    // shot has them silhouetted against the fjord). Pre-built once,
+    // recycled by per-frame z-wrap.
+    this._buildPineForest();
     // RUNESTONES along the roadside (Task #15)
     this._buildRunestones();
     // FIRE PITS along the roadside (Task #16)
     this._buildFirePits();
     // HUGINN + MUNINN — Odin's ravens circling the player (Task #17)
     this._buildOdinsRavens();
+    // REAL HORSES — async load 3 animated Horse.glb instances and
+    // scatter them in the distant meadows. Vikings rode horses; this
+    // is the single biggest "real Viking world" cue.
+    this._loadRealHorses();
 
     // SHADOW PASS — make every scenery mesh cast a shadow against the
     // sun, except the ravens (above the player; their shadow would
@@ -3187,6 +3399,7 @@ class Valhalla {
     for (const s of this.scenery) shadowOn(s.mesh);
     shadowOn(this.runestones);
     shadowOn(this.firePits);
+    shadowOn(this.pines);
   }
 
   _buildHUD() {
@@ -7020,11 +7233,14 @@ class Valhalla {
 
     // Huginn + Muninn — Odin's ravens always orbit the player
     this._updateOdinsRavens(dt);
+    // Real animated horses galloping through the meadows
+    this._updateRealHorses(dt);
     // Longship fleet sailing past
     this._updateLongships(dt);
-    // Runestones + fire pits recycle behind→ahead
+    // Runestones + fire pits + pine forest recycle behind→ahead
     this._updateRunestones();
     this._updateFirePits(dt);
+    this._updatePineForest();
 
     // scenery bobs — only the non-longship pieces (longships have their
     // own bob logic inside _updateLongships that combines forward sail
