@@ -1,65 +1,37 @@
-// Valhalla service worker — minimal "app shell" caching so the game
-// loads instantly on repeat visits and works offline-ish (game files
-// cached; external CDN models still need network).
+// SELF-DESTRUCT service worker.
 //
-// Cache strategy:
-//   * App shell (HTML/CSS/JS modules in this origin): cache-first
-//   * Three.js CDN modules: stale-while-revalidate (works offline
-//     after first load)
-//   * Models / textures: network-first with cache fallback
+// The previous version cached index.html + main.js with a cache-first
+// strategy, which meant every user who installed it kept seeing the
+// stale build forever even after we pushed fixes. This version
+// immediately unregisters itself, deletes every cache, and forces
+// every open page to reload from network.
 //
-// On every release, bump CACHE_VERSION so old caches get purged.
-
-const CACHE_VERSION = "valhalla-v3";
-const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/js/valhalla/main.js",
-  "/manifest.webmanifest",
-];
+// Once every active user has run this once, sw.js itself can be
+// deleted from the repo. Until then it's the deactivation routine.
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL.map(u => new Request(u, { cache: "reload" }))))
-      .then(() => self.skipWaiting())
-      .catch((e) => console.warn("[SW] install cache failed", e))
-  );
+  // Skip waiting so this SW activates immediately.
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    // Delete every cache, including the old valhalla-v1/v2/v3 ones.
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    // Take control of every open tab so the next fetch is network.
+    await self.clients.claim();
+    // Tell every controlled client to hard-reload itself.
+    const clients = await self.clients.matchAll({ type: "window" });
+    for (const c of clients) {
+      try { c.navigate(c.url); } catch {}
+    }
+    // Unregister this SW so future loads bypass it entirely.
+    await self.registration.unregister();
+  })());
 });
 
+// Pass every fetch straight through to the network. No caching at all.
 self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  if (req.method !== "GET") return;
-  const url = new URL(req.url);
-
-  // Same-origin: cache-first
-  if (url.origin === location.origin) {
-    event.respondWith(
-      caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-        if (res.ok) caches.open(CACHE_VERSION).then(c => c.put(req, res.clone()));
-        return res;
-      }).catch(() => caches.match("/index.html")))
-    );
-    return;
-  }
-
-  // Cross-origin (threejs CDN, models): stale-while-revalidate
-  if (/threejs\.org|jsdelivr\.net|unpkg\.com/.test(url.host)) {
-    event.respondWith(
-      caches.match(req).then((cached) => {
-        const fetchP = fetch(req).then((res) => {
-          if (res && res.ok) caches.open(CACHE_VERSION).then(c => c.put(req, res.clone()));
-          return res;
-        }).catch(() => cached);
-        return cached || fetchP;
-      })
-    );
-  }
+  event.respondWith(fetch(event.request).catch(() => Response.error()));
 });

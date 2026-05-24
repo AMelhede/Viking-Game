@@ -1167,16 +1167,27 @@
     </div>
   </div>
 
-  <script type="module" src="./js/valhalla/main.js"></script>
+  <!-- Cache-bust query string forces browsers to fetch the new module
+       even if disk cache + SW cache leftover would otherwise hand them
+       the stale build. Bump this string on every release. -->
+  <script type="module" src="./js/valhalla/main.js?v=20260524d"></script>
   <script>
-    // Service worker registration. gives offline cache + install
-    // capability. Failures are non-fatal (no SW = the game just doesn't
-    // install, but everything else works).
+    // SW KILL-SWITCH. Previous SW cached HTML/JS cache-first which
+    // froze every user on whatever build they had. We register
+    // sw.js once more so its new self-destruct routine runs, then
+    // explicitly unregister + wipe caches as belt-and-braces.
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js")
-          .then(reg => console.log("[Valhalla] SW registered, scope:", reg.scope))
-          .catch(err => console.warn("[Valhalla] SW registration failed", err));
+      window.addEventListener("load", async () => {
+        try {
+          await navigator.serviceWorker.register("sw.js");
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) { try { await r.unregister(); } catch {} }
+          if (window.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+          }
+          console.log("[Valhalla] SW + caches cleared. Refresh once more for fresh build.");
+        } catch (e) { console.warn("[Valhalla] SW kill failed", e); }
       });
     }
 

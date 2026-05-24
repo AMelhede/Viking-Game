@@ -46,9 +46,17 @@ const server = http.createServer((req, res) => {
     }
     const ext = path.extname(filePath).toLowerCase();
     const type = MIME[ext] || 'application/octet-stream';
+    // HARD no-cache for HTML/JS so dev iteration is never blocked by
+    // browser disk cache or service-worker leftovers. WASM and image
+    // assets can be cached for the session.
+    const isCode = ext === '.html' || ext === '.js' || ext === '.mjs' || ext === '.css';
     res.writeHead(200, {
       'content-type': type,
-      'cache-control': 'no-cache',
+      'cache-control': isCode
+        ? 'no-store, no-cache, must-revalidate, max-age=0'
+        : 'public, max-age=86400',
+      'pragma': 'no-cache',
+      'expires': '0',
     });
     fs.createReadStream(filePath).pipe(res);
   });
