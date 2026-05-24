@@ -1391,16 +1391,34 @@ class Valhalla {
     // so the sharpness loss is invisible, but the perf win is the
     // single biggest one available. User has repeatedly reported lag
     // even after every other optimisation; this is the last lever.
-    this.renderer.setPixelRatio(1.0);
+    // ADAPTIVE QUALITY — auto-detect rough GPU tier so weak machines
+    // get a downgrade path without forcing every user into 1980s mode.
+    // GPU vendor sniffing via WEBGL_debug_renderer_info is the best
+    // we can do in a browser. Default 'auto' falls back to 'high' on
+    // anything modern (Apple Silicon, RTX, RX, AMD APUs); 'low' on
+    // ancient Intel HD / mobile integrated.
+    const qOverride = localStorage.getItem("valhalla.quality");  // 'high' | 'medium' | 'low'
+    const quality = qOverride || this._detectGpuTier();
+    this.quality = quality;
+    // PixelRatio: cap at native on high tier (sharp), 1.0 on medium/low.
+    this.renderer.setPixelRatio(quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.5) : 1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // Cinematic dark grade. Previous 0.95 + Sky.js bright horizon +
-    // strong bloom = the screen blew out white and "couldn't see the
-    // map". 0.55 keeps the sky read but the world is properly dark
-    // and moody — like Northman, Vikings TV, 13th Warrior — instead
-    // of looking like a phone-game stock asset.
-    this.renderer.toneMappingExposure = 0.55;
-    this.renderer.shadowMap.enabled = false;
+    // EXPOSURE bumped 0.55 → 0.95. User feedback was "1980 wireframe" /
+    // dark/murky scene. 0.95 + ACES filmic + HDRI gives the cinematic
+    // Northman/Vikings look without blowing out the sky.
+    this.renderer.toneMappingExposure = 0.95;
+    // SHADOWS — directional sun caster only, one shadow map. Cheap
+    // and massive visual win: the player + scenery suddenly have
+    // ground contact instead of floating like clip-art. Disabled
+    // entirely on 'low'.
+    if (quality === "high" || quality === "medium") {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    } else {
+      this.renderer.shadowMap.enabled = false;
+    }
+    console.log(`[Valhalla] graphics quality: ${quality} (override: ${qOverride || "auto"})`);
 
     this.scene = new THREE.Scene();
     // HEAVY OVERCAST FOG. Was 40-320 in a pale grey-blue; now 30-180
@@ -1526,10 +1544,11 @@ class Valhalla {
     // for users who want to test with a real captured sky.
     // HDRI environment OFF by default — perf trade-off after
     // repeated user lag reports. The PMREM prefilter + 1k HDR fetch
-    // were significant on weak GPUs. The Sky.js + warm key + cold
-    // rim still give natural lighting. Opt back in via
-    //   localStorage.setItem("valhalla.ibl", "1")
-    if (localStorage.getItem("valhalla.ibl") === "1") {
+    // HDRI environment is ON BY DEFAULT now (the user's "looks 1980"
+    // call). It's gated inside _loadEnvironment by this.quality; weak
+    // GPUs detected by _detectGpuTier get 'low' and skip it. Force
+    // disable via:  localStorage.setItem("valhalla.ibl", "0")
+    if (localStorage.getItem("valhalla.ibl") !== "0") {
       this._loadEnvironment();
     }
 
@@ -1550,20 +1569,61 @@ class Valhalla {
     }, false);
   }
 
+  // Rough GPU tier from WEBGL_debug_renderer_info. Returns
+  // 'high' / 'medium' / 'low'. We bias toward 'high' on anything
+  // modern because the visual win from HDRI + shadows is huge and
+  // we have the context-loss listener as a backstop.
+  _detectGpuTier() {
+    try {
+      const gl = this.renderer.getContext();
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      const renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
+      const r = String(renderer).toLowerCase();
+      // Known-weak Intel integrated → low
+      if (/intel.*hd graphics (3000|4000|520|530|620|630)/.test(r)) return "low";
+      if (/intel.*uhd graphics 6/.test(r)) return "low";
+      // Apple Silicon, dedicated, modern integrated → high
+      if (/apple|nvidia|geforce|radeon|rtx|gtx|rx /.test(r)) return "high";
+      // Everything else → medium (sane default)
+      return "medium";
+    } catch { return "medium"; }
+  }
+
   _loadEnvironment() {
+    // HDRI environment — gives every PBR material (Soldier.glb, props,
+    // armour) realistic reflections/ambient. This is the single
+    // biggest visual upgrade from "1980 wireframe" to "modern
+    // cinematic render". Skipped on 'low' to keep weak GPUs alive.
+    if (this.quality === "low") return;
     try {
       const pmrem = new THREE.PMREMGenerator(this.renderer);
       pmrem.compileEquirectangularShader();
       const loader = new RGBELoader();
-      const url = "https://threejs.org/examples/textures/equirectangular/quarry_01_1k.hdr";
-      loader.load(url, (tex) => {
-        const env = pmrem.fromEquirectangular(tex).texture;
-        this.scene.environment = env;
-        tex.dispose();
-        pmrem.dispose();
-      }, undefined, (err) => {
-        console.warn("[Valhalla] HDRI load failed — IBL disabled", err);
-      });
+      // moonless_golf_1k = overcast Nordic-ish sky; works for Vikings vibe.
+      // Fallback to quarry_01_1k if moonless fails to load.
+      const url = "https://threejs.org/examples/textures/equirectangular/moonless_golf_1k.hdr";
+      const fallback = "https://threejs.org/examples/textures/equirectangular/quarry_01_1k.hdr";
+      const tryLoad = (u, isRetry) => {
+        loader.load(u, (tex) => {
+          try {
+            const env = pmrem.fromEquirectangular(tex).texture;
+            this.scene.environment = env;
+            tex.dispose();
+            pmrem.dispose();
+            console.log("[Valhalla] HDRI environment active");
+          } catch (e) {
+            console.warn("[Valhalla] HDRI PMREM bake failed", e);
+          }
+        }, undefined, (err) => {
+          if (!isRetry) {
+            console.warn("[Valhalla] HDRI load failed, trying fallback", err);
+            tryLoad(fallback, true);
+          } else {
+            console.warn("[Valhalla] HDRI fallback also failed — IBL disabled", err);
+          }
+        });
+      };
+      tryLoad(url, false);
     } catch (e) {
       console.warn("[Valhalla] PMREM setup failed", e);
     }
@@ -1689,25 +1749,41 @@ class Valhalla {
     // sources: warm key, cold rim, soft fill. Higher contrast than
     // before, addresses "hard to see" + "looks washed out".
 
-    // OVERCAST LIGHTING — no direct sun. Cinematic Nordic overcast is
-    // ~85% soft skylight from above + 15% cold rim. Total intensity
-    // way down from previous "golden hour" setup so the scene reads
-    // moody and atmospheric like the references the user shared
-    // (Northman, Vikings TV) rather than mid-day phone-game bright.
-    const hemi = new THREE.HemisphereLight(0xb4c4d4, 0x2a2e36, 0.9);
+    // OVERCAST LIGHTING — cinematic Nordic overcast: soft warm-cool
+    // hemisphere skylight + one directional sun (now with real
+    // shadows on high/medium) + a cold rim for silhouette separation
+    // against fog. References: The Northman, Vikings, 13th Warrior.
+    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x3a3a44, 1.05);
     this.scene.add(hemi);
 
-    // Diffuse "sky key" — extremely soft, no direct disc, low warmth.
-    const sun = new THREE.DirectionalLight(0xd8d8e0, 0.55);
+    // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
+    // brighter exposure. Now casts a real shadow on medium/high tier.
+    const sun = new THREE.DirectionalLight(0xfff0d8, 1.1);
     if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
-    else sun.position.set(40, 30, -10);
-    sun.castShadow = false;
+    else sun.position.set(40, 50, -10);
+    if (this.renderer.shadowMap.enabled) {
+      sun.castShadow = true;
+      // Tight shadow frustum around the play area — bigger volumes
+      // waste resolution. Player area is ~20m wide, 60m deep.
+      sun.shadow.mapSize.set(
+        this.quality === "high" ? 2048 : 1024,
+        this.quality === "high" ? 2048 : 1024
+      );
+      sun.shadow.camera.near = 1;
+      sun.shadow.camera.far = 220;
+      sun.shadow.camera.left   = -45;
+      sun.shadow.camera.right  =  45;
+      sun.shadow.camera.top    =  35;
+      sun.shadow.camera.bottom = -35;
+      sun.shadow.bias = -0.0004;
+      sun.shadow.normalBias = 0.04;
+    }
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
 
     // Cold steel-blue rim for silhouette separation against fog.
-    const rim = new THREE.DirectionalLight(0x6a7c92, 0.55);
+    const rim = new THREE.DirectionalLight(0x7a8ca2, 0.55);
     rim.position.set(-40, 30, -25);
     this.scene.add(rim);
   }
@@ -2314,6 +2390,9 @@ class Valhalla {
     // keeps working without any rewire.
     this.player = grp;
     this.procPlayer = new THREE.Group();
+    // Cast shadows from all procedural body parts so the player has
+    // ground contact even when the GLB hasn't loaded yet.
+    grp.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     // Move all the existing procedural children into procPlayer so we
     // can hide/show that whole sub-tree atomically when the GLB lands.
     while (grp.children.length > 0) {
@@ -2425,6 +2504,9 @@ class Valhalla {
           model.traverse((o) => {
             if (!o.isMesh) return;
             o.frustumCulled = false;
+            // Cast shadows (the sun light renders them on medium/high).
+            o.castShadow = true;
+            o.receiveShadow = true;
             // Clone the material so we don't mutate cached/shared maps.
             const original = o.material;
             // No 'skinning' option — that's not a MeshStandardMaterial
@@ -3011,6 +3093,25 @@ class Valhalla {
     this._buildFirePits();
     // HUGINN + MUNINN — Odin's ravens circling the player (Task #17)
     this._buildOdinsRavens();
+
+    // SHADOW PASS — make every scenery mesh cast a shadow against the
+    // sun, except the ravens (above the player; their shadow would
+    // never land in frame) and the flame/halo cones (additive, no
+    // shadow). The runestones in particular look infinitely more
+    // grounded once they throw a long shadow across the road.
+    const shadowOn = (root) => {
+      if (!root) return;
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        const isAdditive = o.material && (o.material.transparent && !o.material.depthWrite);
+        if (isAdditive) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+      });
+    };
+    for (const s of this.scenery) shadowOn(s.mesh);
+    shadowOn(this.runestones);
+    shadowOn(this.firePits);
   }
 
   _buildHUD() {
@@ -4983,6 +5084,20 @@ class Valhalla {
         this._showSyncResult("Clipboard blocked — link text is in the box below, copy manually.", "warn");
       }
     });
+
+    // Graphics quality picker — applies on next refresh.
+    const qPicker = document.getElementById("qualityPicker");
+    const qCurrent = document.getElementById("qualityCurrent");
+    if (qPicker && qCurrent) {
+      qPicker.value = localStorage.getItem("valhalla.quality") || "";
+      qCurrent.textContent = `Detected: ${this.quality || "—"}`;
+      qPicker.addEventListener("change", () => {
+        const v = qPicker.value;
+        if (v) localStorage.setItem("valhalla.quality", v);
+        else   localStorage.removeItem("valhalla.quality");
+        this._showSyncResult("Refresh the page to apply the new graphics quality.", "ok");
+      });
+    }
 
     // Restore from pasted text. Accepts either the raw save string OR
     // a full share URL (extracts the #save=… part).

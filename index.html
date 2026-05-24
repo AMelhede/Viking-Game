@@ -988,6 +988,25 @@
         </p>
       </div>
 
+      <!-- Graphics quality -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div>
+            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:4px">Graphics</div>
+            <div id="qualityCurrent" style="font-size:11px;color:rgba(255,255,255,.55)">Detected: —</div>
+          </div>
+          <select id="qualityPicker" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">
+            <option value="">Auto (recommended)</option>
+            <option value="high">High — HDRI + shadows</option>
+            <option value="medium">Medium — shadows, no HDRI</option>
+            <option value="low">Low — fastest, no HDRI/shadows</option>
+          </select>
+        </div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.42);margin-top:6px;line-height:1.4">
+          Changes apply after refreshing the page. If the game runs slow, try Low.
+        </div>
+      </div>
+
       <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:14px;line-height:1.4">
         Saves are JSON blobs containing your runs, badges, streak, and bio-state history. Nothing personal beyond what you've done in the game.
       </p>
