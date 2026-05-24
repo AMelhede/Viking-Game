@@ -404,8 +404,34 @@ class Audio {
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.42;
-      this.master.connect(this.ctx.destination);
+      // Lower base level. Earlier 0.42 was already on the edge for
+      // some users. 0.3 leaves headroom for the limiter below.
+      this.master.gain.value = this.muted ? 0 : 0.30;
+
+      // HARD HEARING SAFETY CHAIN. NOTHING in this game gets to
+      // reach the user's ears without going through these two filters
+      // and a limiter. The user has reported audio pain twice now.
+      // Order: master -> lowpass(4000) -> highpass(80) -> compressor -> destination
+      const safetyLP = this.ctx.createBiquadFilter();
+      safetyLP.type = "lowpass"; safetyLP.frequency.value = 4000; safetyLP.Q.value = 0.5;
+      const safetyHP = this.ctx.createBiquadFilter();
+      safetyHP.type = "highpass"; safetyHP.frequency.value = 80; safetyHP.Q.value = 0.5;
+      const limiter = this.ctx.createDynamicsCompressor();
+      // Aggressive limiter: threshold -10 dBFS, ratio 20:1, ~knee 0,
+      // fast attack 3ms, smooth release 250ms. Anything above the
+      // threshold is squashed near-flat. Combined with the lowpass
+      // there is no path to ear-piercing output.
+      limiter.threshold.value = -10;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.25;
+
+      this.master.disconnect();
+      this.master.connect(safetyLP);
+      safetyLP.connect(safetyHP);
+      safetyHP.connect(limiter);
+      limiter.connect(this.ctx.destination);
 
       // Reverb: single delay + filtered feedback. The previous 4-tap
       // network was double CPU for marginal acoustic benefit. a single
@@ -792,33 +818,18 @@ class Audio {
     const ctx = this.ctx;
     const master = ctx.createGain();
     master.gain.value = 0.0;     // starts silent; setFireProximity() raises it
-    // 1) Bass wash
+    // ONLY the bass wash. The crackle pop layer (random HP-filtered
+    // noise bursts) was the most likely cause of the user's audio
+    // pain. Brown noise lowpassed to 200Hz is gentle and warm.
     const noise = this._noiseSrc(true);
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass"; lp.frequency.value = 200; lp.Q.value = 0.4;
-    const gWash = ctx.createGain(); gWash.gain.value = 0.32;
+    const gWash = ctx.createGain(); gWash.gain.value = 0.25;
     noise.connect(lp); lp.connect(gWash); gWash.connect(master);
     noise.start();
-    // 2) Crackle scheduler. random small bursts of HP-filtered noise.
-    // Each burst is 30–80ms with a sharp envelope.
-    const scheduleCrackle = () => {
-      if (!this.fireNode || !this.ctx) return;
-      const when = ctx.currentTime;
-      const burst = this._noiseSrc(false);
-      const hp = ctx.createBiquadFilter();
-      hp.type = "highpass"; hp.frequency.value = 1800; hp.Q.value = 1.2;
-      const g = ctx.createGain();
-      const dur = 0.03 + Math.random() * 0.05;
-      const amp = 0.18 + Math.random() * 0.22;
-      g.gain.setValueAtTime(0.0001, when);
-      g.gain.exponentialRampToValueAtTime(amp, when + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-      burst.connect(hp); hp.connect(g); g.connect(master);
-      burst.start(when); burst.stop(when + dur + 0.02);
-      // Next crackle in 60–280ms.
-      setTimeout(scheduleCrackle, 60 + Math.random() * 220);
-    };
-    scheduleCrackle();
+    // CRACKLE DISABLED. Was random HP-filtered noise bursts at 1800Hz
+    // with gain up to 0.4 firing every 60-280ms. User reported audio
+    // pain twice. Bass wash above is enough for fire ambience.
     this._send(master, 0.18);    // small reverb so it sits in the space
     master.connect(this.master);
     this.fireNode = { master };
@@ -5762,6 +5773,15 @@ class Valhalla {
       };
       tabS.addEventListener("click", () => setActive(pS.style.display === "block" ? null : "s"));
       tabT.addEventListener("click", () => setActive(pT.style.display === "block" ? null : "t"));
+      // FIRST-LAUNCH: auto-open BIND BODY so the user immediately sees
+      // the Face / Band buttons. Otherwise the only thing visible is
+      // two collapsed tabs and they don't know to click. After they
+      // click anywhere it stays where they put it.
+      if (!localStorage.getItem("valhalla.tabUsed")) {
+        setActive("s");
+      }
+      tabS.addEventListener("click", () => { try { localStorage.setItem("valhalla.tabUsed", "1"); } catch {} });
+      tabT.addEventListener("click", () => { try { localStorage.setItem("valhalla.tabUsed", "1"); } catch {} });
     }
 
     // Sync dialog wiring + initial state. Auto-pull from cloud on
@@ -5862,8 +5882,11 @@ class Valhalla {
       if (!subscribe()) window.addEventListener("bio:ready", subscribe, { once: true });
 
       btn.addEventListener("click", async () => {
-        if (!window.Bio) { btn.textContent = "Unavailable"; return; }
-        // If already live and the user clicks again, toggle OFF.
+        if (!window.Bio) {
+          btn.textContent = "Unavailable";
+          this._showBioErrorBanner("Bio module didn't load. Refresh the page once.");
+          return;
+        }
         if (btn.classList.contains("live")) {
           try {
             if (key === "rppg") await window.Bio.stopRppg();
@@ -5872,7 +5895,6 @@ class Valhalla {
           return;
         }
         const opts = {}; opts[key] = true;
-        // Optimistic UI. the warming status event will land in ~50ms.
         setVisualState("warming");
         try {
           const r = await window.Bio.start(opts);
@@ -5880,12 +5902,12 @@ class Valhalla {
           if (!(result && result.ok !== false)) {
             const msg = result?.message || result?.reason || "Failed";
             setVisualState("error", msg);
+            this._showBioErrorBanner(`${key === "rppg" ? "Webcam" : "Muse"} could not start: ${msg}`);
           }
-          // On success, the rppgStatus/eegStatus event will move us
-          // through warming → live. Nothing to do here.
         } catch (e) {
           console.warn("[Valhalla] bio start threw", e);
           setVisualState("error", e?.message || "Failed");
+          this._showBioErrorBanner(`${key === "rppg" ? "Webcam" : "Muse"} threw: ${e?.message || "unknown error"}`);
         }
       });
     };
@@ -7575,6 +7597,25 @@ class Valhalla {
     // Stop the heartbeat pulse so it doesn't keep dimming the menu.
     if (this._hbTimer) { clearTimeout(this._hbTimer); this._hbTimer = null; }
     if (this._heartbeatEl) this._heartbeatEl.style.opacity = "0";
+    // CRITICAL: hide every in-world floating overlay so the run-over
+    // card isn't drowned in boss tutorial popups, Skald narration,
+    // biome banners, boss banners that were mid-fade when death hit.
+    // Without this, the run-over screen reads as a stack of garbage.
+    const hideIds = ["bossTutorial", "bossBanner", "skaldEl"];
+    for (const id of hideIds) {
+      const el = document.getElementById(id);
+      if (el) { el.style.display = "none"; el.style.opacity = "0"; }
+    }
+    // The biome banner + Skald narration are class-instance refs not IDs.
+    if (this._biomeBannerEl) { this._biomeBannerEl.style.opacity = "0"; this._biomeBannerEl.style.display = "none"; }
+    if (this._skaldEl)       { this._skaldEl.style.opacity = "0";       this._skaldEl.style.display = "none"; }
+    // Bio status pill should fade not vanish (it's still factual).
+    if (this._bioPillEl) this._bioPillEl.style.opacity = "0";
+    // Clear any in-flight tutorial / narration timers so they don't
+    // re-show the popups after we hid them.
+    if (this._bossTutorialTimer) { clearTimeout(this._bossTutorialTimer); this._bossTutorialTimer = null; }
+    if (this._biomeBannerT)      { clearTimeout(this._biomeBannerT);      this._biomeBannerT = null; }
+    if (this._skaldT)            { clearTimeout(this._skaldT);            this._skaldT = null; }
     const prev = Store.load();
     const prevBestScore = prev.bestScore || 0;
     const prevBestDist = prev.bestDist || 0;
@@ -8469,6 +8510,25 @@ class Valhalla {
       console.warn("[Valhalla] auto-downgrade #3: shadows disabled");
       this._fpsToast("Auto-downgrade: shadows off. consider Graphics → Low");
     }
+  }
+
+  // Big, visible error banner shown when bio start fails. The button
+  // text alone was getting truncated and missed. This banner sits at
+  // the top of the screen for 8s with the full error message so the
+  // user sees exactly what blocked the sensor.
+  _showBioErrorBanner(msg) {
+    let el = document.getElementById("bioErrBanner");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "bioErrBanner";
+      el.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:90;padding:10px 16px;background:rgba(60,8,8,.96);color:#ffd066;border:1px solid rgba(255,140,90,.6);border-radius:6px;font:600 12.5px/1.4 -apple-system,system-ui,sans-serif;letter-spacing:.02em;max-width:min(560px,90vw);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.7)";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = "1";
+    el.style.display = "block";
+    clearTimeout(this._bioErrT);
+    this._bioErrT = setTimeout(() => { el.style.opacity = "0"; setTimeout(() => { el.style.display = "none"; }, 400); }, 8000);
   }
 
   // Tiny non-blocking toast for downgrade notifications.

@@ -54,7 +54,9 @@
       "WebFetch(domain:www.opensource3dassets.com)",
       "PowerShell(cd \"C:\\\\Users\\\\andre\\\\Downloads\\\\Viking Game\\\\.claude\\\\worktrees\\\\admiring-hopper-eb7368\"; \\(Get-Content -Raw -Encoding UTF8 index.html\\) -replace ' — ', '. ' -replace '—', '. ' | Set-Content -Encoding UTF8 index.html; \\(Get-Content -Raw -Encoding UTF8 js/valhalla/main.js\\) -replace ' — ', '. ' -replace '—', '. ' | Set-Content -Encoding UTF8 js/valhalla/main.js; \"em-dashes after:\"; \\(Select-String -Path index.html,js/valhalla/main.js -Pattern '—' | Measure-Object\\).Count)",
       "Bash(node --check ../../../server.js)",
-      "Bash(cp ../../../server.js ./server.js)"
+      "Bash(cp ../../../server.js ./server.js)",
+      "Bash(git stash *)",
+      "Bash(git pull *)"
     ]
   }
 }
