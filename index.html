@@ -925,14 +925,13 @@
         <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Lane &nbsp; <kbd>&uarr;</kbd> Jump &nbsp; <kbd>&darr;</kbd> Slide &nbsp; <kbd>P</kbd> Pause
       </div>
 
-      <!-- Sync section. Small unobtrusive line that opens a dialog
-           with full backup/restore + cloud-sync status. -->
-      <div style="margin-top:14px;font:400 12px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.55);letter-spacing:.01em">
-        <span style="opacity:.7">🪶 Skald</span>
-        <span id="skaldNameLine" style="color:#f4d49a;font-weight:600;margin:0 4px">—</span>
-        <span style="opacity:.6">·</span>
-        <span id="syncStatusLine" style="margin-left:4px">Local only</span>
-        <a href="#" id="openSyncDialog" style="margin-left:8px;color:#f4d49a;text-decoration:underline;font-weight:600">Backup &amp; sync</a>
+      <!-- Sync line — tiny, unobtrusive. Only visible on the menu
+           (the .start overlay), not during cinematic gameplay. -->
+      <div style="margin-top:14px;font:400 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.42);letter-spacing:.01em">
+        <span id="skaldNameLine" style="color:rgba(244,212,154,.7);font-weight:600">—</span>
+        <span style="opacity:.5;margin:0 4px">·</span>
+        <span id="syncStatusLine" style="opacity:.7">Local only</span>
+        <a href="#" id="openSyncDialog" style="margin-left:8px;color:rgba(244,212,154,.8);text-decoration:underline;font-weight:500">Backup &amp; sync</a>
       </div>
     </div>
   </div>

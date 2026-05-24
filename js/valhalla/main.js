@@ -2649,8 +2649,9 @@ class Valhalla {
       color: 0x1a1814, emissive: 0x806340, emissiveIntensity: 0.4,
       roughness: 0.9, flatShading: true,
     });
-    // 16 stones, alternating sides, every ~70m, with subtle randomness.
-    for (let i = 0; i < 16; i++) {
+    // 8 stones (was 16), alternating sides, every ~140m with subtle
+    // randomness. Density halved for perf + less roadside spam.
+    for (let i = 0; i < 8; i++) {
       const stone = new THREE.Group();
       const h = 2.6 + Math.random() * 1.4;
       const w = 0.7 + Math.random() * 0.3;
@@ -2684,7 +2685,7 @@ class Valhalla {
         stone.add(cross);
       }
       const side = i % 2 === 0 ? -1 : 1;
-      stone.position.set(side * (7.5 + Math.random() * 1.5), 0, i * 70);
+      stone.position.set(side * (7.5 + Math.random() * 1.5), 0, i * 140);
       stone.rotation.y = (Math.random() - 0.5) * 0.3;
       this.runestones.add(stone);
     }
@@ -2697,7 +2698,7 @@ class Valhalla {
     if (!this.runestones) return;
     for (const stone of this.runestones.children) {
       if (stone.position.z < this.distance - 30) {
-        stone.position.z += 16 * 70;        // jump 16 slots ahead
+        stone.position.z += 8 * 140;        // jump 8 slots ahead
       }
     }
   }
@@ -2717,9 +2718,12 @@ class Valhalla {
       color: 0xff6020, transparent: true, opacity: 0.5, depthWrite: false,
     });
     // 8 pits, alternating sides, every ~140m, offset from runestones.
-    for (let i = 0; i < 8; i++) {
+    // 4 pits not 8. WebGL caps useful dynamic lights at ~4; we use NONE
+    // here — emissive materials read as fire without the per-pixel
+    // shader cost. Flame meshes are additive sprites that sell the
+    // warmth visually without ever touching the lighting pipeline.
+    for (let i = 0; i < 4; i++) {
       const pit = new THREE.Group();
-      // Stone ring — small torus on ground
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(0.6, 0.18, 6, 12),
         stoneRingMat
@@ -2727,28 +2731,24 @@ class Valhalla {
       ring.rotation.x = Math.PI / 2;
       ring.position.y = 0.18;
       pit.add(ring);
-      // Inner bright flame
+      // Inner bright flame (emissive — no light needed)
       const flame = new THREE.Mesh(
         new THREE.ConeGeometry(0.35, 1.2, 8, 1, true),
         flameInnerMat
       );
       flame.position.y = 0.8;
       pit.add(flame);
-      // Outer halo flame
+      // Outer halo
       const halo = new THREE.Mesh(
         new THREE.ConeGeometry(0.65, 1.7, 8, 1, true),
         flameOuterMat
       );
       halo.position.y = 0.9;
       pit.add(halo);
-      // Warm light
-      const light = new THREE.PointLight(0xff8030, 1.2, 12, 2.0);
-      light.position.y = 1.0;
-      pit.add(light);
-      // Cache for the animation loop.
-      pit.userData = { flame, halo, light, phase: Math.random() * Math.PI * 2 };
+      pit.userData = { flame, halo, phase: Math.random() * Math.PI * 2 };
       const side = i % 2 === 0 ? 1 : -1;
-      pit.position.set(side * (9 + Math.random() * 1), 0, 60 + i * 140);
+      // Wider spacing (280m) since there are fewer of them.
+      pit.position.set(side * (9 + Math.random() * 1), 0, 120 + i * 280);
       this.firePits.add(pit);
     }
     this.scene.add(this.firePits);
@@ -2760,15 +2760,13 @@ class Valhalla {
     for (const pit of this.firePits.children) {
       const u = pit.userData;
       if (!u) continue;
-      // Recycle behind the camera back to ahead.
       if (pit.position.z < this.distance - 30) {
-        pit.position.z += 8 * 140;
+        pit.position.z += 4 * 280;
       }
-      // Flicker.
-      const flick = 0.8 + Math.sin(t * 9 + u.phase) * 0.15 + Math.random() * 0.1;
-      u.flame.scale.set(flick, 0.85 + Math.sin(t * 7 + u.phase) * 0.2, flick);
-      u.halo.scale.set(flick * 1.1, 0.9 + Math.cos(t * 5 + u.phase) * 0.2, flick * 1.1);
-      u.light.intensity = 1.1 + Math.sin(t * 8 + u.phase) * 0.4;
+      // Flicker via scale only — no light to update.
+      const flick = 0.85 + Math.sin(t * 8 + u.phase) * 0.12;
+      u.flame.scale.set(flick, 0.9 + Math.sin(t * 6 + u.phase) * 0.15, flick);
+      u.halo.scale.set(flick * 1.1, 0.95 + Math.cos(t * 4 + u.phase) * 0.15, flick * 1.1);
     }
   }
 
@@ -2879,7 +2877,7 @@ class Valhalla {
 
     // Close snow — orig 350 → repeatedly halved → now 20. Floor.
     {
-      const count = 20;
+      const count = 10;     // halved from 20 — atmosphere not snowstorm
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 36;
@@ -2900,7 +2898,7 @@ class Valhalla {
 
     // Far layer orig 1800 → now 120. Floor.
     {
-      const count = 120;
+      const count = 60;     // halved from 120 — atmosphere not snowstorm
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         positions[i * 3] = (Math.random() - 0.5) * 140;
@@ -2921,11 +2919,11 @@ class Valhalla {
   }
 
   _buildScenery() {
-    // LONGSHIP FLEET — 6 ships of varying sizes drifting down the fjord
-    // on both sides. Each gets its own sail speed so they don't move
-    // in lockstep. The fjord-sailing animation is driven by
-    // _updateLongships per-frame.
-    for (let i = 0; i < 6; i++) {
+    // LONGSHIP FLEET — 3 ships (was 6) drifting down the fjord. Halved
+    // for perf + visual breathing room: 60 meshes was crowding both the
+    // GPU and the eye. Each gets its own sail speed so they don't move
+    // in lockstep.
+    for (let i = 0; i < 3; i++) {
       const ship = new THREE.Group();
       // Tapered hull — curved bow + stern via cylinder + box hybrid.
       // Three nested boxes for that classic clinker silhouette.
@@ -3775,43 +3773,41 @@ class Valhalla {
     let el = this._bioPillEl;
     if (!el) {
       el = document.createElement("div");
+      // pointer-events:none on the container so it doesn't block game
+      // clicks; the gear button below overrides this for itself.
       el.style.cssText =
-        "position:fixed;right:18px;top:calc(env(safe-area-inset-top,18px) + 76px);" +
-        "z-index:11;pointer-events:auto;text-align:left;" +
-        "min-width:230px;max-width:260px;" +
-        "background:rgba(14,10,6,.82);border:1px solid rgba(212,173,106,.32);" +
-        "border-radius:10px;padding:14px 16px 12px;" +
-        "backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" +
+        "position:fixed;right:14px;top:calc(env(safe-area-inset-top,14px) + 68px);" +
+        "z-index:11;pointer-events:none;text-align:left;" +
+        "min-width:180px;max-width:210px;" +
+        "background:rgba(14,10,6,.72);border:1px solid rgba(212,173,106,.22);" +
+        "border-radius:8px;padding:10px 12px 9px;" +
+        "backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" +
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;" +
         "color:#fff;opacity:0;transition:opacity .4s ease;" +
-        "box-shadow:0 6px 30px rgba(0,0,0,.55)";
+        "box-shadow:0 4px 22px rgba(0,0,0,.45)";
       el.innerHTML =
         // Header row: eyebrow + gear toggle
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-          '<div style="font:600 9.5px/1 \'Cinzel\',serif;letter-spacing:.22em;color:rgba(212,173,106,.7);text-transform:uppercase">Your Body</div>' +
-          '<button class="advancedToggle" title="Toggle advanced mode (show raw numbers)" style="background:none;border:1px solid rgba(212,173,106,.3);color:rgba(212,173,106,.7);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:11px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
+          '<div style="font-size:9px;letter-spacing:.22em;color:rgba(212,173,106,.55);text-transform:uppercase;font-weight:600">Your state</div>' +
+          '<button class="advancedToggle" title="Show raw numbers" style="pointer-events:auto;background:none;border:1px solid rgba(212,173,106,.25);color:rgba(212,173,106,.6);width:18px;height:18px;border-radius:3px;cursor:pointer;font-size:9px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
         '</div>' +
-        // STATE NAME (big, the headline)
-        '<div class="stateName" style="font:700 22px/1 \'Cinzel\',serif;color:#f4d49a;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;text-shadow:0 0 16px rgba(244,212,154,.22)"></div>' +
-        // Plain-English meaning (the value-prop sentence)
-        '<div class="stateMeaning" style="font-size:12.5px;color:rgba(255,255,255,.85);line-height:1.4;margin-bottom:8px;min-height:2.4em"></div>' +
-        // Time held
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;font-size:10.5px;letter-spacing:.04em">' +
-          '<span style="color:rgba(255,255,255,.55)">Held for</span>' +
-          '<span class="stateHeld" style="color:#f4d49a;font:600 12px/1 \'Cinzel\',serif;font-variant-numeric:tabular-nums">—</span>' +
+        // STATE — colour dot + name on one line, NOT a big Cinzel headline
+        '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">' +
+          '<span class="stateDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d4ad6a;box-shadow:0 0 8px #d4ad6a"></span>' +
+          '<span class="stateName" style="font-size:13.5px;font-weight:700;color:#f4d49a;letter-spacing:.04em;text-transform:uppercase"></span>' +
         '</div>' +
+        // Meaning — small body type
+        '<div class="stateMeaning" style="font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.35;margin-bottom:9px;min-height:1.35em"></div>' +
         // Gift meter
-        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">' +
-          '<div style="font:600 10px/1 \'Cinzel\',serif;letter-spacing:.18em;color:rgba(212,173,106,.85);text-transform:uppercase">Next gift</div>' +
-          '<div class="giftpct" style="font:600 10px/1 \'Cinzel\',serif;color:#f4d49a"></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">' +
+          '<div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.55);text-transform:uppercase;font-weight:600">Next gift</div>' +
+          '<div class="giftpct" style="font-size:10px;color:rgba(244,212,154,.85);font-weight:600;font-variant-numeric:tabular-nums"></div>' +
         '</div>' +
-        '<div style="height:5px;background:rgba(201,165,92,.18);border-radius:3px;overflow:hidden">' +
+        '<div style="height:3px;background:rgba(201,165,92,.15);border-radius:2px;overflow:hidden">' +
           '<div class="meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a55c,#f4d49a);transition:width .3s ease"></div>' +
         '</div>' +
-        // Earned tally
-        '<div class="tally" style="font-size:10.5px;letter-spacing:.02em;color:rgba(255,255,255,.6);margin-top:9px;min-height:1.2em"></div>' +
-        // ADVANCED NUMBERS — hidden unless toggled
-        '<div class="advancedBox" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(212,173,106,.18);font-size:10.5px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums">' +
+        '<div class="tally" style="font-size:10px;letter-spacing:.01em;color:rgba(255,255,255,.5);margin-top:7px;min-height:1em"></div>' +
+        '<div class="advancedBox" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(212,173,106,.15);font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">' +
             '<div>HR <span class="bhBpm" style="color:#ff8a7a;font-weight:600">—</span></div>' +
             '<div>HRV <span class="bhHrv" style="color:#80d0e0;font-weight:600">—</span></div>' +
@@ -3835,9 +3831,6 @@ class Valhalla {
         el.querySelector(".advancedBox").style.display = "block";
         toggle.style.background = "rgba(212,173,106,.3)";
       }
-      // Track state held-for timing
-      this._stateHeldSince = performance.now();
-      this._stateHeldFor   = "neutral";
     }
     const live = document.body.classList.contains("bio-live");
     el.style.opacity = (live && this.running) ? "1" : "0";
@@ -3845,13 +3838,6 @@ class Valhalla {
 
     const s = this.bioSession;
     const cs = this.cognitiveState || "neutral";
-
-    // Track time-in-state. Resets when state changes.
-    if (this._stateHeldFor !== cs) {
-      this._stateHeldFor = cs;
-      this._stateHeldSince = performance.now();
-    }
-    const heldSec = Math.max(0, (performance.now() - this._stateHeldSince) / 1000);
 
     // STATE → display name + meaning. Plain English, emotional, no
     // mechanics-speak. The point is the player feels "the game is
@@ -3875,19 +3861,12 @@ class Valhalla {
     const stateEl = el.querySelector(".stateName");
     stateEl.textContent = ui.name;
     stateEl.style.color = ui.colour;
-    stateEl.style.textShadow = `0 0 16px ${ui.colour}40`;
-    el.querySelector(".stateMeaning").textContent = ui.meaning;
-
-    // Held-for, formatted: "—" if neutral/warming, else "Ns" or "M:SS"
-    const heldEl = el.querySelector(".stateHeld");
-    if (warming || cs === "neutral") {
-      heldEl.textContent = "—";
-    } else if (heldSec < 60) {
-      heldEl.textContent = heldSec.toFixed(0) + "s";
-    } else {
-      const m = Math.floor(heldSec / 60), sec = Math.floor(heldSec % 60);
-      heldEl.textContent = `${m}:${sec.toString().padStart(2, "0")}`;
+    const dotEl = el.querySelector(".stateDot");
+    if (dotEl) {
+      dotEl.style.background = ui.colour;
+      dotEl.style.boxShadow = `0 0 8px ${ui.colour}`;
     }
+    el.querySelector(".stateMeaning").textContent = ui.meaning;
 
     // Gift meter.
     const pct = Math.min(100, (s.giftAccumSec / 12) * 100);
@@ -3943,25 +3922,42 @@ class Valhalla {
     const POW_INITIAL = { shield:"T", speed:"S", mult:"B", magnet:"F",
                           ship:"S", thor:"M", odin:"O" };
 
+    // CLUTTER PASS — previously every visible obstacle and collectible
+    // got an emoji marker, turning the screen into an arcade UI ribbon.
+    // First-principles: markers only earn their place when the 3D
+    // silhouette is genuinely ambiguous. So we now show only:
+    //   * Boss-encounter obstacles (the player NEEDS to know to dodge
+    //     these to damage the boss — context matters)
+    //   * Powerups (the unique visual that's hardest to parse at speed —
+    //     the player must distinguish god-gift powerups from mead/runes)
+    //   * Runestones during an active boss fight (they're the ranged attack)
+    // Regular obstacles + mead + non-fight runes get NO marker; the
+    // 3D shapes are clear enough.
+    const inFight = this._bossActor && !this._bossActor.defeated && !this._bossActor.escaped;
     for (let i = 0; i < this.obstacles.length; i++) {
       const o = this.obstacles[i];
       if (o._consumed) continue;
       const sz = o.spawnAt - this.distance;
-      if (sz < 4 || sz > 80) continue;
+      if (sz < 4 || sz > 60) continue;
+      // Only mark boss-encounter obstacles. Regular hazards: 3D is enough.
+      if (!o.encounterBoss) continue;
       const lane = o.lane === -1 ? this.lane : o.lane;
       items.push({
         x: LANES[lane], y: (o.h || 2) + 0.6, z: sz,
         text: "⚠", color: "#ff3030", key: "o" + i,
-        bg: "rgba(60,8,8,.85)", size: 26,
+        bg: "rgba(60,8,8,.85)", size: 22,
       });
     }
     for (let i = 0; i < this.collectibles.length; i++) {
       const c = this.collectibles[i];
       const sz = c.spawnAt - this.distance;
-      if (sz < 4 || sz > 80) continue;
-      let text = "🪙", color = "#ffc060", bg = "rgba(40,30,8,.85)", size = 22;
-      if (c.type === "rune")    { text = "ᚱ"; color = "#60d0ff"; bg = "rgba(10,30,50,.85)"; size = 26; }
-      if (c.type === "powerup") { text = POW_INITIAL[c.pwType] || "⭐"; color = "#ffd066"; bg = "rgba(50,38,10,.92)"; size = 28; }
+      if (sz < 4 || sz > 60) continue;
+      // Mead never gets a marker — gold horns are obvious.
+      if (c.type === "mead") continue;
+      // Runes only when there's a boss fight (they're the attack).
+      if (c.type === "rune" && !inFight) continue;
+      let text = "ᚱ", color = "#60d0ff", bg = "rgba(10,30,50,.85)", size = 22;
+      if (c.type === "powerup") { text = POW_INITIAL[c.pwType] || "⭐"; color = "#ffd066"; bg = "rgba(50,38,10,.92)"; size = 24; }
       items.push({
         x: LANES[c.lane], y: (c.baseY || 1.2) + 1.0, z: sz,
         text, color, key: "c" + i, bg, size,
@@ -5351,26 +5347,54 @@ class Valhalla {
         + `</div>`;
     }).join("");
 
-    // ----- Final HTML ---------------------------------------------------
+    // Newly unlocked this run — surface them prominently as a NEW
+    // HONOURS strip; the rest of the badges are collapsed.
+    const beforeIds = new Set(this._badgeIdsBeforeRun || []);
+    const newlyEarned = [...earned].filter(id => !beforeIds.has(id));
+    const newlyHtml = newlyEarned.length
+      ? newlyEarned.map(id => {
+          const b = all.find(x => x.id === id);
+          if (!b) return "";
+          const col = TIER_COLOUR[b.tier] || "#f4d49a";
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(244,212,154,.08);border:1px solid ${col}55;border-radius:6px">`
+               + `<span style="font-size:18px">${b.icon}</span>`
+               + `<div><div style="font-size:11px;font-weight:700;color:${col};letter-spacing:.04em;text-transform:uppercase">${b.tier} · ${b.label}</div>`
+               + `<div style="font-size:9.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em">${b.group}</div></div>`
+               + `</div>`;
+        }).join("")
+      : "";
+
+    // ----- Final HTML ----------------------------------------------------
+    // Hierarchy: TODAY (the most personal info) → CHART (progression)
+    // → NEW HONOURS this run (the dopamine hit) → details collapsed.
     host.innerHTML =
-        // Today's recap line + streak
+        // Today + streak
         `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">`
-      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78)">Today</div>`
-      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">🔥 ${s.streak || 0}-day streak</div>`
+      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72)">Today</div>`
+      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">🔥 ${s.streak || 0}-day streak</div>`
       + `</div>`
-      + `<div style="font-size:12px;color:rgba(255,255,255,.78);margin-bottom:14px">`
+      + `<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:16px;line-height:1.5">`
       + (todayBits.length ? todayBits.join(" · ") : "Your first run today!")
       + `</div>`
       // 7-day chart
-      + `<div style="margin-bottom:6px;font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78)">7-Day Bio Progress</div>`
-      + `<div style="display:flex;align-items:flex-end;gap:4px;height:48px;margin-bottom:6px">${chartHtml}</div>`
-      + `<div style="font-size:10.5px;color:rgba(255,255,255,.55);margin-bottom:16px;letter-spacing:.02em">${weekHint}</div>`
+      + `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72)">Last 7 days</div>`
+      + `<div style="display:flex;align-items:flex-end;gap:4px;height:42px;margin-bottom:4px">${chartHtml}</div>`
+      + `<div style="font-size:10.5px;color:rgba(255,255,255,.5);margin-bottom:18px;letter-spacing:.02em">${weekHint}</div>`
+      // Newly unlocked
+      + (newlyHtml
+          ? `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">✦ New Honours</div>`
+            + `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">${newlyHtml}</div>`
+          : "")
       // Leaderboard
-      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78);margin-bottom:8px">Skalds' Roll</div>`
-      + `<div style="margin-bottom:16px">${rows || '<div style="opacity:.6;font-size:12px">No runs yet</div>'}</div>`
-      // Tiered badges by group
-      + `<div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.78);margin-bottom:10px">Honours · ${earned.size} / ${all.length}</div>`
-      + groupHtml;
+      + `<details style="margin-bottom:10px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72);padding:6px 0;list-style:none;outline:none">▸ Skalds' Roll · top ${board.length}</summary>`
+      + `<div style="margin-top:8px">${rows || '<div style="opacity:.6;font-size:12px">No runs yet</div>'}</div>`
+      + `</details>`
+      // All badges collapsed
+      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72);padding:6px 0;list-style:none;outline:none">▸ Honours · ${earned.size} / ${all.length} unlocked</summary>`
+      + `<div style="margin-top:10px">${groupHtml}</div>`
+      + `</details>`;
+    // Update the "before-run" badge snapshot for the NEXT _gameOver call.
+    this._badgeIdsBeforeRun = Array.from(earned);
   }
 
   _flash() {
@@ -5397,6 +5421,9 @@ class Valhalla {
     this.lives = 3; this.combo = 0; this.invuln = 0;
     // Per-run counters for lifetime/daily aggregation in _saveStats.
     this.runRunes = 0; this.runBossKills = 0;
+    // Snapshot the badge set at run-start so the game-over screen can
+    // highlight only the badges UNLOCKED THIS RUN as "New Honours".
+    this._badgeIdsBeforeRun = (Store.load().badges || []).slice();
     this.speed = BASE_SPEED;
     this._shakeAmp = 0; this._shakeT = 0;
     this._timeScale = 1; this._timeScaleTarget = 1;
@@ -6201,10 +6228,9 @@ class Valhalla {
     }
     grp.add(flames);
     grp.userData.flames = flames;
-    // Ember light
-    const fireLight = new THREE.PointLight(0xff5520, 1.2, 8, 2);
-    fireLight.position.y = 0.8;
-    grp.add(fireLight);
+    // No PointLight — multiple fire obstacles on screen + 4 scenery
+    // pits would burst WebGL's dynamic-light budget. Emissive flame
+    // materials read as fire on their own.
     grp.position.set(LANES[lane], 0, zWorld);
     this.scene.add(grp);
 
