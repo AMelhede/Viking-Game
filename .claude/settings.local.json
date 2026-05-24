@@ -56,7 +56,8 @@
       "Bash(node --check ../../../server.js)",
       "Bash(cp ../../../server.js ./server.js)",
       "Bash(git stash *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(node --check sw.js)"
     ]
   }
 }

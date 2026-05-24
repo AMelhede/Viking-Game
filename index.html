@@ -1177,24 +1177,24 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524e"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524f"></script>
   <script>
-    // SW KILL-SWITCH. Previous SW cached HTML/JS cache-first which
-    // froze every user on whatever build they had. We register
-    // sw.js once more so its new self-destruct routine runs, then
-    // explicitly unregister + wipe caches as belt-and-braces.
+    // SW CLEANUP ONLY. DO NOT register a new service worker.
+    // Last commit registered sw.js which then navigated the tab, which
+    // caused the next page load to register sw.js again = infinite
+    // reload loop. Fixed: just unregister any leftover SW and wipe
+    // caches. No new registration. After one visit, this is a no-op.
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", async () => {
         try {
-          await navigator.serviceWorker.register("sw.js");
           const regs = await navigator.serviceWorker.getRegistrations();
           for (const r of regs) { try { await r.unregister(); } catch {} }
           if (window.caches) {
             const keys = await caches.keys();
             await Promise.all(keys.map(k => caches.delete(k)));
           }
-          console.log("[Valhalla] SW + caches cleared. Refresh once more for fresh build.");
-        } catch (e) { console.warn("[Valhalla] SW kill failed", e); }
+          if (regs.length) console.log("[Valhalla] cleaned up " + regs.length + " leftover SW(s)");
+        } catch (e) { console.warn("[Valhalla] SW cleanup failed", e); }
       });
     }
 

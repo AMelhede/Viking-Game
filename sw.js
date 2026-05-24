@@ -1,37 +1,31 @@
-// SELF-DESTRUCT service worker.
+// INERT service worker. Does nothing. Exists only so any stale browser
+// SW that fetches /sw.js gets a harmless replacement instead of the
+// old cache-first router that froze users on stale builds.
 //
-// The previous version cached index.html + main.js with a cache-first
-// strategy, which meant every user who installed it kept seeing the
-// stale build forever even after we pushed fixes. This version
-// immediately unregisters itself, deletes every cache, and forces
-// every open page to reload from network.
+// Does NOT navigate clients (last version did that, causing an infinite
+// reload loop with the page-side register() call). Does NOT cache
+// anything. Does NOT intercept fetches.
 //
-// Once every active user has run this once, sw.js itself can be
-// deleted from the repo. Until then it's the deactivation routine.
+// Future: when we add a properly-versioned offline cache, rewrite this
+// file. For now it's the safe no-op.
 
-self.addEventListener("install", (event) => {
-  // Skip waiting so this SW activates immediately.
-  self.skipWaiting();
-});
-
+self.addEventListener("install", () => { self.skipWaiting(); });
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    // Delete every cache, including the old valhalla-v1/v2/v3 ones.
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k => caches.delete(k)));
-    // Take control of every open tab so the next fetch is network.
+    // Wipe any caches left behind by older SW versions.
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch {}
     await self.clients.claim();
-    // Tell every controlled client to hard-reload itself.
-    const clients = await self.clients.matchAll({ type: "window" });
-    for (const c of clients) {
-      try { c.navigate(c.url); } catch {}
-    }
-    // Unregister this SW so future loads bypass it entirely.
-    await self.registration.unregister();
+    // Quietly unregister this SW too. After this, the browser will not
+    // run a service worker for this origin until a new register() call
+    // happens (which the page no longer does).
+    try { await self.registration.unregister(); } catch {}
   })());
 });
-
-// Pass every fetch straight through to the network. No caching at all.
+// Pass-through fetch handler. Required for the SW to count as "active"
+// but always returns the network response with no caching.
 self.addEventListener("fetch", (event) => {
   event.respondWith(fetch(event.request).catch(() => Response.error()));
 });
