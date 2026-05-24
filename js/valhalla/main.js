@@ -1775,44 +1775,41 @@ class Valhalla {
   // If any texture 404s the material just falls back to its colour . 
   // no breakage, just less detail.
   _loadPbrTextureLibrary() {
-    if (this._pbrLib) return this._pbrLib;
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = "anonymous";
-    const POLYHAVEN = "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/";
-    const load = (slug, type) => {
-      const url = `${POLYHAVEN}${slug}/${slug}_${type}_1k.jpg`;
-      const tex = loader.load(url, undefined, undefined, (e) => {
-        console.warn(`[PBR] failed to load ${slug}/${type}`, e);
-      });
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-      tex.anisotropy = 4;
-      if (type === "diff") tex.colorSpace = THREE.SRGBColorSpace;
-      return tex;
-    };
-    const lib = {
-      snow:  { diff: load("snow_02", "diff"), nor: load("snow_02", "nor_gl"), rough: load("snow_02", "rough") },
-      stone: { diff: load("aerial_rocks_02", "diff"), nor: load("aerial_rocks_02", "nor_gl"), rough: load("aerial_rocks_02", "rough") },
-      wood:  { diff: load("wood_planks_02", "diff"),  nor: load("wood_planks_02", "nor_gl"),  rough: load("wood_planks_02", "rough") },
-      iron:  { diff: load("metal_plate_02", "diff"),  nor: load("metal_plate_02", "nor_gl"),  rough: load("metal_plate_02", "rough") },
-    };
-    // Tighter UV repeat per-material (each prop sets repeat on clone)
-    this._pbrLib = lib;
-    return lib;
+    // Polyhaven CDN URLs return 404 (their path structure changed).
+    // Every texture load was failing and three.js was spamming
+    // "Texture marked for update but no image data found" every
+    // single frame, killing performance. Disabled entirely until
+    // we have a verified CDN. Returns null; _pbrMaterial then falls
+    // back to plain colour materials.
+    return null;
   }
 
-  // Build a PBR-textured MeshStandardMaterial using the loaded library.
-  // tint: optional THREE.Color to multiply over the albedo (useful for
-  // recolouring a generic stone to weathered granite, etc.)
+  // Build a coloured MeshStandardMaterial. Tries PBR textures first;
+  // falls back to plain colour. Currently always colour-only because
+  // the upstream PBR CDN is broken (see _loadPbrTextureLibrary).
   _pbrMaterial(libKey, opts = {}) {
+    // Sensible default colours per material kind so callers don't
+    // have to know what they're asking for.
+    const fallback = {
+      stone: 0x808080, wood: 0x4a3220, iron: 0x6a6e74, snow: 0xc8d4dc,
+    };
+    return new THREE.MeshStandardMaterial({
+      color:     opts.color || fallback[libKey] || 0x808080,
+      roughness: opts.roughness != null ? opts.roughness : 0.85,
+      metalness: opts.metalness != null ? opts.metalness : (libKey === "iron" ? 0.85 : 0.05),
+      flatShading: opts.flatShading !== false,
+    });
+  }
+
+  // (old PBR path kept here as a noop so _loadPbrTextureLibrary refs
+  // don't crash; remove these brackets entirely when PBR CDN returns.)
+  _pbrMaterialOLD(libKey, opts = {}) {
     const lib = this._loadPbrTextureLibrary();
-    const t = lib[libKey];
+    const t = lib ? lib[libKey] : null;
     if (!t) return new THREE.MeshStandardMaterial({ color: opts.color || 0x808080 });
-    // Clone textures so we can set per-material repeat without mutating shared.
     const clone = (tex, repeat) => {
-      const c = tex.clone();
-      c.needsUpdate = true;
-      const r = repeat || 1;
-      c.repeat.set(r, r);
+      const c = tex.clone(); c.needsUpdate = true;
+      const r = repeat || 1; c.repeat.set(r, r);
       return c;
     };
     const repeat = opts.repeat || 1;
@@ -5997,23 +5994,40 @@ class Valhalla {
       if (hrBtn && !hrBtn.disabled) hrBtn.click();
     });
 
-    // Belt and braces: the bio adapter injects its own floating widgets
-    // (badge, panel, sparkline, ritual) on every page. Our CSS hides them
-    // but some browsers respect inline display:flex set via injected
-    // <style> over our :not() rule. Just delete the nodes after they mount.
+    // Belt and braces: the bio adapter injects floating widgets that
+    // we don't want. Kill them by ID AND by any element whose id
+    // starts with 'bio-' (covers future widgets we don't know about
+    // yet). Also use a MutationObserver so anything re-mounted gets
+    // nuked the moment it appears, not on the next polling tick.
+    const LEGACY_IDS = [
+      "bio-badge", "bio-panel", "bio-menu-sparkline",
+      "bio-menu-ritual", "bio-tier-block", "bio-drill-host",
+    ];
     const nukeLegacyBio = () => {
-      for (const id of ["bio-badge", "bio-panel", "bio-menu-sparkline",
-                        "bio-menu-ritual", "bio-tier-block", "bio-drill-host"]) {
+      // By explicit ID
+      for (const id of LEGACY_IDS) {
         const el = document.getElementById(id);
         if (el) el.remove();
       }
+      // By id prefix or class prefix (covers future widgets)
+      const all = document.querySelectorAll('[id^="bio-"], [class^="bio-"]');
+      for (const el of all) {
+        // Don't nuke our own bio status pill — it's class _bioPillEl
+        // and has no bio- prefix in id/class. Safe.
+        el.remove();
+      }
     };
-    window.addEventListener("bio:ready", nukeLegacyBio, { once: true });
-    // Run it once immediately too in case bio mounted before main.js bound the listener.
+    window.addEventListener("bio:ready", nukeLegacyBio);
     nukeLegacyBio();
-    // And again after a tick to catch any late mounts.
-    setTimeout(nukeLegacyBio, 500);
-    setTimeout(nukeLegacyBio, 1500);
+    setTimeout(nukeLegacyBio, 200);
+    setTimeout(nukeLegacyBio, 800);
+    setTimeout(nukeLegacyBio, 2000);
+    // MutationObserver as the permanent guard. Anything added to body
+    // with a bio- id/class prefix gets removed on the next microtask.
+    try {
+      const mo = new MutationObserver(() => nukeLegacyBio());
+      mo.observe(document.body, { childList: true, subtree: false });
+    } catch {}
   }
 
   _bindBio() {
