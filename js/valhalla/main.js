@@ -5914,34 +5914,31 @@ class Valhalla {
     wireBioBtn($("bioHrBtn"), "rppg");
     wireBioBtn($("bioEegBtn"), "eeg");
 
-    // Detect Web Bluetooth availability at boot and surface the most
-    // common failure modes up front so the player doesn't click "Pair"
-    // only to get a generic browser error. Most users on Safari / iOS /
-    // Firefox simply can't use the EEG path. better to say that than
-    // let them keep trying.
+    // Web Bluetooth gating. ONLY surface an error if the browser
+    // genuinely can't pair (no API / insecure context). In those
+    // cases the user needs to know. When everything is fine, the
+    // hint stays hidden. No "Before pairing:" wall of text. The
+    // button tooltip already explains what's needed.
     const hint = $("bioBleHint");
     const eegBtn = $("bioEegBtn");
     if (hint && eegBtn) {
+      hint.style.display = "none";
       if (typeof navigator === "undefined" || !navigator.bluetooth) {
         const ua = (typeof navigator !== "undefined" ? navigator.userAgent : "") || "";
-        let msg = "Your browser doesn't support Web Bluetooth. try Chrome or Edge on desktop.";
-        if (/iPhone|iPad|iPod/.test(ua))                msg = "iOS doesn't allow Web Bluetooth. Open this on Chrome/Edge desktop to pair a Muse.";
-        else if (/Firefox/.test(ua))                    msg = "Firefox doesn't support Web Bluetooth yet. Use Chrome or Edge to pair a Muse.";
-        else if (/Safari/.test(ua) && !/Chrome/.test(ua)) msg = "Safari doesn't support Web Bluetooth. Use Chrome or Edge to pair a Muse.";
+        let msg = "This browser cannot pair a Muse. Use Chrome or Edge on desktop.";
+        if (/iPhone|iPad|iPod/.test(ua))                msg = "iOS cannot pair a Muse. Use Chrome or Edge desktop.";
+        else if (/Firefox/.test(ua))                    msg = "Firefox cannot pair a Muse. Use Chrome or Edge.";
+        else if (/Safari/.test(ua) && !/Chrome/.test(ua)) msg = "Safari cannot pair a Muse. Use Chrome or Edge.";
         hint.textContent = msg;
         hint.style.display = "block";
         eegBtn.disabled = true;
         eegBtn.title = msg;
       } else if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-        hint.textContent = "Web Bluetooth requires HTTPS or localhost. Run start-game.bat / node server.js. don't double-click index.html.";
+        hint.textContent = "Pairing needs HTTPS or localhost. Run start-game.bat.";
         hint.style.display = "block";
         eegBtn.disabled = true;
-      } else {
-        // BLE is supported. Show a quick checklist as a soft pre-flight
-        // hint so the user knows what to do BEFORE clicking Pair.
-        hint.innerHTML = "<b>Before pairing:</b> turn your Muse on (LED solid), unpair it from your phone or Muse app, and have Bluetooth enabled on your computer. Then click Pair and pick the Muse from the browser dialog.";
-        hint.style.display = "block";
       }
+      // No "everything fine" message. Silence is the right default.
     }
 
     // EEG DIAGNOSE link. clickable, runs all environment checks and

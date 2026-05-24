@@ -668,6 +668,19 @@
        different module URL and evaluate the whole graph twice (8x with the
        circular import chain). server.js already sends cache-control: no-cache. -->
   <script type="module" src="./js/bio/index.js"></script>
+  <script>
+    // GUARANTEE the loader vanishes after 4s no matter what. The menu
+    // renders before the game finishes booting; we don't want the
+    // 'Loading' overlay sitting on top of a functional menu just
+    // because some asset loader stalled. This is independent of any
+    // module success/failure.
+    setTimeout(() => {
+      const ldr = document.getElementById("loader");
+      if (!ldr) return;
+      ldr.classList.add("hide");
+      setTimeout(() => { if (ldr.parentNode) ldr.parentNode.removeChild(ldr); }, 500);
+    }, 4000);
+  </script>
   <!-- Inline fast-fail for file:// (won't reach main.js if module imports
        fail). Sets a helpful loader message rather than hanging. -->
   <script>
@@ -1177,7 +1190,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524f"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524g"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which
