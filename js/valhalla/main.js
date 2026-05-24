@@ -5272,6 +5272,8 @@ class Valhalla {
     Store.tryRestoreFromUrl();
     this._refreshSkaldLine();
     this._bootCloudSync();
+    // Re-schedule the next daily reminder if user previously enabled it.
+    this._scheduleNextReminder();
 
     // Bio buttons live-mirror sensor status. Previous version was a one-
     // shot setter: button said "On" forever based on the start() return,
@@ -5608,6 +5610,160 @@ class Valhalla {
     $("bestScore").textContent = (s.bestScore || 0).toLocaleString();
     $("bestDist").textContent = `${Math.round(s.bestDist || 0)}m`;
     $("totalRuns").textContent = s.totalRuns || 0;
+    // Nudge + trends — depend on history, so refresh whenever stats reload.
+    this._renderMenuNudge();
+    this._renderMenuTrends();
+  }
+
+  // Personalised nudge shown on the menu. Picks ONE message based on
+  // a priority ladder over the user's history. Hidden if no history
+  // exists (first launch).
+  _renderMenuNudge() {
+    const el = document.getElementById("menuNudge");
+    const txt = document.getElementById("menuNudgeText");
+    if (!el || !txt) return;
+    const s = Store.load();
+    const daily = s.daily || {};
+    const days = Object.keys(daily).sort();
+    if (days.length === 0) { el.style.display = "none"; return; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    const todayD = daily[today];
+    const lastPlayed = days[days.length - 1];
+    const daysSincePlay = Math.floor((Date.now() - new Date(lastPlayed).getTime()) / 86400000);
+
+    // Compute rolling stats for context
+    const last7 = days.slice(-7).map(d => daily[d]);
+    const last30 = days.slice(-30).map(d => daily[d]);
+    const flowSum = (arr) => arr.reduce((s, d) => s + (d?.flowSec || 0), 0);
+    const flow7 = flowSum(last7);
+    const flow30 = flowSum(last30);
+    const flow7avg = flow7 / Math.max(1, last7.length);
+
+    // PRIORITY LADDER — most-urgent / most-meaningful first.
+    let message = null;
+    let tone = "neutral";
+
+    // 1. Streak in jeopardy
+    if (daysSincePlay >= 1 && (s.streak || 0) >= 2 && lastPlayed !== today) {
+      const streak = s.streak;
+      message = `🔥 Your ${streak}-day streak is at risk — play today to keep it alive.`;
+      tone = "urgent";
+    }
+    // 2. Best-ever flow week
+    else if (flow7 > 0 && (s.bestWeekFlowSec || 0) < flow7) {
+      message = `🌊 Your best Flow week ever — ${Math.round(flow7)}s across 7 days. The gods favour you.`;
+      tone = "win";
+      // Lock in the new high-water mark so we don't celebrate it again next session.
+      const next = Store.load();
+      next.bestWeekFlowSec = flow7;
+      Store.save(next);
+    }
+    // 3. Calm peak from yesterday → beat it
+    else if (daily[yesterday] && daily[yesterday].calmSec > 30) {
+      message = `☁ Yesterday you held Calm for ${Math.round(daily[yesterday].calmSec)}s — try to beat it today.`;
+      tone = "challenge";
+    }
+    // 4. Trend up
+    else if (flow30 > 0 && flow7avg > flow30 / 30 * 1.3) {
+      message = `📈 Your Flow time is up sharply this week vs. your 30-day average. Keep going.`;
+      tone = "win";
+    }
+    // 5. Streak milestone soon
+    else if ((s.streak || 0) >= 2 && (s.streak || 0) < 7) {
+      message = `🔥 ${s.streak} days in a row. ${7 - s.streak} more for your 7-day streak honour.`;
+      tone = "neutral";
+    }
+    // 6. Welcome back
+    else if (daysSincePlay >= 2) {
+      message = `⚔ Welcome back. It's been ${daysSincePlay} days — your Skald has been watching the horizon.`;
+      tone = "neutral";
+    }
+    // 7. First-of-day greeting
+    else if (lastPlayed !== today) {
+      const hr = new Date().getHours();
+      const greeting = hr < 12 ? "Morning" : hr < 17 ? "Afternoon" : "Evening";
+      message = `${greeting}, Skald. The realms await.`;
+      tone = "neutral";
+    }
+
+    if (!message) { el.style.display = "none"; return; }
+
+    txt.textContent = message;
+    el.style.display = "block";
+    // Subtle tone variation in the border colour
+    const borderColours = { urgent: "rgba(255,140,90,.45)", win: "rgba(120,220,180,.4)", challenge: "rgba(160,180,255,.4)", neutral: "rgba(212,173,106,.28)" };
+    el.style.borderColor = borderColours[tone] || borderColours.neutral;
+  }
+
+  // 30-day trends panel — bar chart of flow seconds per day +
+  // day-of-week heatmap showing when the user plays best.
+  _renderMenuTrends() {
+    const body = document.getElementById("menuTrendsBody");
+    if (!body) return;
+    const s = Store.load();
+    const daily = s.daily || {};
+    const dayKeys = Object.keys(daily).sort();
+    if (dayKeys.length === 0) {
+      body.innerHTML = `<div style="opacity:.6;font-size:11.5px">Play a run to start building your trends.</div>`;
+      return;
+    }
+
+    // 30-day flow chart
+    const today = new Date();
+    const flow = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const day = daily[key];
+      flow.push({ key, fs: day?.flowSec || 0, runs: day?.runs || 0 });
+    }
+    const maxFlow = Math.max(1, ...flow.map(f => f.fs));
+    const totalFlow = flow.reduce((sum, f) => sum + f.fs, 0);
+    const activeDays = flow.filter(f => f.runs > 0).length;
+
+    // Day-of-week aggregation
+    const dowNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dowFlow = [0, 0, 0, 0, 0, 0, 0];
+    const dowRuns = [0, 0, 0, 0, 0, 0, 0];
+    for (const k of dayKeys) {
+      const dow = new Date(k).getDay();
+      dowFlow[dow] += daily[k].flowSec || 0;
+      dowRuns[dow] += daily[k].runs || 0;
+    }
+    const maxDow = Math.max(1, ...dowFlow);
+    const bestDow = dowFlow.indexOf(Math.max(...dowFlow));
+
+    // 30-day bar chart
+    const flowBars = flow.map(f => {
+      const h = Math.round((f.fs / maxFlow) * 36);
+      const today = f.key === new Date().toISOString().slice(0, 10);
+      const c = f.runs === 0 ? "rgba(212,173,106,.12)" : today ? "#f4d49a" : "rgba(122,217,255,.55)";
+      return `<div style="width:6px;height:${Math.max(2, h)}px;background:${c};border-radius:1px;flex-shrink:0" title="${f.key}: ${Math.round(f.fs)}s flow, ${f.runs} runs"></div>`;
+    }).join("");
+
+    // Day-of-week heatmap
+    const dowHtml = dowNames.map((n, i) => {
+      const intensity = dowFlow[i] / maxDow;
+      const op = 0.15 + intensity * 0.7;
+      const isBest = i === bestDow && dowFlow[i] > 0;
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">`
+           + `<div style="width:100%;height:22px;background:rgba(122,217,255,${op});border-radius:3px;${isBest ? "outline:1.5px solid #f4d49a;" : ""}"></div>`
+           + `<div style="font-size:9px;letter-spacing:.04em;color:rgba(255,255,255,${isBest ? ".95" : ".5"})">${n}</div>`
+           + `</div>`;
+    }).join("");
+
+    body.innerHTML =
+        `<div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.65);margin-bottom:6px;letter-spacing:.02em">`
+      + `<span>${activeDays} active days · ${Math.round(totalFlow)}s flow total</span>`
+      + `<span style="color:#f4d49a">Best: ${dowNames[bestDow]}</span>`
+      + `</div>`
+      + `<div style="font-size:9.5px;letter-spacing:.18em;color:rgba(212,173,106,.55);text-transform:uppercase;margin-bottom:4px;font-weight:600">Last 30 days · flow</div>`
+      + `<div style="display:flex;align-items:flex-end;gap:2px;height:40px;margin-bottom:14px">${flowBars}</div>`
+      + `<div style="font-size:9.5px;letter-spacing:.18em;color:rgba(212,173,106,.55);text-transform:uppercase;margin-bottom:4px;font-weight:600">Best day of week</div>`
+      + `<div style="display:flex;gap:4px;margin-bottom:4px">${dowHtml}</div>`;
   }
 
   // Update the small "🪶 Skald · {name} · Local only" line in the
@@ -5689,6 +5845,63 @@ class Valhalla {
       }
     });
 
+    // Daily reminder notification setup.
+    const remTime = document.getElementById("reminderTime");
+    const remToggle = document.getElementById("reminderToggle");
+    const remStatus = document.getElementById("reminderStatus");
+    const refreshReminderUI = () => {
+      const enabled = localStorage.getItem("valhalla.reminderEnabled") === "1";
+      const time = localStorage.getItem("valhalla.reminderTime") || "20:00";
+      const perm = (typeof Notification !== "undefined") ? Notification.permission : "unsupported";
+      if (remTime) remTime.value = time;
+      if (remToggle) {
+        remToggle.textContent = enabled ? "Disable" : "Enable";
+        remToggle.style.background = enabled ? "rgba(120,200,140,.2)" : "rgba(212,173,106,.15)";
+      }
+      if (remStatus) {
+        if (perm === "unsupported") remStatus.textContent = "Browser doesn't support notifications";
+        else if (perm === "denied") remStatus.textContent = "Notifications blocked — re-enable in browser settings";
+        else if (enabled && perm === "granted") remStatus.textContent = `On — your Skald will call at ${time} when the tab is open`;
+        else if (enabled) remStatus.textContent = "Pending — click Enable to grant permission";
+        else remStatus.textContent = "Off — Skald won't bug you";
+      }
+    };
+    refreshReminderUI();
+    if (remToggle) {
+      remToggle.addEventListener("click", async () => {
+        if (typeof Notification === "undefined") {
+          this._showSyncResult("This browser doesn't support notifications.", "err");
+          return;
+        }
+        const enabled = localStorage.getItem("valhalla.reminderEnabled") === "1";
+        if (enabled) {
+          localStorage.setItem("valhalla.reminderEnabled", "0");
+          if (this._reminderHandle) { clearTimeout(this._reminderHandle); this._reminderHandle = null; }
+          this._showSyncResult("Daily reminder turned off.", "ok");
+        } else {
+          let perm = Notification.permission;
+          if (perm === "default") perm = await Notification.requestPermission();
+          if (perm !== "granted") {
+            this._showSyncResult("Permission denied — enable in browser settings.", "err");
+            refreshReminderUI();
+            return;
+          }
+          localStorage.setItem("valhalla.reminderEnabled", "1");
+          localStorage.setItem("valhalla.reminderTime", remTime?.value || "20:00");
+          this._scheduleNextReminder();
+          this._showSyncResult("Reminder set. Skald will call you daily.", "ok");
+        }
+        refreshReminderUI();
+      });
+    }
+    if (remTime) {
+      remTime.addEventListener("change", () => {
+        localStorage.setItem("valhalla.reminderTime", remTime.value);
+        if (localStorage.getItem("valhalla.reminderEnabled") === "1") this._scheduleNextReminder();
+        refreshReminderUI();
+      });
+    }
+
     // Graphics quality picker — applies on next refresh.
     const qPicker = document.getElementById("qualityPicker");
     const qCurrent = document.getElementById("qualityCurrent");
@@ -5737,6 +5950,39 @@ class Valhalla {
     el.textContent = msg;
     clearTimeout(this._syncResultT);
     this._syncResultT = setTimeout(() => { el.textContent = ""; }, 5000);
+  }
+
+  // Daily reminder scheduler. Fires a browser notification at the
+  // user-chosen time. Note: this only works while the tab is open
+  // (no service worker yet — that comes in Phase 4b PWA pass).
+  _scheduleNextReminder() {
+    if (this._reminderHandle) { clearTimeout(this._reminderHandle); this._reminderHandle = null; }
+    if (localStorage.getItem("valhalla.reminderEnabled") !== "1") return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const time = localStorage.getItem("valhalla.reminderTime") || "20:00";
+    const [hh, mm] = time.split(":").map(Number);
+    if (isNaN(hh) || isNaN(mm)) return;
+    const now = new Date();
+    const next = new Date();
+    next.setHours(hh, mm, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const delay = next - now;
+    this._reminderHandle = setTimeout(() => {
+      try {
+        const s = Store.load();
+        const streak = s.streak || 0;
+        const bodyLine = streak >= 2
+          ? `Keep your ${streak}-day streak alive. The realms await.`
+          : "Time for Valhalla — the realms await.";
+        new Notification("⚔ Your Skald calls", {
+          body: bodyLine,
+          icon: "/favicon.ico",
+          tag: "valhalla-daily",
+          requireInteraction: false,
+        });
+      } catch (e) { console.warn("[Valhalla] notification failed", e); }
+      this._scheduleNextReminder();   // schedule next day
+    }, delay);
   }
 
   // On boot, if the host (Elata App Store) injected ElataSync, do an
