@@ -1410,6 +1410,10 @@ class Valhalla {
     this._buildPlayer();
     this._buildSnow();
     this._buildScenery();
+    // Atmospheric layers — god rays cutting through scene + drifting
+    // mist at ground level. Cheap additive sprites, big realism win.
+    this._buildGodRays();
+    this._buildMist();
     this._buildHUD();
     this._bindInput();
     this._bindBio();
@@ -2288,15 +2292,19 @@ class Valhalla {
   }
 
   _buildWater() {
-    // Two long fjord strips far to the sides, with simple Water shader
+    // Two long fjord strips far to the sides, with the real Water
+    // shader. Procedural normal map as immediate fallback so the
+    // water looks correct from frame 1; real high-quality normals
+    // from threejs CDN load async and swap in.
     const waterGeo = new THREE.PlaneGeometry(60, VIEW_DEPTH);
+    const fallbackNormals = this._makeRippleTexture();
     const makeWater = () => new Water(waterGeo, {
       textureWidth: 256, textureHeight: 256,
-      waterNormals: this._makeRippleTexture(),
+      waterNormals: fallbackNormals,
       sunDirection: this.sunPos.clone().normalize(),
       sunColor: 0xfff2d4,
-      waterColor: 0x223040,
-      distortionScale: 1.6,
+      waterColor: 0x1a2030,         // deeper Nordic fjord blue-grey
+      distortionScale: 2.2,         // more ripple detail
       fog: true,
     });
     const left = makeWater();
@@ -2308,6 +2316,133 @@ class Valhalla {
     right.position.set(58, -2.4, VIEW_DEPTH / 2);
     this.scene.add(right);
     this.water = [left, right];
+
+    // Real water normal map — swap in over the procedural one for
+    // proper photographic ripples. threejs.org/examples ships this
+    // texture; same CORS path as Soldier.glb and Horse.glb.
+    try {
+      new THREE.TextureLoader().load(
+        "https://threejs.org/examples/textures/waternormals.jpg",
+        (tex) => {
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+          for (const w of this.water) {
+            w.material.uniforms["normalSampler"].value = tex;
+          }
+          console.log("[Valhalla] real water normals loaded");
+        }
+      );
+    } catch (e) { console.warn("[Valhalla] water normals load failed", e); }
+  }
+
+  // GOD RAYS — cheap, beautiful. Six additive radial-gradient planes
+  // anchored to the sun direction, fading by distance. Reads as
+  // sunlight cutting through the canopy / mist without needing the
+  // expensive GodRaysPass shader.
+  _buildGodRays() {
+    if (this.quality === "low") return;
+    const grp = new THREE.Group();
+    // Radial-gradient texture: warm core fading to transparent.
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const ctx = c.getContext("2d");
+    const g = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+    g.addColorStop(0,    "rgba(255,234,196,0.50)");
+    g.addColorStop(0.4,  "rgba(255,210,150,0.18)");
+    g.addColorStop(1,    "rgba(255,200,140,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, fog: false, side: THREE.DoubleSide,
+    });
+    // 6 elongated rays at decreasing scale + opacity
+    for (let i = 0; i < 6; i++) {
+      const ray = new THREE.Mesh(new THREE.PlaneGeometry(40, 80), mat.clone());
+      ray.material.opacity = 0.18 - i * 0.02;
+      ray.position.set(
+        (Math.random() - 0.5) * 30,
+        18 + i * 4,
+        20 + i * 10
+      );
+      // Rotate to point roughly from sun toward camera
+      ray.rotation.x = -Math.PI / 4 + (Math.random() - 0.5) * 0.2;
+      ray.rotation.z = Math.PI / 6 + (Math.random() - 0.5) * 0.4;
+      ray.userData.driftSpeed = 0.05 + Math.random() * 0.08;
+      ray.userData.phase = Math.random() * Math.PI * 2;
+      grp.add(ray);
+    }
+    this.godRays = grp;
+    this.scene.add(grp);
+  }
+
+  // Per-frame: drift rays slowly and follow the camera so they always
+  // read against the sun direction.
+  _updateGodRays(dt) {
+    if (!this.godRays) return;
+    const t = performance.now() * 0.001;
+    this.godRays.position.z = this.distance + 60;
+    this.godRays.position.x = this.player ? this.player.position.x * 0.3 : 0;
+    for (const ray of this.godRays.children) {
+      const u = ray.userData;
+      // Subtle breathing — opacity fluctuates 0.6-1.0 of baseline so
+      // the rays feel alive (like light pulsing through moving clouds).
+      ray.material.opacity = (ray.material.opacity || 0.1) *
+        (0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * u.driftSpeed * 4 + u.phase)));
+      // Cap so it doesn't drift toward 0 over many frames.
+      if (ray.material.opacity < 0.005) ray.material.opacity = 0.01;
+    }
+  }
+
+  // VOLUMETRIC MIST — drifting low ground sprites. 12 quads with a
+  // soft-edged white-grey texture, alpha-blended, scrolling slowly.
+  // Cheap atmospheric depth.
+  _buildMist() {
+    if (this.quality === "low") return;
+    const c = document.createElement("canvas");
+    c.width = c.height = 128;
+    const ctx = c.getContext("2d");
+    const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 64);
+    g.addColorStop(0,   "rgba(220,225,232,0.55)");
+    g.addColorStop(0.6, "rgba(200,210,220,0.22)");
+    g.addColorStop(1,   "rgba(200,210,220,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, depthWrite: false, fog: true,
+      side: THREE.DoubleSide, opacity: 0.65,
+    });
+    const grp = new THREE.Group();
+    const count = this.quality === "high" ? 14 : 8;
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(18, 6), mat.clone());
+      m.position.set(
+        (Math.random() - 0.5) * 40,
+        0.4 + Math.random() * 1.2,
+        i * 25 + Math.random() * 12
+      );
+      m.rotation.x = -Math.PI / 2 + 0.05;
+      m.rotation.y = (Math.random() - 0.5) * 0.6;
+      m.material.opacity = 0.35 + Math.random() * 0.2;
+      m.userData.drift = 0.5 + Math.random() * 0.4;
+      grp.add(m);
+    }
+    this.mist = grp;
+    this.scene.add(grp);
+  }
+
+  _updateMist(dt) {
+    if (!this.mist) return;
+    for (const m of this.mist.children) {
+      // Drift sideways slowly (wind direction).
+      m.position.x += m.userData.drift * dt * 0.3;
+      if (m.position.x > 30) m.position.x = -30;
+      // Recycle when far behind camera.
+      if (m.position.z < this.distance - 30) m.position.z += 14 * 25;
+    }
   }
 
   _makeRippleTexture() {
@@ -7476,6 +7611,9 @@ class Valhalla {
     this._updateRunestones();
     this._updateFirePits(dt);
     this._updatePineForest();
+    // Atmospheric layers
+    this._updateGodRays(dt);
+    this._updateMist(dt);
 
     // scenery bobs — only the non-longship pieces (longships have their
     // own bob logic inside _updateLongships that combines forward sail
