@@ -3461,6 +3461,71 @@ class Valhalla {
     }
   }
 
+  // BATTLE HELMS — load DamagedHelmet (Khronos glTF reference asset)
+  // and scatter 4 around the meadow as battlefield mementos. The
+  // model is THE PBR reference asset — every metalness/roughness
+  // pixel was authored; reads as authentic battered metal under our
+  // HDRI environment. Same async/fallback pattern as Horse/Stork.
+  _loadBattleHelms() {
+    try {
+      const loader = new GLTFLoader();
+      // Try the threejs CDN copy first (proven to work for other GLBs).
+      // The Khronos sample-models repo also serves a copy via jsdelivr
+      // as a fallback, but jsdelivr's not guaranteed for that repo.
+      const urls = [
+        "https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
+        "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb",
+      ];
+      const tryUrl = (i) => {
+        if (i >= urls.length) {
+          console.warn("[Valhalla] no battle helm CDN reachable");
+          return;
+        }
+        loader.load(urls[i], (gltf) => {
+          try {
+            this._battleHelms = [];
+            for (let k = 0; k < 4; k++) {
+              const helm = gltf.scene.clone(true);
+              helm.scale.setScalar(0.55);
+              helm.traverse((o) => {
+                if (!o.isMesh) return;
+                o.castShadow = true;
+                o.receiveShadow = false;
+                o.frustumCulled = false;
+              });
+              const side = k % 2 === 0 ? -1 : 1;
+              helm.position.set(
+                side * (10 + Math.random() * 5),
+                0.45,
+                100 + k * 220
+              );
+              helm.rotation.y = Math.random() * Math.PI * 2;
+              helm.rotation.z = (Math.random() - 0.5) * 0.4;     // toppled angle
+              this.scene.add(helm);
+              this._battleHelms.push({ mesh: helm });
+            }
+            console.log(`[Valhalla] battle helms loaded from ${urls[i]}`);
+          } catch (e) {
+            console.warn("[Valhalla] helm setup failed", e);
+          }
+        }, undefined, () => tryUrl(i + 1));
+      };
+      tryUrl(0);
+    } catch (e) {
+      console.warn("[Valhalla] helm loader setup failed", e);
+    }
+  }
+
+  // Recycle battle helms behind→ahead like other scenery.
+  _updateBattleHelms() {
+    if (!this._battleHelms) return;
+    for (const h of this._battleHelms) {
+      if (h.mesh.position.z - this.distance < -30) {
+        h.mesh.position.z += 4 * 220;
+      }
+    }
+  }
+
   _buildSnow() {
     // Two layers of snow particles:
     // 1. CLOSE flakes - small count, big, very visible, RIGHT in front of
@@ -3622,6 +3687,12 @@ class Valhalla {
     // scatter them in the distant meadows. Vikings rode horses; this
     // is the single biggest "real Viking world" cue.
     this._loadRealHorses();
+    // BATTLE HELMS — DamagedHelmet.glb scattered on the road as a
+    // memento mori (fallen warrior left their helmet behind). Real
+    // high-quality PBR model with worn metal + leather straps + dents
+    // — reads as authentic Viking-age helm and shows off the HDRI
+    // environment lighting / reflections.
+    this._loadBattleHelms();
 
     // SHADOW PASS — ONLY enable receiveShadow on scenery. Casting is
     // the expensive operation (re-renders the scene from sun POV).
@@ -7607,10 +7678,11 @@ class Valhalla {
     this._updateRealHorses(dt);
     // Longship fleet sailing past
     this._updateLongships(dt);
-    // Runestones + fire pits + pine forest recycle behind→ahead
+    // Runestones + fire pits + pine forest + helms recycle behind→ahead
     this._updateRunestones();
     this._updateFirePits(dt);
     this._updatePineForest();
+    this._updateBattleHelms();
     // Atmospheric layers
     this._updateGodRays(dt);
     this._updateMist(dt);
