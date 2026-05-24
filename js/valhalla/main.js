@@ -697,21 +697,121 @@ class Audio {
   startWind() {
     this.ensure();
     if (!this.ctx || this.windNode) return;
-    const noise = this._noiseSrc(true);
+    // LAYERED WIND: two pink-noise streams through different filters
+    // — the high-passed one becomes the "whistling through pines"
+    // overtone, the low-passed one is the bulk wash. Together this
+    // sounds like real outdoor wind, not a single white-noise hiss.
+    // The previous single-LP version was the "shit and fraud" wind
+    // the user kept calling out.
+    const noiseLow = this._noiseSrc(true);
     const lp = this.ctx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 380; lp.Q.value = 0.5;
-    const g = this.ctx.createGain(); g.gain.value = 0.10;
-    noise.connect(lp); lp.connect(g);
-    this._send(g, 0.3);
-    noise.start();
-    this.windNode = { noise, lp, g };
+    lp.type = "lowpass"; lp.frequency.value = 380; lp.Q.value = 0.6;
+    const gLow = this.ctx.createGain(); gLow.gain.value = 0.11;
+    noiseLow.connect(lp); lp.connect(gLow);
+
+    const noiseHi = this._noiseSrc(true);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 1400; bp.Q.value = 2.8;
+    const gHi = this.ctx.createGain(); gHi.gain.value = 0.035;
+    noiseHi.connect(bp); bp.connect(gHi);
+
+    this._send(gLow, 0.35);
+    this._send(gHi, 0.55);
+    noiseLow.start(); noiseHi.start();
+
+    this.windNode = { noiseLow, noiseHi, lp, bp, gLow, gHi };
+    // Slow LFO on the bulk-wind cutoff + gain (~10s cycle) for the
+    // "gust building and dying" feel. Bandpass cutoff drifts 1.5x as
+    // fast so the whistle and bulk aren't locked together.
     setInterval(() => {
       if (!this.windNode || !this.ctx) return;
       const t = this.ctx.currentTime;
-      const target = 220 + Math.random() * 260;
-      this.windNode.lp.frequency.linearRampToValueAtTime(target, t + 1.6);
-      this.windNode.g.gain.linearRampToValueAtTime(0.07 + Math.random() * 0.07, t + 1.6);
+      this.windNode.lp.frequency.linearRampToValueAtTime(220 + Math.random() * 260, t + 1.6);
+      this.windNode.gLow.gain.linearRampToValueAtTime(0.075 + Math.random() * 0.08, t + 1.6);
     }, 1600);
+    setInterval(() => {
+      if (!this.windNode || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      this.windNode.bp.frequency.linearRampToValueAtTime(900 + Math.random() * 1400, t + 1.0);
+      this.windNode.gHi.gain.linearRampToValueAtTime(0.012 + Math.random() * 0.045, t + 1.0);
+    }, 1100);
+  }
+
+  // FIRE CRACKLE — continuous looped texture for the camp ambience.
+  // Built from two layers:
+  //   * Brown noise through a lowpass = the bass "whoosh" of the fire
+  //   * Random tiny noise bursts = the snap/crackle/pop of embers
+  // Volume modulates with `intensity` (0..1) so we can fade it up
+  // when the player is near a fire pit and down when running through
+  // pure meadow.
+  startFireAmbience() {
+    this.ensure();
+    if (!this.ctx || this.fireNode) return;
+    const ctx = this.ctx;
+    const master = ctx.createGain();
+    master.gain.value = 0.0;     // starts silent; setFireProximity() raises it
+    // 1) Bass wash
+    const noise = this._noiseSrc(true);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 200; lp.Q.value = 0.4;
+    const gWash = ctx.createGain(); gWash.gain.value = 0.32;
+    noise.connect(lp); lp.connect(gWash); gWash.connect(master);
+    noise.start();
+    // 2) Crackle scheduler — random small bursts of HP-filtered noise.
+    // Each burst is 30–80ms with a sharp envelope.
+    const scheduleCrackle = () => {
+      if (!this.fireNode || !this.ctx) return;
+      const when = ctx.currentTime;
+      const burst = this._noiseSrc(false);
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass"; hp.frequency.value = 1800; hp.Q.value = 1.2;
+      const g = ctx.createGain();
+      const dur = 0.03 + Math.random() * 0.05;
+      const amp = 0.18 + Math.random() * 0.22;
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(amp, when + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      burst.connect(hp); hp.connect(g); g.connect(master);
+      burst.start(when); burst.stop(when + dur + 0.02);
+      // Next crackle in 60–280ms.
+      setTimeout(scheduleCrackle, 60 + Math.random() * 220);
+    };
+    scheduleCrackle();
+    this._send(master, 0.18);    // small reverb so it sits in the space
+    master.connect(this.master);
+    this.fireNode = { master };
+  }
+
+  // Set fire ambience volume based on how close the player is to a
+  // fire (0..1). 0 = silent (no fire nearby), 1 = right next to one.
+  // Called from the per-frame update.
+  setFireProximity(p) {
+    if (!this.fireNode || !this.ctx) return;
+    const target = Math.max(0, Math.min(1, p)) * 0.65;
+    this.fireNode.master.gain.linearRampToValueAtTime(target, this.ctx.currentTime + 0.3);
+  }
+
+  // FOOTSTEP — short crunch sound when player stamps a footprint in
+  // snow. Brown noise burst with low-pass filtering and exponential
+  // envelope. Pitch + amplitude randomized so consecutive steps don't
+  // sound identical (the dead giveaway of fake game audio).
+  footstep() {
+    this.ensure();
+    if (!this.ctx || this.muted) return;
+    const ctx = this.ctx;
+    const when = ctx.currentTime;
+    const noise = this._noiseSrc(true);
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 400 + Math.random() * 250; hp.Q.value = 0.8;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 2400 + Math.random() * 800; lp.Q.value = 0.7;
+    const g = ctx.createGain();
+    const amp = 0.05 + Math.random() * 0.04;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(amp, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.14);
+    noise.connect(hp); hp.connect(lp); lp.connect(g); g.connect(this.master);
+    noise.start(when); noise.stop(when + 0.16);
   }
 
   // Loose ambient texture: distant raven calls, ocean wash, wind gust,
@@ -5913,6 +6013,7 @@ class Valhalla {
     this.audio.ensure();
     this.audio.startWind();
     this.audio.startMusic();
+    this.audio.startFireAmbience();
   }
 
   _gameOver() {
@@ -7062,11 +7163,38 @@ class Valhalla {
         const fp = this.footprints[this._fpIdx];
         fp.visible = true;
         fp.position.x = this.player.position.x + fp.userData.side;
-        // Stamp at current world distance; scroll it back through scene each frame
         fp.userData.spawnAt = this.distance;
         fp.material.opacity = 0.45;
         this._fpIdx = (this._fpIdx + 1) % this.footprints.length;
+        // SNOW CRUNCH — each footprint plays a randomised crunch.
+        // Single biggest 'this is real' cue at running speed.
+        if (this.audio?.footstep) this.audio.footstep();
       }
+    }
+
+    // FIRE PROXIMITY — fade fire-crackle ambience up when near any
+    // fire pit (scenery or obstacle). Squared falloff, max ~12m.
+    if (this.audio?.setFireProximity) {
+      let nearest = Infinity;
+      // scenery pits
+      if (this.firePits) {
+        for (const pit of this.firePits.children) {
+          const dz = (pit.position.z - this.distance);
+          const dx = pit.position.x - this.player.position.x;
+          const d = Math.hypot(dx, dz);
+          if (d < nearest) nearest = d;
+        }
+      }
+      // in-game fire obstacles
+      for (const o of this.obstacles) {
+        if (o.type !== "fire") continue;
+        const dz = (o.spawnAt - this.distance);
+        const dx = LANES[o.lane] - this.player.position.x;
+        const d = Math.hypot(dx, dz);
+        if (d < nearest) nearest = d;
+      }
+      const prox = nearest < 12 ? 1 - (nearest / 12) ** 2 : 0;
+      this.audio.setFireProximity(prox);
     }
     // Scroll all live footprints and fade them
     for (const fp of this.footprints) {
