@@ -1400,18 +1400,17 @@ class Valhalla {
     const qOverride = localStorage.getItem("valhalla.quality");  // 'high' | 'medium' | 'low'
     const quality = qOverride || this._detectGpuTier();
     this.quality = quality;
-    // PixelRatio: cap at native on high tier (sharp), 1.0 on medium/low.
-    this.renderer.setPixelRatio(quality === "high" ? Math.min(window.devicePixelRatio || 1, 1.5) : 1.0);
+    // PixelRatio HARD CAPPED at 1.0 regardless of tier. The user has
+    // repeatedly reported lag and DPR > 1 is the single biggest GPU
+    // multiplier (4x pixels on retina!). Sharpness loss is hidden by
+    // FXAA + grain + post-processing.
+    this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // EXPOSURE bumped 0.55 → 0.95. User feedback was "1980 wireframe" /
-    // dark/murky scene. 0.95 + ACES filmic + HDRI gives the cinematic
-    // Northman/Vikings look without blowing out the sky.
     this.renderer.toneMappingExposure = 0.95;
-    // SHADOWS — directional sun caster only, one shadow map. Cheap
-    // and massive visual win: the player + scenery suddenly have
-    // ground contact instead of floating like clip-art. Disabled
-    // entirely on 'low'.
+    // SHADOWS — one directional sun caster, 1024² max even on high.
+    // 2048² doubles the shader cost for marginal visual win at our
+    // distances. Disabled entirely on 'low'.
     if (quality === "high" || quality === "medium") {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1520,9 +1519,14 @@ class Valhalla {
           }
         `,
       };
-      const lut = new ShaderPass(lutShader);
-      this.composer.addPass(lut);
-      this.lutPass = lut;
+      // LUT only on 'high' — it's a full-screen shader pass that adds
+      // ~1ms on weak GPUs. ACES filmic + HDRI already give us the
+      // cinematic colour grade; LUT is the cherry on top.
+      if (this.quality === "high") {
+        const lut = new ShaderPass(lutShader);
+        this.composer.addPass(lut);
+        this.lutPass = lut;
+      }
 
       // FXAA last so it smooths the LUT output.
       const fxaa = new ShaderPass(FXAAShader);
@@ -1579,14 +1583,86 @@ class Valhalla {
       const ext = gl.getExtension("WEBGL_debug_renderer_info");
       const renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "";
       const r = String(renderer).toLowerCase();
-      // Known-weak Intel integrated → low
+      // Old Intel integrated → low (still gets HDRI off + no shadows)
       if (/intel.*hd graphics (3000|4000|520|530|620|630)/.test(r)) return "low";
-      if (/intel.*uhd graphics 6/.test(r)) return "low";
-      // Apple Silicon, dedicated, modern integrated → high
-      if (/apple|nvidia|geforce|radeon|rtx|gtx|rx /.test(r)) return "high";
-      // Everything else → medium (sane default)
+      if (/intel.*uhd graphics (6|7|10)/.test(r)) return "low";
+      // ONLY top-tier desktop / Apple Silicon Pro/Max gets 'high'.
+      // 'high' really only differs in shadow map resolution; pixelRatio
+      // is now capped everywhere. Mobile / mid-laptop GPUs marketed as
+      // "RTX 3050 Mobile" or "Radeon Graphics integrated" really aren't
+      // high tier — they're medium. Default everything else to medium.
+      if (/apple.*(m1|m2|m3) (max|ultra|pro)/.test(r)) return "high";
+      if (/rtx (40|30|20)([6-9]0)/.test(r)) return "high";    // RTX x060 and up
+      if (/rx (6|7)[7-9]00/.test(r)) return "high";           // RX 6700+
+      // Everything else → medium (sane default that still gets HDRI + shadows).
       return "medium";
     } catch { return "medium"; }
+  }
+
+  // REAL PBR TEXTURE LIBRARY — loads CC0 Polyhaven textures (snow,
+  // stone, wood, iron) via their CDN. Each material gets albedo +
+  // normal + roughness so flat-coloured procedural meshes suddenly
+  // gain surface detail without any geometry change. Loaded once,
+  // cached, reused everywhere we build a stone/wood/iron prop.
+  //
+  // Polyhaven serves CC0 textures from dl.polyhaven.org with proper
+  // CORS. Pattern: /file/ph-assets/Textures/jpg/1k/{slug}/{slug}_{map}_1k.jpg
+  // Maps used: diff (albedo), nor_gl (OpenGL normal), rough (roughness).
+  // If any texture 404s the material just falls back to its colour —
+  // no breakage, just less detail.
+  _loadPbrTextureLibrary() {
+    if (this._pbrLib) return this._pbrLib;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = "anonymous";
+    const POLYHAVEN = "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/";
+    const load = (slug, type) => {
+      const url = `${POLYHAVEN}${slug}/${slug}_${type}_1k.jpg`;
+      const tex = loader.load(url, undefined, undefined, (e) => {
+        console.warn(`[PBR] failed to load ${slug}/${type}`, e);
+      });
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.anisotropy = 4;
+      if (type === "diff") tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const lib = {
+      snow:  { diff: load("snow_02", "diff"), nor: load("snow_02", "nor_gl"), rough: load("snow_02", "rough") },
+      stone: { diff: load("aerial_rocks_02", "diff"), nor: load("aerial_rocks_02", "nor_gl"), rough: load("aerial_rocks_02", "rough") },
+      wood:  { diff: load("wood_planks_02", "diff"),  nor: load("wood_planks_02", "nor_gl"),  rough: load("wood_planks_02", "rough") },
+      iron:  { diff: load("metal_plate_02", "diff"),  nor: load("metal_plate_02", "nor_gl"),  rough: load("metal_plate_02", "rough") },
+    };
+    // Tighter UV repeat per-material (each prop sets repeat on clone)
+    this._pbrLib = lib;
+    return lib;
+  }
+
+  // Build a PBR-textured MeshStandardMaterial using the loaded library.
+  // tint: optional THREE.Color to multiply over the albedo (useful for
+  // recolouring a generic stone to weathered granite, etc.)
+  _pbrMaterial(libKey, opts = {}) {
+    const lib = this._loadPbrTextureLibrary();
+    const t = lib[libKey];
+    if (!t) return new THREE.MeshStandardMaterial({ color: opts.color || 0x808080 });
+    // Clone textures so we can set per-material repeat without mutating shared.
+    const clone = (tex, repeat) => {
+      const c = tex.clone();
+      c.needsUpdate = true;
+      const r = repeat || 1;
+      c.repeat.set(r, r);
+      return c;
+    };
+    const repeat = opts.repeat || 1;
+    return new THREE.MeshStandardMaterial({
+      map:          clone(t.diff,  repeat),
+      normalMap:    clone(t.nor,   repeat),
+      roughnessMap: clone(t.rough, repeat),
+      color:        opts.color || 0xffffff,
+      metalness:    opts.metalness != null ? opts.metalness : (libKey === "iron" ? 0.85 : 0.05),
+      roughness:    opts.roughness != null ? opts.roughness : 1.0,
+      normalScale:  new THREE.Vector2(opts.normalScale || 1.0, opts.normalScale || 1.0),
+      envMapIntensity: opts.envMapIntensity != null ? opts.envMapIntensity : 1.0,
+      flatShading:  false,
+    });
   }
 
   _loadEnvironment() {
@@ -1763,29 +1839,24 @@ class Valhalla {
     else sun.position.set(40, 50, -10);
     if (this.renderer.shadowMap.enabled) {
       sun.castShadow = true;
-      // Tight shadow frustum around the play area — bigger volumes
-      // waste resolution. Player area is ~20m wide, 60m deep.
-      sun.shadow.mapSize.set(
-        this.quality === "high" ? 2048 : 1024,
-        this.quality === "high" ? 2048 : 1024
-      );
+      // 1024² shadow map even on high — bigger doesn't help at our
+      // camera distance and doubles cost. Tight frustum around the
+      // play area for crisp resolution.
+      sun.shadow.mapSize.set(1024, 1024);
       sun.shadow.camera.near = 1;
-      sun.shadow.camera.far = 220;
-      sun.shadow.camera.left   = -45;
-      sun.shadow.camera.right  =  45;
-      sun.shadow.camera.top    =  35;
-      sun.shadow.camera.bottom = -35;
+      sun.shadow.camera.far = 180;
+      sun.shadow.camera.left   = -35;
+      sun.shadow.camera.right  =  35;
+      sun.shadow.camera.top    =  30;
+      sun.shadow.camera.bottom = -30;
       sun.shadow.bias = -0.0004;
       sun.shadow.normalBias = 0.04;
     }
     this.sun = sun;
     this.scene.add(sun);
     this.scene.add(sun.target);
-
-    // Cold steel-blue rim for silhouette separation against fog.
-    const rim = new THREE.DirectionalLight(0x7a8ca2, 0.55);
-    rim.position.set(-40, 30, -25);
-    this.scene.add(rim);
+    // Rim light removed — the HDRI + hemi + sun trio is enough now
+    // that exposure is bumped. One less directional light = perf win.
   }
 
   // Real CC0 PBR texture loader — pulls colour + normal maps from
@@ -2724,11 +2795,14 @@ class Valhalla {
   // their wraparound by relative-z scrolling.
   _buildRunestones() {
     if (!this.runestones) this.runestones = new THREE.Group();
-    const stoneMat = new THREE.MeshStandardMaterial({
-      color: 0x484d52, roughness: 1.0, flatShading: true,
+    // REAL PBR STONE — Polyhaven aerial_rocks_02 tinted toward weathered
+    // granite. Adds genuine surface detail (cracks, lichen, micro-
+    // shading) to what were previously flat-colour boxes.
+    const stoneMat = this._pbrMaterial("stone", {
+      color: new THREE.Color(0x6a6660), repeat: 1.4, normalScale: 1.3,
     });
     const carvedMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1814, emissive: 0x806340, emissiveIntensity: 0.4,
+      color: 0x1a1814, emissive: 0x806340, emissiveIntensity: 0.5,
       roughness: 0.9, flatShading: true,
     });
     // 8 stones (was 16), alternating sides, every ~140m with subtle
@@ -2790,8 +2864,9 @@ class Valhalla {
   // point-light glow. Recycled like runestones for endless scroll.
   _buildFirePits() {
     if (!this.firePits) this.firePits = new THREE.Group();
-    const stoneRingMat = new THREE.MeshStandardMaterial({
-      color: 0x2a2620, roughness: 1.0, flatShading: true,
+    // PBR stone for the fire ring (looks like real soot-blackened rock)
+    const stoneRingMat = this._pbrMaterial("stone", {
+      color: new THREE.Color(0x2a2620), repeat: 0.8, normalScale: 1.2,
     });
     const flameInnerMat = new THREE.MeshBasicMaterial({
       color: 0xffb050, transparent: true, opacity: 0.9, depthWrite: false,
@@ -3005,20 +3080,20 @@ class Valhalla {
     // for perf + visual breathing room: 60 meshes was crowding both the
     // GPU and the eye. Each gets its own sail speed so they don't move
     // in lockstep.
+    // Pre-build PBR materials shared across all 3 ships (same texture
+    // sample, different tints). Far cheaper than 3× the GPU memory.
+    const hullPbr = this._pbrMaterial("wood", {
+      color: new THREE.Color(0x6a3a1c), repeat: 2.5, normalScale: 1.0,
+    });
+    const keelPbr = this._pbrMaterial("wood", {
+      color: new THREE.Color(0x3a200f), repeat: 2.0, normalScale: 1.2,
+    });
     for (let i = 0; i < 3; i++) {
       const ship = new THREE.Group();
       // Tapered hull — curved bow + stern via cylinder + box hybrid.
-      // Three nested boxes for that classic clinker silhouette.
-      const hull = new THREE.Mesh(
-        new THREE.BoxGeometry(9, 1.5, 2.8),
-        new THREE.MeshStandardMaterial({ color: 0x3a2614, roughness: 0.92, flatShading: true })
-      );
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(9, 1.5, 2.8), hullPbr);
       ship.add(hull);
-      // Underbelly — slightly darker, wider at midship
-      const keel = new THREE.Mesh(
-        new THREE.BoxGeometry(7, 0.6, 2.4),
-        new THREE.MeshStandardMaterial({ color: 0x251510, roughness: 0.95, flatShading: true })
-      );
+      const keel = new THREE.Mesh(new THREE.BoxGeometry(7, 0.6, 2.4), keelPbr);
       keel.position.y = -0.85;
       ship.add(keel);
       // Dragon-head prow — small triangular wedge at front
