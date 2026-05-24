@@ -4060,6 +4060,56 @@ class Valhalla {
       el.style.opacity = "0";
       el.style.transform = "translate(-50%, -50%) translateY(-18px)";
     }, 2600);
+    // SAGA NARRATION — fire the Skald's line a beat after the banner
+    // settles. Different line each biome; special line on full saga
+    // cycle (Midgard re-entry after Asgard).
+    setTimeout(() => this._showSkaldNarration(name), 700);
+  }
+
+  // SKALD NARRATION — italic poetic line shown below the biome banner.
+  // Curated text per realm, with a special "saga reborn" line when the
+  // player returns to Midgard after completing a full cycle.
+  _showSkaldNarration(biomeName) {
+    let el = this._skaldEl;
+    if (!el) {
+      el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;bottom:25%;left:50%;transform:translate(-50%,0);" +
+        "font:italic 600 19px/1.4 'Cinzel',serif;color:#f4d49a;" +
+        "letter-spacing:.04em;text-align:center;max-width:min(700px,80vw);" +
+        "text-shadow:0 4px 24px rgba(0,0,0,.95),0 0 14px rgba(244,212,154,.25);" +
+        "pointer-events:none;z-index:35;opacity:0;transition:opacity 1.2s ease,transform 1s ease";
+      document.body.appendChild(el);
+      this._skaldEl = el;
+    }
+    // SAGA LINES — curated Norse-flavoured one-liners per realm.
+    // Different first-cycle vs returning lines so the saga has arc.
+    const FIRST = {
+      Midgard:    "Midgard. Where every Skald begins.",
+      "Jötunheim":"Jötunheim. Home of the frost giants. Tread lightly — Ymir's children do not forgive.",
+      Muspelheim: "Muspelheim. Surtr's flame. The road runs through the source of the world's ending.",
+      Asgard:     "Asgard. Bifröst opens for those who proved themselves on the road.",
+    };
+    const RETURN = {
+      Midgard:    `Midgard again. Saga ${this.biomeCycle + 1} — the gods have not forgotten you.`,
+      "Jötunheim":"Jötunheim. Frost knows your name now.",
+      Muspelheim: "Muspelheim. The flame remembers your last passing.",
+      Asgard:     "Asgard. Odin watches. Walk well.",
+    };
+    const line = (this.biomeCycle > 0 ? RETURN : FIRST)[biomeName] || `${biomeName}.`;
+    el.textContent = `"${line}"`;
+    el.style.opacity = "0";
+    el.style.transform = "translate(-50%, 10px)";
+    // Fade in over 1.2s
+    requestAnimationFrame(() => {
+      el.style.opacity = "1";
+      el.style.transform = "translate(-50%, 0)";
+    });
+    clearTimeout(this._skaldT);
+    this._skaldT = setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transform = "translate(-50%, -8px)";
+    }, 5200);
   }
 
   // Boss encounter. A large character mesh appears ~80m ahead and scrolls
@@ -5613,6 +5663,41 @@ class Valhalla {
     // Nudge + trends — depend on history, so refresh whenever stats reload.
     this._renderMenuNudge();
     this._renderMenuTrends();
+    this._renderSagaLine();
+  }
+
+  // Show the user's saga progression on the menu — total cycles
+  // completed + current realm if mid-run, or a poetic "next realm"
+  // teaser if they've never reached Asgard.
+  _renderSagaLine() {
+    // Inject a saga line into the menu under the tag line.
+    let el = document.getElementById("sagaLine");
+    if (!el) {
+      const tag = document.querySelector(".start .card .tag");
+      if (!tag) return;
+      el = document.createElement("div");
+      el.id = "sagaLine";
+      el.style.cssText =
+        "margin:8px auto 0;max-width:520px;font:italic 600 13.5px/1.4 'Cinzel',serif;" +
+        "color:rgba(244,212,154,.85);letter-spacing:.04em;text-align:center;" +
+        "text-shadow:0 2px 12px rgba(0,0,0,.7)";
+      tag.insertAdjacentElement("afterend", el);
+    }
+    const s = Store.load();
+    const cycles = s.totalCycles || 0;
+    const farthest = s.farthestRealm || "Midgard";
+    let line;
+    if (cycles === 0) {
+      if (farthest === "Midgard")    line = "Your saga begins. Bifröst awaits beyond three realms.";
+      else if (farthest === "Jötunheim") line = "You have walked Jötunheim. Muspelheim lies ahead.";
+      else if (farthest === "Muspelheim") line = "You have crossed Muspelheim. Asgard waits at the end of the road.";
+      else                                line = "You have reached Asgard. One full saga awaits.";
+    } else if (cycles === 1) {
+      line = "One saga complete. The realms know your name.";
+    } else {
+      line = `${cycles} sagas walked. The gods take notice.`;
+    }
+    el.textContent = line;
   }
 
   // Personalised nudge shown on the menu. Picks ONE message based on
@@ -6027,6 +6112,17 @@ class Valhalla {
     life.focusedSec = (life.focusedSec || 0) + (bs.focusedSec || 0);
     life.calmSec    = (life.calmSec    || 0) + (bs.calmSec || 0);
     s.lifetime = life;
+
+    // SAGA PROGRESS — record the farthest realm reached and total
+    // full cycles completed. Drives the menu's saga line + future
+    // honour-based content unlocks.
+    const realmOrder = ["Midgard", "Jötunheim", "Muspelheim", "Asgard"];
+    const reachedIdx = realmOrder.indexOf(this.biomeName || "Midgard");
+    const knownIdx   = realmOrder.indexOf(s.farthestRealm || "Midgard");
+    if (reachedIdx > knownIdx) s.farthestRealm = this.biomeName;
+    // biomeCycle is incremented in _transitionBiome when wrapping back
+    // to Midgard after Asgard. Save the max we've ever reached.
+    s.totalCycles = Math.max(s.totalCycles || 0, this.biomeCycle || 0);
 
     // LEADERBOARD — top 10 scores all-time, kept in localStorage.
     const board = Array.isArray(s.leaderboard) ? s.leaderboard.slice() : [];
