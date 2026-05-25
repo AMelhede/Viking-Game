@@ -1571,7 +1571,7 @@ class Valhalla {
     this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.95;
+    this.renderer.toneMappingExposure = 0.82;
     // SHADOWS. one directional sun caster, 1024² max even on high.
     // 2048² doubles the shader cost for marginal visual win at our
     // distances. Disabled entirely on 'low'.
@@ -1990,7 +1990,10 @@ class Valhalla {
     // hemisphere skylight + one directional sun (now with real
     // shadows on high/medium) + a cold rim for silhouette separation
     // against fog. References: The Northman, Vikings, 13th Warrior.
-    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x3a3a44, 1.05);
+    // Lower hemisphere intensity (1.05 -> 0.72) for less flat-fill,
+    // more contrast between lit and shadow side. Hyperreal scenes
+    // have strong key + soft fill, not omnidirectional flat light.
+    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x2a2a32, 0.72);
     this.scene.add(hemi);
 
     // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
@@ -9132,11 +9135,25 @@ class Valhalla {
     const bobAmp   = 0.08 + Math.min(0.22, (this.speed - BASE_SPEED) * 0.007);
     const swayAmp  = 0.10 + Math.min(0.12, (this.speed - BASE_SPEED) * 0.003);
     const phase = performance.now() * 0.001 * gaitFreq * Math.PI;
-    const camTargetX = this.player.position.x * 0.4 + Math.sin(phase * 0.5) * swayAmp;
-    const camTargetY = 5.3 + Math.abs(Math.sin(phase)) * bobAmp + this.playerY * 0.12;
+    // HANDHELD BREATHING. Low-freq perlin-style sway adds the
+    // operator-with-a-real-camera feel that pure procedural cameras
+    // lack. Sub-pixel amplitude; you don't see it consciously but the
+    // scene stops feeling like a fixed render. Apple-tier touch.
+    const t = performance.now() * 0.001;
+    const handheldX = Math.sin(t * 0.31) * 0.06 + Math.sin(t * 0.73) * 0.03;
+    const handheldY = Math.sin(t * 0.27) * 0.04 + Math.cos(t * 0.59) * 0.02;
+    const camTargetX = this.player.position.x * 0.4 + Math.sin(phase * 0.5) * swayAmp + handheldX;
+    const camTargetY = 5.3 + Math.abs(Math.sin(phase)) * bobAmp + this.playerY * 0.12 + handheldY;
     this.camera.position.x += (camTargetX - this.camera.position.x) * Math.min(1, dt * 4);
     this.camera.position.y += (camTargetY - this.camera.position.y) * Math.min(1, dt * 4);
     this.camera.position.z = -12;
+    // FOV breathing. Tied to heart rate when bio is live, otherwise
+    // a quiet 0.25 Hz baseline. ±0.4° about the resting FOV.
+    const baseFov = this._baseFov || (this._baseFov = this.camera.fov);
+    const breathHz = this.bpm ? (this.bpm / 60) : 0.25;
+    const fovOffset = Math.sin(t * breathHz * Math.PI * 2) * 0.4;
+    this.camera.fov = baseFov + fovOffset;
+    this.camera.updateProjectionMatrix();
 
     // Trauma-based camera shake (decays, applied as offset).
     let shakeX = 0, shakeY = 0;
@@ -9446,10 +9463,21 @@ class Valhalla {
     // the hit. Also pop a big visible "-1" floater so the loss is
     // unmistakable.
     if (this.hud && this.hud.lives) {
-      this.hud.lives.textContent = Math.max(0, this.lives);
+      this._updateLivesDots();
     }
     this._popText("-1 LIFE", "combo", 0, -60);
     if (this.lives <= 0) this._gameOver();
+  }
+
+  // LIVES AS DOTS. Renders 3 quiet • dots (filled = alive, dim = lost).
+  // Apple-style: numbers vanish, glyphs convey the state. CSS reads
+  // data-lives attribute via ::before content.
+  _updateLivesDots() {
+    if (!this.hud || !this.hud.lives) return;
+    const n = Math.max(0, Math.min(3, this.lives));
+    const dots = "• ".repeat(n) + "◌ ".repeat(3 - n);
+    this.hud.lives.setAttribute("data-lives", dots.trim());
+    this.hud.lives.textContent = "";  // CSS ::before paints the dots
   }
 
   _reseedChunk(ch) {
@@ -9543,7 +9571,7 @@ class Valhalla {
   _updateHUD() {
     this.hud.score.textContent = Math.floor(this.score).toLocaleString();
     this.hud.dist.textContent = `${Math.round(this.distance)}m`;
-    this.hud.lives.textContent = Math.max(0, this.lives);
+    this._updateLivesDots();
   }
 
   _resize() {

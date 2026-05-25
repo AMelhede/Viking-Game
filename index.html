@@ -821,10 +821,104 @@
       color:rgba(255,255,255,.42);letter-spacing:.01em;
     }
     .start .brand{display:none}
-    /* Old .start h1, .tag, .play, .ministats, .bio-sect rules removed.
-       Replaced by the Apple-grade hero composition above. The old
-       block fought the new styles (last-wins) and pinned the title
-       at 64px bronze. Now only the hero rules apply. */
+
+    /* ===== APPLE-GRADE IN-GAME HUD ===============================
+       Everything restrained. System font. White at 50-75% opacity.
+       NO bright bronze chrome, NO competing colours, NO emoji icons.
+       The 3D world is the star; UI is a quiet witness.
+       Defined AFTER the old .hud rules so it wins.
+    ============================================================== */
+    body.playing .hud .topbar{
+      padding:env(safe-area-inset-top,18px) 22px 0;
+      pointer-events:none;
+    }
+    body.playing .hud .topbar .row{
+      display:flex;justify-content:space-between;align-items:flex-start;gap:0;
+      background:none;border:none;padding:0;margin:0;
+    }
+    body.playing .hud .topbar .row + .row{ margin-top:6px }
+    body.playing .hud .stat{
+      background:none;border:none;padding:0;margin:0;
+      font:500 11px/1.2 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.04em;color:rgba(255,255,255,.55);text-align:left;
+    }
+    body.playing .hud .stat.score,
+    body.playing .hud .stat.dist{ min-width:auto }
+    body.playing .hud .stat .lbl{
+      font-size:9px;letter-spacing:.22em;text-transform:uppercase;
+      color:rgba(255,255,255,.40);margin-bottom:3px;font-weight:600;
+    }
+    body.playing .hud .stat .val{
+      font:300 30px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:rgba(255,255,255,.92);font-variant-numeric:tabular-nums;
+      letter-spacing:-.01em;
+      text-shadow:0 1px 12px rgba(0,0,0,.65);
+    }
+    body.playing .hud .stat.dist{ text-align:right }
+    body.playing .hud .stat.lives{ text-align:left }
+    body.playing .hud .stat.score{ text-align:left }
+    body.playing .hud .stat.score .val,
+    body.playing .hud .stat.dist .val{ font-size:26px }
+    body.playing .hud .stat.lives .val{ font-size:0;letter-spacing:0 }
+    /* Lives as 3 quiet dots — content set by JS. */
+    body.playing .hud .stat.lives .val::before{
+      content:attr(data-lives);
+      font:600 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.4em;color:rgba(255,255,255,.78);
+      text-shadow:0 1px 8px rgba(0,0,0,.7);
+    }
+    body.playing .hud .stat .mult{
+      display:none !important;  /* multiplier moves to combo display */
+    }
+
+    /* Bio chip ultra-quiet during gameplay. */
+    body.playing .hud .bio{ pointer-events:none }
+    body.playing .hud .bio .chip{
+      background:rgba(0,0,0,.32) !important;
+      border:1px solid rgba(255,255,255,.10) !important;
+      backdrop-filter:blur(20px) saturate(140%);
+      -webkit-backdrop-filter:blur(20px) saturate(140%);
+      color:rgba(255,255,255,.78) !important;
+      font:500 11px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif !important;
+      letter-spacing:.04em !important;
+      padding:7px 11px !important;border-radius:999px !important;
+      box-shadow:0 4px 16px rgba(0,0,0,.4);
+    }
+
+    /* Combo number, quiet. */
+    body.playing .hud .combo{
+      font:300 64px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif !important;
+      color:rgba(255,255,255,.85) !important;
+      letter-spacing:-.02em !important;
+      text-shadow:0 4px 30px rgba(0,0,0,.85),0 0 60px rgba(244,212,154,.15) !important;
+    }
+
+    /* Power-up pills as quiet glass, not bright bronze. */
+    body.playing .hud .power-hud .pwr{
+      background:rgba(0,0,0,.32) !important;
+      border:1px solid rgba(255,255,255,.12) !important;
+      backdrop-filter:blur(20px) saturate(140%);
+      -webkit-backdrop-filter:blur(20px) saturate(140%);
+      color:rgba(255,255,255,.85) !important;
+      box-shadow:0 4px 18px rgba(0,0,0,.5) !important;
+    }
+
+    /* Control hint fades out faster, almost invisible. */
+    body.playing .hud .hint{
+      color:rgba(255,255,255,.32) !important;
+      font:500 11px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif !important;
+      letter-spacing:.04em !important;
+    }
+    body.playing .hud .hint kbd{
+      background:rgba(255,255,255,.08) !important;
+      border:1px solid rgba(255,255,255,.15) !important;
+      color:rgba(255,255,255,.55) !important;
+      font:600 10px/1 -apple-system,system-ui,sans-serif !important;
+      padding:3px 6px !important;border-radius:4px !important;
+    }
+
+    /* Old rules removed: .start h1, .tag, .play, .ministats, .bio-sect
+       were last-wins overriding the new hero composition. */
     /* Old .bio-sect rules replaced by .sensor-row inside the Bind
        Body sheet. Bio buttons still pick up the .live/.warming/.error
        state classes from wireBioBtn — handled by .sensor-row button
@@ -1573,7 +1667,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524l"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524m"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which
