@@ -6206,8 +6206,6 @@ class Valhalla {
     this._renderHonoursRow(s);
   }
 
-  // Visual realm progression bar. Each realm is a node; the player's
-  // farthest-ever realm + cycles complete are highlighted.
   _renderRealmPath(s) {
     const host = document.getElementById("realmPath");
     if (!host) return;
@@ -6225,20 +6223,21 @@ class Valhalla {
       const r = realms[i];
       const reached = i <= farthestIdx || cycles > 0;
       const isFarthest = i === farthestIdx && cycles === 0;
-      const op = reached ? 1 : 0.28;
+      const op = reached ? 1 : 0.32;
       const ringColour = reached ? r.colour : "rgba(212,173,106,.28)";
-      html += `<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;opacity:${op}" title="${r.key}${reached ? " · reached" : " · locked"}">`
-            + `<div style="width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);border:2px solid ${ringColour};display:flex;align-items:center;justify-content:center;font-size:16px;${isFarthest ? `box-shadow:0 0 16px ${r.colour};` : ""}">${r.icon}</div>`
-            + `<div style="font:600 9px/1 'Cinzel',serif;letter-spacing:.12em;color:${reached ? "#f4d49a" : "rgba(255,255,255,.35)"};margin-top:5px">${r.short}</div>`
+      const nameColour = reached ? "#f4d49a" : "rgba(255,255,255,.4)";
+      html += `<div class="realm-node" style="opacity:${op}" title="${r.key}${reached ? " · reached" : " · locked"}">`
+            + `<div class="realm-circle" style="border:2px solid ${ringColour};${isFarthest ? `box-shadow:0 0 18px ${r.colour};` : ""}">${r.icon}</div>`
+            + `<div class="realm-name" style="color:${nameColour}">${r.short}</div>`
             + `</div>`;
-      // Connector line (not after last)
       if (i < realms.length - 1) {
-        const lineOp = (i < farthestIdx || cycles > 0) ? 0.6 : 0.18;
-        html += `<div style="flex:1;height:1px;background:linear-gradient(90deg,${realms[i].colour}${Math.round(lineOp*255).toString(16).padStart(2,"0")},${realms[i+1].colour}${Math.round(lineOp*255).toString(16).padStart(2,"0")});margin:0 4px"></div>`;
+        const lineOp = (i < farthestIdx || cycles > 0) ? 0.7 : 0.18;
+        const hex = (v) => Math.round(v * 255).toString(16).padStart(2, "0");
+        html += `<div class="realm-edge" style="background:linear-gradient(90deg,${realms[i].colour}${hex(lineOp)},${realms[i+1].colour}${hex(lineOp)})"></div>`;
       }
     }
     if (cycles > 0) {
-      html += `<div style="margin-left:8px;padding:3px 7px;background:rgba(244,212,154,.15);border:1px solid rgba(244,212,154,.4);border-radius:10px;font:700 10px/1 'Cinzel',serif;color:#f4d49a;letter-spacing:.04em">${cycles}× saga</div>`;
+      html += `<div style="margin-left:10px;padding:4px 9px;background:rgba(244,212,154,.18);border:1px solid rgba(244,212,154,.45);border-radius:12px;font:700 10px/1 'Cinzel',serif;color:#f4d49a;letter-spacing:.08em;flex:0 0 auto">${cycles}× SAGA</div>`;
     }
     host.innerHTML = html;
   }
@@ -6263,12 +6262,15 @@ class Valhalla {
       const reqCycles = b.key === "odin" ? 4 : 0;
       const unlocked = (farthestIdx >= reqIdx || cycles > 0) && cycles >= reqCycles;
       const n = kills[b.key] || 0;
-      const op = unlocked ? 1 : 0.32;
-      const border = unlocked ? b.colour : "rgba(212,173,106,.18)";
-      html += `<div style="display:flex;flex-direction:column;align-items:center;padding:8px 4px;background:rgba(0,0,0,.4);border:1px solid ${border};border-radius:5px;opacity:${op}" title="${b.name} — ${b.realm}${unlocked ? "" : " · LOCKED"}">`
-           + `<div style="font-size:18px;line-height:1;margin-bottom:4px">${b.icon}</div>`
-           + `<div style="font:700 9.5px/1 'Cinzel',serif;color:${unlocked ? "#f4d49a" : "rgba(255,255,255,.4)"};letter-spacing:.06em;margin-bottom:3px">${b.name}</div>`
-           + `<div style="font:600 10px/1 'Cinzel',serif;color:${unlocked && n > 0 ? "#a3e8b8" : "rgba(255,255,255,.4)"};font-variant-numeric:tabular-nums">${unlocked ? (n + " slain") : "locked"}</div>`
+      const aliveClass = unlocked ? " alive" : "";
+      const op = unlocked ? "" : "opacity:.32;";
+      const border = unlocked ? `border-color:${b.colour}40;` : "";
+      const nameColour = unlocked ? "#f4d49a" : "rgba(255,255,255,.4)";
+      const metaColour = unlocked && n > 0 ? "#a3e8b8" : "rgba(255,255,255,.4)";
+      html += `<div class="boss-card${aliveClass}" style="${op}${border}" title="${b.name} · ${b.realm}${unlocked ? "" : " · LOCKED"}">`
+           + `<div class="boss-icon">${b.icon}</div>`
+           + `<div class="boss-name" style="color:${nameColour}">${b.name}</div>`
+           + `<div class="boss-meta" style="color:${metaColour}">${unlocked ? (n + " slain") : "locked"}</div>`
            + `</div>`;
     }
     host.innerHTML = html;
@@ -6307,7 +6309,7 @@ class Valhalla {
     textEl.textContent = def.text;
     progEl.textContent = q.done ? "✓ DONE" : `${q.progress}${def.unit} / ${def.target}${def.unit}`;
     rewardEl.textContent = q.done ? "Reward claimed." : `Reward: ${def.reward}`;
-    host.style.borderColor = q.done ? "rgba(120,220,180,.55)" : "rgba(122,217,255,.28)";
+    host.classList.toggle("done", !!q.done);
   }
 
   // Top 5 personal leaderboard. Always visible. Each row: medal/rank,
@@ -6326,12 +6328,11 @@ class Valhalla {
       const b = board[i];
       const isToday = b.date === today;
       const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
-      const colour = isToday ? "#f4d49a" : "rgba(255,255,255,.78)";
-      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;font-size:12.5px;color:${colour};letter-spacing:.01em">`
-           + `<span style="min-width:28px">${medal}</span>`
-           + `<span style="flex:1;font-weight:${isToday ? 700 : 500};font-variant-numeric:tabular-nums">${b.score.toLocaleString()}</span>`
-           + `<span style="opacity:.7;font-variant-numeric:tabular-nums">${b.dist}m</span>`
-           + `<span style="opacity:.5;font-size:10.5px;margin-left:10px">${b.date.slice(5)}</span>`
+      html += `<div class="top-run-row${isToday ? " today" : ""}">`
+           + `<span class="medal">${medal}</span>`
+           + `<span class="score">${b.score.toLocaleString()}</span>`
+           + `<span class="dist">${b.dist}m</span>`
+           + `<span class="date">${b.date.slice(5)}</span>`
            + `</div>`;
     }
     host.innerHTML = html;
@@ -6358,11 +6359,9 @@ class Valhalla {
     let html = "";
     for (const b of cells) {
       const got = earnedSet.has(b.id);
-      const op = got ? 1 : 0.28;
-      const c  = got ? "#f4d49a" : "rgba(255,255,255,.5)";
-      html += `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:${op};padding:5px 2px;background:rgba(0,0,0,.35);border:1px solid ${got ? "rgba(244,212,154,.35)" : "rgba(212,173,106,.12)"};border-radius:5px" title="${b.label || b.id}">`
-           + `<div style="font-size:18px;line-height:1">${b.icon || "✦"}</div>`
-           + `<div style="font:600 8px/1 'Cinzel',serif;letter-spacing:.06em;color:${c};text-align:center;text-transform:uppercase">${(b.label || b.id).slice(0, 12)}</div>`
+      html += `<div class="honour${got ? " earned" : ""}" title="${b.label || b.id}">`
+           + `<div class="icon">${b.icon || "✦"}</div>`
+           + `<div class="name">${(b.label || b.id).slice(0, 14)}</div>`
            + `</div>`;
     }
     host.innerHTML = html;

@@ -426,18 +426,182 @@
     }
     .start.hide{opacity:0;pointer-events:none}
     .start .card{
-      width:100%;max-width:480px;
-      padding:36px 28px 28px;
+      width:100%;max-width:520px;
+      padding:44px 36px 32px;
       text-align:center;
-      background:rgba(14,10,6,.92);
-      border:1px solid rgba(212,173,106,.22);
-      border-radius:12px;
-      backdrop-filter:blur(18px);
-      -webkit-backdrop-filter:blur(18px);
-      box-shadow:0 30px 100px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.4);
-      /* Margin instead of vertical centering so the card sits at the
-         top of the scroll viewport and the user can scroll down. */
+      /* Premium card surface: warm-dark with subtle gradient + double
+         border (bronze hairline outside, near-black inside) for the
+         high-end feel of a real game UI. */
+      background:linear-gradient(180deg,rgba(20,14,9,.96) 0%,rgba(12,8,5,.96) 100%);
+      border:1px solid rgba(212,173,106,.32);
+      border-radius:14px;
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.6),
+        0 30px 80px rgba(0,0,0,.75),
+        0 0 60px rgba(212,173,106,.05) inset;
       margin:0 auto;
+    }
+
+    /* MENU DESIGN SYSTEM: section spacing, dividers, eyebrows.
+       Generous rhythm so blocks breathe and read as separate panels. */
+    .menu-section{ margin:28px 0 0; padding-top:24px; border-top:1px solid rgba(212,173,106,.14); }
+    .menu-section:first-of-type{ margin-top:24px; padding-top:0; border-top:none; }
+    .menu-eyebrow{
+      display:flex;justify-content:space-between;align-items:baseline;
+      margin-bottom:14px;
+      font:600 10px/1 'Cinzel',serif;letter-spacing:.28em;
+      color:rgba(212,173,106,.72);text-transform:uppercase;
+    }
+    .menu-eyebrow .meta{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      font-weight:400;font-size:10.5px;letter-spacing:.04em;
+      color:rgba(255,255,255,.42);text-transform:none;
+    }
+
+    /* HERO ROW: three big stat tiles with proper spacing + lift on hover. */
+    .hero-row{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
+      margin:24px 0 0;
+    }
+    .hero-tile{
+      padding:14px 8px 12px;
+      background:linear-gradient(180deg,rgba(212,173,106,.08) 0%,rgba(212,173,106,.02) 100%);
+      border:1px solid rgba(212,173,106,.22);border-radius:8px;
+      transition:border-color .25s ease,transform .25s ease;
+    }
+    .hero-tile:hover{ border-color:rgba(212,173,106,.45); }
+    .hero-tile .v{ font:700 26px/1 'Cinzel',serif;color:#f4d49a;letter-spacing:.02em }
+    .hero-tile .v.streak{ color:#ff8c5a;text-shadow:0 0 18px rgba(255,140,90,.4) }
+    .hero-tile .v.dist  { color:#a3b8ff }
+    .hero-tile .k{
+      font-size:9.5px;letter-spacing:.22em;color:rgba(212,173,106,.65);
+      text-transform:uppercase;margin-top:7px;font-weight:600;
+    }
+
+    /* PRIMARY RUN button — premium gold with strong glow. */
+    .menu-cta-primary{
+      width:100%;margin:24px 0 0;padding:14px 0;
+      background:linear-gradient(180deg,#e8c789 0%,#cba560 100%);
+      color:#1a1208;border:none;border-radius:10px;cursor:pointer;
+      font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      box-shadow:0 8px 28px rgba(212,173,106,.32),0 0 0 1px rgba(0,0,0,.4) inset;
+      transition:transform .15s ease,box-shadow .25s ease,filter .2s ease;
+    }
+    .menu-cta-primary:hover{ filter:brightness(1.08); box-shadow:0 12px 36px rgba(212,173,106,.45),0 0 0 1px rgba(0,0,0,.4) inset; }
+    .menu-cta-primary:active{ transform:translateY(1px) }
+
+    /* SECONDARY RUN (lower in the menu) — ghost variant. */
+    .menu-cta-ghost{
+      width:100%;padding:12px 0;
+      background:rgba(212,173,106,.06);color:#f4d49a;
+      border:1px solid rgba(212,173,106,.45);border-radius:8px;cursor:pointer;
+      font:600 12.5px/1 'Cinzel',serif;letter-spacing:.28em;text-transform:uppercase;
+      transition:background .2s ease,border-color .2s ease;
+    }
+    .menu-cta-ghost:hover{ background:rgba(212,173,106,.14);border-color:rgba(212,173,106,.7) }
+
+    /* REALM PATH nodes. */
+    .realm-path{ display:flex;align-items:center;justify-content:space-between;gap:0;height:52px;padding:0 2px }
+    .realm-node{ display:flex;flex-direction:column;align-items:center;flex:0 0 auto;transition:opacity .25s ease }
+    .realm-circle{ width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-size:17px;transition:transform .2s ease }
+    .realm-node:hover .realm-circle{ transform:scale(1.06) }
+    .realm-name{ font:600 9px/1 'Cinzel',serif;letter-spacing:.16em;margin-top:7px }
+    .realm-edge{ flex:1;height:1px;margin:0 6px }
+
+    /* BOSS ROSTER cards. */
+    .boss-grid{ display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px }
+    .boss-card{
+      display:flex;flex-direction:column;align-items:center;
+      padding:12px 6px 10px;
+      background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.25) 100%);
+      border:1px solid rgba(212,173,106,.18);border-radius:7px;
+      transition:transform .2s ease,border-color .2s ease;
+    }
+    .boss-card.alive:hover{ transform:translateY(-2px);border-color:rgba(244,212,154,.5) }
+    .boss-icon{ font-size:22px;line-height:1;margin-bottom:6px }
+    .boss-name{ font:700 10px/1 'Cinzel',serif;letter-spacing:.10em;margin-bottom:5px }
+    .boss-meta{ font:600 10.5px/1 'Cinzel',serif;font-variant-numeric:tabular-nums }
+
+    /* DAILY QUEST panel. */
+    .daily-quest{
+      padding:16px 18px;
+      background:linear-gradient(135deg,rgba(122,217,255,.08) 0%,rgba(122,217,255,.02) 100%);
+      border:1px solid rgba(122,217,255,.32);border-radius:8px;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      text-align:left;
+    }
+    .daily-quest.done{ border-color:rgba(120,220,180,.55);background:linear-gradient(135deg,rgba(120,220,180,.10) 0%,rgba(120,220,180,.02) 100%) }
+    .quest-head{ display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px }
+    .quest-eyebrow{ font:600 10px/1 'Cinzel',serif;letter-spacing:.28em;color:rgba(122,217,255,.9);text-transform:uppercase }
+    .quest-progress{ font-size:11px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums;font-weight:500 }
+    .quest-text{ font-size:13.5px;color:#fff;line-height:1.45;margin-bottom:6px }
+    .quest-reward{ font-size:11px;color:rgba(244,212,154,.75);font-style:italic }
+
+    /* TOP RUNS leaderboard rows. */
+    .top-runs{ display:flex;flex-direction:column;gap:2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif }
+    .top-run-row{
+      display:grid;grid-template-columns:32px 1fr auto auto;align-items:baseline;gap:12px;
+      padding:8px 10px;border-radius:5px;font-size:13px;letter-spacing:.01em;
+      transition:background .2s ease;
+    }
+    .top-run-row:hover{ background:rgba(212,173,106,.05) }
+    .top-run-row.today{ background:rgba(244,212,154,.10);color:#f4d49a;font-weight:600 }
+    .top-run-row .medal{ font-size:14px;text-align:left }
+    .top-run-row .score{ font-variant-numeric:tabular-nums;text-align:left }
+    .top-run-row .dist { font-variant-numeric:tabular-nums;opacity:.7 }
+    .top-run-row .date { font-size:11px;opacity:.5 }
+
+    /* HONOURS row. */
+    .honours-grid{ display:grid;grid-template-columns:repeat(6,1fr);gap:8px }
+    .honour{
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      padding:9px 4px;
+      background:rgba(0,0,0,.4);border:1px solid rgba(212,173,106,.14);border-radius:6px;
+      transition:transform .2s ease,border-color .2s ease;
+    }
+    .honour.earned{ border-color:rgba(244,212,154,.45);background:linear-gradient(180deg,rgba(244,212,154,.12) 0%,rgba(244,212,154,.02) 100%) }
+    .honour.earned:hover{ transform:translateY(-2px) }
+    .honour .icon{ font-size:18px;line-height:1 }
+    .honour .name{ font:600 8.5px/1.15 'Cinzel',serif;letter-spacing:.08em;text-align:center;text-transform:uppercase }
+    .honour.earned .name{ color:#f4d49a }
+    .honour:not(.earned){ opacity:.32 }
+    .honour:not(.earned) .name{ color:rgba(255,255,255,.5) }
+
+    /* SKALD NUDGE pill (re-skinned for premium feel). */
+    .menu-nudge{
+      margin:24px 0 0;padding:14px 18px;
+      background:linear-gradient(135deg,rgba(212,173,106,.10) 0%,rgba(120,200,180,.04) 100%);
+      border-left:2px solid rgba(212,173,106,.6);border-radius:0 6px 6px 0;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      text-align:left;
+    }
+    .menu-nudge-text{ font:italic 500 13.5px/1.5 'Cinzel',serif;color:rgba(244,212,154,.92);letter-spacing:.01em }
+
+    /* TABS row. */
+    .menu-tabs{ display:flex;gap:8px;margin:0 }
+    .menu-tab{
+      flex:1;background:rgba(212,173,106,.06);
+      border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);
+      padding:10px;border-radius:6px;cursor:pointer;
+      font:600 10.5px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;
+      transition:background .2s ease,border-color .2s ease;
+    }
+    .menu-tab:hover{ background:rgba(212,173,106,.12);border-color:rgba(212,173,106,.4) }
+    .menu-tab.active{ background:rgba(212,173,106,.22);border-color:rgba(212,173,106,.55);color:#f4d49a }
+
+    /* CONTROLS strip + footer. */
+    .menu-controls-line{
+      margin:28px 0 0;padding:18px 0 0;
+      border-top:1px solid rgba(212,173,106,.14);
+      font:400 12px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      color:rgba(255,255,255,.6);
+    }
+    .menu-footer{
+      margin-top:18px;padding-top:14px;border-top:1px solid rgba(212,173,106,.10);
+      font:400 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      color:rgba(255,255,255,.42);letter-spacing:.01em;
     }
     .start .brand{display:none}
     /* TITLE. Cinzel keeps the cinematic gravitas. Lighter weight (600
@@ -918,71 +1082,65 @@
       <h1>Valhalla</h1>
       <div class="tag" id="menuTag">Eight realms wait. Bring strong breath and a sharp eye.</div>
 
-      <!-- HERO ROW: streak fire + best + furthest in big readable type. -->
-      <div id="heroRow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:18px 0 14px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
-        <div style="padding:10px 6px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);border-radius:6px">
-          <div id="heroStreak" style="font:700 22px/1 'Cinzel',serif;color:#ff8c5a;text-shadow:0 0 14px rgba(255,140,90,.4)">🔥 0</div>
-          <div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.65);text-transform:uppercase;margin-top:4px;font-weight:600">day streak</div>
+      <!-- HERO ROW -->
+      <div class="hero-row" id="heroRow">
+        <div class="hero-tile"><div class="v streak" id="heroStreak">🔥 0</div><div class="k">day streak</div></div>
+        <div class="hero-tile"><div class="v"        id="heroBest">0</div><div class="k">best score</div></div>
+        <div class="hero-tile"><div class="v dist"   id="heroDist">0m</div><div class="k">furthest</div></div>
+      </div>
+
+      <!-- Skald nudge -->
+      <div id="menuNudge" class="menu-nudge" style="display:none">
+        <div id="menuNudgeText" class="menu-nudge-text"></div>
+      </div>
+
+      <!-- Primary CTA -->
+      <button class="menu-cta-primary" id="beginBtn">Run</button>
+
+      <!-- REALM PATH -->
+      <div class="menu-section">
+        <div class="menu-eyebrow">The Road<span class="meta">your saga path</span></div>
+        <div class="realm-path" id="realmPath"></div>
+      </div>
+
+      <!-- BOSS ROSTER -->
+      <div class="menu-section">
+        <div class="menu-eyebrow">Foes Met<span class="meta">slay count</span></div>
+        <div class="boss-grid" id="bossRoster"></div>
+      </div>
+
+      <!-- DAILY QUEST -->
+      <div class="menu-section">
+        <div class="menu-eyebrow">Today's Deed<span class="meta">resets at midnight</span></div>
+        <div id="dailyQuest" class="daily-quest">
+          <div class="quest-head">
+            <div class="quest-eyebrow">Deed</div>
+            <div id="dailyQuestProgress" class="quest-progress"></div>
+          </div>
+          <div id="dailyQuestText" class="quest-text"></div>
+          <div id="dailyQuestReward" class="quest-reward"></div>
         </div>
-        <div style="padding:10px 6px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);border-radius:6px">
-          <div id="heroBest" style="font:700 22px/1 'Cinzel',serif;color:#f4d49a">0</div>
-          <div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.65);text-transform:uppercase;margin-top:4px;font-weight:600">best score</div>
-        </div>
-        <div style="padding:10px 6px;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);border-radius:6px">
-          <div id="heroDist" style="font:700 22px/1 'Cinzel',serif;color:#a3b8ff">0m</div>
-          <div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.65);text-transform:uppercase;margin-top:4px;font-weight:600">furthest</div>
-        </div>
       </div>
 
-      <!-- Skald's word. -->
-      <div id="menuNudge" style="display:none;margin:0 0 14px;padding:10px 14px;background:linear-gradient(135deg,rgba(212,173,106,.08),rgba(120,200,180,.04));border-left:2px solid rgba(212,173,106,.5);border-radius:0 4px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
-        <div id="menuNudgeText" style="font:italic 500 13px/1.45 'Cinzel',serif;color:rgba(244,212,154,.9);letter-spacing:.01em"></div>
+      <!-- TOP 5 LEADERBOARD -->
+      <div class="menu-section">
+        <div class="menu-eyebrow">Skald's Roll<span class="meta">your top runs</span></div>
+        <div id="topRuns" class="top-runs"></div>
       </div>
 
-      <button class="play" id="beginBtn">Run</button>
-
-      <!-- REALM PATH. Visual progression bar with each realm as a stop.
-           Player's furthest realm is highlighted; future realms are dim.
-           Built/repainted by _renderRealmPath. -->
-      <div style="margin:18px 0 6px;font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase;text-align:left">The road</div>
-      <div id="realmPath" style="display:flex;align-items:center;justify-content:space-between;gap:0;margin-bottom:14px;height:46px"></div>
-
-      <!-- BOSS ROSTER. Four bosses with kill-count + last-defeated status.
-           Locked until the realm is reached. -->
-      <div style="margin:14px 0 6px;font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase;text-align:left">Foes met</div>
-      <div id="bossRoster" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:14px"></div>
-
-      <!-- TODAY'S CHALLENGE. One daily quest with a reward. Resets at
-           local midnight. _renderDailyQuest populates it. -->
-      <div id="dailyQuest" style="margin:14px 0;padding:11px 14px;background:linear-gradient(135deg,rgba(122,217,255,.08),rgba(122,217,255,.02));border:1px solid rgba(122,217,255,.28);border-radius:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;text-align:left">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-          <div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(122,217,255,.85);text-transform:uppercase">Today's deed</div>
-          <div id="dailyQuestProgress" style="font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums"></div>
-        </div>
-        <div id="dailyQuestText" style="font-size:12.5px;color:#fff;line-height:1.4"></div>
-        <div id="dailyQuestReward" style="font-size:10.5px;color:rgba(244,212,154,.75);margin-top:3px;font-style:italic"></div>
+      <!-- HONOURS -->
+      <div class="menu-section">
+        <div class="menu-eyebrow">Honours<span class="meta" id="honoursCount">0 / 40</span></div>
+        <div id="honoursRow" class="honours-grid"></div>
       </div>
 
-      <!-- TOP 5 LEADERBOARD. Always-visible (no click required). -->
-      <div style="margin:14px 0 6px;display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase">Skald's roll</div>
-        <div style="font:400 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.4)">your top runs</div>
-      </div>
-      <div id="topRuns" style="margin-bottom:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif"></div>
+      <!-- Secondary CTA -->
+      <button class="menu-cta-ghost" id="beginBtn2" style="margin-top:24px">Run</button>
 
-      <!-- RECENT HONOURS. Last 4 unlocked + next 2 to unlock with progress. -->
-      <div style="margin:14px 0 6px;display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font:600 9px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.6);text-transform:uppercase">Honours</div>
-        <div id="honoursCount" style="font:400 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.4)">0 / 40</div>
-      </div>
-      <div id="honoursRow" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px"></div>
-
-      <button class="play" id="beginBtn2" style="margin-top:8px;width:100%;background:rgba(212,173,106,.12);color:#f4d49a;border:1px solid rgba(212,173,106,.45);padding:11px;border-radius:8px;cursor:pointer;font:600 13px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase">Run</button>
-
-      <!-- TWO TOGGLE TABS for body sensors + extended saga details. -->
-      <div style="display:flex;gap:6px;margin:14px 0 0">
-        <button id="tabSensors" class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">Bind Body</button>
-        <button id="tabTrends"  class="tabBtn" style="flex:1;background:rgba(212,173,106,.06);border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);padding:9px 10px;border-radius:5px;cursor:pointer;font:600 10.5px/1 'Cinzel',serif;letter-spacing:.18em;text-transform:uppercase">More trends</button>
+      <!-- TABS row -->
+      <div class="menu-tabs" style="margin-top:22px">
+        <button id="tabSensors" class="menu-tab">Bind Body</button>
+        <button id="tabTrends"  class="menu-tab">More Trends</button>
       </div>
 
       <!-- SENSORS PANEL. Minimal. Two buttons, two tooltips on hover.
@@ -1235,7 +1393,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524j"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524k"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which
