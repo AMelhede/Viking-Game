@@ -1475,9 +1475,13 @@ class Valhalla {
     this._buildGodRays();
     this._buildMist();
     this._buildHUD();
-    this._bindInput();
-    this._bindBio();
-    this._loadStats();
+    // Each top-level boot stage independently wrapped so a single
+    // throw doesn't cascade. User-reported 'buttons don't work +
+    // unknown skald name' was caused by an early throw in _bindInput
+    // killing _bindBio and _loadStats downstream.
+    try { this._bindInput(); } catch (e) { console.error("[boot] _bindInput threw", e); }
+    try { this._bindBio();   } catch (e) { console.error("[boot] _bindBio threw", e); }
+    try { this._loadStats(); } catch (e) { console.error("[boot] _loadStats threw", e); }
 
     window.addEventListener("resize", () => this._resize());
     this._resize();
@@ -6043,19 +6047,33 @@ class Valhalla {
     const LEGACY_IDS = [
       "bio-badge", "bio-panel", "bio-menu-sparkline",
       "bio-menu-ritual", "bio-tier-block", "bio-drill-host",
+      "bio-style", // the <style> tag bio/ui.js injects into <head>
     ];
+    // Whitelist — our OWN bio-prefixed elements that should survive.
+    const KEEP_IDS = new Set([
+      "bioCalibration", "bioBleHint", "bioEegBtn", "bioHrBtn",
+      "bioEegDiag", "bioEegDiagOut", "bioRow", "bioNudge",
+      "bioErrBanner", "bpmChip", "bpmTxt", "stateChip", "stateTxt",
+    ]);
     const nukeLegacyBio = () => {
-      // By explicit ID
       for (const id of LEGACY_IDS) {
         const el = document.getElementById(id);
         if (el) el.remove();
       }
-      // By id prefix or class prefix (covers future widgets)
+      // Match bio- prefix everywhere (head + body), skipping our own.
       const all = document.querySelectorAll('[id^="bio-"], [class^="bio-"]');
       for (const el of all) {
-        // Don't nuke our own bio status pill — it's class _bioPillEl
-        // and has no bio- prefix in id/class. Safe.
+        if (KEEP_IDS.has(el.id)) continue;
         el.remove();
+      }
+      // Also kill any <style> tag in <head> whose content references
+      // #bio-badge. The bio module's injectStyles uses no fixed id
+      // on some paths and is hard to id otherwise.
+      for (const style of document.head.querySelectorAll("style")) {
+        if (style.id && KEEP_IDS.has(style.id)) continue;
+        if (style.textContent && /#bio-badge|#bio-panel/.test(style.textContent)) {
+          style.remove();
+        }
       }
     };
     window.addEventListener("bio:ready", nukeLegacyBio);
@@ -6201,15 +6219,24 @@ class Valhalla {
   }
 
   _loadStats() {
-    const s = Store.load();
-    $("bestScore").textContent = (s.bestScore || 0).toLocaleString();
-    $("bestDist").textContent = `${Math.round(s.bestDist || 0)}m`;
-    $("totalRuns").textContent = s.totalRuns || 0;
-    // Full menu chrome render: hero / realm path / boss roster / quest
-    // / leaderboard / honours. All visible at a glance every menu open.
-    this._renderMenuChrome();
-    this._renderMenuNudge();
-    this._renderSagaLine();
+    // Each step independently try-wrapped so one missing DOM element
+    // (e.g. when the layout is changing) can NEVER kill the whole
+    // menu boot path. Previously a single null-ref here was silently
+    // killing the Skald-name refresh AND the button wiring downstream.
+    try {
+      const s = Store.load();
+      const $$ = (id) => document.getElementById(id);
+      if ($$("bestScore")) $$("bestScore").textContent = (s.bestScore || 0).toLocaleString();
+      if ($$("bestDist"))  $$("bestDist").textContent  = `${Math.round(s.bestDist || 0)}m`;
+      if ($$("totalRuns")) $$("totalRuns").textContent = s.totalRuns || 0;
+    } catch (e) { console.warn("[loadStats] base failed", e); }
+    try { this._renderMenuChrome(); } catch (e) { console.warn("[loadStats] chrome failed", e); }
+    try { this._renderMenuNudge();  } catch (e) { console.warn("[loadStats] nudge failed", e); }
+    try { this._renderSagaLine();   } catch (e) { console.warn("[loadStats] saga failed", e); }
+    // CRITICAL: refresh the skald name in the micro-chrome top-right.
+    // Was being missed because _refreshSkaldLine was only called in
+    // boot, not on every menu open. That's why the user saw 'unknown'.
+    try { this._refreshSkaldLine(); } catch (e) { console.warn("[loadStats] skald failed", e); }
   }
 
   // HERO-ONLY menu chrome. The hero composition (title, tagline, CTA,
