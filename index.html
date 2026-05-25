@@ -413,36 +413,253 @@
        for everything else so the page reads like a real film title
        card (heavy serif title + clean sans subtitles) instead of
        luxury-brand template chrome. */
+    /* ===== APPLE-STYLE MENU =====================================
+       One hero composition. Everything else lives in bottom sheets,
+       one tap away. Real glass (backdrop-filter blur + saturate),
+       restrained palette (one warm-cream accent), generous whitespace,
+       spring-feel transitions, content-over-chrome.
+    ============================================================== */
     .start{
       position:fixed;inset:0;z-index:50;
-      /* SCROLLABLE container so a long menu (with all the new
-         hero/realm/boss/quest/leaderboard/honours sections) actually
-         fits on screen and the user can scroll to see everything. */
-      display:flex;align-items:flex-start;justify-content:center;
-      padding:24px 16px 32px;
-      overflow-y:auto;
-      background:radial-gradient(ellipse at center,rgba(8,6,4,.55) 0%,rgba(4,3,2,.96) 100%);
-      transition:opacity .5s ease;
+      display:flex;flex-direction:column;justify-content:center;align-items:center;
+      padding:env(safe-area-inset-top,32px) 24px env(safe-area-inset-bottom,24px);
+      /* Subtle vignette over the live 3D scene so it reads as
+         atmosphere, not a competing image. */
+      background:radial-gradient(ellipse at center,rgba(0,0,0,.55) 0%,rgba(0,0,0,.92) 100%);
+      transition:opacity .55s cubic-bezier(.4,0,.2,1);
     }
     .start.hide{opacity:0;pointer-events:none}
+    /* No card. The hero composition lives directly on the vignette. */
     .start .card{
-      width:100%;max-width:520px;
-      padding:44px 36px 32px;
-      text-align:center;
-      /* Premium card surface: warm-dark with subtle gradient + double
-         border (bronze hairline outside, near-black inside) for the
-         high-end feel of a real game UI. */
-      background:linear-gradient(180deg,rgba(20,14,9,.96) 0%,rgba(12,8,5,.96) 100%);
-      border:1px solid rgba(212,173,106,.32);
-      border-radius:14px;
-      backdrop-filter:blur(20px);
-      -webkit-backdrop-filter:blur(20px);
-      box-shadow:
-        0 0 0 1px rgba(0,0,0,.6),
-        0 30px 80px rgba(0,0,0,.75),
-        0 0 60px rgba(212,173,106,.05) inset;
-      margin:0 auto;
+      width:100%;max-width:560px;
+      padding:0;text-align:center;background:none;border:none;border-radius:0;
+      box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+      display:flex;flex-direction:column;align-items:center;
+      gap:0;
     }
+
+    /* ----- HERO TITLE + TAGLINE ----- */
+    .start h1{
+      font:600 84px/0.95 'Cinzel',serif;
+      letter-spacing:.10em;color:#f4ead0;
+      margin:0;
+      text-shadow:0 4px 36px rgba(0,0,0,.75),0 0 80px rgba(244,212,154,.12);
+      /* Subtle weight variation across the wordmark for the carved feel. */
+      font-variation-settings:"wght" 600;
+    }
+    .start .tag{
+      font:italic 400 17px/1.5 'Cinzel',serif;
+      color:rgba(244,234,208,.62);
+      letter-spacing:.01em;
+      margin:22px auto 0;
+      max-width:420px;
+    }
+    .start .tag-saga{
+      font:600 11px/1 'Cinzel',serif;
+      letter-spacing:.32em;text-transform:uppercase;
+      color:rgba(244,212,154,.55);
+      margin:14px 0 0;
+    }
+
+    /* ----- PRIMARY CTA (the only loud thing on the page) ----- */
+    .start .play{
+      margin:48px auto 0;
+      min-width:280px;padding:18px 60px;
+      background:linear-gradient(180deg,#f0d99a 0%,#d4ad6a 100%);
+      color:#1a1208;border:none;border-radius:999px;cursor:pointer;
+      font:700 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.32em;text-transform:uppercase;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.4) inset,
+        0 -2px 0 rgba(0,0,0,.2) inset,
+        0 18px 40px rgba(212,173,106,.32),
+        0 0 80px rgba(244,212,154,.15);
+      transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s ease,filter .2s ease;
+    }
+    .start .play:hover{ filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -2px 0 rgba(0,0,0,.2) inset,0 22px 50px rgba(212,173,106,.45),0 0 100px rgba(244,212,154,.25) }
+    .start .play:active{ transform:translateY(0);transition-duration:.08s }
+
+    /* ----- STAT RIBBON (bottom, single line, very subtle) ----- */
+    .stat-ribbon{
+      display:flex;justify-content:center;align-items:center;gap:18px;
+      margin:34px auto 0;
+      font:500 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:rgba(244,234,208,.72);
+      letter-spacing:.02em;
+    }
+    .stat-ribbon .v{ color:#f4d49a;font-weight:600;font-variant-numeric:tabular-nums }
+    .stat-ribbon .sep{ width:3px;height:3px;border-radius:50%;background:rgba(244,234,208,.25) }
+
+    /* ----- SHEET TRIGGERS (3 quiet pill buttons at the bottom) ----- */
+    .sheet-triggers{
+      display:flex;justify-content:center;gap:10px;
+      margin:32px auto 0;
+    }
+    .sheet-trigger{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:11px 20px;background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.10);border-radius:999px;
+      color:rgba(244,234,208,.78);cursor:pointer;
+      font:500 12px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.06em;
+      backdrop-filter:blur(20px) saturate(150%);
+      -webkit-backdrop-filter:blur(20px) saturate(150%);
+      transition:background .2s ease,border-color .2s ease,transform .15s ease;
+    }
+    .sheet-trigger:hover{ background:rgba(255,255,255,.10);border-color:rgba(244,212,154,.4);color:#f4ead0 }
+    .sheet-trigger:active{ transform:translateY(1px) }
+    .sheet-trigger .arrow{ opacity:.5;font-size:9px;letter-spacing:0 }
+
+    /* ----- MICRO CHROME (top-right) ----- */
+    .micro-chrome{
+      position:absolute;top:18px;right:18px;
+      display:flex;align-items:center;gap:14px;
+      font:500 11px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:rgba(244,234,208,.4);letter-spacing:.04em;
+    }
+    .micro-chrome a{ color:rgba(244,212,154,.7);text-decoration:none }
+    .micro-chrome a:hover{ color:#f4ead0 }
+
+    /* ================= BOTTOM SHEET ================================
+       Apple-style modal sheet that slides up from the bottom. Real
+       glass backdrop, generous padding, single primary action.
+    ================================================================ */
+    .sheet-backdrop{
+      position:fixed;inset:0;z-index:55;
+      background:rgba(0,0,0,.50);
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      opacity:0;pointer-events:none;
+      transition:opacity .35s cubic-bezier(.4,0,.2,1);
+    }
+    .sheet-backdrop.open{ opacity:1;pointer-events:auto }
+    .sheet{
+      position:fixed;left:50%;bottom:0;z-index:56;
+      transform:translate(-50%,100%);
+      width:100%;max-width:560px;max-height:88vh;
+      background:rgba(20,16,12,.72);
+      border:1px solid rgba(255,255,255,.10);
+      border-bottom:none;border-radius:24px 24px 0 0;
+      backdrop-filter:blur(40px) saturate(180%);
+      -webkit-backdrop-filter:blur(40px) saturate(180%);
+      box-shadow:0 -30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.05) inset;
+      transition:transform .42s cubic-bezier(.32,.72,0,1);
+      overflow:hidden;display:flex;flex-direction:column;
+    }
+    .sheet.open{ transform:translate(-50%,0) }
+    .sheet-handle{
+      width:36px;height:5px;border-radius:99px;
+      background:rgba(255,255,255,.25);
+      margin:10px auto 0;flex-shrink:0;
+    }
+    .sheet-head{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:16px 24px 4px;flex-shrink:0;
+    }
+    .sheet-title{
+      font:600 22px/1.1 'Cinzel',serif;
+      letter-spacing:.04em;color:#f4ead0;
+    }
+    .sheet-close{
+      background:rgba(255,255,255,.08);border:none;color:rgba(244,234,208,.7);
+      width:30px;height:30px;border-radius:50%;cursor:pointer;
+      font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;
+      transition:background .2s ease;
+    }
+    .sheet-close:hover{ background:rgba(255,255,255,.15);color:#f4ead0 }
+    .sheet-body{
+      padding:18px 24px 32px;overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+
+    /* ----- inside-sheet section styles (Apple Settings vibe) ----- */
+    .s-group{ margin:24px 0 0 }
+    .s-group:first-child{ margin-top:8px }
+    .s-group-title{
+      font:600 11px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.18em;text-transform:uppercase;
+      color:rgba(244,234,208,.45);
+      margin:0 0 10px 16px;
+    }
+    .s-card{
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:14px;overflow:hidden;
+    }
+    .s-row{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:14px 16px;
+      border-bottom:1px solid rgba(255,255,255,.05);
+      font:500 14.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:#f4ead0;
+    }
+    .s-row:last-child{ border-bottom:none }
+    .s-row .v{ color:rgba(244,212,154,.85);font-variant-numeric:tabular-nums;font-weight:600 }
+    .s-row .v.neg{ color:rgba(255,140,90,.85) }
+    .s-row .v.pos{ color:rgba(120,220,180,.85) }
+
+    /* Realm path inside sheet — bigger, properly spaced. */
+    .sheet .realm-path{ height:64px;padding:6px 8px }
+    .sheet .realm-circle{ width:46px;height:46px;font-size:20px }
+    .sheet .realm-name{ font-size:10px;letter-spacing:.18em;margin-top:9px }
+    .sheet .realm-edge{ margin:0 8px }
+
+    /* Boss roster inside sheet — bigger cards. */
+    .sheet .boss-grid{ gap:10px }
+    .sheet .boss-card{ padding:16px 8px 14px }
+    .sheet .boss-icon{ font-size:28px;margin-bottom:8px }
+    .sheet .boss-name{ font-size:11px;letter-spacing:.12em;margin-bottom:6px }
+    .sheet .boss-meta{ font-size:11.5px }
+
+    /* Daily quest inside sheet — fuller. */
+    .sheet .daily-quest{ padding:18px 20px;border-radius:12px }
+    .sheet .quest-text{ font-size:15px;line-height:1.5 }
+    .sheet .quest-reward{ font-size:12px;margin-top:6px }
+
+    /* Top runs inside sheet — bigger rows. */
+    .sheet .top-runs{ gap:0 }
+    .sheet .top-run-row{ padding:12px 14px;font-size:14px;border-radius:0;border-top:1px solid rgba(255,255,255,.05) }
+    .sheet .top-run-row:first-child{ border-top:none }
+    .sheet .top-run-row.today{ background:rgba(244,212,154,.10) }
+
+    /* Honours inside sheet — bigger grid. */
+    .sheet .honours-grid{ grid-template-columns:repeat(5,1fr);gap:10px }
+    .sheet .honour{ padding:14px 6px }
+    .sheet .honour .icon{ font-size:24px }
+    .sheet .honour .name{ font-size:9.5px }
+
+    /* Sensors sheet rows. */
+    .sensor-row{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.05);
+    }
+    .sensor-row:last-child{ border-bottom:none }
+    .sensor-row .info{ flex:1;padding-right:16px }
+    .sensor-row .info-name{
+      font:600 15px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:#f4ead0;letter-spacing:.01em;
+    }
+    .sensor-row .info-sub{
+      font:400 12.5px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:rgba(244,234,208,.55);
+      margin-top:4px;
+    }
+    .sensor-row button{
+      background:linear-gradient(180deg,#f0d99a 0%,#d4ad6a 100%);
+      color:#1a1208;border:none;border-radius:999px;
+      padding:9px 22px;cursor:pointer;
+      font:600 12px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.08em;
+      box-shadow:0 4px 14px rgba(212,173,106,.28);
+      transition:filter .2s ease,transform .15s ease;
+    }
+    .sensor-row button:hover{ filter:brightness(1.06) }
+    .sensor-row button:active{ transform:translateY(1px) }
+    .sensor-row button.live{
+      background:rgba(120,220,180,.18);color:#a3e8b8;
+      border:1px solid rgba(120,220,180,.4);box-shadow:none;
+    }
+    .sensor-row button.error{ background:rgba(255,140,90,.18);color:#ffd066;border:1px solid rgba(255,140,90,.4);box-shadow:none }
+    .sensor-row button:disabled{ opacity:.4;cursor:not-allowed }
 
     /* MENU DESIGN SYSTEM: section spacing, dividers, eyebrows.
        Generous rhythm so blocks breathe and read as separate panels. */
@@ -604,102 +821,14 @@
       color:rgba(255,255,255,.42);letter-spacing:.01em;
     }
     .start .brand{display:none}
-    /* TITLE. Cinzel keeps the cinematic gravitas. Lighter weight (600
-       not 700), tighter letter-spacing (.08 not .14), softer glow. */
-    .start h1{
-      font:600 64px/1 'Cinzel',serif;
-      letter-spacing:.08em;text-transform:uppercase;
-      margin:0 0 16px;
-      color:#d4ad6a;
-      text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 60px rgba(212,173,106,.15);
-    }
-    /* TAGLINE. sans, normal case, BRIGHT WHITE for max readability
-       against the parchment-dark card. User explicitly couldn't read
-       the previous bronze-at-70%-alpha. */
-    .start .tag{
-      font:400 16px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-      color:rgba(255,255,255,.94);
-      margin:0 auto 40px;max-width:360px;letter-spacing:.005em;
-    }
-    /* PLAY. solid fill, not outline-template. Bronze-on-dark, real
-       button-feel. Sans label. */
-    .start .play{
-      display:block;margin:0 auto 30px;cursor:pointer;
-      padding:14px 56px;border:none;border-radius:10px;
-      background:#d4ad6a;color:#1a1208;
-      font:600 16px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-      letter-spacing:.04em;
-      box-shadow:0 6px 28px rgba(212,173,106,.28),0 1px 0 rgba(255,255,255,.25) inset;
-      transition:transform .15s,box-shadow .2s,background .2s;
-    }
-    .start .play:hover{
-      background:#e8c084;transform:translateY(-1px);
-      box-shadow:0 10px 36px rgba(212,173,106,.4),0 1px 0 rgba(255,255,255,.35) inset;
-    }
-    .start .play:active{transform:translateY(0)}
-    /* Stats. sans-serif numerics, bronze value + white label */
-    .start .ministats{
-      display:flex;gap:20px;justify-content:center;align-items:baseline;
-      font:400 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-      color:rgba(255,255,255,.78);
-      margin-bottom:36px;letter-spacing:.02em;
-    }
-    .start .ministats .v{color:#f4d49a;font-weight:700;margin-right:6px;font-variant-numeric:tabular-nums}
-    .start .ministats .sep{opacity:.4}
-    /* Biosignal block. sans, proper case, readable like a real form */
-    .start .bio-sect{
-      margin:8px auto 0;max-width:420px;text-align:left;
-      padding:22px 0 4px;
-      border-top:1px solid rgba(212,173,106,.18);
-      background:none;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
-    }
-    .start .bio-sect .hd{
-      display:flex;align-items:baseline;justify-content:space-between;
-      margin-bottom:6px;
-    }
-    .start .bio-sect .hd b{
-      font:600 13px/1.2 inherit;letter-spacing:.02em;
-      color:#d4ad6a;text-transform:none;
-    }
-    .start .bio-sect .hd em{
-      font-style:normal;font:500 10px/1 inherit;letter-spacing:.22em;
-      color:rgba(212,173,106,.4);text-transform:uppercase;
-    }
-    /* Body copy throughout the biosignal block. WHITE for max
-       readability, bigger, with bronze used ONLY for accent (bold)
-       and row-label headers. */
-    .start .bio-sect p{
-      font:400 15px/1.55 inherit;letter-spacing:0;
-      color:rgba(255,255,255,.92);margin-bottom:18px;
-    }
-    .start .bio-sect p b{color:#f4d49a;font-weight:700}
-    .start .bio-sect .biorow{
-      display:flex;align-items:center;justify-content:space-between;gap:14px;
-      padding:16px 0;border-top:1px solid rgba(212,173,106,.22);
-    }
-    .start .bio-sect .biorow:first-of-type{border-top:none}
-    .start .bio-sect .biorow .tt{flex:1;min-width:0}
-    .start .bio-sect .biorow .tt .t{
-      font:700 16px/1.2 inherit;letter-spacing:.01em;
-      color:#f4d49a;text-transform:none;
-    }
-    .start .bio-sect .biorow .tt .d{
-      font:400 14px/1.45 inherit;letter-spacing:0;
-      color:rgba(255,255,255,.88);margin-top:4px;
-    }
-    .start .bio-sect .biorow button{
-      flex:0 0 auto;background:rgba(212,173,106,.10);
-      border:1px solid rgba(212,173,106,.35);color:#d4ad6a;
-      padding:8px 18px;border-radius:8px;
-      font:600 12px/1 inherit;letter-spacing:.04em;
-      cursor:pointer;transition:background .15s,color .15s,border-color .15s;
-    }
-    .start .bio-sect .biorow button:hover{background:rgba(212,173,106,.22);color:#f4d49a}
-    .start .bio-sect .biorow button.live{background:rgba(48,209,88,.18);color:#7fe5a0;border-color:rgba(48,209,88,.55)}
-    .start .bio-sect .biorow button.warming{background:rgba(212,173,106,.18);color:#f4d49a;border-color:rgba(212,173,106,.55)}
-    .start .bio-sect .biorow button.error{background:rgba(127,29,29,.4);color:#fca5a5;border-color:rgba(127,29,29,.7)}
-    .start .bio-sect .biorow button:disabled{opacity:.4;cursor:default}
+    /* Old .start h1, .tag, .play, .ministats, .bio-sect rules removed.
+       Replaced by the Apple-grade hero composition above. The old
+       block fought the new styles (last-wins) and pinned the title
+       at 64px bronze. Now only the hero rules apply. */
+    /* Old .bio-sect rules replaced by .sensor-row inside the Bind
+       Body sheet. Bio buttons still pick up the .live/.warming/.error
+       state classes from wireBioBtn — handled by .sensor-row button
+       variants above. */
     .start .controls-line{
       margin-top:30px;
       font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
@@ -1078,103 +1207,154 @@
   </div>
 
   <div class="start" id="startOverlay">
+    <!-- Micro chrome top right: Skald name + sync link. -->
+    <div class="micro-chrome">
+      <span id="skaldNameLine">unknown</span>
+      <a href="#" id="openSyncDialog">⚙</a>
+    </div>
+
+    <!-- HERO CARD. One composition: title + tagline + saga line + CTA + ribbon. -->
     <div class="card">
       <h1>Valhalla</h1>
       <div class="tag" id="menuTag">Eight realms wait. Bring strong breath and a sharp eye.</div>
+      <div class="tag-saga" id="sagaLine"></div>
 
-      <!-- HERO ROW -->
-      <div class="hero-row" id="heroRow">
-        <div class="hero-tile"><div class="v streak" id="heroStreak">🔥 0</div><div class="k">day streak</div></div>
-        <div class="hero-tile"><div class="v"        id="heroBest">0</div><div class="k">best score</div></div>
-        <div class="hero-tile"><div class="v dist"   id="heroDist">0m</div><div class="k">furthest</div></div>
+      <button class="play" id="beginBtn">Run</button>
+
+      <div class="stat-ribbon" id="statRibbon">
+        <span><span class="v" id="heroBest">0</span> best</span>
+        <span class="sep"></span>
+        <span><span class="v" id="heroDist">0m</span> furthest</span>
+        <span class="sep"></span>
+        <span id="heroStreak" class="v">🔥 0</span>
       </div>
 
-      <!-- Skald nudge -->
-      <div id="menuNudge" class="menu-nudge" style="display:none">
+      <div id="menuNudge" class="menu-nudge" style="display:none;margin-top:22px;max-width:420px">
         <div id="menuNudgeText" class="menu-nudge-text"></div>
       </div>
 
-      <!-- Primary CTA -->
-      <button class="menu-cta-primary" id="beginBtn">Run</button>
-
-      <!-- REALM PATH -->
-      <div class="menu-section">
-        <div class="menu-eyebrow">The Road<span class="meta">your saga path</span></div>
-        <div class="realm-path" id="realmPath"></div>
+      <div class="sheet-triggers">
+        <button class="sheet-trigger" id="openSagaSheet">Your Saga <span class="arrow">↑</span></button>
+        <button class="sheet-trigger" id="openBodySheet">Bind Body <span class="arrow">↑</span></button>
+        <button class="sheet-trigger" id="openHelpSheet">How to play <span class="arrow">↑</span></button>
       </div>
+    </div>
 
-      <!-- BOSS ROSTER -->
-      <div class="menu-section">
-        <div class="menu-eyebrow">Foes Met<span class="meta">slay count</span></div>
-        <div class="boss-grid" id="bossRoster"></div>
+    <!-- Hidden compatibility shims so existing renderer code can still
+         write into legacy IDs that have moved into the saga sheet. -->
+    <div style="display:none">
+      <div id="bossRoster"></div>
+      <div id="realmPath"></div>
+      <div id="dailyQuest"><div id="dailyQuestText"></div><div id="dailyQuestProgress"></div><div id="dailyQuestReward"></div></div>
+      <div id="topRuns"></div>
+      <div id="honoursRow"></div>
+      <span id="honoursCount"></span>
+      <span id="syncStatusLine"></span>
+      <div id="bestScore"></div><div id="bestDist"></div><div id="totalRuns"></div>
+      <div id="menuTrendsBody"></div>
+      <button id="beginBtn2"></button>
+      <button id="tabSensors"></button>
+      <button id="tabTrends"></button>
+      <div id="panelSensors"></div>
+      <div id="panelTrends"></div>
+    </div>
+  </div>
+
+  <!-- =================== SHEETS ================================== -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+  <!-- YOUR SAGA sheet: realm path, boss roster, daily deed, top runs, honours. -->
+  <div class="sheet" id="sheetSaga" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">Your Saga</div>
+      <button class="sheet-close" data-close-sheet>&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="s-group">
+        <div class="s-group-title">Today's deed</div>
+        <div id="sagaSheetQuest"></div>
       </div>
+      <div class="s-group">
+        <div class="s-group-title">The road</div>
+        <div class="s-card" style="padding:14px"><div class="realm-path" id="sagaSheetRealmPath"></div></div>
+      </div>
+      <div class="s-group">
+        <div class="s-group-title">Foes met</div>
+        <div class="boss-grid" id="sagaSheetBossRoster"></div>
+      </div>
+      <div class="s-group">
+        <div class="s-group-title">Skald's roll</div>
+        <div class="s-card"><div id="sagaSheetTopRuns" class="top-runs"></div></div>
+      </div>
+      <div class="s-group">
+        <div class="s-group-title"><span id="sagaSheetHonoursTitle">Honours</span></div>
+        <div class="honours-grid" id="sagaSheetHonoursRow"></div>
+      </div>
+      <div class="s-group">
+        <div class="s-group-title">Trends</div>
+        <div class="s-card" style="padding:16px"><div id="sagaSheetTrendsBody"></div></div>
+      </div>
+    </div>
+  </div>
 
-      <!-- DAILY QUEST -->
-      <div class="menu-section">
-        <div class="menu-eyebrow">Today's Deed<span class="meta">resets at midnight</span></div>
-        <div id="dailyQuest" class="daily-quest">
-          <div class="quest-head">
-            <div class="quest-eyebrow">Deed</div>
-            <div id="dailyQuestProgress" class="quest-progress"></div>
+  <!-- BIND BODY sheet: webcam + Muse, advanced toggle. -->
+  <div class="sheet" id="sheetBody" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">Bind Body</div>
+      <button class="sheet-close" data-close-sheet>&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="s-group">
+        <div class="s-group-title">Sensors</div>
+        <div class="s-card">
+          <div class="sensor-row">
+            <div class="info">
+              <div class="info-name">Face · webcam</div>
+              <div class="info-sub">Reads your pulse from skin colour. Quickens the gift meter, warns of stress, beats the world with your pulse.</div>
+            </div>
+            <button id="bioHrBtn">Open</button>
           </div>
-          <div id="dailyQuestText" class="quest-text"></div>
-          <div id="dailyQuestReward" class="quest-reward"></div>
+          <div class="sensor-row">
+            <div class="info">
+              <div class="info-name">Band · Muse headband</div>
+              <div class="info-sub">Reads focus and calm directly from your scalp. Triggers Flow (2× score, faster boss kills) and unlocks Asgard runes.</div>
+            </div>
+            <button id="bioEegBtn">Bind</button>
+          </div>
         </div>
-      </div>
-
-      <!-- TOP 5 LEADERBOARD -->
-      <div class="menu-section">
-        <div class="menu-eyebrow">Skald's Roll<span class="meta">your top runs</span></div>
-        <div id="topRuns" class="top-runs"></div>
-      </div>
-
-      <!-- HONOURS -->
-      <div class="menu-section">
-        <div class="menu-eyebrow">Honours<span class="meta" id="honoursCount">0 / 40</span></div>
-        <div id="honoursRow" class="honours-grid"></div>
-      </div>
-
-      <!-- Secondary CTA -->
-      <button class="menu-cta-ghost" id="beginBtn2" style="margin-top:24px">Run</button>
-
-      <!-- TABS row -->
-      <div class="menu-tabs" style="margin-top:22px">
-        <button id="tabSensors" class="menu-tab">Bind Body</button>
-        <button id="tabTrends"  class="menu-tab">More Trends</button>
-      </div>
-
-      <!-- SENSORS PANEL. Minimal. Two buttons, two tooltips on hover.
-           No descriptions, no Diagnose link, no hint boxes. Less is more. -->
-      <div id="panelSensors" style="display:none;margin-top:12px;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <button id="bioHrBtn"
-                  title="Reads your pulse through the webcam. Quickens the gift-meter, warns of stress, beats the world with your pulse."
-                  style="flex:1">Face</button>
-          <button id="bioEegBtn"
-                  title="Pairs a Muse headband. Triggers Flow (2x score, faster boss kills), opens meditation, unlocks Asgard runes. Muse must be on, unpaired from your phone, Bluetooth enabled."
-                  style="flex:1">Band</button>
-        </div>
-        <p style="font-size:11px;color:rgba(212,173,106,.55);line-height:1.4;margin:0;font-style:italic;text-align:center">Hover for what each does.</p>
-        <!-- Kept hidden but still in DOM so the bio binding code can write status text there if needed. Nothing rendered by default. -->
-        <div id="bioBleHint"    style="display:none"></div>
+        <div id="bioBleHint" style="display:none;margin:10px 16px 0;font-size:12px;color:rgba(255,140,90,.85);line-height:1.4"></div>
         <div id="bioEegDiagOut" style="display:none"></div>
       </div>
+      <p style="margin:22px 16px 0;font:italic 400 12.5px/1.5 -apple-system,system-ui,sans-serif;color:rgba(244,234,208,.5);text-align:center">Bind both for True-sight. The rarest gifts. Doubled streak rewards.</p>
+    </div>
+  </div>
 
-      <!-- TRENDS PANEL (collapsed by default). Bio + score side by side. -->
-      <div id="panelTrends" style="display:none;margin-top:12px">
-        <div id="menuTrendsBody" style="text-align:left;font-size:12px;color:rgba(255,255,255,.78);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif"></div>
+  <!-- HOW TO PLAY sheet: controls + brief explainer. -->
+  <div class="sheet" id="sheetHelp" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div class="sheet-title">How to play</div>
+      <button class="sheet-close" data-close-sheet>&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="s-group">
+        <div class="s-group-title">Controls</div>
+        <div class="s-card">
+          <div class="s-row"><span>Change lane</span><span class="v">← →</span></div>
+          <div class="s-row"><span>Leap</span><span class="v">↑</span></div>
+          <div class="s-row"><span>Slide low</span><span class="v">↓</span></div>
+          <div class="s-row"><span>Hold the world</span><span class="v">P</span></div>
+          <div class="s-row"><span>Mute</span><span class="v">M</span></div>
+        </div>
       </div>
-
-      <div class="controls-line">
-        <kbd>&larr;</kbd> <kbd>&rarr;</kbd> Lane &nbsp; <kbd>&uarr;</kbd> Jump &nbsp; <kbd>&darr;</kbd> Slide &nbsp; <kbd>P</kbd> Pause
-      </div>
-
-      <!-- Footer: Skald identity + sync. Unobtrusive bottom line. -->
-      <div style="margin-top:12px;font:400 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.42);letter-spacing:.01em">
-        <span style="opacity:.6">Skald </span><span id="skaldNameLine" style="color:rgba(244,212,154,.78);font-weight:600">unknown</span>
-        <span style="opacity:.4;margin:0 4px">·</span>
-        <span id="syncStatusLine" style="opacity:.7">Local only</span>
-        <a href="#" id="openSyncDialog" style="margin-left:8px;color:rgba(244,212,154,.85);text-decoration:underline;font-weight:500">Backup &amp; sync</a>
+      <div class="s-group">
+        <div class="s-group-title">The road</div>
+        <p style="margin:0;padding:0 4px;font:400 14px/1.55 -apple-system,system-ui,sans-serif;color:rgba(244,234,208,.78)">
+          Red marks danger. Gold marks gift. Slay the boss at each realm's end and the saga widens.
+          Stay calm and the gods give freely. Tense up and the wolf takes from you.
+        </p>
       </div>
     </div>
   </div>
@@ -1393,7 +1573,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524k"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524l"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which

@@ -5773,28 +5773,51 @@ class Valhalla {
     const tabT = document.getElementById("tabTrends");
     const pS = document.getElementById("panelSensors");
     const pT = document.getElementById("panelTrends");
-    if (tabS && tabT && pS && pT) {
-      const setActive = (which) => {
-        const sOn = which === "s";
-        const tOn = which === "t";
-        pS.style.display = sOn ? "block" : "none";
-        pT.style.display = tOn ? "block" : "none";
-        tabS.style.background = sOn ? "rgba(212,173,106,.20)" : "rgba(212,173,106,.06)";
-        tabT.style.background = tOn ? "rgba(212,173,106,.20)" : "rgba(212,173,106,.06)";
-        if (tOn) this._renderMenuTrends();
-      };
-      tabS.addEventListener("click", () => setActive(pS.style.display === "block" ? null : "s"));
-      tabT.addEventListener("click", () => setActive(pT.style.display === "block" ? null : "t"));
-      // FIRST-LAUNCH: auto-open BIND BODY so the user immediately sees
-      // the Face / Band buttons. Otherwise the only thing visible is
-      // two collapsed tabs and they don't know to click. After they
-      // click anywhere it stays where they put it.
-      if (!localStorage.getItem("valhalla.tabUsed")) {
-        setActive("s");
+    // Old tab system is hidden in the DOM compatibility shim now;
+    // it's replaced by the bottom sheets opened from the hero.
+    void tabS; void tabT; void pS; void pT;
+
+    // BOTTOM SHEET OPEN/CLOSE wiring. One backdrop, three sheets.
+    // Spring-feel transitions defined in CSS.
+    const backdrop = document.getElementById("sheetBackdrop");
+    const sheets = {
+      saga: document.getElementById("sheetSaga"),
+      body: document.getElementById("sheetBody"),
+      help: document.getElementById("sheetHelp"),
+    };
+    const openSheet = (key) => {
+      // Close any open sheet first.
+      for (const k of Object.keys(sheets)) {
+        if (sheets[k]) sheets[k].classList.remove("open");
       }
-      tabS.addEventListener("click", () => { try { localStorage.setItem("valhalla.tabUsed", "1"); } catch {} });
-      tabT.addEventListener("click", () => { try { localStorage.setItem("valhalla.tabUsed", "1"); } catch {} });
-    }
+      if (!sheets[key]) return;
+      sheets[key].classList.add("open");
+      if (backdrop) backdrop.classList.add("open");
+      // Populate dynamic content on open so it's always fresh.
+      if (key === "saga") this._renderSagaSheet();
+    };
+    const closeAllSheets = () => {
+      for (const k of Object.keys(sheets)) {
+        if (sheets[k]) sheets[k].classList.remove("open");
+      }
+      if (backdrop) backdrop.classList.remove("open");
+    };
+    const wireOpen = (btnId, sheetKey) => {
+      const b = document.getElementById(btnId);
+      if (b) b.addEventListener("click", () => openSheet(sheetKey));
+    };
+    wireOpen("openSagaSheet", "saga");
+    wireOpen("openBodySheet", "body");
+    wireOpen("openHelpSheet", "help");
+    if (backdrop) backdrop.addEventListener("click", closeAllSheets);
+    // ALL elements with data-close-sheet close any open sheet.
+    document.querySelectorAll("[data-close-sheet]").forEach(el => {
+      el.addEventListener("click", closeAllSheets);
+    });
+    // ESC also closes.
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAllSheets();
+    });
 
     // Sync dialog wiring + initial state. Auto-pull from cloud on
     // boot if the host provides ElataSync; otherwise just show local
@@ -6181,11 +6204,12 @@ class Valhalla {
     this._renderSagaLine();
   }
 
-  // FULL MENU CHROME. Builds every dynamic block visible on the start
-  // overlay. Idempotent: safe to call on every menu open.
+  // HERO-ONLY menu chrome. The hero composition (title, tagline, CTA,
+  // stat ribbon) is the only thing visible by default. Everything else
+  // (realm path, bosses, quest, leaderboard, honours) renders inside
+  // the SAGA sheet when the user opens it.
   _renderMenuChrome() {
     const s = Store.load();
-    // ----- HERO ROW -------------------------------------------------
     const streak = s.streak || 0;
     const heroStreakEl = document.getElementById("heroStreak");
     const heroBestEl   = document.getElementById("heroBest");
@@ -6193,17 +6217,47 @@ class Valhalla {
     if (heroStreakEl) heroStreakEl.innerHTML = `🔥 ${streak}`;
     if (heroBestEl)   heroBestEl.textContent = (s.bestScore || 0).toLocaleString();
     if (heroDistEl)   heroDistEl.textContent = `${Math.round(s.bestDist || 0)}m`;
+  }
 
-    // ----- REALM PATH -----------------------------------------------
-    this._renderRealmPath(s);
-    // ----- BOSS ROSTER ----------------------------------------------
-    this._renderBossRoster(s);
-    // ----- DAILY QUEST ----------------------------------------------
+  // Populate the SAGA sheet. Called on every sheet open. Reuses the
+  // existing renderers but writes to the SHEET DOM ids by temporarily
+  // swapping element references (cheaper than duplicating renderers).
+  _renderSagaSheet() {
+    const s = Store.load();
+    // Temporarily move data into the sheet's elements by rewriting
+    // host IDs. Each renderer queries by id; we just redirect those
+    // ids by setting innerHTML on the sheet host directly.
+    const move = (fromId, toId) => {
+      const from = document.getElementById(fromId);
+      const to   = document.getElementById(toId);
+      if (from && to) to.innerHTML = from.innerHTML;
+    };
+    // Run the renderers first (they write into the legacy hidden shims).
     this._renderDailyQuest(s);
-    // ----- TOP RUNS -------------------------------------------------
+    this._renderRealmPath(s);
+    this._renderBossRoster(s);
     this._renderTopRuns(s);
-    // ----- HONOURS ROW ----------------------------------------------
     this._renderHonoursRow(s);
+    this._renderMenuTrends();
+    // Copy from hidden shim into the visible sheet host.
+    move("realmPath",   "sagaSheetRealmPath");
+    move("bossRoster",  "sagaSheetBossRoster");
+    move("topRuns",     "sagaSheetTopRuns");
+    move("honoursRow",  "sagaSheetHonoursRow");
+    move("menuTrendsBody", "sagaSheetTrendsBody");
+    // Daily quest sheet copy: clone the entire quest card.
+    const dqHost = document.getElementById("dailyQuest");
+    const dqSheet = document.getElementById("sagaSheetQuest");
+    if (dqHost && dqSheet) {
+      dqSheet.innerHTML = "";
+      const clone = dqHost.cloneNode(true);
+      clone.removeAttribute("id");
+      dqSheet.appendChild(clone);
+    }
+    // Honours count label inside sheet.
+    const hc = document.getElementById("honoursCount");
+    const hcs = document.getElementById("sagaSheetHonoursTitle");
+    if (hc && hcs) hcs.textContent = "Honours · " + hc.textContent;
   }
 
   _renderRealmPath(s) {
