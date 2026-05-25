@@ -919,6 +919,23 @@
 
     /* Old rules removed: .start h1, .tag, .play, .ministats, .bio-sect
        were last-wins overriding the new hero composition. */
+
+    /* HARD KILL on the legacy bio widget injected by js/bio/ui.js. CSS
+       hide regardless of what the bio module does; the JS nuker
+       also removes it on every frame as belt-and-braces. The bio
+       module was previously winning the visibility war by re-mounting
+       after polls ended. CSS !important wins permanently. */
+    #bio-badge, #bio-panel, #bio-menu-sparkline, #bio-menu-ritual,
+    #bio-tier-block, #bio-drill-host,
+    [id^="bio-"]:not(#bioCalibration):not(#bioBleHint):not(#bioEegBtn):not(#bioHrBtn):not(#bioEegDiag):not(#bioEegDiagOut):not(#bioRow):not(#bioNudge):not(#bioErrBanner),
+    [class^="bio-"]{
+      display:none !important;
+      visibility:hidden !important;
+      opacity:0 !important;
+      pointer-events:none !important;
+      width:0 !important;height:0 !important;
+      position:absolute !important;left:-99999px !important;
+    }
     /* Old .bio-sect rules replaced by .sensor-row inside the Bind
        Body sheet. Bio buttons still pick up the .live/.warming/.error
        state classes from wireBioBtn — handled by .sensor-row button
@@ -1667,7 +1684,7 @@
   <!-- Cache-bust query string forces browsers to fetch the new module
        even if disk cache + SW cache leftover would otherwise hand them
        the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260524m"></script>
+  <script type="module" src="./js/valhalla/main.js?v=20260524n"></script>
   <script>
     // SW CLEANUP ONLY. DO NOT register a new service worker.
     // Last commit registered sw.js which then navigated the tab, which

@@ -6063,12 +6063,17 @@ class Valhalla {
     setTimeout(nukeLegacyBio, 200);
     setTimeout(nukeLegacyBio, 800);
     setTimeout(nukeLegacyBio, 2000);
-    // MutationObserver as the permanent guard. Anything added to body
-    // with a bio- id/class prefix gets removed on the next microtask.
+    // MutationObserver as one guard. Deep tree (subtree:true) so it
+    // catches any nested re-mount the bio module might do, not just
+    // direct children of body.
     try {
       const mo = new MutationObserver(() => nukeLegacyBio());
-      mo.observe(document.body, { childList: true, subtree: false });
+      mo.observe(document.body, { childList: true, subtree: true });
     } catch {}
+    // Forever interval as the second guard. The bio module previously
+    // won the visibility war by re-mounting on its own timer after
+    // the initial polls ended. 500ms forever ensures it can never win.
+    setInterval(nukeLegacyBio, 500);
   }
 
   _bindBio() {
