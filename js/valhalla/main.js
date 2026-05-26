@@ -1475,10 +1475,34 @@ class Valhalla {
     this._buildGodRays();
     this._buildMist();
     this._buildHUD();
-    // Each top-level boot stage independently wrapped so a single
-    // throw doesn't cascade. User-reported 'buttons don't work +
-    // unknown skald name' was caused by an early throw in _bindInput
-    // killing _bindBio and _loadStats downstream.
+    // SURVIVAL WIRING — attach the most critical button handlers
+    // FIRST and INDEPENDENTLY, so even if _bindInput/Bio/Stats throw,
+    // the user can still hit Run / open sheets / read sync. This is
+    // belt-and-braces after the user reported buttons silently
+    // dying multiple times.
+    try {
+      const begin = () => { try { this._begin(); } catch (e) { console.error("[begin] threw", e); } };
+      const wire = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); };
+      wire("beginBtn",       (e) => { e.preventDefault(); console.log("[Run] clicked"); begin(); });
+      wire("againBtn",       () => { const o = document.getElementById("overOverlay"); if (o) o.classList.remove("show"); begin(); });
+      wire("openSagaSheet",  () => this._openSheet && this._openSheet("saga"));
+      wire("openBodySheet",  () => this._openSheet && this._openSheet("body"));
+      wire("openHelpSheet",  () => this._openSheet && this._openSheet("help"));
+      wire("openSyncDialog", (e) => { e.preventDefault(); const d = document.getElementById("syncOverlay"); if (d) d.style.display = "flex"; });
+      // Sheet close buttons + backdrop.
+      document.querySelectorAll("[data-close-sheet]").forEach(el => el.addEventListener("click", () => this._closeSheets && this._closeSheets()));
+      const bd = document.getElementById("sheetBackdrop");
+      if (bd) bd.addEventListener("click", () => this._closeSheets && this._closeSheets());
+      // Survival skald-name fill: top-right shows the actual skald
+      // name immediately, independent of _loadStats running.
+      try {
+        const nameEl = document.getElementById("skaldNameLine");
+        if (nameEl) nameEl.textContent = Store.getSkaldName();
+      } catch (e) { console.warn("[boot] skald name fill failed", e); }
+      console.log("[boot] survival wiring done");
+    } catch (e) { console.error("[boot] survival wiring failed", e); }
+
+    // Full boot stages — each independently wrapped.
     try { this._bindInput(); } catch (e) { console.error("[boot] _bindInput threw", e); }
     try { this._bindBio();   } catch (e) { console.error("[boot] _bindBio threw", e); }
     try { this._loadStats(); } catch (e) { console.error("[boot] _loadStats threw", e); }
@@ -6237,6 +6261,32 @@ class Valhalla {
     // Was being missed because _refreshSkaldLine was only called in
     // boot, not on every menu open. That's why the user saw 'unknown'.
     try { this._refreshSkaldLine(); } catch (e) { console.warn("[loadStats] skald failed", e); }
+  }
+
+  // Methods callable from the survival wiring above. Kept as class
+  // members so they can be invoked from anywhere without scope issues.
+  _openSheet(key) {
+    const sheets = {
+      saga: document.getElementById("sheetSaga"),
+      body: document.getElementById("sheetBody"),
+      help: document.getElementById("sheetHelp"),
+    };
+    for (const k of Object.keys(sheets)) {
+      if (sheets[k]) sheets[k].classList.remove("open");
+    }
+    if (!sheets[key]) return;
+    sheets[key].classList.add("open");
+    const bd = document.getElementById("sheetBackdrop");
+    if (bd) bd.classList.add("open");
+    if (key === "saga") { try { this._renderSagaSheet(); } catch (e) { console.warn("[saga sheet]", e); } }
+  }
+  _closeSheets() {
+    for (const id of ["sheetSaga", "sheetBody", "sheetHelp"]) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove("open");
+    }
+    const bd = document.getElementById("sheetBackdrop");
+    if (bd) bd.classList.remove("open");
   }
 
   // HERO-ONLY menu chrome. The hero composition (title, tagline, CTA,
