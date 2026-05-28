@@ -9221,9 +9221,12 @@ class Valhalla {
     // operator-with-a-real-camera feel that pure procedural cameras
     // lack. Sub-pixel amplitude; you don't see it consciously but the
     // scene stops feeling like a fixed render. Apple-tier touch.
-    const t = performance.now() * 0.001;
-    const handheldX = Math.sin(t * 0.31) * 0.06 + Math.sin(t * 0.73) * 0.03;
-    const handheldY = Math.sin(t * 0.27) * 0.04 + Math.cos(t * 0.59) * 0.02;
+    // (Variable name 'tt' instead of 't' because the run-cycle anim
+    // above already uses 'const t' — duplicate const = SyntaxError
+    // that prevented the whole file from parsing.)
+    const tt = performance.now() * 0.001;
+    const handheldX = Math.sin(tt * 0.31) * 0.06 + Math.sin(tt * 0.73) * 0.03;
+    const handheldY = Math.sin(tt * 0.27) * 0.04 + Math.cos(tt * 0.59) * 0.02;
     const camTargetX = this.player.position.x * 0.4 + Math.sin(phase * 0.5) * swayAmp + handheldX;
     const camTargetY = 5.3 + Math.abs(Math.sin(phase)) * bobAmp + this.playerY * 0.12 + handheldY;
     this.camera.position.x += (camTargetX - this.camera.position.x) * Math.min(1, dt * 4);
@@ -9233,7 +9236,7 @@ class Valhalla {
     // a quiet 0.25 Hz baseline. ±0.4° about the resting FOV.
     const baseFov = this._baseFov || (this._baseFov = this.camera.fov);
     const breathHz = this.bpm ? (this.bpm / 60) : 0.25;
-    const fovOffset = Math.sin(t * breathHz * Math.PI * 2) * 0.4;
+    const fovOffset = Math.sin(tt * breathHz * Math.PI * 2) * 0.4;
     this.camera.fov = baseFov + fovOffset;
     this.camera.updateProjectionMatrix();
 
