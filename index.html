@@ -1684,29 +1684,51 @@
     </div>
   </div>
 
-  <!-- Cache-bust query string forces browsers to fetch the new module
-       even if disk cache + SW cache leftover would otherwise hand them
-       the stale build. Bump this string on every release. -->
-  <script type="module" src="./js/valhalla/main.js?v=20260526d"></script>
+  <!-- AGGRESSIVE SW ESCAPE — runs synchronously in <head> order,
+       BEFORE main.js. If a stale service worker is controlling this
+       page (the usual reason a user is stuck on an old cached build
+       despite no-store server headers), unregister it, wipe all
+       caches, and hard-reload ONCE to escape its control. A
+       sessionStorage guard prevents any reload loop. After one clean
+       escape the whole block is a no-op. -->
   <script>
-    // SW CLEANUP ONLY. DO NOT register a new service worker.
-    // Last commit registered sw.js which then navigated the tab, which
-    // caused the next page load to register sw.js again = infinite
-    // reload loop. Fixed: just unregister any leftover SW and wipe
-    // caches. No new registration. After one visit, this is a no-op.
-    if ("serviceWorker" in navigator && location.protocol !== "file:") {
-      window.addEventListener("load", async () => {
-        try {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) { try { await r.unregister(); } catch {} }
-          if (window.caches) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(k => caches.delete(k)));
-          }
-          if (regs.length) console.log("[Valhalla] cleaned up " + regs.length + " leftover SW(s)");
-        } catch (e) { console.warn("[Valhalla] SW cleanup failed", e); }
-      });
-    }
+    (async function escapeStaleSW(){
+      try {
+        if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+        const controlled = !!navigator.serviceWorker.controller;
+        const regs = await navigator.serviceWorker.getRegistrations();
+        let removed = 0;
+        for (const r of regs) { try { if (await r.unregister()) removed++; } catch {} }
+        if (window.caches) {
+          try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch {}
+        }
+        // If a SW was actually controlling this page load, it likely
+        // served us stale HTML/JS. Reload once (guarded) to fetch
+        // fresh from the server now that the SW is gone.
+        if ((controlled || removed) && !sessionStorage.getItem("valhalla_sw_escaped")) {
+          sessionStorage.setItem("valhalla_sw_escaped", "1");
+          console.log("[Valhalla] escaped stale service worker, reloading fresh");
+          location.reload();
+        }
+      } catch (e) { console.warn("[Valhalla] SW escape failed", e); }
+    })();
+  </script>
+
+  <!-- Module loaded with a RUNTIME timestamp so the browser HTTP
+       cache can never hand back a stale main.js, regardless of the
+       version query string. This is the belt to the SW-escape braces:
+       even if cached HTML somehow loads, the JS is always fresh. -->
+  <script>
+    (function loadGame(){
+      var s = document.createElement("script");
+      s.type = "module";
+      s.src = "./js/valhalla/main.js?v=20260526e&t=" + Date.now();
+      document.body.appendChild(s);
+    })();
+  </script>
+  <script>
+    // (legacy block kept harmless — SW escape above supersedes it)
+    void 0;
 
     // PWA install prompt. capture the beforeinstallprompt event and
     // expose a button in the menu sync dialog if the browser allows.
