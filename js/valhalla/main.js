@@ -1599,7 +1599,7 @@ class Valhalla {
     this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.82;
+    this.renderer.toneMappingExposure = 1.05;
     // SHADOWS. one directional sun caster, 1024² max even on high.
     // 2048² doubles the shader cost for marginal visual win at our
     // distances. Disabled entirely on 'low'.
@@ -2018,10 +2018,11 @@ class Valhalla {
     // hemisphere skylight + one directional sun (now with real
     // shadows on high/medium) + a cold rim for silhouette separation
     // against fog. References: The Northman, Vikings, 13th Warrior.
-    // Lower hemisphere intensity (1.05 -> 0.72) for less flat-fill,
-    // more contrast between lit and shadow side. Hyperreal scenes
-    // have strong key + soft fill, not omnidirectional flat light.
-    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x2a2a32, 0.72);
+    // Hemisphere intensity 1.0 — earlier I dropped to 0.72 chasing
+    // 'hyperreal' which made the scene unreadably dark on most
+    // monitors. Real cinematic light has soft fill across the whole
+    // scene, just lower than the key. 1.0 reads correctly.
+    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x3a3a44, 1.00);
     this.scene.add(hemi);
 
     // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
