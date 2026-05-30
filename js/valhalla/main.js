@@ -766,43 +766,29 @@ class Audio {
     // sounds like real outdoor wind, not a single white-noise hiss.
     // The previous single-LP version was the "shit and fraud" wind
     // the user kept calling out.
+    // MINIMAL WIND. The user repeatedly reported the wind as a
+    // "static squelching" noise. Stripped to a single, very quiet,
+    // heavily low-passed pink-noise rumble (cutoff 220 Hz, gain 0.04).
+    // Removed the bandpass "whistle" layer entirely (that was the
+    // squelch). Below ~250 Hz pink noise reads as soft distant wind,
+    // never as static.
     const noiseLow = this._noiseSrc(true);
     const lp = this.ctx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 380; lp.Q.value = 0.6;
-    const gLow = this.ctx.createGain(); gLow.gain.value = 0.11;
-    noiseLow.connect(lp); lp.connect(gLow);
+    lp.type = "lowpass"; lp.frequency.value = 220; lp.Q.value = 0.4;
+    const lp2 = this.ctx.createBiquadFilter();   // second pole = steeper rolloff, kills hiss
+    lp2.type = "lowpass"; lp2.frequency.value = 220; lp2.Q.value = 0.4;
+    const gLow = this.ctx.createGain(); gLow.gain.value = 0.04;
+    noiseLow.connect(lp); lp.connect(lp2); lp2.connect(gLow);
+    this._send(gLow, 0.25);
+    noiseLow.start();
 
-    // The "whistle" layer was a resonant bandpass at Q=2.8 around
-    // 1400 Hz which can pierce eardrums. Dropped to Q=0.8, lower
-    // freq, much quieter gain. Now reads as breath through pines,
-    // not a tea kettle.
-    const noiseHi = this._noiseSrc(true);
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = "bandpass"; bp.frequency.value = 700; bp.Q.value = 0.7;
-    const gHi = this.ctx.createGain(); gHi.gain.value = 0.012;
-    noiseHi.connect(bp); bp.connect(gHi);
-
-    this._send(gLow, 0.35);
-    this._send(gHi, 0.55);
-    noiseLow.start(); noiseHi.start();
-
-    this.windNode = { noiseLow, noiseHi, lp, bp, gLow, gHi };
-    // Slow LFO on the bulk-wind cutoff + gain (~10s cycle) for the
-    // "gust building and dying" feel. Bandpass cutoff drifts 1.5x as
-    // fast so the whistle and bulk aren't locked together.
+    this.windNode = { noiseLow, lp, lp2, gLow };
+    // Very slow, gentle gust swell so it isn't dead-static. Tiny range.
     setInterval(() => {
       if (!this.windNode || !this.ctx) return;
       const t = this.ctx.currentTime;
-      this.windNode.lp.frequency.linearRampToValueAtTime(220 + Math.random() * 260, t + 1.6);
-      this.windNode.gLow.gain.linearRampToValueAtTime(0.075 + Math.random() * 0.08, t + 1.6);
-    }, 1600);
-    setInterval(() => {
-      if (!this.windNode || !this.ctx) return;
-      const t = this.ctx.currentTime;
-      // Keep whistle low + soft. Max gain 0.020 (was 0.057 = pierce).
-      this.windNode.bp.frequency.linearRampToValueAtTime(500 + Math.random() * 600, t + 1.0);
-      this.windNode.gHi.gain.linearRampToValueAtTime(0.008 + Math.random() * 0.012, t + 1.0);
-    }, 1100);
+      this.windNode.gLow.gain.linearRampToValueAtTime(0.028 + Math.random() * 0.03, t + 2.4);
+    }, 2400);
   }
 
   // FIRE CRACKLE. continuous looped texture for the camp ambience.
@@ -6173,10 +6159,11 @@ class Valhalla {
           this.hud.bpmTxt.textContent = "Face the camera";
         } else if (s.status === "live") {
           this.hud.bioRow.classList.add("on");
-          // FIRST-TIME CALIBRATION RITUAL. show a 60s breathing
-          // guide once per profile lifetime so the SDK has a real
-          // baseline to compare against. Skippable.
-          this._maybeStartCalibration();
+          // NOTE: the auto-launch 60s calibration ritual was REMOVED.
+          // It opened a full-screen overlay the instant the webcam
+          // went live, which read as "the screen went blank" and
+          // blocked play. The SDK calibrates ambiently from natural
+          // play anyway. Webcam now just starts working.
         }
         this._refreshBioLiveFlag();
       });
@@ -7959,15 +7946,22 @@ class Valhalla {
   _begin() {
     $("startOverlay").classList.add("hide");
     $("overOverlay").classList.remove("show");
-    // CINEMATIC INTRO. Start the run in pure-black, then fade in over
-    // 1.4s as the body.playing class is added. .cinematic-intro on
-    // body keeps the .introfade overlay opaque; .playing then removes
-    // it via CSS transition. Same trick every Vikings episode opens.
+    // CINEMATIC INTRO, made bulletproof. The black .introfade overlay
+    // (opacity 1 under body.cinematic-intro) fades out once body.playing
+    // is added. Previously this relied on a SINGLE requestAnimationFrame;
+    // if that rAF was throttled or never fired, the black overlay stuck
+    // opaque forever = "screen goes blank when I start a run". Now we
+    // add .playing via rAF AND a setTimeout fallback, and we GUARANTEE
+    // removal of .cinematic-intro after 1.6s no matter what.
     document.body.classList.add("cinematic-intro");
-    requestAnimationFrame(() => {
+    const goPlaying = () => document.body.classList.add("playing");
+    requestAnimationFrame(goPlaying);
+    setTimeout(goPlaying, 60);
+    clearTimeout(this._introClearT);
+    this._introClearT = setTimeout(() => {
       document.body.classList.add("playing");
-      setTimeout(() => document.body.classList.remove("cinematic-intro"), 1500);
-    });
+      document.body.classList.remove("cinematic-intro");
+    }, 1600);
     this.lane = 1; this.targetLaneX = LANES[1];
     this.playerY = 0; this.playerVy = 0;
     this.sliding = false; this.slideTimer = 0;
@@ -8902,17 +8896,28 @@ class Valhalla {
     // Ease toward the active time scale (1 normally, 0.35 during rune slow-mo).
     this._timeScale += (this._timeScaleTarget - this._timeScale) * Math.min(1, realDt * 8);
     const dt = realDt * this._timeScale;
-    if (!this.paused) this._update(dt);
-    // Half-rate render when not playing (menu, game-over). Halves GPU
-    // load on the title screen.
-    if (this.running || this.paused) {
-      this._render();
-    } else {
-      this._idleFrame = (this._idleFrame || 0) + 1;
-      if ((this._idleFrame & 1) === 0) this._render();
+    // BULLETPROOF LOOP. Previously a single throw inside _update killed
+    // the whole render loop (the rAF at the bottom never ran), which
+    // showed as "screen goes blank when I start a run". Now _update
+    // and _render are independently guarded and the loop ALWAYS
+    // re-schedules itself. The game can never freeze to black from a
+    // per-frame exception again; it just logs and keeps going.
+    try {
+      if (!this.paused) this._update(dt);
+    } catch (e) {
+      if (!this._updateErrLogged) { console.error("[frame] _update threw", e); this._updateErrLogged = true; }
     }
-    // FPS sampling + runtime quality auto-downgrade.
-    this._sampleFps(realDt);
+    try {
+      if (this.running || this.paused) {
+        this._render();
+      } else {
+        this._idleFrame = (this._idleFrame || 0) + 1;
+        if ((this._idleFrame & 1) === 0) this._render();
+      }
+    } catch (e) {
+      if (!this._renderErrLogged) { console.error("[frame] _render threw", e); this._renderErrLogged = true; }
+    }
+    try { this._sampleFps(realDt); } catch {}
     requestAnimationFrame(this._frame);
   }
 
