@@ -1489,6 +1489,17 @@ class Valhalla {
       wire("openBodySheet",  () => this._openSheet && this._openSheet("body"));
       wire("openHelpSheet",  () => this._openSheet && this._openSheet("help"));
       wire("openSyncDialog", (e) => { e.preventDefault(); const d = document.getElementById("syncOverlay"); if (d) d.style.display = "flex"; });
+      // BODY CARD — one tap. If no sensor yet, start the webcam right
+      // away (lowest-friction path to bio). If already live, open the
+      // Body sheet to manage sensors. This makes bio the easiest thing
+      // in the whole menu to access.
+      wire("bodyCard", () => {
+        const live = document.body.classList.contains("bio-live");
+        if (live) { this._openSheet && this._openSheet("body"); return; }
+        const hr = document.getElementById("bioHrBtn");
+        if (hr && !hr.disabled) hr.click();      // kick off webcam
+        else this._openSheet && this._openSheet("body");
+      });
       // Sheet close buttons + backdrop.
       document.querySelectorAll("[data-close-sheet]").forEach(el => el.addEventListener("click", () => this._closeSheets && this._closeSheets()));
       const bd = document.getElementById("sheetBackdrop");
@@ -6127,6 +6138,9 @@ class Valhalla {
           this.bpm = Math.round(m.bpm);
           this.hud.bpmTxt.textContent = `${this.bpm} bpm`;
           this.hud.bioRow.classList.add("on");
+          // Keep the menu body card's live HR in sync (only matters
+          // while the menu is visible, cheap otherwise).
+          if (!this.running) this._updateBodyCard();
           // HEARTBEAT IMPACT. every detected beat sends a real pulse
           // through the world. Scheduled as a chain of soft camera
           // kicks + screen pulses paced to the player's actual BPM,
@@ -6212,6 +6226,49 @@ class Valhalla {
     const active = (s.rppg === "live" || s.rppg === "warming"
                  || s.eeg  === "live" || s.eeg  === "warming");
     document.body.classList.toggle("bio-live", !!active);
+    this._updateBodyCard(s);
+  }
+
+  // Update the menu BODY CARD — the bio hero. Reflects sensor status
+  // and live heart rate in an Apple-Health-style glanceable card.
+  //   off      -> "Read your body / Use your camera..."
+  //   warming  -> "Reading... / Hold still, face the light"
+  //   live     -> "72 BPM · Calm / Your heart is driving the world"
+  _updateBodyCard(status) {
+    const card = document.getElementById("bodyCard");
+    if (!card) return;
+    const titleEl = document.getElementById("bodyCardTitle");
+    const subEl   = document.getElementById("bodyCardSub");
+    const arc     = document.getElementById("bodyCardArc");
+    const s = status || (window.Bio && window.Bio.status ? window.Bio.status() : {});
+    const rppg = s.rppg, eeg = s.eeg;
+    const live = rppg === "live" || eeg === "live";
+    const warming = rppg === "warming" || eeg === "warming";
+    card.classList.toggle("live", live);
+    if (live) {
+      const bpm = this.bpm ? Math.round(this.bpm) : null;
+      // Plain-English state, no jargon.
+      const STATE = { flow:"In flow", focused:"Focused", calm:"Calm",
+        meditation:"At rest", berserker:"Fired up", aroused:"Energised",
+        frantic:"Racing", stress:"Tense", fatigue:"Weary",
+        distracted:"Drifting", neutral:"Steady" };
+      const stateWord = STATE[this.cognitiveState] || "Steady";
+      if (titleEl) titleEl.textContent = bpm ? `${bpm} BPM · ${stateWord}` : stateWord;
+      if (subEl)   subEl.textContent = "Your heartbeat is driving the world";
+      // Ring fills with HR relative to a 50-120 range.
+      if (arc && bpm) {
+        const pct = Math.max(0, Math.min(1, (bpm - 50) / 70));
+        arc.style.strokeDashoffset = String(119 * (1 - pct));
+      }
+    } else if (warming) {
+      if (titleEl) titleEl.textContent = "Reading your body…";
+      if (subEl)   subEl.textContent = "Hold still and face the light";
+      if (arc) arc.style.strokeDashoffset = "90";
+    } else {
+      if (titleEl) titleEl.textContent = "Read your body";
+      if (subEl)   subEl.textContent = "Use your camera to play with your heartbeat";
+      if (arc) arc.style.strokeDashoffset = "119";
+    }
   }
   // Called from _begin to suppress the nudge on subsequent runs once
   // the player has seen it. Sessionscoped so it returns on reload.
@@ -6300,7 +6357,7 @@ class Valhalla {
     const heroStreakEl = document.getElementById("heroStreak");
     const heroBestEl   = document.getElementById("heroBest");
     const heroDistEl   = document.getElementById("heroDist");
-    if (heroStreakEl) heroStreakEl.innerHTML = `🔥 ${streak}`;
+    if (heroStreakEl) heroStreakEl.textContent = String(streak);
     if (heroBestEl)   heroBestEl.textContent = (s.bestScore || 0).toLocaleString();
     if (heroDistEl)   heroDistEl.textContent = `${Math.round(s.bestDist || 0)}m`;
   }
@@ -6346,14 +6403,29 @@ class Valhalla {
     if (hc && hcs) hcs.textContent = "Honours · " + hc.textContent;
   }
 
+  // Clean inline SVG line glyphs (SF-Symbol style). No emoji anywhere
+  // user-facing — emoji was the biggest "AI placeholder" tell.
+  _glyph(name) {
+    const w = `width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"`;
+    const G = {
+      pine:  `<svg ${w}><path d="M12 3 7 11h3l-4 6h12l-4-6h3L12 3z"/><path d="M12 17v4"/></svg>`,
+      snow:  `<svg ${w}><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19"/></svg>`,
+      flame: `<svg ${w}><path d="M12 2c1 4 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 .5 2 2 2 2 0 0-2-1-3 1-5z"/></svg>`,
+      bolt:  `<svg ${w}><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
+      star:  `<svg ${w}><path d="M12 3l2.5 6 6.5.5-5 4.2 1.6 6.3L12 16.8 5.9 20l1.6-6.3-5-4.2 6.5-.5L12 3z"/></svg>`,
+      eye:   `<svg ${w}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
+    };
+    return G[name] || "";
+  }
+
   _renderRealmPath(s) {
     const host = document.getElementById("realmPath");
     if (!host) return;
     const realms = [
-      { key: "Midgard",    short: "MID",  icon: "🌲", colour: "#5a8c5a" },
-      { key: "Jötunheim",  short: "JÖT",  icon: "❄",  colour: "#7aa8d0" },
-      { key: "Muspelheim", short: "MUS",  icon: "🔥", colour: "#d06a40" },
-      { key: "Asgard",     short: "ASG",  icon: "⚡", colour: "#f4d49a" },
+      { key: "Midgard",    short: "MIDGARD",  icon: "pine",  colour: "#7bbf7b" },
+      { key: "Jötunheim",  short: "JÖTUN",    icon: "snow",  colour: "#8fc0e6" },
+      { key: "Muspelheim", short: "MUSPEL",   icon: "flame", colour: "#e6884f" },
+      { key: "Asgard",     short: "ASGARD",   icon: "bolt",  colour: "#f4d49a" },
     ];
     const cycles = s.totalCycles || 0;
     const farthest = s.farthestRealm || "Midgard";
@@ -6366,8 +6438,9 @@ class Valhalla {
       const op = reached ? 1 : 0.32;
       const ringColour = reached ? r.colour : "rgba(212,173,106,.28)";
       const nameColour = reached ? "#f4d49a" : "rgba(255,255,255,.4)";
+      const iconColour = reached ? r.colour : "rgba(255,255,255,.35)";
       html += `<div class="realm-node" style="opacity:${op}" title="${r.key}${reached ? " · reached" : " · locked"}">`
-            + `<div class="realm-circle" style="border:2px solid ${ringColour};${isFarthest ? `box-shadow:0 0 18px ${r.colour};` : ""}">${r.icon}</div>`
+            + `<div class="realm-circle" style="border:2px solid ${ringColour};color:${iconColour};${isFarthest ? `box-shadow:0 0 18px ${r.colour};` : ""}">${this._glyph(r.icon)}</div>`
             + `<div class="realm-name" style="color:${nameColour}">${r.short}</div>`
             + `</div>`;
       if (i < realms.length - 1) {
@@ -6387,10 +6460,10 @@ class Valhalla {
     const host = document.getElementById("bossRoster");
     if (!host) return;
     const BOSSES = [
-      { key: "jotunn",   name: "JÖTUNN",   realm: "Jötunheim",  icon: "❄", colour: "#7aa8d0" },
-      { key: "surtr",    name: "SURTR",    realm: "Muspelheim", icon: "🔥", colour: "#d06a40" },
-      { key: "valkyrie", name: "VALKYRIE", realm: "Asgard",     icon: "✦", colour: "#f4d49a" },
-      { key: "odin",     name: "ODIN",     realm: "Asgard ×5",  icon: "👁", colour: "#c5a3ff" },
+      { key: "jotunn",   name: "JÖTUNN",   realm: "Jötunheim",  icon: "snow",  colour: "#8fc0e6" },
+      { key: "surtr",    name: "SURTR",    realm: "Muspelheim", icon: "flame", colour: "#e6884f" },
+      { key: "valkyrie", name: "VALKYRIE", realm: "Asgard",     icon: "star",  colour: "#f4d49a" },
+      { key: "odin",     name: "ODIN",     realm: "Asgard ×5",  icon: "eye",   colour: "#c5a3ff" },
     ];
     const kills = s.bossKills || {};
     const realms = ["Midgard","Jötunheim","Muspelheim","Asgard"];
@@ -6407,8 +6480,9 @@ class Valhalla {
       const border = unlocked ? `border-color:${b.colour}40;` : "";
       const nameColour = unlocked ? "#f4d49a" : "rgba(255,255,255,.4)";
       const metaColour = unlocked && n > 0 ? "#a3e8b8" : "rgba(255,255,255,.4)";
+      const iconColour = unlocked ? b.colour : "rgba(255,255,255,.3)";
       html += `<div class="boss-card${aliveClass}" style="${op}${border}" title="${b.name} · ${b.realm}${unlocked ? "" : " · LOCKED"}">`
-           + `<div class="boss-icon">${b.icon}</div>`
+           + `<div class="boss-icon" style="color:${iconColour}">${this._glyph(b.icon)}</div>`
            + `<div class="boss-name" style="color:${nameColour}">${b.name}</div>`
            + `<div class="boss-meta" style="color:${metaColour}">${unlocked ? (n + " slain") : "locked"}</div>`
            + `</div>`;
@@ -6463,13 +6537,17 @@ class Valhalla {
       host.innerHTML = `<div style="opacity:.55;font-size:11.5px;font-style:italic;padding:6px 0">No runs walked. Walk one.</div>`;
       return;
     }
+    // Clean numbered rank discs. Top 3 tinted gold/silver/bronze, the
+    // rest a neutral chip. No emoji medals.
+    const rankColour = ["#f4d49a", "#cdd6e2", "#cf9266"];
     let html = "";
     for (let i = 0; i < board.length; i++) {
       const b = board[i];
       const isToday = b.date === today;
-      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+      const c = rankColour[i] || "rgba(255,255,255,.4)";
+      const bg = i < 3 ? `${c}22` : "rgba(255,255,255,.05)";
       html += `<div class="top-run-row${isToday ? " today" : ""}">`
-           + `<span class="medal">${medal}</span>`
+           + `<span class="rank" style="color:${c};background:${bg};border:1px solid ${c}55">${i + 1}</span>`
            + `<span class="score">${b.score.toLocaleString()}</span>`
            + `<span class="dist">${b.dist}m</span>`
            + `<span class="date">${b.date.slice(5)}</span>`
@@ -6499,12 +6577,23 @@ class Valhalla {
     let html = "";
     for (const b of cells) {
       const got = earnedSet.has(b.id);
-      html += `<div class="honour${got ? " earned" : ""}" title="${b.label || b.id}">`
-           + `<div class="icon">${b.icon || "✦"}</div>`
+      const colour = got ? this._tierColour(b.tier) : "rgba(255,255,255,.28)";
+      html += `<div class="honour${got ? " earned" : ""}" title="${(b.label||b.id)} · ${b.tier||""}">`
+           + `<div class="icon" style="color:${colour}">${this._honourSeal()}</div>`
            + `<div class="name">${(b.label || b.id).slice(0, 14)}</div>`
            + `</div>`;
     }
     host.innerHTML = html;
+  }
+
+  // Tier colour for honours/medals. Encodes rarity by hue, Apple-style.
+  _tierColour(tier) {
+    return ({ Bronze: "#cf9266", Silver: "#cdd6e2", Gold: "#f4d49a", Mythic: "#c5a3ff" })[tier] || "#f4d49a";
+  }
+  // One consistent seal glyph for all honours. Colour = tier, label =
+  // identity. Clean SF-Symbol-style rosette, no emoji.
+  _honourSeal() {
+    return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.5l2.6 1.9 3.2-.2 1 3 2.6 1.9-1 3 1 3-2.6 1.9-1 3-3.2-.2L12 21.5 9.4 19.6l-3.2.2-1-3L2.6 15l1-3-1-3 2.6-1.9 1-3 3.2.2L12 2.5z"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>`;
   }
 
   // Show the user's saga progression on the menu. total cycles
@@ -7745,11 +7834,11 @@ class Valhalla {
       const isThis = b.score === todayScore && b.date === todayStr;
       const colour = isThis ? "#f4d49a" : "rgba(255,255,255,.78)";
       const weight = isThis ? 700 : 500;
-      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (i + 1) + ".";
-      return `<div style="display:flex;justify-content:space-between;gap:12px;`
+      const rc = ["#f4d49a","#cdd6e2","#cf9266"][i] || "rgba(255,255,255,.5)";
+      return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;`
            + `padding:5px 0;color:${colour};font-weight:${weight};`
            + `font-size:13px;letter-spacing:.01em">`
-           + `<span style="min-width:28px">${medal}</span>`
+           + `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;width:22px;height:22px;border-radius:50%;font:700 11px/1 -apple-system,system-ui,sans-serif;color:${rc};background:${rc}22;border:1px solid ${rc}55">${i + 1}</span>`
            + `<span style="flex:1;font-variant-numeric:tabular-nums">${b.score.toLocaleString()}</span>`
            + `<span style="opacity:.7">${b.dist}m</span>`
            + `<span style="opacity:.5;font-size:11px">${b.date.slice(5)}</span>`
