@@ -6085,20 +6085,20 @@ class Valhalla {
         const el = document.getElementById(id);
         if (el) el.remove();
       }
-      // Match bio- prefix everywhere (head + body), skipping our own.
+      // Match bio- prefixed ELEMENTS only (skip our own whitelist).
+      // CRITICAL: never touch <style> tags here. A previous version
+      // removed any <style> whose text contained "#bio-badge", which
+      // DELETED THE ENTIRE PAGE STYLESHEET because our own kill rule
+      // (#bio-badge{display:none!important}) lives in that stylesheet.
+      // That zeroed out all CSS -> black/unstyled page. The bio
+      // module's injected style has id "bio-style" and is already
+      // removed via LEGACY_IDS above; the !important CSS rule keeps
+      // the badge hidden anyway, so no style scanning is needed.
       const all = document.querySelectorAll('[id^="bio-"], [class^="bio-"]');
       for (const el of all) {
+        if (el.tagName === "STYLE" || el.tagName === "LINK") continue; // never nuke styling
         if (KEEP_IDS.has(el.id)) continue;
         el.remove();
-      }
-      // Also kill any <style> tag in <head> whose content references
-      // #bio-badge. The bio module's injectStyles uses no fixed id
-      // on some paths and is hard to id otherwise.
-      for (const style of document.head.querySelectorAll("style")) {
-        if (style.id && KEEP_IDS.has(style.id)) continue;
-        if (style.textContent && /#bio-badge|#bio-panel/.test(style.textContent)) {
-          style.remove();
-        }
       }
     };
     window.addEventListener("bio:ready", nukeLegacyBio);

@@ -4,8 +4,8 @@
     {
       "name": "viking",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["server.js", "8000"],
-      "port": 8000
+      "runtimeArgs": ["server.js", "8077"],
+      "port": 8077
     }
   ]
 }
