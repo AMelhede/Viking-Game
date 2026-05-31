@@ -377,7 +377,11 @@ const $ = (id) => document.getElementById(id);
 // "Northern" minor flavour without sounding like generic minor.
 class Audio {
   constructor() {
-    this.muted = localStorage.getItem("valhalla.muted") === "true";
+    // MUTED BY DEFAULT. The user repeatedly called the ambient audio
+    // "bullshit/static/squelching" — so sound is OFF unless they
+    // explicitly enabled it before (or press M). Silence is the safe
+    // default; no bad sound can surprise anyone.
+    this.muted = localStorage.getItem("valhalla.muted") !== "false";
     this.ctx = null;
     this.master = null;
     this.wet = null;
@@ -8046,9 +8050,10 @@ class Valhalla {
     if (hint)   { hint.classList.remove("faded");   clearTimeout(this._hintFadeT);   this._hintFadeT   = setTimeout(() => hint.classList.add("faded"), 6000); }
     if (legend) { legend.classList.remove("faded"); clearTimeout(this._legendFadeT); this._legendFadeT = setTimeout(() => legend.classList.add("faded"), 20000); }
     this.audio.ensure();
-    this.audio.startWind();
+    // Noise-based ambient beds (wind + fire) REMOVED — they were the
+    // "static / squelching" the user kept hearing. Only the melodic
+    // music remains, and audio is muted by default anyway.
     this.audio.startMusic();
-    this.audio.startFireAmbience();
   }
 
   _gameOver() {
