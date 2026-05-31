@@ -1,4 +1,4 @@
-﻿// 3D viking runner. Three lanes, jump+slide. Reads window.Bio if present.
+// 3D viking runner. Three lanes, jump+slide. Reads window.Bio if present.
 
 import * as THREE from "three";
 import { Water } from "three/addons/objects/Water.js";
@@ -4418,9 +4418,9 @@ class Valhalla {
       el = document.createElement("div");
       el.style.cssText =
         "position:fixed;bottom:25%;left:50%;transform:translate(-50%,0);" +
-        "font:italic 600 19px/1.4 'Cinzel',serif;color:#f4d49a;" +
+        "font:italic 600 19px/1.4 'Cinzel',serif;color:#9b8afc;" +
         "letter-spacing:.04em;text-align:center;max-width:min(700px,80vw);" +
-        "text-shadow:0 4px 24px rgba(0,0,0,.95),0 0 14px rgba(244,212,154,.25);" +
+        "text-shadow:0 4px 24px rgba(0,0,0,.95),0 0 14px rgba(155,138,252,.25);" +
         "pointer-events:none;z-index:35;opacity:0;transition:opacity 1.2s ease,transform 1s ease";
       document.body.appendChild(el);
       this._skaldEl = el;
@@ -5006,7 +5006,7 @@ class Valhalla {
         "position:fixed;right:14px;top:calc(env(safe-area-inset-top,14px) + 68px);" +
         "z-index:11;pointer-events:none;text-align:left;" +
         "min-width:180px;max-width:210px;" +
-        "background:rgba(14,10,6,.72);border:1px solid rgba(212,173,106,.22);" +
+        "background:rgba(14,13,20,.72);border:1px solid rgba(139,124,246,.22);" +
         "border-radius:8px;padding:10px 12px 9px;" +
         "backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" +
         "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;" +
@@ -5015,26 +5015,26 @@ class Valhalla {
       el.innerHTML =
         // Header row: eyebrow + gear toggle
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-          '<div style="font-size:9px;letter-spacing:.22em;color:rgba(212,173,106,.55);text-transform:uppercase;font-weight:600">Your state</div>' +
-          '<button class="advancedToggle" title="Show raw numbers" style="pointer-events:auto;background:none;border:1px solid rgba(212,173,106,.25);color:rgba(212,173,106,.6);width:18px;height:18px;border-radius:3px;cursor:pointer;font-size:9px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
+          '<div style="font-size:9px;letter-spacing:.22em;color:rgba(139,124,246,.55);text-transform:uppercase;font-weight:600">Your state</div>' +
+          '<button class="advancedToggle" title="Show raw numbers" style="pointer-events:auto;background:none;border:1px solid rgba(139,124,246,.25);color:rgba(139,124,246,.6);width:18px;height:18px;border-radius:3px;cursor:pointer;font-size:9px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
         '</div>' +
         // STATE. colour dot + name on one line, NOT a big Cinzel headline
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">' +
-          '<span class="stateDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d4ad6a;box-shadow:0 0 8px #d4ad6a"></span>' +
-          '<span class="stateName" style="font-size:13.5px;font-weight:700;color:#f4d49a;letter-spacing:.04em;text-transform:uppercase"></span>' +
+          '<span class="stateDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#6d5efc;box-shadow:0 0 8px #6d5efc"></span>' +
+          '<span class="stateName" style="font-size:13.5px;font-weight:700;color:#9b8afc;letter-spacing:.04em;text-transform:uppercase"></span>' +
         '</div>' +
         // Meaning. small body type
         '<div class="stateMeaning" style="font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.35;margin-bottom:9px;min-height:1.35em"></div>' +
         // Gift meter
         '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">' +
-          '<div style="font-size:9px;letter-spacing:.18em;color:rgba(212,173,106,.55);text-transform:uppercase;font-weight:600">Next gift</div>' +
-          '<div class="giftpct" style="font-size:10px;color:rgba(244,212,154,.85);font-weight:600;font-variant-numeric:tabular-nums"></div>' +
+          '<div style="font-size:9px;letter-spacing:.18em;color:rgba(139,124,246,.55);text-transform:uppercase;font-weight:600">Next gift</div>' +
+          '<div class="giftpct" style="font-size:10px;color:rgba(155,138,252,.85);font-weight:600;font-variant-numeric:tabular-nums"></div>' +
         '</div>' +
         '<div style="height:3px;background:rgba(201,165,92,.15);border-radius:2px;overflow:hidden">' +
-          '<div class="meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a55c,#f4d49a);transition:width .3s ease"></div>' +
+          '<div class="meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#6d5efc,#9b8afc);transition:width .3s ease"></div>' +
         '</div>' +
         '<div class="tally" style="font-size:10px;letter-spacing:.01em;color:rgba(255,255,255,.5);margin-top:7px;min-height:1em"></div>' +
-        '<div class="advancedBox" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(212,173,106,.15);font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">' +
+        '<div class="advancedBox" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed rgba(139,124,246,.15);font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums">' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">' +
             '<div>HR <span class="bhBpm" style="color:#ff8a7a;font-weight:600">. </span></div>' +
             '<div>HRV <span class="bhHrv" style="color:#80d0e0;font-weight:600">. </span></div>' +
@@ -5052,11 +5052,11 @@ class Valhalla {
         this._advancedMode = !this._advancedMode;
         localStorage.setItem("valhalla.advancedMode", this._advancedMode ? "1" : "0");
         el.querySelector(".advancedBox").style.display = this._advancedMode ? "block" : "none";
-        toggle.style.background = this._advancedMode ? "rgba(212,173,106,.3)" : "none";
+        toggle.style.background = this._advancedMode ? "rgba(139,124,246,.3)" : "none";
       });
       if (this._advancedMode) {
         el.querySelector(".advancedBox").style.display = "block";
-        toggle.style.background = "rgba(212,173,106,.3)";
+        toggle.style.background = "rgba(139,124,246,.3)";
       }
     }
     const live = document.body.classList.contains("bio-live");
@@ -5083,11 +5083,11 @@ class Valhalla {
       stress:     { name: "WOLF-WORRY",  meaning: "The wolf in your chest. Gift-meter falls back.",       colour: "#c84030", penalty: true },
       fatigue:    { name: "OAR-WEARY",   meaning: "Your blood runs slow. Multiplier weakens.",            colour: "#7a5040", penalty: true },
       distracted: { name: "WIND-MINDED", meaning: "Thought scatters. No gifts find you yet.",             colour: "#998a78", penalty: true },
-      neutral:    { name: "WALKING",     meaning: "Find calm or sharp mind. Gifts answer both.",          colour: "#d4ad6a", penalty: false },
+      neutral:    { name: "WALKING",     meaning: "Find calm or sharp mind. Gifts answer both.",          colour: "#6d5efc", penalty: false },
     };
     const warming = !live || (!this.bpm && cs === "neutral");
     const ui = warming
-      ? { name: "READING", meaning: "The gods are taking your measure. Sit still. Face the light.", colour: "#d4ad6a", penalty: false }
+      ? { name: "READING", meaning: "The gods are taking your measure. Sit still. Face the light.", colour: "#6d5efc", penalty: false }
       : (STATE_UI[cs] || STATE_UI.neutral);
 
     const stateEl = el.querySelector(".stateName");
@@ -6416,7 +6416,7 @@ class Valhalla {
       { key: "Midgard",    short: "MIDGARD",  icon: "pine",  colour: "#7bbf7b" },
       { key: "Jötunheim",  short: "JÖTUN",    icon: "snow",  colour: "#8fc0e6" },
       { key: "Muspelheim", short: "MUSPEL",   icon: "flame", colour: "#e6884f" },
-      { key: "Asgard",     short: "ASGARD",   icon: "bolt",  colour: "#f4d49a" },
+      { key: "Asgard",     short: "ASGARD",   icon: "bolt",  colour: "#9b8afc" },
     ];
     const cycles = s.totalCycles || 0;
     const farthest = s.farthestRealm || "Midgard";
@@ -6427,8 +6427,8 @@ class Valhalla {
       const reached = i <= farthestIdx || cycles > 0;
       const isFarthest = i === farthestIdx && cycles === 0;
       const op = reached ? 1 : 0.32;
-      const ringColour = reached ? r.colour : "rgba(212,173,106,.28)";
-      const nameColour = reached ? "#f4d49a" : "rgba(255,255,255,.4)";
+      const ringColour = reached ? r.colour : "rgba(139,124,246,.28)";
+      const nameColour = reached ? "#9b8afc" : "rgba(255,255,255,.4)";
       const iconColour = reached ? r.colour : "rgba(255,255,255,.35)";
       html += `<div class="realm-node" style="opacity:${op}" title="${r.key}${reached ? " · reached" : " · locked"}">`
             + `<div class="realm-circle" style="border:2px solid ${ringColour};color:${iconColour};${isFarthest ? `box-shadow:0 0 18px ${r.colour};` : ""}">${this._glyph(r.icon)}</div>`
@@ -6441,7 +6441,7 @@ class Valhalla {
       }
     }
     if (cycles > 0) {
-      html += `<div style="margin-left:10px;padding:4px 9px;background:rgba(244,212,154,.18);border:1px solid rgba(244,212,154,.45);border-radius:12px;font:700 10px/1 'Cinzel',serif;color:#f4d49a;letter-spacing:.08em;flex:0 0 auto">${cycles}× SAGA</div>`;
+      html += `<div style="margin-left:10px;padding:4px 9px;background:rgba(155,138,252,.18);border:1px solid rgba(155,138,252,.45);border-radius:12px;font:700 10px/1 'Cinzel',serif;color:#9b8afc;letter-spacing:.08em;flex:0 0 auto">${cycles}× SAGA</div>`;
     }
     host.innerHTML = html;
   }
@@ -6453,7 +6453,7 @@ class Valhalla {
     const BOSSES = [
       { key: "jotunn",   name: "JÖTUNN",   realm: "Jötunheim",  icon: "snow",  colour: "#8fc0e6" },
       { key: "surtr",    name: "SURTR",    realm: "Muspelheim", icon: "flame", colour: "#e6884f" },
-      { key: "valkyrie", name: "VALKYRIE", realm: "Asgard",     icon: "star",  colour: "#f4d49a" },
+      { key: "valkyrie", name: "VALKYRIE", realm: "Asgard",     icon: "star",  colour: "#9b8afc" },
       { key: "odin",     name: "ODIN",     realm: "Asgard ×5",  icon: "eye",   colour: "#c5a3ff" },
     ];
     const kills = s.bossKills || {};
@@ -6469,7 +6469,7 @@ class Valhalla {
       const aliveClass = unlocked ? " alive" : "";
       const op = unlocked ? "" : "opacity:.32;";
       const border = unlocked ? `border-color:${b.colour}40;` : "";
-      const nameColour = unlocked ? "#f4d49a" : "rgba(255,255,255,.4)";
+      const nameColour = unlocked ? "#9b8afc" : "rgba(255,255,255,.4)";
       const metaColour = unlocked && n > 0 ? "#a3e8b8" : "rgba(255,255,255,.4)";
       const iconColour = unlocked ? b.colour : "rgba(255,255,255,.3)";
       html += `<div class="boss-card${aliveClass}" style="${op}${border}" title="${b.name} · ${b.realm}${unlocked ? "" : " · LOCKED"}">`
@@ -6530,7 +6530,7 @@ class Valhalla {
     }
     // Clean numbered rank discs. Top 3 tinted gold/silver/bronze, the
     // rest a neutral chip. No emoji medals.
-    const rankColour = ["#f4d49a", "#cdd6e2", "#cf9266"];
+    const rankColour = ["#9b8afc", "#cdd6e2", "#cf9266"];
     let html = "";
     for (let i = 0; i < board.length; i++) {
       const b = board[i];
@@ -6579,7 +6579,7 @@ class Valhalla {
 
   // Tier colour for honours/medals. Encodes rarity by hue, Apple-style.
   _tierColour(tier) {
-    return ({ Bronze: "#cf9266", Silver: "#cdd6e2", Gold: "#f4d49a", Mythic: "#c5a3ff" })[tier] || "#f4d49a";
+    return ({ Bronze: "#cf9266", Silver: "#cdd6e2", Gold: "#9b8afc", Mythic: "#c5a3ff" })[tier] || "#9b8afc";
   }
   // One consistent seal glyph for all honours. Colour = tier, label =
   // identity. Clean SF-Symbol-style rosette, no emoji.
@@ -6600,7 +6600,7 @@ class Valhalla {
       el.id = "sagaLine";
       el.style.cssText =
         "margin:8px auto 0;max-width:520px;font:italic 600 13.5px/1.4 'Cinzel',serif;" +
-        "color:rgba(244,212,154,.85);letter-spacing:.04em;text-align:center;" +
+        "color:rgba(155,138,252,.85);letter-spacing:.04em;text-align:center;" +
         "text-shadow:0 2px 12px rgba(0,0,0,.7)";
       tag.insertAdjacentElement("afterend", el);
     }
@@ -6726,7 +6726,7 @@ class Valhalla {
     txt.textContent = message;
     el.style.display = "block";
     // Subtle tone variation in the border colour
-    const borderColours = { urgent: "rgba(255,140,90,.45)", win: "rgba(120,220,180,.4)", challenge: "rgba(160,180,255,.4)", neutral: "rgba(212,173,106,.28)" };
+    const borderColours = { urgent: "rgba(255,140,90,.45)", win: "rgba(120,220,180,.4)", challenge: "rgba(160,180,255,.4)", neutral: "rgba(139,124,246,.28)" };
     el.style.borderColor = borderColours[tone] || borderColours.neutral;
   }
 
@@ -6775,14 +6775,14 @@ class Valhalla {
     // Bar renderer (height-scaled, today highlighted)
     const bar = (val, max, baseColour, today) => {
       const h = Math.round((val / max) * 32);
-      const c = val === 0 ? "rgba(212,173,106,.10)"
-              : today ? "#f4d49a"
+      const c = val === 0 ? "rgba(139,124,246,.10)"
+              : today ? "#9b8afc"
               : baseColour;
       return `<div style="width:6px;height:${Math.max(2, h)}px;background:${c};border-radius:1px;flex-shrink:0"></div>`;
     };
     const calmBars  = days.map(d => bar(d.calm,  maxCalm,  "rgba(122,217,255,.6)", d.key === todayKey)).join("");
     const stormBars = days.map(d => bar(d.storm, maxCalm,  "rgba(200,64,48,.55)",  d.key === todayKey)).join("");
-    const scoreBars = days.map(d => bar(d.score, maxScore, "rgba(212,173,106,.65)", d.key === todayKey)).join("");
+    const scoreBars = days.map(d => bar(d.score, maxScore, "rgba(139,124,246,.65)", d.key === todayKey)).join("");
 
     // Day-of-week best
     const dowNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -6798,7 +6798,7 @@ class Valhalla {
       const op = 0.15 + (dowCalm[i] / maxDow) * 0.7;
       const isBest = i === bestDow && dowCalm[i] > 0;
       return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">`
-           + `<div style="width:100%;height:18px;background:rgba(122,217,255,${op});border-radius:3px;${isBest ? "outline:1.5px solid #f4d49a;" : ""}"></div>`
+           + `<div style="width:100%;height:18px;background:rgba(122,217,255,${op});border-radius:3px;${isBest ? "outline:1.5px solid #9b8afc;" : ""}"></div>`
            + `<div style="font-size:9px;letter-spacing:.04em;color:rgba(255,255,255,${isBest ? ".95" : ".45"})">${n}</div>`
            + `</div>`;
     }).join("");
@@ -6814,7 +6814,7 @@ class Valhalla {
       +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(122,217,255,.7);text-transform:uppercase">Steady time</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">${Math.round(totalCalm)}s · 30 days</div>`
       + `</div>`
-      + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:6px;border-bottom:1px solid rgba(212,173,106,.18);padding-bottom:2px">${calmBars}</div>`
+      + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:6px;border-bottom:1px solid rgba(139,124,246,.18);padding-bottom:2px">${calmBars}</div>`
       + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
       +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(200,64,48,.75);text-transform:uppercase">Storm time</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">${Math.round(totalStorm)}s · what you want to shrink</div>`
@@ -6822,12 +6822,12 @@ class Valhalla {
       + `<div style="display:flex;align-items:flex-end;gap:2px;height:24px;margin-bottom:14px">${stormBars}</div>`
       // SCORE row
       + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
-      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(244,212,154,.75);text-transform:uppercase">Best score / day</div>`
+      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(155,138,252,.75);text-transform:uppercase">Best score / day</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">peak ${bestRun.toLocaleString()}</div>`
       + `</div>`
       + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:14px">${scoreBars}</div>`
       // DOW heatmap
-      + `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(212,173,106,.7);text-transform:uppercase;margin-bottom:4px">Strongest day of the week</div>`
+      + `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(139,124,246,.7);text-transform:uppercase;margin-bottom:4px">Strongest day of the week</div>`
       + `<div style="display:flex;gap:4px;margin-bottom:6px">${dowHtml}</div>`;
   }
 
@@ -7009,8 +7009,8 @@ class Valhalla {
       friendList.innerHTML = friends.length === 0
         ? `<div style="opacity:.5;font-size:11px;padding:4px 0">No friends yet. share your Skald ID with someone.</div>`
         : friends.map((f, i) =>
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(212,173,106,.08)">`
-          + `<span style="color:#f4d49a;font-weight:600">${(f.name || "?").slice(0, 24)}</span>`
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(139,124,246,.08)">`
+          + `<span style="color:#9b8afc;font-weight:600">${(f.name || "?").slice(0, 24)}</span>`
           + `<span style="color:rgba(255,255,255,.55);font-size:10px;font-family:ui-monospace,monospace">${(f.id || "").slice(0, 12)}…</span>`
           + `<span style="color:rgba(122,217,255,.8);font-weight:600">${(f.bestScore || 0).toLocaleString()}</span>`
           + `<button data-fi="${i}" class="friendDel" style="background:none;border:none;color:rgba(255,100,100,.5);cursor:pointer;font-size:14px;padding:0 4px">×</button>`
@@ -7101,7 +7101,7 @@ class Valhalla {
       if (remTime) remTime.value = time;
       if (remToggle) {
         remToggle.textContent = enabled ? "Disable" : "Enable";
-        remToggle.style.background = enabled ? "rgba(120,200,140,.2)" : "rgba(212,173,106,.15)";
+        remToggle.style.background = enabled ? "rgba(120,200,140,.2)" : "rgba(139,124,246,.15)";
       }
       if (remStatus) {
         if (perm === "unsupported") remStatus.textContent = "Browser doesn't support notifications";
@@ -7275,7 +7275,7 @@ class Valhalla {
     // 6 cycles = 84s, but we cap at 6 cycles ≈ 60-90s. Skip allowed any time.
     const PHASES = [
       { name: "Breathe in",   dur: 4, scale: 1.7, colour: "rgba(122,217,255,.5)" },
-      { name: "Hold",         dur: 4, scale: 1.7, colour: "rgba(244,212,154,.4)" },
+      { name: "Hold",         dur: 4, scale: 1.7, colour: "rgba(155,138,252,.4)" },
       { name: "Breathe out",  dur: 6, scale: 1.0, colour: "rgba(122,217,255,.2)" },
     ];
     const TOTAL_CYCLES = 6;
@@ -7357,18 +7357,18 @@ class Valhalla {
     ctx.fillRect(0, 0, W, H);
 
     // Bronze border
-    ctx.strokeStyle = "rgba(212,173,106,0.5)";
+    ctx.strokeStyle = "rgba(139,124,246,0.5)";
     ctx.lineWidth = 4;
     ctx.strokeRect(30, 30, W - 60, H - 60);
 
     // Title
-    ctx.fillStyle = "#f4d49a";
+    ctx.fillStyle = "#9b8afc";
     ctx.font = "italic 600 36px 'Cinzel', serif";
     ctx.textAlign = "center";
     ctx.fillText("VALHALLA · SKALD'S RUN", W/2, 130);
 
     // Skald name
-    ctx.fillStyle = "rgba(244,212,154,0.8)";
+    ctx.fillStyle = "rgba(155,138,252,0.8)";
     ctx.font = "italic 300 30px 'Cinzel', serif";
     ctx.fillText(`.  ${Store.getSkaldName()} . `, W/2, 190);
 
@@ -7377,7 +7377,7 @@ class Valhalla {
     ctx.font = "bold 180px 'Cinzel', serif";
     ctx.fillText(Math.floor(this.score).toLocaleString(), W/2, 410);
 
-    ctx.fillStyle = "rgba(212,173,106,0.65)";
+    ctx.fillStyle = "rgba(139,124,246,0.65)";
     ctx.font = "600 22px 'Cinzel', serif";
     ctx.fillText("SCORE", W/2, 450);
 
@@ -7386,7 +7386,7 @@ class Valhalla {
       ctx.fillStyle = colour || "#fff";
       ctx.font = "bold 64px 'Cinzel', serif";
       ctx.fillText(val, x, 600);
-      ctx.fillStyle = "rgba(212,173,106,0.55)";
+      ctx.fillStyle = "rgba(139,124,246,0.55)";
       ctx.font = "600 18px 'Cinzel', serif";
       ctx.fillText(label, x, 640);
     };
@@ -7396,7 +7396,7 @@ class Valhalla {
 
     // Bio summary row (only if had bio data)
     if (bs.flowSec > 0.5 || bs.calmSec > 0.5 || bs.focusedSec > 0.5) {
-      ctx.fillStyle = "rgba(212,173,106,0.55)";
+      ctx.fillStyle = "rgba(139,124,246,0.55)";
       ctx.font = "600 18px 'Cinzel', serif";
       ctx.fillText("· BODY ·", W/2, 740);
       const bioRow = (x, label, val, colour) => {
@@ -7413,7 +7413,7 @@ class Valhalla {
     }
 
     // Streak + saga footer
-    ctx.fillStyle = "rgba(244,212,154,0.8)";
+    ctx.fillStyle = "rgba(155,138,252,0.8)";
     ctx.font = "italic 600 26px 'Cinzel', serif";
     const fLine = [];
     if ((s.streak || 0) > 0)      fLine.push(`🔥 ${s.streak}-day streak`);
@@ -7774,7 +7774,7 @@ class Valhalla {
       host.id = "scoreboard";
       host.style.cssText =
         "margin:18px 0 4px;padding:18px 0 0;"
-        + "border-top:1px solid rgba(212,173,106,.22);text-align:left;"
+        + "border-top:1px solid rgba(139,124,246,.22);text-align:left;"
         + "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;";
       const actions = card.querySelector(".actions");
       card.insertBefore(host, actions || null);
@@ -7784,7 +7784,7 @@ class Valhalla {
     const todayStr = new Date().toISOString().slice(0, 10);
     const today = (s.daily || {})[todayStr] || {};
     const todayBits = [];
-    if (today.runs)      todayBits.push(`<b style="color:#f4d49a">${today.runs}</b> runs`);
+    if (today.runs)      todayBits.push(`<b style="color:#9b8afc">${today.runs}</b> runs`);
     if (today.flowSec >= 1)   todayBits.push(`<b style="color:#7ad9ff">${Math.round(today.flowSec)}s</b> flow`);
     if (today.calmSec >= 1)   todayBits.push(`<b style="color:#80d0e0">${Math.round(today.calmSec)}s</b> calm`);
     if (today.bossKills)      todayBits.push(`<b style="color:#ff8c5a">${today.bossKills}</b> bosses`);
@@ -7803,8 +7803,8 @@ class Valhalla {
     const chartHtml = data.map((v, i) => {
       const h = Math.max(2, Math.round((v / maxBar) * 38));
       const isToday = i === 6;
-      const bg = isToday ? "linear-gradient(180deg,#f4d49a,#c9a55c)" : "rgba(212,173,106,.4)";
-      const txt = isToday ? "#f4d49a" : "rgba(255,255,255,.45)";
+      const bg = isToday ? "linear-gradient(180deg,#9b8afc,#6d5efc)" : "rgba(139,124,246,.4)";
+      const txt = isToday ? "#9b8afc" : "rgba(255,255,255,.45)";
       return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">`
            + `<div style="width:80%;height:${h}px;background:${bg};border-radius:2px 2px 0 0"></div>`
            + `<div style="font-size:9.5px;color:${txt};letter-spacing:.04em">${labels[i]}</div>`
@@ -7813,7 +7813,7 @@ class Valhalla {
     const bestThisWeek = Math.max(...data);
     const thisDay = data[6];
     const weekHint = thisDay > 0 && thisDay >= bestThisWeek
-      ? `<span style="color:#f4d49a">Best bio day this week 🎉</span>`
+      ? `<span style="color:#9b8afc">Best bio day this week 🎉</span>`
       : (thisDay > 0
           ? `${Math.round(thisDay)}s of bio-state today`
           : `No bio-state yet today. pair to start`);
@@ -7823,9 +7823,9 @@ class Valhalla {
     const board = (s.leaderboard || []).slice(0, 5);
     const rows = board.map((b, i) => {
       const isThis = b.score === todayScore && b.date === todayStr;
-      const colour = isThis ? "#f4d49a" : "rgba(255,255,255,.78)";
+      const colour = isThis ? "#9b8afc" : "rgba(255,255,255,.78)";
       const weight = isThis ? 700 : 500;
-      const rc = ["#f4d49a","#cdd6e2","#cf9266"][i] || "rgba(255,255,255,.5)";
+      const rc = ["#9b8afc","#cdd6e2","#cf9266"][i] || "rgba(255,255,255,.5)";
       return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;`
            + `padding:5px 0;color:${colour};font-weight:${weight};`
            + `font-size:13px;letter-spacing:.01em">`
@@ -7845,7 +7845,7 @@ class Valhalla {
       (groups[b.group] || (groups[b.group] = [])).push(b);
     }
     const TIER_COLOUR = {
-      Bronze: "#c08868", Silver: "#cdd8df", Gold: "#f4d49a", Mythic: "#cba6ff",
+      Bronze: "#c08868", Silver: "#cdd8df", Gold: "#9b8afc", Mythic: "#cba6ff",
     };
     const fmt = (n, metric) => {
       // Time-domain metrics formatted as duration; everything else as integer.
@@ -7863,7 +7863,7 @@ class Valhalla {
         const got = earned.has(t.id);
         const col = got ? TIER_COLOUR[t.tier] : "rgba(255,255,255,.18)";
         const op = got ? 1 : 0.35;
-        return `<span title="${t.tier}: ${t.label}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${got ? "rgba(244,212,154,.12)" : "transparent"};border:1px solid ${col};font-size:13px;opacity:${op}">${t.icon}</span>`;
+        return `<span title="${t.tier}: ${t.label}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${got ? "rgba(155,138,252,.12)" : "transparent"};border:1px solid ${col};font-size:13px;opacity:${op}">${t.icon}</span>`;
       }).join("");
       // Find next-not-yet-earned tier in this group for the progress bar.
       const nextTier = tiers.find(t => !earned.has(t.id));
@@ -7885,7 +7885,7 @@ class Valhalla {
       }
       return `<div style="margin-bottom:10px">`
         + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">`
-        + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(212,173,106,.78);text-transform:uppercase">${gname}</div>`
+        + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(139,124,246,.78);text-transform:uppercase">${gname}</div>`
         + `<div style="display:flex;gap:4px">${tierIcons}</div>`
         + `</div>`
         + progressBar
@@ -7900,8 +7900,8 @@ class Valhalla {
       ? newlyEarned.map(id => {
           const b = all.find(x => x.id === id);
           if (!b) return "";
-          const col = TIER_COLOUR[b.tier] || "#f4d49a";
-          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(244,212,154,.08);border:1px solid ${col}55;border-radius:6px">`
+          const col = TIER_COLOUR[b.tier] || "#9b8afc";
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(155,138,252,.08);border:1px solid ${col}55;border-radius:6px">`
                + `<span style="font-size:18px">${b.icon}</span>`
                + `<div><div style="font-size:11px;font-weight:700;color:${col};letter-spacing:.04em;text-transform:uppercase">${b.tier} · ${b.label}</div>`
                + `<div style="font-size:9.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em">${b.group}</div></div>`
@@ -7915,27 +7915,27 @@ class Valhalla {
     host.innerHTML =
         // Today + streak
         `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">`
-      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72)">Today</div>`
-      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">🔥 ${s.streak || 0}-day streak</div>`
+      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Today</div>`
+      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">🔥 ${s.streak || 0}-day streak</div>`
       + `</div>`
       + `<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:16px;line-height:1.5">`
       + (todayBits.length ? todayBits.join(" · ") : "Your first run today!")
       + `</div>`
       // 7-day chart
-      + `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72)">Last 7 days</div>`
+      + `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Last 7 days</div>`
       + `<div style="display:flex;align-items:flex-end;gap:4px;height:42px;margin-bottom:4px">${chartHtml}</div>`
       + `<div style="font-size:10.5px;color:rgba(255,255,255,.5);margin-bottom:18px;letter-spacing:.02em">${weekHint}</div>`
       // Newly unlocked
       + (newlyHtml
-          ? `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#f4d49a">✦ New Honours</div>`
+          ? `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">✦ New Honours</div>`
             + `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">${newlyHtml}</div>`
           : "")
       // Leaderboard
-      + `<details style="margin-bottom:10px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72);padding:6px 0;list-style:none;outline:none">▸ Skalds' Roll · top ${board.length}</summary>`
+      + `<details style="margin-bottom:10px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Skalds' Roll · top ${board.length}</summary>`
       + `<div style="margin-top:8px">${rows || '<div style="opacity:.6;font-size:12px">No runs yet</div>'}</div>`
       + `</details>`
       // All badges collapsed
-      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.72);padding:6px 0;list-style:none;outline:none">▸ Honours · ${earned.size} / ${all.length} unlocked</summary>`
+      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Honours · ${earned.size} / ${all.length} unlocked</summary>`
       + `<div style="margin-top:10px">${groupHtml}</div>`
       + `</details>`;
     // Update the "before-run" badge snapshot for the NEXT _gameOver call.
@@ -8134,9 +8134,9 @@ class Valhalla {
       host.id = "bioReport";
       host.style.cssText =
         "margin:18px 0 4px;padding:18px 0 0;"
-        + "border-top:1px solid rgba(212,173,106,.18);text-align:left;";
+        + "border-top:1px solid rgba(139,124,246,.18);text-align:left;";
       host.innerHTML =
-        '<div style="font:600 11px/1 \'Cinzel\',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(212,173,106,.62);margin-bottom:14px">What You Earned</div>'
+        '<div style="font:600 11px/1 \'Cinzel\',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.62);margin-bottom:14px">What You Earned</div>'
         + '<div id="bioReportRows"></div>';
       const actions = card.querySelector(".actions");
       card.insertBefore(host, actions || null);
@@ -8150,8 +8150,8 @@ class Valhalla {
     if (s.calmSec > 0.5)      items.push(["Time Calm",          fmtSec(s.calmSec),       "#80d0e0"]);
     if (avgHR)                items.push(["Avg Heart Rate",      avgHR + " bpm",          "#ff8a7a"]);
     if (s.peakHR)             items.push(["Peak Heart Rate",     s.peakHR + " bpm",       "#ff5e4a"]);
-    if (s.giftsEarned)        items.push(["Gifts From Body",     s.giftsEarned + "×",     "#d4ad6a"]);
-    if (s.durationBonusApplied) items.push(["Gifts Extended",   s.durationBonusApplied + "×", "#d4ad6a"]);
+    if (s.giftsEarned)        items.push(["Gifts From Body",     s.giftsEarned + "×",     "#6d5efc"]);
+    if (s.durationBonusApplied) items.push(["Gifts Extended",   s.durationBonusApplied + "×", "#6d5efc"]);
     rows.innerHTML = items.map(([k, v, c]) =>
       '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif">'
       + '<span style="font-size:11.5px;color:rgba(232,219,196,.55);text-transform:uppercase;letter-spacing:.10em">' + k + '</span>'

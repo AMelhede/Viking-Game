@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -54,23 +54,24 @@
     }
     .intro-card{
       width:100%;max-width:520px;padding:42px 36px 22px;
-      background:rgba(14,10,6,1);border:1px solid rgba(212,173,106,.45);
-      border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.8),0 0 60px rgba(212,173,106,.05);
+      background:rgba(14,13,20,1);border:1px solid rgba(139,124,246,.45);
+      border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.8),0 0 60px rgba(139,124,246,.05);
       max-height:90vh;overflow-y:auto;
     }
     .intro-eyebrow{
-      font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
-      color:#d4ad6a;margin-bottom:14px;
+      font:600 11px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.22em;text-transform:uppercase;
+      color:#9b8afc;margin-bottom:14px;
     }
     .intro-card h2{
-      font:600 24px/1.25 'Cinzel',serif;letter-spacing:.04em;
-      color:#fff;margin:0 0 16px;
+      font:600 26px/1.2 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:-.01em;color:#f5f5f7;margin:0 0 14px;
     }
     .intro-card p{
-      font:400 15px/1.55 inherit;color:rgba(255,255,255,.9);
-      margin:0 0 8px;
+      font:400 15px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      color:rgba(255,255,255,.72);margin:0 0 8px;
     }
-    .intro-card p b{color:#f4d49a;font-weight:700}
+    .intro-card p b{color:#9b8afc;font-weight:700}
     .intro-keys{
       display:grid;grid-template-columns:repeat(2,1fr);gap:14px 24px;
       margin:18px 0 22px;
@@ -80,13 +81,13 @@
     }
     .intro-keys kbd{
       display:inline-block;padding:4px 10px;margin:0 3px;min-width:18px;text-align:center;
-      background:rgba(212,173,106,.16);border:1px solid rgba(212,173,106,.55);
-      border-radius:6px;font:inherit;font-size:14px;color:#f4d49a;font-weight:700;
+      background:rgba(139,124,246,.16);border:1px solid rgba(139,124,246,.55);
+      border-radius:6px;font:inherit;font-size:14px;color:#9b8afc;font-weight:700;
     }
     .intro-footer{
       display:flex;justify-content:space-between;align-items:center;
       margin-top:24px;padding-top:18px;
-      border-top:1px solid rgba(212,173,106,.18);
+      border-top:1px solid rgba(139,124,246,.18);
     }
     .intro-skip,.intro-next{
       cursor:pointer;padding:10px 22px;border-radius:8px;
@@ -94,21 +95,21 @@
       transition:transform .15s,background .2s;
     }
     .intro-skip{
-      background:transparent;border:1px solid rgba(212,173,106,.3);
+      background:transparent;border:1px solid rgba(139,124,246,.3);
       color:rgba(255,255,255,.72);
     }
-    .intro-skip:hover{background:rgba(212,173,106,.08);color:#fff}
+    .intro-skip:hover{background:rgba(139,124,246,.08);color:#fff}
     .intro-next{
-      background:#d4ad6a;border:none;color:#1a1208;font-weight:700;
-      box-shadow:0 4px 18px rgba(212,173,106,.28);
+      background:#6d5efc;border:none;color:#fff;font-weight:600;
+      box-shadow:0 4px 18px rgba(109,94,252,.35);
     }
-    .intro-next:hover{background:#e8c084;transform:translateY(-1px)}
+    .intro-next:hover{background:#8676fd;transform:translateY(-1px)}
     .intro-dots{display:flex;gap:6px}
     .intro-dots .dot{
       width:7px;height:7px;border-radius:50%;
-      background:rgba(212,173,106,.28);transition:background .2s,transform .2s;
+      background:rgba(139,124,246,.28);transition:background .2s,transform .2s;
     }
-    .intro-dots .dot.on{background:#d4ad6a;transform:scale(1.2)}
+    .intro-dots .dot.on{background:#6d5efc;transform:scale(1.2)}
 
     /* CINEMATIC FRAMING. Three stacked layers that immediately read
        as "film" instead of "phone game":
@@ -184,11 +185,11 @@
     }
     .stat .lbl{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.28em;
       color:rgba(201,165,92,.55)}
-    .stat .val{font:700 30px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.02em;
+    .stat .val{font:700 30px/1 'Cinzel',serif;color:#6d5efc;letter-spacing:.02em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);display:block}
     /* Lives. bronze inscription top-right. */
     .stat.lives{
-      font:700 26px/1 'Cinzel',serif;color:#c9a55c;letter-spacing:.18em;
+      font:700 26px/1 'Cinzel',serif;color:#6d5efc;letter-spacing:.18em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);
     }
     .stat.lives .lbl{display:none}
@@ -276,7 +277,7 @@
     }
     .infopanel .card h3{
       font:700 15px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
-      color:#c9a55c;margin:0 0 18px;border-bottom:1px solid rgba(201,165,92,.2);padding-bottom:12px;
+      color:#6d5efc;margin:0 0 18px;border-bottom:1px solid rgba(201,165,92,.2);padding-bottom:12px;
     }
     .infopanel .row{display:flex;justify-content:space-between;margin:6px 0;letter-spacing:.06em;}
     .infopanel .row .k{color:rgba(230,218,192,.6);text-transform:uppercase;font-size:11px}
@@ -285,7 +286,7 @@
       letter-spacing:.14em;text-transform:uppercase}
     .infopanel .ctrls kbd{display:inline-block;padding:1px 6px;margin:0 3px;
       border:1px solid rgba(201,165,92,.45);border-radius:2px;font:inherit;
-      font-size:10.5px;color:#c9a55c;letter-spacing:0;background:transparent}
+      font-size:10.5px;color:#6d5efc;letter-spacing:0;background:transparent}
     .infopanel .leg{margin-top:18px;display:flex;flex-wrap:wrap;gap:12px;
       font-size:11px;color:rgba(230,218,192,.7);letter-spacing:.14em;text-transform:uppercase}
     .infopanel .leg .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
@@ -335,8 +336,8 @@
     .hint.faded{opacity:0}
     .hint kbd{
       display:inline-block;padding:2px 7px;margin:0 3px;min-width:14px;text-align:center;
-      background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.55);
-      border-radius:3px;font:inherit;font-size:12px;color:#d4ad6a;letter-spacing:0;
+      background:rgba(0,0,0,.45);border:1px solid rgba(139,124,246,.55);
+      border-radius:3px;font:inherit;font-size:12px;color:#6d5efc;letter-spacing:0;
     }
 
     /* Active powerup strip. also Cinzel inscription style. No more
@@ -354,7 +355,7 @@
     }
     .power-pill .pwlabel{
       font:600 11px/1 'Cinzel',serif;letter-spacing:.16em;
-      color:#c9a55c;text-transform:uppercase;
+      color:#6d5efc;text-transform:uppercase;
       text-shadow:0 2px 12px rgba(0,0,0,.85);
     }
     .power-pill .pwbar{
@@ -433,7 +434,7 @@
          edges + 55% in the center, which produced visible banding
          and made the menu look like a half-broken render against
          the dark 3D scene behind it. */
-      background:rgba(8,6,4,.94);
+      background:rgba(10,10,16,.94);
       transition:opacity .55s cubic-bezier(.4,0,.2,1);
     }
     .start.hide{opacity:0;pointer-events:none}
@@ -449,15 +450,15 @@
     /* ----- HERO TITLE + TAGLINE ----- */
     .start h1{
       font:600 84px/0.95 'Cinzel',serif;
-      letter-spacing:.10em;color:#f4ead0;
+      letter-spacing:.10em;color:#f5f5f7;
       margin:0;
-      text-shadow:0 4px 36px rgba(0,0,0,.75),0 0 80px rgba(244,212,154,.12);
+      text-shadow:0 4px 36px rgba(0,0,0,.75),0 0 80px rgba(155,138,252,.12);
       /* Subtle weight variation across the wordmark for the carved feel. */
       font-variation-settings:"wght" 600;
     }
     .start .tag{
       font:italic 400 17px/1.5 'Cinzel',serif;
-      color:rgba(244,234,208,.62);
+      color:rgba(240,240,245,.62);
       letter-spacing:.01em;
       margin:22px auto 0;
       max-width:420px;
@@ -465,7 +466,7 @@
     .start .tag-saga{
       font:600 11px/1 'Cinzel',serif;
       letter-spacing:.32em;text-transform:uppercase;
-      color:rgba(244,212,154,.55);
+      color:rgba(155,138,252,.55);
       margin:14px 0 0;
     }
 
@@ -475,14 +476,14 @@
     .start .play{
       margin:44px auto 0;
       min-width:230px;padding:16px 56px;
-      background:#ecd6a0;
-      color:#1c140a;border:none;border-radius:14px;cursor:pointer;
+      background:#6d5efc;
+      color:#0a0a12;border:none;border-radius:14px;cursor:pointer;
       font:600 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
       letter-spacing:.28em;text-transform:uppercase;
       box-shadow:0 8px 24px rgba(0,0,0,.35);
       transition:transform .18s cubic-bezier(.4,0,.2,1),background .2s ease;
     }
-    .start .play:hover{ background:#f3e0b2;transform:translateY(-1px) }
+    .start .play:hover{ background:#8676fd;transform:translateY(-1px) }
     .start .play:active{ transform:translateY(0);transition-duration:.08s }
 
     /* ----- STAT RIBBON (bottom, single line, very subtle) ----- */
@@ -490,11 +491,11 @@
       display:flex;justify-content:center;align-items:center;gap:18px;
       margin:34px auto 0;
       font:500 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      color:rgba(244,234,208,.72);
+      color:rgba(240,240,245,.72);
       letter-spacing:.02em;
     }
-    .stat-ribbon .v{ color:#f4d49a;font-weight:600;font-variant-numeric:tabular-nums }
-    .stat-ribbon .sep{ width:3px;height:3px;border-radius:50%;background:rgba(244,234,208,.25) }
+    .stat-ribbon .v{ color:#9b8afc;font-weight:600;font-variant-numeric:tabular-nums }
+    .stat-ribbon .sep{ width:3px;height:3px;border-radius:50%;background:rgba(240,240,245,.25) }
 
     /* ----- SHEET TRIGGERS (3 quiet pill buttons at the bottom) ----- */
     .sheet-triggers{
@@ -505,14 +506,14 @@
       display:inline-flex;align-items:center;gap:6px;
       padding:11px 20px;background:rgba(255,255,255,.05);
       border:1px solid rgba(255,255,255,.10);border-radius:999px;
-      color:rgba(244,234,208,.78);cursor:pointer;
+      color:rgba(240,240,245,.78);cursor:pointer;
       font:500 12px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
       letter-spacing:.06em;
       backdrop-filter:blur(20px) saturate(150%);
       -webkit-backdrop-filter:blur(20px) saturate(150%);
       transition:background .2s ease,border-color .2s ease,transform .15s ease;
     }
-    .sheet-trigger:hover{ background:rgba(255,255,255,.10);border-color:rgba(244,212,154,.4);color:#f4ead0 }
+    .sheet-trigger:hover{ background:rgba(255,255,255,.10);border-color:rgba(155,138,252,.4);color:#f5f5f7 }
     .sheet-trigger:active{ transform:translateY(1px) }
     .sheet-trigger .arrow{ opacity:.5;font-size:9px;letter-spacing:0 }
 
@@ -522,12 +523,12 @@
       width:38px;height:38px;border-radius:50%;
       display:flex;align-items:center;justify-content:center;
       background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);
-      color:rgba(244,234,208,.55);cursor:pointer;
+      color:rgba(240,240,245,.55);cursor:pointer;
       backdrop-filter:blur(20px) saturate(150%);
       -webkit-backdrop-filter:blur(20px) saturate(150%);
       transition:color .2s ease,background .2s ease,transform .3s cubic-bezier(.4,0,.2,1);
     }
-    .chrome-settings:hover{ color:#f4ead0;background:rgba(255,255,255,.10);transform:rotate(40deg) }
+    .chrome-settings:hover{ color:#f5f5f7;background:rgba(255,255,255,.10);transform:rotate(40deg) }
     .chrome-settings:active{ transform:rotate(40deg) scale(.94) }
 
     /* ----- BODY CARD (the bio hero) ----- */
@@ -556,13 +557,13 @@
     .body-card-text{ flex:1;min-width:0 }
     .body-card-title{
       font:600 15.5px/1.2 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      color:#f4ead0;letter-spacing:.01em;
+      color:#f5f5f7;letter-spacing:.01em;
     }
     .body-card-sub{
       font:400 12.5px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      color:rgba(244,234,208,.55);margin-top:3px;
+      color:rgba(240,240,245,.55);margin-top:3px;
     }
-    .body-card-chevron{ color:rgba(244,234,208,.35);flex-shrink:0 }
+    .body-card-chevron{ color:rgba(240,240,245,.35);flex-shrink:0 }
 
     /* ================= BOTTOM SHEET ================================
        Apple-style modal sheet that slides up from the bottom. Real
@@ -580,7 +581,7 @@
       position:fixed;left:50%;bottom:0;z-index:56;
       transform:translate(-50%,100%);
       width:100%;max-width:560px;max-height:88vh;
-      background:rgba(20,16,12,.72);
+      background:rgba(18,16,26,.72);
       border:1px solid rgba(255,255,255,.10);
       border-bottom:none;border-radius:24px 24px 0 0;
       backdrop-filter:blur(40px) saturate(180%);
@@ -601,15 +602,15 @@
     }
     .sheet-title{
       font:600 22px/1.1 'Cinzel',serif;
-      letter-spacing:.04em;color:#f4ead0;
+      letter-spacing:.04em;color:#f5f5f7;
     }
     .sheet-close{
-      background:rgba(255,255,255,.08);border:none;color:rgba(244,234,208,.7);
+      background:rgba(255,255,255,.08);border:none;color:rgba(240,240,245,.7);
       width:30px;height:30px;border-radius:50%;cursor:pointer;
       font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;
       transition:background .2s ease;
     }
-    .sheet-close:hover{ background:rgba(255,255,255,.15);color:#f4ead0 }
+    .sheet-close:hover{ background:rgba(255,255,255,.15);color:#f5f5f7 }
     .sheet-body{
       padding:18px 24px 32px;overflow-y:auto;
       -webkit-overflow-scrolling:touch;
@@ -621,7 +622,7 @@
     .s-group-title{
       font:600 11px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
       letter-spacing:.18em;text-transform:uppercase;
-      color:rgba(244,234,208,.45);
+      color:rgba(240,240,245,.45);
       margin:0 0 10px 16px;
     }
     .s-card{
@@ -634,10 +635,10 @@
       padding:14px 16px;
       border-bottom:1px solid rgba(255,255,255,.05);
       font:500 14.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      color:#f4ead0;
+      color:#f5f5f7;
     }
     .s-row:last-child{ border-bottom:none }
-    .s-row .v{ color:rgba(244,212,154,.85);font-variant-numeric:tabular-nums;font-weight:600 }
+    .s-row .v{ color:rgba(155,138,252,.85);font-variant-numeric:tabular-nums;font-weight:600 }
     .s-row .v.neg{ color:rgba(255,140,90,.85) }
     .s-row .v.pos{ color:rgba(120,220,180,.85) }
 
@@ -663,7 +664,7 @@
     .sheet .top-runs{ gap:0 }
     .sheet .top-run-row{ padding:12px 14px;font-size:14px;border-radius:0;border-top:1px solid rgba(255,255,255,.05) }
     .sheet .top-run-row:first-child{ border-top:none }
-    .sheet .top-run-row.today{ background:rgba(244,212,154,.10) }
+    .sheet .top-run-row.today{ background:rgba(155,138,252,.10) }
 
     /* Honours inside sheet — bigger grid. */
     .sheet .honours-grid{ grid-template-columns:repeat(5,1fr);gap:10px }
@@ -680,20 +681,20 @@
     .sensor-row .info{ flex:1;padding-right:16px }
     .sensor-row .info-name{
       font:600 15px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      color:#f4ead0;letter-spacing:.01em;
+      color:#f5f5f7;letter-spacing:.01em;
     }
     .sensor-row .info-sub{
       font:400 12.5px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      color:rgba(244,234,208,.55);
+      color:rgba(240,240,245,.55);
       margin-top:4px;
     }
     .sensor-row button{
-      background:linear-gradient(180deg,#f0d99a 0%,#d4ad6a 100%);
-      color:#1a1208;border:none;border-radius:999px;
+      background:linear-gradient(180deg,#8676fd 0%,#6d5efc 100%);
+      color:#0a0a12;border:none;border-radius:999px;
       padding:9px 22px;cursor:pointer;
       font:600 12px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
       letter-spacing:.08em;
-      box-shadow:0 4px 14px rgba(212,173,106,.28);
+      box-shadow:0 4px 14px rgba(139,124,246,.28);
       transition:filter .2s ease,transform .15s ease;
     }
     .sensor-row button:hover{ filter:brightness(1.06) }
@@ -707,13 +708,13 @@
 
     /* MENU DESIGN SYSTEM: section spacing, dividers, eyebrows.
        Generous rhythm so blocks breathe and read as separate panels. */
-    .menu-section{ margin:28px 0 0; padding-top:24px; border-top:1px solid rgba(212,173,106,.14); }
+    .menu-section{ margin:28px 0 0; padding-top:24px; border-top:1px solid rgba(139,124,246,.14); }
     .menu-section:first-of-type{ margin-top:24px; padding-top:0; border-top:none; }
     .menu-eyebrow{
       display:flex;justify-content:space-between;align-items:baseline;
       margin-bottom:14px;
       font:600 10px/1 'Cinzel',serif;letter-spacing:.28em;
-      color:rgba(212,173,106,.72);text-transform:uppercase;
+      color:rgba(139,124,246,.72);text-transform:uppercase;
     }
     .menu-eyebrow .meta{
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
@@ -728,40 +729,40 @@
     }
     .hero-tile{
       padding:14px 8px 12px;
-      background:linear-gradient(180deg,rgba(212,173,106,.08) 0%,rgba(212,173,106,.02) 100%);
-      border:1px solid rgba(212,173,106,.22);border-radius:8px;
+      background:linear-gradient(180deg,rgba(139,124,246,.08) 0%,rgba(139,124,246,.02) 100%);
+      border:1px solid rgba(139,124,246,.22);border-radius:8px;
       transition:border-color .25s ease,transform .25s ease;
     }
-    .hero-tile:hover{ border-color:rgba(212,173,106,.45); }
-    .hero-tile .v{ font:700 26px/1 'Cinzel',serif;color:#f4d49a;letter-spacing:.02em }
+    .hero-tile:hover{ border-color:rgba(139,124,246,.45); }
+    .hero-tile .v{ font:700 26px/1 'Cinzel',serif;color:#9b8afc;letter-spacing:.02em }
     .hero-tile .v.streak{ color:#ff8c5a;text-shadow:0 0 18px rgba(255,140,90,.4) }
     .hero-tile .v.dist  { color:#a3b8ff }
     .hero-tile .k{
-      font-size:9.5px;letter-spacing:.22em;color:rgba(212,173,106,.65);
+      font-size:9.5px;letter-spacing:.22em;color:rgba(139,124,246,.65);
       text-transform:uppercase;margin-top:7px;font-weight:600;
     }
 
     /* PRIMARY RUN button — premium gold with strong glow. */
     .menu-cta-primary{
       width:100%;margin:24px 0 0;padding:14px 0;
-      background:linear-gradient(180deg,#e8c789 0%,#cba560 100%);
-      color:#1a1208;border:none;border-radius:10px;cursor:pointer;
+      background:linear-gradient(180deg,#8676fd 0%,#5b4ce0 100%);
+      color:#0a0a12;border:none;border-radius:10px;cursor:pointer;
       font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
-      box-shadow:0 8px 28px rgba(212,173,106,.32),0 0 0 1px rgba(0,0,0,.4) inset;
+      box-shadow:0 8px 28px rgba(139,124,246,.32),0 0 0 1px rgba(0,0,0,.4) inset;
       transition:transform .15s ease,box-shadow .25s ease,filter .2s ease;
     }
-    .menu-cta-primary:hover{ filter:brightness(1.08); box-shadow:0 12px 36px rgba(212,173,106,.45),0 0 0 1px rgba(0,0,0,.4) inset; }
+    .menu-cta-primary:hover{ filter:brightness(1.08); box-shadow:0 12px 36px rgba(139,124,246,.45),0 0 0 1px rgba(0,0,0,.4) inset; }
     .menu-cta-primary:active{ transform:translateY(1px) }
 
     /* SECONDARY RUN (lower in the menu) — ghost variant. */
     .menu-cta-ghost{
       width:100%;padding:12px 0;
-      background:rgba(212,173,106,.06);color:#f4d49a;
-      border:1px solid rgba(212,173,106,.45);border-radius:8px;cursor:pointer;
+      background:rgba(139,124,246,.06);color:#9b8afc;
+      border:1px solid rgba(139,124,246,.45);border-radius:8px;cursor:pointer;
       font:600 12.5px/1 'Cinzel',serif;letter-spacing:.28em;text-transform:uppercase;
       transition:background .2s ease,border-color .2s ease;
     }
-    .menu-cta-ghost:hover{ background:rgba(212,173,106,.14);border-color:rgba(212,173,106,.7) }
+    .menu-cta-ghost:hover{ background:rgba(139,124,246,.14);border-color:rgba(139,124,246,.7) }
 
     /* REALM PATH nodes. */
     .realm-path{ display:flex;align-items:center;justify-content:space-between;gap:0;height:52px;padding:0 2px }
@@ -777,10 +778,10 @@
       display:flex;flex-direction:column;align-items:center;
       padding:12px 6px 10px;
       background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.25) 100%);
-      border:1px solid rgba(212,173,106,.18);border-radius:7px;
+      border:1px solid rgba(139,124,246,.18);border-radius:7px;
       transition:transform .2s ease,border-color .2s ease;
     }
-    .boss-card.alive:hover{ transform:translateY(-2px);border-color:rgba(244,212,154,.5) }
+    .boss-card.alive:hover{ transform:translateY(-2px);border-color:rgba(155,138,252,.5) }
     .boss-icon{ font-size:22px;line-height:1;margin-bottom:6px }
     .boss-name{ font:700 10px/1 'Cinzel',serif;letter-spacing:.10em;margin-bottom:5px }
     .boss-meta{ font:600 10.5px/1 'Cinzel',serif;font-variant-numeric:tabular-nums }
@@ -798,7 +799,7 @@
     .quest-eyebrow{ font:600 10px/1 'Cinzel',serif;letter-spacing:.28em;color:rgba(122,217,255,.9);text-transform:uppercase }
     .quest-progress{ font-size:11px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums;font-weight:500 }
     .quest-text{ font-size:13.5px;color:#fff;line-height:1.45;margin-bottom:6px }
-    .quest-reward{ font-size:11px;color:rgba(244,212,154,.75);font-style:italic }
+    .quest-reward{ font-size:11px;color:rgba(155,138,252,.75);font-style:italic }
 
     /* TOP RUNS leaderboard rows. */
     .top-runs{ display:flex;flex-direction:column;gap:2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif }
@@ -807,8 +808,8 @@
       padding:8px 10px;border-radius:5px;font-size:13px;letter-spacing:.01em;
       transition:background .2s ease;
     }
-    .top-run-row:hover{ background:rgba(212,173,106,.05) }
-    .top-run-row.today{ background:rgba(244,212,154,.10);color:#f4d49a;font-weight:600 }
+    .top-run-row:hover{ background:rgba(139,124,246,.05) }
+    .top-run-row.today{ background:rgba(155,138,252,.10);color:#9b8afc;font-weight:600 }
     .top-run-row .medal{ font-size:14px;text-align:left }
     .top-run-row .rank{
       display:inline-flex;align-items:center;justify-content:center;
@@ -825,48 +826,48 @@
     .honour{
       display:flex;flex-direction:column;align-items:center;gap:5px;
       padding:9px 4px;
-      background:rgba(0,0,0,.4);border:1px solid rgba(212,173,106,.14);border-radius:6px;
+      background:rgba(0,0,0,.4);border:1px solid rgba(139,124,246,.14);border-radius:6px;
       transition:transform .2s ease,border-color .2s ease;
     }
-    .honour.earned{ border-color:rgba(244,212,154,.45);background:linear-gradient(180deg,rgba(244,212,154,.12) 0%,rgba(244,212,154,.02) 100%) }
+    .honour.earned{ border-color:rgba(155,138,252,.45);background:linear-gradient(180deg,rgba(155,138,252,.12) 0%,rgba(155,138,252,.02) 100%) }
     .honour.earned:hover{ transform:translateY(-2px) }
     .honour .icon{ font-size:18px;line-height:1 }
     .honour .name{ font:600 8.5px/1.15 'Cinzel',serif;letter-spacing:.08em;text-align:center;text-transform:uppercase }
-    .honour.earned .name{ color:#f4d49a }
+    .honour.earned .name{ color:#9b8afc }
     .honour:not(.earned){ opacity:.32 }
     .honour:not(.earned) .name{ color:rgba(255,255,255,.5) }
 
     /* SKALD NUDGE pill (re-skinned for premium feel). */
     .menu-nudge{
       margin:24px 0 0;padding:14px 18px;
-      background:linear-gradient(135deg,rgba(212,173,106,.10) 0%,rgba(120,200,180,.04) 100%);
-      border-left:2px solid rgba(212,173,106,.6);border-radius:0 6px 6px 0;
+      background:linear-gradient(135deg,rgba(139,124,246,.10) 0%,rgba(120,200,180,.04) 100%);
+      border-left:2px solid rgba(139,124,246,.6);border-radius:0 6px 6px 0;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
       text-align:left;
     }
-    .menu-nudge-text{ font:italic 500 13.5px/1.5 'Cinzel',serif;color:rgba(244,212,154,.92);letter-spacing:.01em }
+    .menu-nudge-text{ font:italic 500 13.5px/1.5 'Cinzel',serif;color:rgba(155,138,252,.92);letter-spacing:.01em }
 
     /* TABS row. */
     .menu-tabs{ display:flex;gap:8px;margin:0 }
     .menu-tab{
-      flex:1;background:rgba(212,173,106,.06);
-      border:1px solid rgba(212,173,106,.22);color:rgba(244,212,154,.85);
+      flex:1;background:rgba(139,124,246,.06);
+      border:1px solid rgba(139,124,246,.22);color:rgba(155,138,252,.85);
       padding:10px;border-radius:6px;cursor:pointer;
       font:600 10.5px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;
       transition:background .2s ease,border-color .2s ease;
     }
-    .menu-tab:hover{ background:rgba(212,173,106,.12);border-color:rgba(212,173,106,.4) }
-    .menu-tab.active{ background:rgba(212,173,106,.22);border-color:rgba(212,173,106,.55);color:#f4d49a }
+    .menu-tab:hover{ background:rgba(139,124,246,.12);border-color:rgba(139,124,246,.4) }
+    .menu-tab.active{ background:rgba(139,124,246,.22);border-color:rgba(139,124,246,.55);color:#9b8afc }
 
     /* CONTROLS strip + footer. */
     .menu-controls-line{
       margin:28px 0 0;padding:18px 0 0;
-      border-top:1px solid rgba(212,173,106,.14);
+      border-top:1px solid rgba(139,124,246,.14);
       font:400 12px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
       color:rgba(255,255,255,.6);
     }
     .menu-footer{
-      margin-top:18px;padding-top:14px;border-top:1px solid rgba(212,173,106,.10);
+      margin-top:18px;padding-top:14px;border-top:1px solid rgba(139,124,246,.10);
       font:400 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
       color:rgba(255,255,255,.42);letter-spacing:.01em;
     }
@@ -940,7 +941,7 @@
       font:300 64px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif !important;
       color:rgba(255,255,255,.85) !important;
       letter-spacing:-.02em !important;
-      text-shadow:0 4px 30px rgba(0,0,0,.85),0 0 60px rgba(244,212,154,.15) !important;
+      text-shadow:0 4px 30px rgba(0,0,0,.85),0 0 60px rgba(155,138,252,.15) !important;
     }
 
     /* Power-up pills as quiet glass, not bright bronze. */
@@ -997,8 +998,8 @@
     }
     .start .controls-line kbd{
       display:inline-block;padding:2px 8px;margin:0 3px;min-width:14px;text-align:center;
-      background:rgba(212,173,106,.14);border:1px solid rgba(212,173,106,.5);
-      border-radius:5px;font:inherit;font-size:12.5px;color:#f4d49a;font-weight:600;
+      background:rgba(139,124,246,.14);border:1px solid rgba(139,124,246,.5);
+      border-radius:5px;font:inherit;font-size:12.5px;color:#9b8afc;font-weight:600;
     }
     .start .brandmark{display:none}
 
@@ -1019,31 +1020,31 @@
       width:100%;max-width:480px;
       padding:32px 28px;text-align:center;
       /* Solid panel inside the opaque backdrop. */
-      background:rgba(18,13,8,1);border:1px solid rgba(212,173,106,.4);
+      background:rgba(18,13,8,1);border:1px solid rgba(139,124,246,.4);
       border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.85);
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
     }
     .over h2{
       font:600 40px/1 'Cinzel',serif;letter-spacing:.08em;text-transform:uppercase;
-      color:#d4ad6a;margin:0 0 18px;
-      text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 36px rgba(212,173,106,.15);
+      color:#6d5efc;margin:0 0 18px;
+      text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 36px rgba(139,124,246,.15);
     }
     .over .ribbon{
       display:inline-block;margin:0 0 28px;padding:6px 14px;
-      background:rgba(212,173,106,.10);border:1px solid rgba(212,173,106,.45);
+      background:rgba(139,124,246,.10);border:1px solid rgba(139,124,246,.45);
       border-radius:8px;
       font:600 12px/1 inherit;letter-spacing:.02em;
-      color:#d4ad6a;
+      color:#6d5efc;
     }
     .over .ribbon.best{background:rgba(122,217,255,.12);border-color:rgba(122,217,255,.45);color:#7ad9ff}
     .over .ribbon.none{display:none}
     .over .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:28px;
-      border-top:1px solid rgba(212,173,106,.18);border-bottom:1px solid rgba(212,173,106,.18)}
+      border-top:1px solid rgba(139,124,246,.18);border-bottom:1px solid rgba(139,124,246,.18)}
     .over .stats .item{padding:16px 4px;background:none;
-      border-left:1px solid rgba(212,173,106,.10)}
+      border-left:1px solid rgba(139,124,246,.10)}
     .over .stats .item:first-child{border-left:none}
     .over .stats .item .k{
-      font:700 28px/1 inherit;color:#d4ad6a;letter-spacing:-.02em;
+      font:700 28px/1 inherit;color:#6d5efc;letter-spacing:-.02em;
       font-variant-numeric:tabular-nums;
     }
     .over .stats .item .v{
@@ -1053,33 +1054,33 @@
     .over .actions{display:flex;flex-direction:column;gap:8px}
     .over .play{
       cursor:pointer;padding:14px 36px;border-radius:10px;
-      background:#d4ad6a;border:none;color:#1a1208;
+      background:#6d5efc;border:none;color:#0a0a12;
       font:600 15px/1 inherit;letter-spacing:.02em;
-      box-shadow:0 6px 24px rgba(212,173,106,.28),0 1px 0 rgba(255,255,255,.25) inset;
+      box-shadow:0 6px 24px rgba(139,124,246,.28),0 1px 0 rgba(255,255,255,.25) inset;
       transition:transform .15s,background .2s,box-shadow .2s;
     }
-    .over .play:hover{background:#e8c084;transform:translateY(-1px)}
+    .over .play:hover{background:#8676fd;transform:translateY(-1px)}
 
     .pause{
       position:fixed;inset:0;z-index:55;display:none;
       align-items:center;justify-content:center;
-      background:radial-gradient(ellipse at center,rgba(8,6,4,.45) 0%,rgba(8,6,4,.78) 100%);
+      background:radial-gradient(ellipse at center,rgba(10,10,16,.45) 0%,rgba(10,10,16,.78) 100%);
     }
     .pause.on{display:flex}
     .pause .card{padding:36px 40px;text-align:center;background:none;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif}
     .pause h3{
       font:600 28px/1 'Cinzel',serif;letter-spacing:.08em;text-transform:uppercase;
-      color:#d4ad6a;margin-bottom:24px;
+      color:#6d5efc;margin-bottom:24px;
     }
     .pause button{
       cursor:pointer;padding:12px 32px;border-radius:10px;
-      background:#d4ad6a;border:none;color:#1a1208;
+      background:#6d5efc;border:none;color:#0a0a12;
       font:600 14px/1 inherit;letter-spacing:.02em;
-      box-shadow:0 6px 22px rgba(212,173,106,.26);
+      box-shadow:0 6px 22px rgba(139,124,246,.26);
       transition:transform .15s,background .2s;
     }
-    .pause button:hover{background:#e8c084;transform:translateY(-1px)}
+    .pause button:hover{background:#8676fd;transform:translateY(-1px)}
 
     .loader{
       position:fixed;inset:0;z-index:100;
@@ -1217,8 +1218,8 @@
   <!-- Screen-space boss banner. appears top-centre when a boss is
        on-stage. Big HP bar + name + how-to-kill hint. -->
   <div id="bossBanner" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:15;pointer-events:none;display:none;width:min(560px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
-    <div style="font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#f4d49a;text-shadow:0 2px 10px rgba(0,0,0,.9);margin-bottom:8px" id="bossBannerName">JÖTUNN</div>
-    <div style="position:relative;height:14px;background:rgba(0,0,0,.7);border:1px solid rgba(244,212,154,.5);border-radius:4px;overflow:visible;box-shadow:0 4px 18px rgba(0,0,0,.5)">
+    <div style="font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#9b8afc;text-shadow:0 2px 10px rgba(0,0,0,.9);margin-bottom:8px" id="bossBannerName">JÖTUNN</div>
+    <div style="position:relative;height:14px;background:rgba(0,0,0,.7);border:1px solid rgba(155,138,252,.5);border-radius:4px;overflow:visible;box-shadow:0 4px 18px rgba(0,0,0,.5)">
       <div id="bossBannerFill" style="height:100%;width:100%;background:linear-gradient(90deg,#ff3030,#ff8030);transition:width .15s ease;border-radius:3px"></div>
       <div id="bossBannerDmgFloats" style="position:absolute;inset:0;pointer-events:none;overflow:visible"></div>
     </div>
@@ -1228,9 +1229,9 @@
   <!-- Boss-encounter tutorial popup. appears in the centre of the
        screen for 4s when a boss spawns. Explains explicitly how to
        deal damage. Dismisses itself; player can tap to dismiss early. -->
-  <div id="bossTutorial" style="position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;display:none;width:min(420px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;padding:24px 28px;background:rgba(14,10,6,.92);border:1px solid rgba(212,173,106,.45);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);backdrop-filter:blur(12px);opacity:0;transition:opacity .35s ease,transform .35s ease">
-    <div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#d4ad6a;margin-bottom:8px">A boss approaches</div>
-    <div id="bossTutorialName" style="font:700 32px/1.1 'Cinzel',serif;color:#f4d49a;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;text-shadow:0 0 24px rgba(244,212,154,.3)">JÖTUNN</div>
+  <div id="bossTutorial" style="position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;display:none;width:min(420px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;padding:24px 28px;background:rgba(14,13,20,.92);border:1px solid rgba(139,124,246,.45);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);backdrop-filter:blur(12px);opacity:0;transition:opacity .35s ease,transform .35s ease">
+    <div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#6d5efc;margin-bottom:8px">A boss approaches</div>
+    <div id="bossTutorialName" style="font:700 32px/1.1 'Cinzel',serif;color:#9b8afc;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;text-shadow:0 0 24px rgba(155,138,252,.3)">JÖTUNN</div>
     <div id="bossTutorialHp" style="font:600 12px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(255,255,255,.7);margin-bottom:18px">HP 100</div>
     <div style="display:flex;flex-direction:column;gap:10px;text-align:left;font-size:14px;color:rgba(255,255,255,.92)">
       <div><span style="color:#60d0ff;font-weight:700">ᚱ Collect runes</span> &nbsp;<span style="color:rgba(255,255,255,.55)">+40 damage each</span></div>
@@ -1246,31 +1247,26 @@
   <div class="intro" id="introOverlay" style="display:none">
     <div class="intro-card">
       <div class="intro-step" data-step="1">
-        <div class="intro-eyebrow">Bind your name</div>
-        <h2>You are the Skald who runs between realms.</h2>
-        <p>Four worlds wait. Midgard for mortals. Jötunheim for frost-kin.
-          Muspelheim for fire. Asgard for the gods. Cross all four and your saga begins again,
-          harder. Walk the road long enough and Odin himself looks up.</p>
-        <p style="margin-top:14px">Red means death. Gold means gift. The road is your test.</p>
+        <div class="intro-eyebrow">Welcome</div>
+        <h2>An endless run through the Norse realms.</h2>
+        <p>Dodge what's red. Grab what's gold. Beat the boss at each realm to run further.</p>
       </div>
       <div class="intro-step" data-step="2" style="display:none">
-        <div class="intro-eyebrow">Move</div>
-        <h2>Arrow keys. Or swipe on glass.</h2>
+        <div class="intro-eyebrow">Controls</div>
+        <h2>Swipe, or use the arrow keys.</h2>
         <div class="intro-keys">
-          <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd><div>Step left, step right</div></div>
-          <div><kbd>&uarr;</kbd><div>Leap</div></div>
-          <div><kbd>&darr;</kbd><div>Slide low</div></div>
-          <div><kbd>P</kbd><div>Hold the world</div></div>
+          <div><kbd>&larr;</kbd> <kbd>&rarr;</kbd><div>Move</div></div>
+          <div><kbd>&uarr;</kbd><div>Jump</div></div>
+          <div><kbd>&darr;</kbd><div>Slide</div></div>
+          <div><kbd>P</kbd><div>Pause</div></div>
         </div>
-        <p>Touch screen: swipe to step, swipe up to leap, down to slide.</p>
+        <p>On a phone, swipe to move, up to jump, down to slide.</p>
       </div>
       <div class="intro-step" data-step="3" style="display:none">
-        <div class="intro-eyebrow">Bind body</div>
-        <h2>Your blood and breath change the road.</h2>
-        <p>Let the gods read you. Through your face: pulse, breath, the heat in your chest.
-          Through the Muse band: focus, calm, deep flow. The gods favour the still and punish the storm-hearted.</p>
-        <p style="margin-top:14px"><b>Calm pays you. Stress costs you.</b> The road runs harder when your body fights itself.
-          Skip this and you run blind. Bind even one sensor and the world opens.</p>
+        <div class="intro-eyebrow">Your body</div>
+        <h2>Play with your heartbeat.</h2>
+        <p>Connect your camera and the game reads your pulse. Staying calm earns more;
+          stress costs you. It's optional, but it's the best part.</p>
       </div>
       <div class="intro-footer">
         <button class="intro-skip" id="introSkip">Skip</button>
@@ -1511,7 +1507,7 @@
         <div id="bioBleHint" style="display:none;margin:10px 16px 0;font-size:12px;color:rgba(255,140,90,.85);line-height:1.4"></div>
         <div id="bioEegDiagOut" style="display:none"></div>
       </div>
-      <p style="margin:22px 16px 0;font:italic 400 12.5px/1.5 -apple-system,system-ui,sans-serif;color:rgba(244,234,208,.5);text-align:center">Bind both for True-sight. The rarest gifts. Doubled streak rewards.</p>
+      <p style="margin:22px 16px 0;font:italic 400 12.5px/1.5 -apple-system,system-ui,sans-serif;color:rgba(240,240,245,.5);text-align:center">Bind both for True-sight. The rarest gifts. Doubled streak rewards.</p>
     </div>
   </div>
 
@@ -1535,7 +1531,7 @@
       </div>
       <div class="s-group">
         <div class="s-group-title">The road</div>
-        <p style="margin:0;padding:0 4px;font:400 14px/1.55 -apple-system,system-ui,sans-serif;color:rgba(244,234,208,.78)">
+        <p style="margin:0;padding:0 4px;font:400 14px/1.55 -apple-system,system-ui,sans-serif;color:rgba(240,240,245,.78)">
           Red marks danger. Gold marks gift. Slay the boss at each realm's end and the saga widens.
           Stay calm and the gods give freely. Tense up and the wolf takes from you.
         </p>
@@ -1548,8 +1544,8 @@
        session. Steady inhale 4s -> hold 4s -> exhale 6s. The breathing
        circle expands/holds/contracts in sync. Captures baseline at end. -->
   <div id="bioCalibration" style="position:fixed;inset:0;z-index:75;display:none;background:radial-gradient(circle at center,rgba(8,14,22,.7) 0%,rgba(4,6,12,.95) 70%);backdrop-filter:blur(12px);align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:#fff;text-align:center">
-    <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.32em;color:rgba(244,212,154,.7);text-transform:uppercase;margin-bottom:20px">Calibration ritual</div>
-    <div id="calibLabel" style="font:700 38px/1.2 'Cinzel',serif;color:#f4d49a;letter-spacing:.04em;margin-bottom:30px;text-shadow:0 0 24px rgba(244,212,154,.35)">Breathe in</div>
+    <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.32em;color:rgba(155,138,252,.7);text-transform:uppercase;margin-bottom:20px">Calibration ritual</div>
+    <div id="calibLabel" style="font:700 38px/1.2 'Cinzel',serif;color:#9b8afc;letter-spacing:.04em;margin-bottom:30px;text-shadow:0 0 24px rgba(155,138,252,.35)">Breathe in</div>
     <!-- Breathing circle. pure CSS, animates via setProperty -->
     <div style="position:relative;width:280px;height:280px;display:flex;align-items:center;justify-content:center;margin-bottom:30px">
       <div id="calibCircle" style="position:absolute;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(122,217,255,.4) 0%,rgba(122,217,255,.08) 60%,transparent 100%);border:1.5px solid rgba(122,217,255,.55);transition:transform 1s cubic-bezier(.4,.0,.2,1),background 1s ease"></div>
@@ -1559,7 +1555,7 @@
       Sit still, settle your shoulders, and follow the circle. Inhale 4 · hold 4 · exhale 6. We're learning your baseline so the gods can read you.
     </div>
     <div style="display:flex;gap:12px;align-items:center">
-      <div id="calibProgressText" style="font-size:11px;color:rgba(244,212,154,.7);letter-spacing:.12em;font:600 11px/1 'Cinzel',serif;text-transform:uppercase">Cycle 1 / 6</div>
+      <div id="calibProgressText" style="font-size:11px;color:rgba(155,138,252,.7);letter-spacing:.12em;font:600 11px/1 'Cinzel',serif;text-transform:uppercase">Cycle 1 / 6</div>
       <button id="calibSkip" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.6);padding:6px 14px;border-radius:5px;cursor:pointer;font-size:11px;letter-spacing:.04em">Skip</button>
     </div>
   </div>
@@ -1569,9 +1565,9 @@
        URL share, and an explainer for how it'll auto-sync once
        running inside the Elata App Store. -->
   <div id="syncOverlay" style="position:fixed;inset:0;z-index:80;display:none;background:rgba(8,5,3,.78);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
-    <div style="max-width:520px;width:100%;background:rgba(20,14,9,.96);border:1px solid rgba(212,173,106,.4);border-radius:14px;padding:28px 30px;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.7);max-height:90vh;overflow:auto">
+    <div style="max-width:520px;width:100%;background:rgba(18,16,26,.96);border:1px solid rgba(139,124,246,.4);border-radius:14px;padding:28px 30px;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.7);max-height:90vh;overflow:auto">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <div style="font:700 22px/1.1 'Cinzel',serif;letter-spacing:.04em;color:#f4d49a">Backup &amp; Sync</div>
+        <div style="font:700 22px/1.1 'Cinzel',serif;letter-spacing:.04em;color:#9b8afc">Backup &amp; Sync</div>
         <button id="closeSyncDialog" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;padding:0;line-height:1">&times;</button>
       </div>
       <p style="font-size:13px;color:rgba(255,255,255,.78);line-height:1.5;margin:6px 0 16px">
@@ -1579,29 +1575,29 @@
       </p>
 
       <!-- Identity -->
-      <div style="background:rgba(212,173,106,.05);border:1px solid rgba(212,173,106,.25);border-radius:8px;padding:14px 16px;margin-bottom:16px">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:8px">Your Skald</div>
+      <div style="background:rgba(139,124,246,.05);border:1px solid rgba(139,124,246,.25);border-radius:8px;padding:14px 16px;margin-bottom:16px">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Your Skald</div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
           <div>
-            <div id="syncSkaldName" style="font:700 18px/1.1 'Cinzel',serif;color:#f4d49a;letter-spacing:.02em">. </div>
+            <div id="syncSkaldName" style="font:700 18px/1.1 'Cinzel',serif;color:#9b8afc;letter-spacing:.02em">. </div>
             <div id="syncSkaldId"   style="font:400 11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:rgba(255,255,255,.45);margin-top:2px;word-break:break-all">. </div>
           </div>
-          <button id="syncRenameSkald" style="background:rgba(212,173,106,.12);border:1px solid rgba(212,173,106,.35);color:#f4d49a;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">New name</button>
+          <button id="syncRenameSkald" style="background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.35);color:#9b8afc;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">New name</button>
         </div>
         <div id="syncCloudStatus" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4">. </div>
       </div>
 
       <!-- Manual export -->
       <div style="margin-bottom:16px">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:6px">Move to another device</div>
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:6px">Move to another device</div>
         <p style="font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.5;margin:6px 0 10px">
           Copy your save, then paste it into Valhalla on the other device. Or share the link. opening it loads your save anywhere.
         </p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button id="syncCopySave"     style="flex:1;min-width:140px;background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy save</button>
-          <button id="syncCopyLink"     style="flex:1;min-width:140px;background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy share link</button>
+          <button id="syncCopySave"     style="flex:1;min-width:140px;background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy save</button>
+          <button id="syncCopyLink"     style="flex:1;min-width:140px;background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Copy share link</button>
         </div>
-        <textarea id="syncSavePaste" placeholder="…or paste a save here to restore" style="width:100%;margin-top:10px;min-height:60px;background:rgba(0,0,0,.45);border:1px solid rgba(212,173,106,.3);border-radius:6px;color:#fff;font:400 11px/1.4 ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;resize:vertical;box-sizing:border-box"></textarea>
+        <textarea id="syncSavePaste" placeholder="…or paste a save here to restore" style="width:100%;margin-top:10px;min-height:60px;background:rgba(0,0,0,.45);border:1px solid rgba(139,124,246,.3);border-radius:6px;color:#fff;font:400 11px/1.4 ui-monospace,Menlo,Consolas,monospace;padding:8px 10px;resize:vertical;box-sizing:border-box"></textarea>
         <div style="display:flex;gap:8px;margin-top:6px">
           <button id="syncRestoreSave" style="flex:1;background:rgba(120,200,140,.15);border:1px solid rgba(120,200,140,.5);color:#a3e8b8;padding:9px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em">Restore from paste</button>
         </div>
@@ -1618,12 +1614,12 @@
 
       <!-- VIKING GEAR. pick coat / shield / cloak. Persists per-Skald
            and tints the player model accordingly. -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:8px">Your gear</div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Your gear</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
           <div>
             <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Coat</div>
-            <select id="gearCoat" style="width:100%;background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
+            <select id="gearCoat" style="width:100%;background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
               <option value="leather">Leather (brown)</option>
               <option value="furBlack">Black fur</option>
               <option value="furGrey">Grey fur</option>
@@ -1632,7 +1628,7 @@
           </div>
           <div>
             <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Shield</div>
-            <select id="gearShield" style="width:100%;background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
+            <select id="gearShield" style="width:100%;background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
               <option value="oak">Oak (raw)</option>
               <option value="red">Red rim</option>
               <option value="blue">Blue rim</option>
@@ -1641,7 +1637,7 @@
           </div>
           <div>
             <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Cloak</div>
-            <select id="gearCloak" style="width:100%;background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
+            <select id="gearCloak" style="width:100%;background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.3);border-radius:4px;padding:5px 6px;font-size:11px;font-family:inherit">
               <option value="none">None</option>
               <option value="wolf">Wolf grey</option>
               <option value="bear">Bear brown</option>
@@ -1654,15 +1650,15 @@
       <!-- FRIENDS LEADERBOARD. paste a friend's Skald ID to add them.
            Their last published run shows on the over-screen. Hook into
            ElataSync if available; falls back to manual add otherwise. -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px">
-          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase">Skald friends</div>
+          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase">Skald friends</div>
           <span id="friendCount" style="font-size:10px;color:rgba(255,255,255,.5)">0 friends</span>
         </div>
         <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4;margin-bottom:8px">Paste a friend's Skald ID to follow their runs. Your last run is published automatically.</div>
         <div style="display:flex;gap:8px">
-          <input id="friendIdInput" type="text" placeholder="paste skald id…" style="flex:1;background:rgba(0,0,0,.4);color:#fff;border:1px solid rgba(212,173,106,.3);border-radius:4px;padding:6px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace">
-          <button id="friendAddBtn" style="background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:6px 12px;border-radius:5px;cursor:pointer;font-weight:600;font-size:11px;letter-spacing:.04em">Add</button>
+          <input id="friendIdInput" type="text" placeholder="paste skald id…" style="flex:1;background:rgba(0,0,0,.4);color:#fff;border:1px solid rgba(139,124,246,.3);border-radius:4px;padding:6px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace">
+          <button id="friendAddBtn" style="background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:6px 12px;border-radius:5px;cursor:pointer;font-weight:600;font-size:11px;letter-spacing:.04em">Add</button>
         </div>
         <div id="friendList" style="margin-top:8px;font-size:11px"></div>
       </div>
@@ -1670,10 +1666,10 @@
       <!-- LANGUAGE. picker for menu/HUD localization. Applies on
            refresh. Falls back to English if browser language not in
            supported set. -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase">Language</div>
-          <select id="langPicker" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase">Language</div>
+          <select id="langPicker" style="background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
             <option value="en">English</option>
             <option value="es">Español</option>
             <option value="de">Deutsch</option>
@@ -1686,10 +1682,10 @@
       <!-- PWA install. only visible when the browser fires
            beforeinstallprompt (Chrome/Edge/Android). Hidden on
            Safari/iOS (they have native Add-to-Homescreen instead). -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div>
-            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:4px">Install</div>
+            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:4px">Install</div>
             <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.4">Open Valhalla like a real app · works offline · home-screen icon</div>
           </div>
           <button id="installPwaBtn" style="display:none;background:rgba(120,200,140,.18);border:1px solid rgba(120,200,140,.5);color:#a3e8b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:12px;white-space:nowrap">Install app</button>
@@ -1697,23 +1693,23 @@
       </div>
 
       <!-- Daily reminder notifications -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:8px">Daily Reminder</div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
+        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Daily Reminder</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <input id="reminderTime" type="time" value="20:00" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;font-family:inherit">
-          <button id="reminderToggle" style="background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:12px">Enable</button>
+          <input id="reminderTime" type="time" value="20:00" style="background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;font-family:inherit">
+          <button id="reminderToggle" style="background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:12px">Enable</button>
         </div>
         <div id="reminderStatus" style="font-size:10.5px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.4">Off. Skald won't bug you</div>
       </div>
 
       <!-- Graphics quality -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(212,173,106,.15)">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div>
-            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(212,173,106,.85);text-transform:uppercase;margin-bottom:4px">Graphics</div>
+            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:4px">Graphics</div>
             <div id="qualityCurrent" style="font-size:11px;color:rgba(255,255,255,.55)">Detected: . </div>
           </div>
-          <select id="qualityPicker" style="background:rgba(0,0,0,.4);color:#f4d49a;border:1px solid rgba(212,173,106,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">
+          <select id="qualityPicker" style="background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">
             <option value="">Auto (recommended)</option>
             <option value="high">High. HDRI + shadows</option>
             <option value="medium">Medium. shadows, no HDRI</option>
@@ -1742,7 +1738,7 @@
       </div>
       <div class="actions" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
         <button class="play" id="againBtn">Run again</button>
-        <button id="shareRunBtn" style="background:rgba(212,173,106,.15);border:1px solid rgba(212,173,106,.5);color:#f4d49a;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:600;letter-spacing:.04em;font:600 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">Share run</button>
+        <button id="shareRunBtn" style="background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:600;letter-spacing:.04em;font:600 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">Share run</button>
       </div>
     </div>
   </div>
@@ -1792,7 +1788,7 @@
     (function loadGame(){
       var s = document.createElement("script");
       s.type = "module";
-      s.src = "./js/valhalla/main.js?v=20260526f&t=" + Date.now();
+      s.src = "./js/valhalla/main.js?v=20260530a&t=" + Date.now();
       document.body.appendChild(s);
     })();
   </script>
