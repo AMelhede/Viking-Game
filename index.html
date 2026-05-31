@@ -464,22 +464,20 @@
       margin:14px 0 0;
     }
 
-    /* ----- PRIMARY CTA (the only loud thing on the page) ----- */
+    /* ----- PRIMARY CTA — restrained, not a glossy game template.
+       Flat warm-cream fill, hairline ring, soft single shadow. The
+       earlier multi-layer gradient + 80px glow read as "AI game". ----- */
     .start .play{
-      margin:48px auto 0;
-      min-width:280px;padding:18px 60px;
-      background:linear-gradient(180deg,#f0d99a 0%,#d4ad6a 100%);
-      color:#1a1208;border:none;border-radius:999px;cursor:pointer;
-      font:700 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-      letter-spacing:.32em;text-transform:uppercase;
-      box-shadow:
-        0 1px 0 rgba(255,255,255,.4) inset,
-        0 -2px 0 rgba(0,0,0,.2) inset,
-        0 18px 40px rgba(212,173,106,.32),
-        0 0 80px rgba(244,212,154,.15);
-      transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s ease,filter .2s ease;
+      margin:44px auto 0;
+      min-width:230px;padding:16px 56px;
+      background:#ecd6a0;
+      color:#1c140a;border:none;border-radius:14px;cursor:pointer;
+      font:600 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:.28em;text-transform:uppercase;
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+      transition:transform .18s cubic-bezier(.4,0,.2,1),background .2s ease;
     }
-    .start .play:hover{ filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -2px 0 rgba(0,0,0,.2) inset,0 22px 50px rgba(212,173,106,.45),0 0 100px rgba(244,212,154,.25) }
+    .start .play:hover{ background:#f3e0b2;transform:translateY(-1px) }
     .start .play:active{ transform:translateY(0);transition-duration:.08s }
 
     /* ----- STAT RIBBON (bottom, single line, very subtle) ----- */
@@ -1371,11 +1369,11 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
 
-    <!-- HERO CARD. Title + tagline + CTA + ribbon + the BIO card. -->
+    <!-- HERO CARD. Deliberately sparse: title, CTA, one quiet stat
+         line, the body card, three nav pills. No stacked flavor prose
+         (that read as AI). Lore lives inside the game + Progress sheet. -->
     <div class="card">
       <h1>Valhalla</h1>
-      <div class="tag" id="menuTag">Eight realms wait. Bring strong breath and a sharp eye.</div>
-      <div class="tag-saga" id="sagaLine"></div>
 
       <button class="play" id="beginBtn">Run</button>
 
@@ -1385,10 +1383,6 @@
         <span><span class="v" id="heroDist">0m</span> furthest</span>
         <span class="sep"></span>
         <span><span class="v" id="heroStreak">0</span> day streak</span>
-      </div>
-
-      <div id="menuNudge" class="menu-nudge" style="display:none;margin-top:22px;max-width:440px">
-        <div id="menuNudgeText" class="menu-nudge-text"></div>
       </div>
 
       <!-- BODY CARD — the hero of the whole app. Bio data made central
@@ -1424,6 +1418,9 @@
     <!-- Hidden compatibility shims so existing renderer code can still
          write into legacy IDs that have moved into the saga sheet. -->
     <div style="display:none">
+      <div id="menuTag"></div>
+      <div id="sagaLine"></div>
+      <div id="menuNudge"><div id="menuNudgeText"></div></div>
       <div id="bossRoster"></div>
       <div id="realmPath"></div>
       <div id="dailyQuest"><div id="dailyQuestText"></div><div id="dailyQuestProgress"></div><div id="dailyQuestReward"></div></div>

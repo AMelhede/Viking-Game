@@ -6295,7 +6295,7 @@ class Valhalla {
     try {
       const s = Store.load();
       const $$ = (id) => document.getElementById(id);
-      if ($$("bestScore")) $$("bestScore").textContent = (s.bestScore || 0).toLocaleString();
+      if ($$("bestScore")) $$("bestScore").textContent = Math.round(s.bestScore || 0).toLocaleString();
       if ($$("bestDist"))  $$("bestDist").textContent  = `${Math.round(s.bestDist || 0)}m`;
       if ($$("totalRuns")) $$("totalRuns").textContent = s.totalRuns || 0;
     } catch (e) { console.warn("[loadStats] base failed", e); }
@@ -6345,7 +6345,7 @@ class Valhalla {
     const heroBestEl   = document.getElementById("heroBest");
     const heroDistEl   = document.getElementById("heroDist");
     if (heroStreakEl) heroStreakEl.textContent = String(streak);
-    if (heroBestEl)   heroBestEl.textContent = (s.bestScore || 0).toLocaleString();
+    if (heroBestEl)   heroBestEl.textContent = Math.round(s.bestScore || 0).toLocaleString();
     if (heroDistEl)   heroDistEl.textContent = `${Math.round(s.bestDist || 0)}m`;
   }
 
@@ -7506,7 +7506,7 @@ class Valhalla {
 
   _saveStats() {
     const s = Store.load();
-    s.bestScore = Math.max(s.bestScore || 0, this.score);
+    s.bestScore = Math.max(s.bestScore || 0, Math.floor(this.score));
     s.bestDist = Math.max(s.bestDist || 0, this.distance);
     s.totalRuns = (s.totalRuns || 0) + 1;
     s.totalScore = (s.totalScore || 0) + this.score;
