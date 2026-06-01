@@ -377,11 +377,11 @@ const $ = (id) => document.getElementById(id);
 // "Northern" minor flavour without sounding like generic minor.
 class Audio {
   constructor() {
-    // MUTED BY DEFAULT. The user repeatedly called the ambient audio
-    // "bullshit/static/squelching" — so sound is OFF unless they
-    // explicitly enabled it before (or press M). Silence is the safe
-    // default; no bad sound can surprise anyone.
-    this.muted = localStorage.getItem("valhalla.muted") !== "false";
+    // SOUND ON BY DEFAULT now that the ambience is REAL recorded audio
+    // (CC0 wind + crackling fire), not the procedural noise the user
+    // called "static/squelching". Muted only if the user explicitly
+    // turned it off before (or presses M).
+    this.muted = localStorage.getItem("valhalla.muted") === "true";
     this.ctx = null;
     this.master = null;
     this.wet = null;
@@ -395,6 +395,51 @@ class Audio {
     // a few loops so biome transitions don't hard-cut the key.
     this._musicPitch = 0;
     this._musicPitchTarget = 0;
+    // Real recorded ambience samples (CC0). Decoded once, looped live.
+    this._samples = {};
+    this._samplesLoading = null;
+  }
+
+  // Fetch + decode the bundled REAL ambience loops (CC0): wind
+  // (felix.blume) and a crackling fire (inchadney). These replace the
+  // old procedural noise synths the user kept calling "static/squelch".
+  // Idempotent; safe to call repeatedly. Resolves when both are ready
+  // (or have individually failed, in which case startWind/startFire fall
+  // back to the quiet procedural rumble).
+  loadSamples() {
+    if (this._samplesLoading) return this._samplesLoading;
+    this._samplesLoading = (async () => {
+      this.ensure();
+      if (!this.ctx) return;
+      const files = { wind: "assets/audio/wind.ogg", fire: "assets/audio/fire.ogg" };
+      await Promise.all(Object.entries(files).map(async ([k, url]) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.arrayBuffer();
+          this._samples[k] = await this.ctx.decodeAudioData(data);
+        } catch (e) {
+          console.warn(`[audio] real sample '${k}' failed to load (${url})`, e);
+        }
+      }));
+    })();
+    return this._samplesLoading;
+  }
+
+  // Start a decoded sample looping through master at `gain`, with an
+  // optional reverb send. Returns { src, gain } or null if unavailable.
+  _playSampleLoop(key, gain, sendReverb) {
+    if (!this.ctx || !this._samples[key]) return null;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._samples[key];
+    src.loop = true;
+    const g = this.ctx.createGain();
+    g.gain.value = gain;
+    src.connect(g);
+    g.connect(this.master);
+    if (sendReverb) this._send(g, sendReverb);
+    try { src.start(); } catch (e) { /* already started */ }
+    return { src, gain: g };
   }
 
   // Called by the game when the biome changes. Smoothly retunes the
@@ -404,7 +449,14 @@ class Audio {
   }
 
   ensure() {
-    if (this.ctx) return;
+    // If the context already exists but the browser suspended it (autoplay
+    // policy before a gesture, or tab backgrounded), resume it. ensure()
+    // is always first reached inside the Run click, so this guarantees the
+    // real ambience is audible.
+    if (this.ctx) {
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+      return;
+    }
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
@@ -417,7 +469,10 @@ class Audio {
       // and a limiter. The user has reported audio pain twice now.
       // Order: master -> lowpass(4000) -> highpass(80) -> compressor -> destination
       const safetyLP = this.ctx.createBiquadFilter();
-      safetyLP.type = "lowpass"; safetyLP.frequency.value = 4000; safetyLP.Q.value = 0.5;
+      // Opened up 4000 -> 9000 Hz now that ambience is REAL recordings
+      // (the highs were synth whistles before; real wind/fire need their
+      // top end to sound natural). The limiter below still caps loudness.
+      safetyLP.type = "lowpass"; safetyLP.frequency.value = 9000; safetyLP.Q.value = 0.5;
       const safetyHP = this.ctx.createBiquadFilter();
       safetyHP.type = "highpass"; safetyHP.frequency.value = 80; safetyHP.Q.value = 0.5;
       const limiter = this.ctx.createDynamicsCompressor();
@@ -463,7 +518,7 @@ class Audio {
   setMuted(m) {
     this.muted = m;
     localStorage.setItem("valhalla.muted", String(m));
-    if (this.master) this.master.gain.linearRampToValueAtTime(m ? 0 : 0.42, this.ctx.currentTime + 0.2);
+    if (this.master) this.master.gain.linearRampToValueAtTime(m ? 0 : 0.30, this.ctx.currentTime + 0.2);
   }
 
   // --- noise helpers ---------------------------------------------------
@@ -764,6 +819,29 @@ class Audio {
   startWind() {
     this.ensure();
     if (!this.ctx || this.windNode) return;
+    // REAL WIND FIRST. Loop the bundled CC0 field recording (felix.blume)
+    // as the ambience bed — this is the "real viking-world wind" the user
+    // asked for, and it replaces the procedural rumble that read as
+    // "static/squelching". If the sample isn't decoded yet, load it then
+    // start; only if the file genuinely can't be fetched do we fall
+    // through to the quiet procedural rumble below.
+    if (this._samples.wind) {
+      const n = this._playSampleLoop("wind", 0.42, 0.16);
+      if (n) { this.windNode = n; return; }
+    } else {
+      this.loadSamples().then(() => {
+        // Only the {pending:true} placeholder should be replaced; a real
+        // node (with .src) means wind already started.
+        if ((this.windNode && this.windNode.src) || !this._samples.wind) return;
+        const n = this._playSampleLoop("wind", 0.42, 0.16);
+        if (n) this.windNode = n; else this.windNode = null;
+      });
+      // Mark as started so we don't double-start; the async load wires
+      // the real node in. A null windNode would let a second call stack.
+      this.windNode = { pending: true };
+      return;
+    }
+    // ---- procedural fallback (only if the real sample failed) ----
     // LAYERED WIND: two pink-noise streams through different filters
     //. the high-passed one becomes the "whistling through pines"
     // overtone, the low-passed one is the bulk wash. Together this
@@ -806,23 +884,39 @@ class Audio {
     this.ensure();
     if (!this.ctx || this.fireNode) return;
     const ctx = this.ctx;
-    const master = ctx.createGain();
-    master.gain.value = 0.0;     // starts silent; setFireProximity() raises it
-    // ONLY the bass wash. The crackle pop layer (random HP-filtered
-    // noise bursts) was the most likely cause of the user's audio
-    // pain. Brown noise lowpassed to 200Hz is gentle and warm.
-    const noise = this._noiseSrc(true);
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 200; lp.Q.value = 0.4;
-    const gWash = ctx.createGain(); gWash.gain.value = 0.25;
-    noise.connect(lp); lp.connect(gWash); gWash.connect(master);
-    noise.start();
-    // CRACKLE DISABLED. Was random HP-filtered noise bursts at 1800Hz
-    // with gain up to 0.4 firing every 60-280ms. User reported audio
-    // pain twice. Bass wash above is enough for fire ambience.
-    this._send(master, 0.18);    // small reverb so it sits in the space
-    master.connect(this.master);
-    this.fireNode = { master };
+    // Create the proximity master gain up front (setFireProximity drives
+    // it). The REAL crackling-fire recording (CC0, inchadney) loops into
+    // it; if the sample can't be decoded we wire a gentle procedural bass
+    // wash into the SAME master instead. Either way fireNode.master is the
+    // single volume handle the rest of the game already controls.
+    const m = ctx.createGain();
+    m.gain.value = 0.0;
+    this._send(m, 0.16);
+    m.connect(this.master);
+    this.fireNode = { master: m, src: null };
+
+    const attachReal = () => {
+      if (this.fireNode.src || !this._samples.fire) return false;
+      const src = ctx.createBufferSource();
+      src.buffer = this._samples.fire;
+      src.loop = true;
+      src.connect(m);
+      try { src.start(); } catch (e) {}
+      this.fireNode.src = src;
+      return true;
+    };
+    const attachProcedural = () => {
+      // Gentle bass wash only — no crackle pops (those caused audio pain).
+      const noise = this._noiseSrc(true);
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass"; lp.frequency.value = 200; lp.Q.value = 0.4;
+      const gWash = ctx.createGain(); gWash.gain.value = 0.25;
+      noise.connect(lp); lp.connect(gWash); gWash.connect(m);
+      noise.start();
+    };
+
+    if (this._samples.fire) { attachReal(); return; }
+    this.loadSamples().then(() => { if (!attachReal()) attachProcedural(); });
   }
 
   // Set fire ambience volume based on how close the player is to a
@@ -8077,9 +8171,15 @@ class Valhalla {
     if (hint)   { hint.classList.remove("faded");   clearTimeout(this._hintFadeT);   this._hintFadeT   = setTimeout(() => hint.classList.add("faded"), 6000); }
     if (legend) { legend.classList.remove("faded"); clearTimeout(this._legendFadeT); this._legendFadeT = setTimeout(() => legend.classList.add("faded"), 20000); }
     this.audio.ensure();
-    // Noise-based ambient beds (wind + fire) REMOVED — they were the
-    // "static / squelching" the user kept hearing. Only the melodic
-    // music remains, and audio is muted by default anyway.
+    // REAL ambience beds now: a CC0 wind field-recording loop as the
+    // world bed, plus a CC0 crackling-fire loop that fades up near fire
+    // pits (setFireProximity). These replace the old procedural noise the
+    // user heard as "static/squelching". loadSamples() is idempotent;
+    // startWind/startFireAmbience wait on the decode and wire in the real
+    // loops the moment they're ready (a fraction of a second after RUN).
+    this.audio.loadSamples();
+    this.audio.startWind();
+    this.audio.startFireAmbience();
     this.audio.startMusic();
   }
 

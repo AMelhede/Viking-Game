@@ -59,7 +59,15 @@
       "Bash(git pull *)",
       "Bash(node --check sw.js)",
       "mcp__Claude_in_Chrome__list_connected_browsers",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "Bash(cd /tmp)",
+      "Bash(curl -s \"https://api.github.com/repos/Muges/ambientsounds/git/trees/master?recursive=1\")",
+      "Bash(mkdir -p assets/audio)",
+      "Bash(curl -sL -o assets/audio/wind.ogg \"https://raw.githubusercontent.com/Muges/ambientsounds/master/wind.ogg\")",
+      "Bash(curl -sL -o assets/audio/fire.ogg \"https://raw.githubusercontent.com/Muges/ambientsounds/master/fireplace.ogg\")",
+      "Bash(file assets/audio/*.ogg)",
+      "Bash(curl -s -o /dev/null -w \"wind.ogg -> HTTP %{http_code}, %{size_download} bytes, type=%{content_type}\\\\n\" http://localhost:8042/assets/audio/wind.ogg)",
+      "Bash(curl -s -o /dev/null -w \"fire.ogg -> HTTP %{http_code}, %{size_download} bytes\\\\n\" http://localhost:8042/assets/audio/fire.ogg)"
     ]
   }
 }
