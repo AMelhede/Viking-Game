@@ -180,11 +180,11 @@
        even with a cinematic look. */
     .stat{
       font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;
-      color:rgba(201,165,92,.62);text-transform:uppercase;
+      color:rgba(139,124,246,.62);text-transform:uppercase;
       margin-bottom:14px;
     }
     .stat .lbl{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.28em;
-      color:rgba(201,165,92,.55)}
+      color:rgba(139,124,246,.55)}
     .stat .val{font:700 30px/1 'Cinzel',serif;color:#6d5efc;letter-spacing:.02em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);display:block}
     /* Lives. bronze inscription top-right. */
@@ -195,7 +195,7 @@
     .stat.lives .lbl{display:none}
     .stat.score{display:block}
     .stat.score .val{font-size:34px}
-    .stat.dist .val{font-size:22px;color:rgba(201,165,92,.85)}
+    .stat.dist .val{font-size:22px;color:rgba(139,124,246,.85)}
     .row{display:flex;flex-direction:column;gap:0}
 
     .stat.score{position:relative}
@@ -232,7 +232,7 @@
     body[data-bio-state="focused"]::after   {background:radial-gradient(ellipse at center,rgba(160,192,255,0) 30%,rgba(160,192,255,.32) 100%)}
     body[data-bio-state="meditation"]::after{background:radial-gradient(ellipse at center,rgba(112,232,168,0) 30%,rgba(112,232,168,.30) 100%)}
     body[data-bio-state="frantic"]::after   {background:radial-gradient(ellipse at center,rgba(255,128,224,0) 20%,rgba(255,128,224,.40) 100%)}
-    body[data-bio-state="aroused"]::after   {background:radial-gradient(ellipse at center,rgba(255,176,96,0) 25%,rgba(255,176,96,.32) 100%)}
+    body[data-bio-state="aroused"]::after   {background:radial-gradient(ellipse at center,rgba(139,124,246,0) 25%,rgba(139,124,246,.32) 100%)}
     body[data-bio-state="calm"]::after      {background:radial-gradient(ellipse at center,rgba(128,208,224,0) 30%,rgba(128,208,224,.26) 100%)}
     body[data-bio-state="distracted"]::after{background:radial-gradient(ellipse at center,rgba(128,136,152,0) 30%,rgba(128,136,152,.24) 100%)}
 
@@ -244,7 +244,7 @@
       z-index:12;pointer-events:none;
       display:flex;gap:22px;align-items:center;
       font:600 13px/1 'Cinzel',serif;letter-spacing:.10em;
-      color:#e6dac0;text-transform:uppercase;
+      color:#f5f5f7;text-transform:uppercase;
       text-shadow:0 2px 14px rgba(0,0,0,.95);
       opacity:0;transition:opacity 1.6s ease;
     }
@@ -271,21 +271,21 @@
     body.info-open .infopanel{opacity:1;pointer-events:auto}
     .infopanel .card{
       max-width:520px;width:90%;padding:36px 38px;
-      background:rgba(20,16,10,.78);border:1px solid rgba(201,165,92,.34);
+      background:rgba(20,16,10,.78);border:1px solid rgba(139,124,246,.34);
       box-shadow:0 30px 80px rgba(0,0,0,.7);border-radius:4px;
-      color:#e6dac0;font:14px/1.6 'Cinzel',serif;
+      color:#f5f5f7;font:14px/1.6 'Cinzel',serif;
     }
     .infopanel .card h3{
       font:700 15px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
-      color:#6d5efc;margin:0 0 18px;border-bottom:1px solid rgba(201,165,92,.2);padding-bottom:12px;
+      color:#6d5efc;margin:0 0 18px;border-bottom:1px solid rgba(139,124,246,.2);padding-bottom:12px;
     }
     .infopanel .row{display:flex;justify-content:space-between;margin:6px 0;letter-spacing:.06em;}
     .infopanel .row .k{color:rgba(230,218,192,.6);text-transform:uppercase;font-size:11px}
-    .infopanel .row .v{color:#e6dac0;font-weight:600;font-variant-numeric:tabular-nums}
+    .infopanel .row .v{color:#f5f5f7;font-weight:600;font-variant-numeric:tabular-nums}
     .infopanel .ctrls{margin-top:22px;font-size:11.5px;color:rgba(230,218,192,.7);
       letter-spacing:.14em;text-transform:uppercase}
     .infopanel .ctrls kbd{display:inline-block;padding:1px 6px;margin:0 3px;
-      border:1px solid rgba(201,165,92,.45);border-radius:2px;font:inherit;
+      border:1px solid rgba(139,124,246,.45);border-radius:2px;font:inherit;
       font-size:10.5px;color:#6d5efc;letter-spacing:0;background:transparent}
     .infopanel .leg{margin-top:18px;display:flex;flex-wrap:wrap;gap:12px;
       font-size:11px;color:rgba(230,218,192,.7);letter-spacing:.14em;text-transform:uppercase}
@@ -329,7 +329,7 @@
     .hint{
       position:absolute;left:24px;bottom:calc(env(safe-area-inset-bottom,12px) + 4px);
       font:500 12.5px/1.7 'Cinzel',serif;
-      color:#e6dac0;letter-spacing:.10em;text-transform:uppercase;
+      color:#f5f5f7;letter-spacing:.10em;text-transform:uppercase;
       pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.95);
       transition:opacity 1.6s ease;
     }
@@ -359,7 +359,7 @@
       text-shadow:0 2px 12px rgba(0,0,0,.85);
     }
     .power-pill .pwbar{
-      width:60px;height:2px;background:rgba(201,165,92,.18);
+      width:60px;height:2px;background:rgba(139,124,246,.18);
       border-radius:1px;overflow:hidden;
     }
     .power-pill .pwfill{

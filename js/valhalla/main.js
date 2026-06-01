@@ -1542,6 +1542,14 @@ class Valhalla {
   // bio integration. Skip / Next buttons advance. localStorage flag
   // prevents it from showing on subsequent visits.
   _maybeShowIntro() {
+    // DISABLED. The multi-step flowery intro overlay confused users
+    // ("after pressing run u get to this tab instead of starting").
+    // The menu is self-explanatory: a big RUN button, a "Read your
+    // body" card, and a "How to play" sheet. No forced onboarding.
+    const dead = document.getElementById("introOverlay");
+    if (dead) dead.style.display = "none";
+    return;
+    /* eslint-disable no-unreachable */
     try {
       if (localStorage.getItem("valhalla.seenIntro") === "1") return;
     } catch {}
@@ -4378,7 +4386,7 @@ class Valhalla {
     // Bronze stays constant across realms. keeps the inscription
     // legible regardless of fog colour. Realm identity comes from
     // the actual sky + fog colour shift, not the text colour.
-    el.style.color = "rgba(201,165,92,0.86)";
+    el.style.color = "rgba(139,124,246,0.86)";
     el.style.opacity = this.running ? "1" : "0";
   }
 
@@ -4403,10 +4411,9 @@ class Valhalla {
       el.style.opacity = "0";
       el.style.transform = "translate(-50%, -50%) translateY(-18px)";
     }, 2600);
-    // SAGA NARRATION. fire the Skald's line a beat after the banner
-    // settles. Different line each biome; special line on full saga
-    // cycle (Midgard re-entry after Asgard).
-    setTimeout(() => this._showSkaldNarration(name), 700);
+    // Skald narration DISABLED — the italic flavor lines ("Midgard.
+    // Where every Skald begins.") were clutter the user couldn't read
+    // at speed. The realm banner alone is enough.
   }
 
   // SKALD NARRATION. italic poetic line shown below the biome banner.
@@ -5016,7 +5023,7 @@ class Valhalla {
         // Header row: eyebrow + gear toggle
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
           '<div style="font-size:9px;letter-spacing:.22em;color:rgba(139,124,246,.55);text-transform:uppercase;font-weight:600">Your state</div>' +
-          '<button class="advancedToggle" title="Show raw numbers" style="pointer-events:auto;background:none;border:1px solid rgba(139,124,246,.25);color:rgba(139,124,246,.6);width:18px;height:18px;border-radius:3px;cursor:pointer;font-size:9px;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode">⚙</button>' +
+          '<button class="advancedToggle" title="Show raw numbers" style="pointer-events:auto;background:none;border:1px solid rgba(139,124,246,.25);color:rgba(139,124,246,.6);width:20px;height:20px;border-radius:4px;cursor:pointer;padding:0;line-height:1;display:flex;align-items:center;justify-content:center" aria-label="Toggle advanced mode"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></button>' +
         '</div>' +
         // STATE. colour dot + name on one line, NOT a big Cinzel headline
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">' +
@@ -5027,10 +5034,10 @@ class Valhalla {
         '<div class="stateMeaning" style="font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.35;margin-bottom:9px;min-height:1.35em"></div>' +
         // Gift meter
         '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">' +
-          '<div style="font-size:9px;letter-spacing:.18em;color:rgba(139,124,246,.55);text-transform:uppercase;font-weight:600">Next gift</div>' +
+          '<div style="font-size:9px;letter-spacing:.18em;color:rgba(139,124,246,.55);text-transform:uppercase;font-weight:600">Next reward</div>' +
           '<div class="giftpct" style="font-size:10px;color:rgba(155,138,252,.85);font-weight:600;font-variant-numeric:tabular-nums"></div>' +
         '</div>' +
-        '<div style="height:3px;background:rgba(201,165,92,.15);border-radius:2px;overflow:hidden">' +
+        '<div style="height:3px;background:rgba(139,124,246,.15);border-radius:2px;overflow:hidden">' +
           '<div class="meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#6d5efc,#9b8afc);transition:width .3s ease"></div>' +
         '</div>' +
         '<div class="tally" style="font-size:10px;letter-spacing:.01em;color:rgba(255,255,255,.5);margin-top:7px;min-height:1em"></div>' +
@@ -5072,22 +5079,24 @@ class Valhalla {
     // reduced gift cycle). Reward states give bonuses. The user only
     // sees the kenning name + one short consequence line, never
     // numbers (unless advanced mode is on).
+    // Plain English. One word + one short, literal line. No kennings,
+    // no lore. Anyone reads it instantly.
     const STATE_UI = {
-      flow:       { name: "DEEP FLOW",   meaning: "The path widens. Score swells, bosses bleed.",        colour: "#7ad9ff", penalty: false },
-      focused:    { name: "KEEN EYE",    meaning: "Aim is true. Gifts come faster.",                      colour: "#a3b8ff", penalty: false },
-      calm:       { name: "STILL WATER", meaning: "The breath holds steady. The gods watch and approve.", colour: "#80d0e0", penalty: false },
-      meditation: { name: "DEEP HALL",   meaning: "The road slows for you. Hazards softer.",              colour: "#c5a3ff", penalty: false },
-      berserker:  { name: "BLOOD-WROTH", meaning: "Fury wakes. Score doubles, boss-iron yields.",         colour: "#ff8c5a", penalty: false },
-      aroused:    { name: "QUICKENED",   meaning: "Pulse climbs. Speed rises, hazards bite harder.",      colour: "#ffaa70", penalty: false },
-      frantic:    { name: "STORM-HEART", meaning: "Heart races. Each point counts double, but watch the road.", colour: "#ff7060", penalty: false },
-      stress:     { name: "WOLF-WORRY",  meaning: "The wolf in your chest. Gift-meter falls back.",       colour: "#c84030", penalty: true },
-      fatigue:    { name: "OAR-WEARY",   meaning: "Your blood runs slow. Multiplier weakens.",            colour: "#7a5040", penalty: true },
-      distracted: { name: "WIND-MINDED", meaning: "Thought scatters. No gifts find you yet.",             colour: "#998a78", penalty: true },
-      neutral:    { name: "WALKING",     meaning: "Find calm or sharp mind. Gifts answer both.",          colour: "#6d5efc", penalty: false },
+      flow:       { name: "In the zone", meaning: "Double score",            colour: "#9b8afc", penalty: false },
+      focused:    { name: "Focused",     meaning: "Rewards come faster",     colour: "#9b8afc", penalty: false },
+      calm:       { name: "Calm",        meaning: "A reward is coming",      colour: "#7ad9ff", penalty: false },
+      meditation: { name: "Relaxed",     meaning: "Slower, easier road",     colour: "#7ad9ff", penalty: false },
+      berserker:  { name: "Fired up",    meaning: "Double score",            colour: "#ff8c5a", penalty: false },
+      aroused:    { name: "Energised",   meaning: "Faster and riskier",      colour: "#ffaa70", penalty: false },
+      frantic:    { name: "Racing",      meaning: "Double points, careful",  colour: "#ff7060", penalty: false },
+      stress:     { name: "Stressed",    meaning: "Breathe. You're losing rewards", colour: "#ff5e6a", penalty: true },
+      fatigue:    { name: "Tired",       meaning: "Low energy, weaker score", colour: "#c0a0b0", penalty: true },
+      distracted: { name: "Distracted",  meaning: "No reward yet",           colour: "#9a93a8", penalty: true },
+      neutral:    { name: "Steady",      meaning: "Stay calm to earn rewards", colour: "#9b8afc", penalty: false },
     };
     const warming = !live || (!this.bpm && cs === "neutral");
     const ui = warming
-      ? { name: "READING", meaning: "The gods are taking your measure. Sit still. Face the light.", colour: "#6d5efc", penalty: false }
+      ? { name: "Reading…", meaning: "Sit still, face your camera", colour: "#9b8afc", penalty: false }
       : (STATE_UI[cs] || STATE_UI.neutral);
 
     const stateEl = el.querySelector(".stateName");
@@ -5105,14 +5114,13 @@ class Valhalla {
     el.querySelector(".meter-fill").style.width = pct + "%";
     el.querySelector(".giftpct").textContent = (pct | 0) + "%";
 
-    // Tally.
+    // Tally — plain text, no emoji.
     const tallyParts = [];
-    if (s.giftsEarned)          tallyParts.push("🎁 " + s.giftsEarned);
-    if (s.durationBonusApplied) tallyParts.push("⏱ " + s.durationBonusApplied);
-    if (s.flowSec >= 1)         tallyParts.push("🌊 " + s.flowSec.toFixed(0) + "s");
+    if (s.giftsEarned)  tallyParts.push(s.giftsEarned + " rewards");
+    if (s.flowSec >= 1) tallyParts.push(s.flowSec.toFixed(0) + "s calm");
     el.querySelector(".tally").textContent = tallyParts.length
-      ? "Earned: " + tallyParts.join(" · ")
-      : "Hold a state to earn rewards";
+      ? tallyParts.join(" · ")
+      : "Stay calm to earn rewards";
 
     // ADVANCED NUMBERS. only update if visible.
     if (this._advancedMode) {
@@ -5663,7 +5671,7 @@ class Valhalla {
       odin:   "Huginn & Muninn",
     };
     const colors = {
-      shield: "#c8a040",  speed:  "#c8d8e8",
+      shield: "#6d5efc",  speed:  "#c8d8e8",
       mult:   "#ffd066",  magnet: "#ff6090",
       ship:   "#c04020",  thor:   "#9ec0ff",
       odin:   "#a8b0d0",
