@@ -502,11 +502,15 @@ class Audio {
       // delay with feedback through a lowpass actually models a real
       // hall response perfectly well and halves the audio node count.
       const wet = this.ctx.createGain();
-      wet.gain.value = 0.32;
+      wet.gain.value = 0.18;
       const delay = this.ctx.createDelay(0.6);
       delay.delayTime.value = 0.18;
       const fbGain = this.ctx.createGain();
-      fbGain.gain.value = 0.55;
+      // Feedback cut 0.55 -> 0.22. A high-feedback delay fed by the
+      // continuous wind/fire beds builds a resonant comb-filter that
+      // reads as a metallic "squeezing/howling" — the noise the user
+      // keeps hearing. Low feedback = a short room tail with no buildup.
+      fbGain.gain.value = 0.22;
       const wetLP = this.ctx.createBiquadFilter();
       wetLP.type = "lowpass"; wetLP.frequency.value = 2200;
       wet.connect(delay); delay.connect(wetLP); wetLP.connect(fbGain);
@@ -831,14 +835,14 @@ class Audio {
     // start; only if the file genuinely can't be fetched do we fall
     // through to the quiet procedural rumble below.
     if (this._samples.wind) {
-      const n = this._playSampleLoop("wind", 0.42, 0.16);
+      const n = this._playSampleLoop("wind", 0.32, 0);
       if (n) { this.windNode = n; return; }
     } else {
       this.loadSamples().then(() => {
         // Only the {pending:true} placeholder should be replaced; a real
         // node (with .src) means wind already started.
         if ((this.windNode && this.windNode.src) || !this._samples.wind) return;
-        const n = this._playSampleLoop("wind", 0.42, 0.16);
+        const n = this._playSampleLoop("wind", 0.32, 0);
         if (n) this.windNode = n; else this.windNode = null;
       });
       // Mark as started so we don't double-start; the async load wires
@@ -896,8 +900,8 @@ class Audio {
     // single volume handle the rest of the game already controls.
     const m = ctx.createGain();
     m.gain.value = 0.0;
-    this._send(m, 0.16);
-    m.connect(this.master);
+    m.connect(this.master);   // DRY — no reverb send (reverb buildup on the
+                              // continuous fire bed was part of the squeeze)
     this.fireNode = { master: m, src: null };
 
     const attachReal = () => {
