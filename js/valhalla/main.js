@@ -1643,10 +1643,18 @@ class Valhalla {
 
     // --- Postprocessing pipeline -------------------------------------
     // RenderPass → UnrealBloomPass → FXAA → screen.
-    // Bloom is tuned so only material values > 0.85 actually bleed . 
-    // strong on runes / mead / Mjölnir / Surtr's sword / aurora, but
-    // doesn't wash out the snow.
-    try {
+    //
+    // POST-FX IS OFF BY DEFAULT. The EffectComposer chain is the single
+    // most GPU-fragile thing in the engine: on some drivers a pass can
+    // render a fully BLACK frame WITHOUT throwing, so the try/catch in
+    // _render never trips and the player just sees a blank screen. That
+    // is the most likely cause of the long-standing "press RUN → blank"
+    // bug. The plain direct renderer.render(scene,camera) path is rock
+    // solid everywhere, so we default to it and only build the composer
+    // when the user explicitly opts in:
+    //   localStorage.setItem("valhalla.postfx", "on")
+    this.composer = null;
+    if (localStorage.getItem("valhalla.postfx") === "on") try {
       const w = window.innerWidth, h = window.innerHeight;
       this.composer = new EffectComposer(this.renderer);
       this.composer.setPixelRatio(this.renderer.getPixelRatio());
@@ -7958,6 +7966,12 @@ class Valhalla {
   _begin() {
     $("startOverlay").classList.add("hide");
     $("overOverlay").classList.remove("show");
+    // GUARANTEE the renderer is sized to the real viewport before the
+    // first gameplay frame. If the module booted before CSS layout
+    // settled, the canvas/composer could be 0×0 (black). Forcing a
+    // resize here — now that the menu is hidden and layout is final —
+    // makes the very first run frame render at full size.
+    try { this._resize(); } catch (e) { console.warn("[begin] resize failed", e); }
     // CINEMATIC INTRO, made bulletproof. The black .introfade overlay
     // (opacity 1 under body.cinematic-intro) fades out once body.playing
     // is added. Previously this relied on a SINGLE requestAnimationFrame;
@@ -9804,12 +9818,18 @@ class Valhalla {
       this.scene.background = new THREE.Color(0x6e7a86);
     }
     try {
-      if (this.composer) this.composer.render();
+      if (this.composer && !this._composerDead) this.composer.render();
       else this.renderer.render(this.scene, this.camera);
     } catch (e) {
       // If composer chain throws (rare, e.g. shader compile fail
-      // mid-frame), fall back to direct render so we never show a
-      // black frame from a thrown error.
+      // mid-frame), permanently fall back to direct render for the rest
+      // of the session so we never show a black frame AND never re-enter
+      // the broken composer on the next frame.
+      this._composerDead = true;
+      if (!this._composerDeadLogged) {
+        console.warn("[Valhalla] composer.render threw — permanent direct-render fallback", e);
+        this._composerDeadLogged = true;
+      }
       try { this.renderer.render(this.scene, this.camera); }
       catch (e2) { /* nothing to do; will retry next frame */ }
     }
