@@ -1,5 +1,5 @@
 @echo off
-REM Launches the Viking Game on http://localhost:8042 and opens it in the default browser.
+REM Launches the Viking Game on http://localhost:8055 and opens it in the default browser.
 REM Local server is required because the biosignal SDK needs a secure context (Web Bluetooth, camera).
 REM
 REM PORT CHANGED 8000 -> 8042 ON PURPOSE: localhost:8042 is a brand-new
@@ -27,5 +27,5 @@ if not errorlevel 1 (
   popd
 )
 
-start "" "http://localhost:8042/"
-node "%~dp0server.js" 8042
+start "" "http://localhost:8055/"
+node "%~dp0server.js" 8055

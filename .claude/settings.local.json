@@ -67,7 +67,9 @@
       "Bash(curl -sL -o assets/audio/fire.ogg \"https://raw.githubusercontent.com/Muges/ambientsounds/master/fireplace.ogg\")",
       "Bash(file assets/audio/*.ogg)",
       "Bash(curl -s -o /dev/null -w \"wind.ogg -> HTTP %{http_code}, %{size_download} bytes, type=%{content_type}\\\\n\" http://localhost:8042/assets/audio/wind.ogg)",
-      "Bash(curl -s -o /dev/null -w \"fire.ogg -> HTTP %{http_code}, %{size_download} bytes\\\\n\" http://localhost:8042/assets/audio/fire.ogg)"
+      "Bash(curl -s -o /dev/null -w \"fire.ogg -> HTTP %{http_code}, %{size_download} bytes\\\\n\" http://localhost:8042/assets/audio/fire.ogg)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://localhost:8042/\")",
+      "Bash(curl -s \"http://localhost:8042/js/valhalla/main.js?p=$\\(date +%s\\)\")"
     ]
   }
 }
