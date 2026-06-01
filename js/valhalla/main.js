@@ -1484,11 +1484,16 @@ class Valhalla {
       // Body sheet to manage sensors. This makes bio the easiest thing
       // in the whole menu to access.
       wire("bodyCard", () => {
+        // Always open the Body sheet so the user SEES the connect UI and
+        // live status (heart rate / errors) instead of a silent browser
+        // permission prompt with no on-screen feedback. If no sensor is
+        // live yet, also kick off the webcam right away (lowest-friction
+        // path to bio) — the sheet then shows it warming up / any error.
+        this._openSheet && this._openSheet("body");
         const live = document.body.classList.contains("bio-live");
-        if (live) { this._openSheet && this._openSheet("body"); return; }
+        if (live) return;
         const hr = document.getElementById("bioHrBtn");
-        if (hr && !hr.disabled) hr.click();      // kick off webcam
-        else this._openSheet && this._openSheet("body");
+        if (hr && !hr.disabled && !hr.classList.contains("live")) hr.click();
       });
       // Sheet close buttons + backdrop.
       document.querySelectorAll("[data-close-sheet]").forEach(el => el.addEventListener("click", () => this._closeSheets && this._closeSheets()));
