@@ -167,7 +167,6 @@
        app chips. Bronze on dark, Cinzel serif, no chunky cards. The
        only ALWAYS-VISIBLE elements are distance and lives. Score, BPM,
        state, controls, legend all live behind TAB. */
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&display=swap');
 
     .topbar{
       position:absolute;top:env(safe-area-inset-top,18px);left:0;right:0;
@@ -179,17 +178,17 @@
        the user explicitly asked for it. gamification feedback matters
        even with a cinematic look. */
     .stat{
-      font:600 11px/1 'Cinzel',serif;letter-spacing:.22em;
+      font:600 11px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;
       color:rgba(139,124,246,.62);text-transform:uppercase;
       margin-bottom:14px;
     }
     .stat .lbl{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.28em;
       color:rgba(139,124,246,.55)}
-    .stat .val{font:700 30px/1 'Cinzel',serif;color:#6d5efc;letter-spacing:.02em;
+    .stat .val{font:700 30px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#6d5efc;letter-spacing:.02em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);display:block}
     /* Lives. bronze inscription top-right. */
     .stat.lives{
-      font:700 26px/1 'Cinzel',serif;color:#6d5efc;letter-spacing:.18em;
+      font:700 26px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#6d5efc;letter-spacing:.18em;
       text-shadow:0 2px 18px rgba(0,0,0,.85);
     }
     .stat.lives .lbl{display:none}
@@ -243,7 +242,7 @@
       position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,16px) + 26px);
       z-index:12;pointer-events:none;
       display:flex;gap:22px;align-items:center;
-      font:600 13px/1 'Cinzel',serif;letter-spacing:.10em;
+      font:600 13px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.10em;
       color:#f5f5f7;text-transform:uppercase;
       text-shadow:0 2px 14px rgba(0,0,0,.95);
       opacity:0;transition:opacity 1.6s ease;
@@ -273,10 +272,10 @@
       max-width:520px;width:90%;padding:36px 38px;
       background:rgba(20,16,10,.78);border:1px solid rgba(139,124,246,.34);
       box-shadow:0 30px 80px rgba(0,0,0,.7);border-radius:4px;
-      color:#f5f5f7;font:14px/1.6 'Cinzel',serif;
+      color:#f5f5f7;font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     }
     .infopanel .card h3{
-      font:700 15px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      font:700 15px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.32em;text-transform:uppercase;
       color:#6d5efc;margin:0 0 18px;border-bottom:1px solid rgba(139,124,246,.2);padding-bottom:12px;
     }
     .infopanel .row{display:flex;justify-content:space-between;margin:6px 0;letter-spacing:.06em;}
@@ -328,7 +327,7 @@
        kbd outlines. Fades out 6s in. */
     .hint{
       position:absolute;left:24px;bottom:calc(env(safe-area-inset-bottom,12px) + 4px);
-      font:500 12.5px/1.7 'Cinzel',serif;
+      font:500 12.5px/1.7 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       color:#f5f5f7;letter-spacing:.10em;text-transform:uppercase;
       pointer-events:none;text-shadow:0 2px 12px rgba(0,0,0,.95);
       transition:opacity 1.6s ease;
@@ -354,7 +353,7 @@
       animation:ppin .35s ease;
     }
     .power-pill .pwlabel{
-      font:600 11px/1 'Cinzel',serif;letter-spacing:.16em;
+      font:600 11px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.16em;
       color:#6d5efc;text-transform:uppercase;
       text-shadow:0 2px 12px rgba(0,0,0,.85);
     }
@@ -447,24 +446,22 @@
       gap:0;
     }
 
-    /* ----- HERO TITLE + TAGLINE ----- */
+    /* ----- HERO TITLE ----- */
     .start h1{
-      font:600 84px/0.95 'Cinzel',serif;
-      letter-spacing:.10em;color:#f5f5f7;
+      font:700 62px/0.95 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:-.02em;color:#f5f5f7;
       margin:0;
-      text-shadow:0 4px 36px rgba(0,0,0,.75),0 0 80px rgba(155,138,252,.12);
-      /* Subtle weight variation across the wordmark for the carved feel. */
-      font-variation-settings:"wght" 600;
+      text-shadow:0 4px 36px rgba(0,0,0,.6);
     }
     .start .tag{
-      font:italic 400 17px/1.5 'Cinzel',serif;
+      font:italic 400 17px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       color:rgba(240,240,245,.62);
       letter-spacing:.01em;
       margin:22px auto 0;
       max-width:420px;
     }
     .start .tag-saga{
-      font:600 11px/1 'Cinzel',serif;
+      font:600 11px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       letter-spacing:.32em;text-transform:uppercase;
       color:rgba(155,138,252,.55);
       margin:14px 0 0;
@@ -474,7 +471,7 @@
        Flat warm-cream fill, hairline ring, soft single shadow. The
        earlier multi-layer gradient + 80px glow read as "AI game". ----- */
     .start .play{
-      margin:44px auto 0;
+      margin:30px auto 0;
       min-width:230px;padding:16px 56px;
       background:#6d5efc;
       color:#0a0a12;border:none;border-radius:14px;cursor:pointer;
@@ -489,7 +486,7 @@
     /* ----- STAT RIBBON (bottom, single line, very subtle) ----- */
     .stat-ribbon{
       display:flex;justify-content:center;align-items:center;gap:18px;
-      margin:34px auto 0;
+      margin:22px auto 0;
       font:500 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
       color:rgba(240,240,245,.72);
       letter-spacing:.02em;
@@ -500,7 +497,7 @@
     /* ----- SHEET TRIGGERS (3 quiet pill buttons at the bottom) ----- */
     .sheet-triggers{
       display:flex;justify-content:center;gap:10px;
-      margin:32px auto 0;
+      margin:22px auto 0;
     }
     .sheet-trigger{
       display:inline-flex;align-items:center;gap:6px;
@@ -534,23 +531,23 @@
     /* ----- BODY CARD (the bio hero) ----- */
     .body-card{
       display:flex;align-items:center;gap:14px;width:100%;max-width:440px;
-      margin:26px auto 0;padding:14px 18px 14px 14px;text-align:left;
-      background:rgba(255,255,255,.045);
-      border:1px solid rgba(255,255,255,.09);border-radius:18px;
+      margin:22px auto 0;padding:15px 18px 15px 15px;text-align:left;
+      background:rgba(155,138,252,.08);
+      border:1px solid rgba(155,138,252,.22);border-radius:18px;
       cursor:pointer;
       backdrop-filter:blur(24px) saturate(160%);
       -webkit-backdrop-filter:blur(24px) saturate(160%);
       transition:background .25s ease,border-color .25s ease,transform .15s ease;
     }
-    .body-card:hover{ background:rgba(255,255,255,.075);border-color:rgba(255,106,138,.35) }
+    .body-card:hover{ background:rgba(155,138,252,.13);border-color:rgba(155,138,252,.45) }
     .body-card:active{ transform:scale(.99) }
-    .body-card.live{ border-color:rgba(255,106,138,.45);background:rgba(255,106,138,.07) }
+    .body-card.live{ border-color:rgba(155,138,252,.55);background:rgba(155,138,252,.14) }
     .body-card-ring{ position:relative;width:44px;height:44px;flex-shrink:0 }
     .body-card-ring svg{ position:absolute;inset:0 }
     #bodyCardArc{ transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1) }
     .body-card-icon{
       position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-      color:#ff6a8a;
+      color:#9b8afc;
     }
     .body-card.live .body-card-icon{ animation:heartbeat 1s ease-in-out infinite }
     @keyframes heartbeat{ 0%,100%{transform:scale(1)} 18%{transform:scale(1.22)} 36%{transform:scale(1)} 54%{transform:scale(1.12)} }
@@ -601,8 +598,8 @@
       padding:16px 24px 4px;flex-shrink:0;
     }
     .sheet-title{
-      font:600 22px/1.1 'Cinzel',serif;
-      letter-spacing:.04em;color:#f5f5f7;
+      font:700 22px/1.1 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+      letter-spacing:-.01em;color:#f5f5f7;
     }
     .sheet-close{
       background:rgba(255,255,255,.08);border:none;color:rgba(240,240,245,.7);
@@ -713,7 +710,7 @@
     .menu-eyebrow{
       display:flex;justify-content:space-between;align-items:baseline;
       margin-bottom:14px;
-      font:600 10px/1 'Cinzel',serif;letter-spacing:.28em;
+      font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.28em;
       color:rgba(139,124,246,.72);text-transform:uppercase;
     }
     .menu-eyebrow .meta{
@@ -734,7 +731,7 @@
       transition:border-color .25s ease,transform .25s ease;
     }
     .hero-tile:hover{ border-color:rgba(139,124,246,.45); }
-    .hero-tile .v{ font:700 26px/1 'Cinzel',serif;color:#9b8afc;letter-spacing:.02em }
+    .hero-tile .v{ font:700 26px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;letter-spacing:.02em }
     .hero-tile .v.streak{ color:#ff8c5a;text-shadow:0 0 18px rgba(255,140,90,.4) }
     .hero-tile .v.dist  { color:#a3b8ff }
     .hero-tile .k{
@@ -747,7 +744,7 @@
       width:100%;margin:24px 0 0;padding:14px 0;
       background:linear-gradient(180deg,#8676fd 0%,#5b4ce0 100%);
       color:#0a0a12;border:none;border-radius:10px;cursor:pointer;
-      font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;
+      font:700 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.32em;text-transform:uppercase;
       box-shadow:0 8px 28px rgba(139,124,246,.32),0 0 0 1px rgba(0,0,0,.4) inset;
       transition:transform .15s ease,box-shadow .25s ease,filter .2s ease;
     }
@@ -759,7 +756,7 @@
       width:100%;padding:12px 0;
       background:rgba(139,124,246,.06);color:#9b8afc;
       border:1px solid rgba(139,124,246,.45);border-radius:8px;cursor:pointer;
-      font:600 12.5px/1 'Cinzel',serif;letter-spacing:.28em;text-transform:uppercase;
+      font:600 12.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.28em;text-transform:uppercase;
       transition:background .2s ease,border-color .2s ease;
     }
     .menu-cta-ghost:hover{ background:rgba(139,124,246,.14);border-color:rgba(139,124,246,.7) }
@@ -769,7 +766,7 @@
     .realm-node{ display:flex;flex-direction:column;align-items:center;flex:0 0 auto;transition:opacity .25s ease }
     .realm-circle{ width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font-size:17px;transition:transform .2s ease }
     .realm-node:hover .realm-circle{ transform:scale(1.06) }
-    .realm-name{ font:600 9px/1 'Cinzel',serif;letter-spacing:.16em;margin-top:7px }
+    .realm-name{ font:600 9px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.16em;margin-top:7px }
     .realm-edge{ flex:1;height:1px;margin:0 6px }
 
     /* BOSS ROSTER cards. */
@@ -783,8 +780,8 @@
     }
     .boss-card.alive:hover{ transform:translateY(-2px);border-color:rgba(155,138,252,.5) }
     .boss-icon{ font-size:22px;line-height:1;margin-bottom:6px }
-    .boss-name{ font:700 10px/1 'Cinzel',serif;letter-spacing:.10em;margin-bottom:5px }
-    .boss-meta{ font:600 10.5px/1 'Cinzel',serif;font-variant-numeric:tabular-nums }
+    .boss-name{ font:700 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.10em;margin-bottom:5px }
+    .boss-meta{ font:600 10.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums }
 
     /* DAILY QUEST panel. */
     .daily-quest{
@@ -796,7 +793,7 @@
     }
     .daily-quest.done{ border-color:rgba(120,220,180,.55);background:linear-gradient(135deg,rgba(120,220,180,.10) 0%,rgba(120,220,180,.02) 100%) }
     .quest-head{ display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px }
-    .quest-eyebrow{ font:600 10px/1 'Cinzel',serif;letter-spacing:.28em;color:rgba(122,217,255,.9);text-transform:uppercase }
+    .quest-eyebrow{ font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.28em;color:rgba(122,217,255,.9);text-transform:uppercase }
     .quest-progress{ font-size:11px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums;font-weight:500 }
     .quest-text{ font-size:13.5px;color:#fff;line-height:1.45;margin-bottom:6px }
     .quest-reward{ font-size:11px;color:rgba(155,138,252,.75);font-style:italic }
@@ -832,7 +829,7 @@
     .honour.earned{ border-color:rgba(155,138,252,.45);background:linear-gradient(180deg,rgba(155,138,252,.12) 0%,rgba(155,138,252,.02) 100%) }
     .honour.earned:hover{ transform:translateY(-2px) }
     .honour .icon{ font-size:18px;line-height:1 }
-    .honour .name{ font:600 8.5px/1.15 'Cinzel',serif;letter-spacing:.08em;text-align:center;text-transform:uppercase }
+    .honour .name{ font:600 8.5px/1.15 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;text-align:center;text-transform:uppercase }
     .honour.earned .name{ color:#9b8afc }
     .honour:not(.earned){ opacity:.32 }
     .honour:not(.earned) .name{ color:rgba(255,255,255,.5) }
@@ -845,7 +842,7 @@
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
       text-align:left;
     }
-    .menu-nudge-text{ font:italic 500 13.5px/1.5 'Cinzel',serif;color:rgba(155,138,252,.92);letter-spacing:.01em }
+    .menu-nudge-text{ font:italic 500 13.5px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:rgba(155,138,252,.92);letter-spacing:.01em }
 
     /* TABS row. */
     .menu-tabs{ display:flex;gap:8px;margin:0 }
@@ -853,7 +850,7 @@
       flex:1;background:rgba(139,124,246,.06);
       border:1px solid rgba(139,124,246,.22);color:rgba(155,138,252,.85);
       padding:10px;border-radius:6px;cursor:pointer;
-      font:600 10.5px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;
+      font:600 10.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;
       transition:background .2s ease,border-color .2s ease;
     }
     .menu-tab:hover{ background:rgba(139,124,246,.12);border-color:rgba(139,124,246,.4) }
@@ -1025,7 +1022,7 @@
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
     }
     .over h2{
-      font:600 40px/1 'Cinzel',serif;letter-spacing:.08em;text-transform:uppercase;
+      font:600 40px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase;
       color:#6d5efc;margin:0 0 18px;
       text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 36px rgba(139,124,246,.15);
     }
@@ -1070,7 +1067,7 @@
     .pause .card{padding:36px 40px;text-align:center;background:none;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif}
     .pause h3{
-      font:600 28px/1 'Cinzel',serif;letter-spacing:.08em;text-transform:uppercase;
+      font:600 28px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase;
       color:#6d5efc;margin-bottom:24px;
     }
     .pause button{
@@ -1218,7 +1215,7 @@
   <!-- Screen-space boss banner. appears top-centre when a boss is
        on-stage. Big HP bar + name + how-to-kill hint. -->
   <div id="bossBanner" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:15;pointer-events:none;display:none;width:min(560px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
-    <div style="font:700 14px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#9b8afc;text-shadow:0 2px 10px rgba(0,0,0,.9);margin-bottom:8px" id="bossBannerName">JÖTUNN</div>
+    <div style="font:700 14px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.32em;text-transform:uppercase;color:#9b8afc;text-shadow:0 2px 10px rgba(0,0,0,.9);margin-bottom:8px" id="bossBannerName">JÖTUNN</div>
     <div style="position:relative;height:14px;background:rgba(0,0,0,.7);border:1px solid rgba(155,138,252,.5);border-radius:4px;overflow:visible;box-shadow:0 4px 18px rgba(0,0,0,.5)">
       <div id="bossBannerFill" style="height:100%;width:100%;background:linear-gradient(90deg,#ff3030,#ff8030);transition:width .15s ease;border-radius:3px"></div>
       <div id="bossBannerDmgFloats" style="position:absolute;inset:0;pointer-events:none;overflow:visible"></div>
@@ -1230,9 +1227,9 @@
        screen for 4s when a boss spawns. Explains explicitly how to
        deal damage. Dismisses itself; player can tap to dismiss early. -->
   <div id="bossTutorial" style="position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);z-index:20;pointer-events:none;display:none;width:min(420px,90vw);text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;padding:24px 28px;background:rgba(14,13,20,.92);border:1px solid rgba(139,124,246,.45);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);backdrop-filter:blur(12px);opacity:0;transition:opacity .35s ease,transform .35s ease">
-    <div style="font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;text-transform:uppercase;color:#6d5efc;margin-bottom:8px">A boss approaches</div>
-    <div id="bossTutorialName" style="font:700 32px/1.1 'Cinzel',serif;color:#9b8afc;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;text-shadow:0 0 24px rgba(155,138,252,.3)">JÖTUNN</div>
-    <div id="bossTutorialHp" style="font:600 12px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(255,255,255,.7);margin-bottom:18px">HP 100</div>
+    <div style="font:600 11px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.32em;text-transform:uppercase;color:#6d5efc;margin-bottom:8px">A boss approaches</div>
+    <div id="bossTutorialName" style="font:700 32px/1.1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;text-shadow:0 0 24px rgba(155,138,252,.3)">JÖTUNN</div>
+    <div id="bossTutorialHp" style="font:600 12px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.18em;color:rgba(255,255,255,.7);margin-bottom:18px">HP 100</div>
     <div style="display:flex;flex-direction:column;gap:10px;text-align:left;font-size:14px;color:rgba(255,255,255,.92)">
       <div><span style="color:#60d0ff;font-weight:700">ᚱ Collect runes</span> &nbsp;<span style="color:rgba(255,255,255,.55)">+40 damage each</span></div>
       <div><span style="color:#ffd066;font-weight:700">⚠ Dodge his attacks</span> &nbsp;<span style="color:rgba(255,255,255,.55)">+25 damage each</span></div>
@@ -1378,6 +1375,29 @@
 
       <button class="play" id="beginBtn">Run</button>
 
+      <!-- BODY CARD — the hero of the whole app. Bio data made central
+           and inviting, directly under the Run button. When no sensor is
+           live it's a single clean tap-to-connect invitation; when live it
+           shows the heart rate + state as glanceable Apple-Health data. -->
+      <button class="body-card" id="bodyCard">
+        <div class="body-card-ring" id="bodyCardRing">
+          <svg viewBox="0 0 44 44" width="44" height="44">
+            <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="3.5"/>
+            <circle id="bodyCardArc" cx="22" cy="22" r="19" fill="none" stroke="#9b8afc" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="119" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="body-card-icon" id="bodyCardIcon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.3C.6 8.9 2 5.5 5.2 5.1 7 4.9 8.7 5.8 9.7 7.2c.6.8 2 .8 2.6 0C13.3 5.8 15 4.9 16.8 5.1 20 5.5 21.4 8.9 22 11.7 19.5 16.4 12 21 12 21z"/></svg>
+          </div>
+        </div>
+        <div class="body-card-text">
+          <div class="body-card-title" id="bodyCardTitle">Play with your heartbeat</div>
+          <div class="body-card-sub" id="bodyCardSub">Point your camera at your face. The game reacts to your body, live.</div>
+        </div>
+        <div class="body-card-chevron">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </button>
+
       <div class="stat-ribbon" id="statRibbon">
         <span><span class="v" id="heroBest">0</span> best</span>
         <span class="sep"></span>
@@ -1386,32 +1406,9 @@
         <span><span class="v" id="heroStreak">0</span> day streak</span>
       </div>
 
-      <!-- BODY CARD — the hero of the whole app. Bio data made central
-           and inviting. When no sensor is live it's a single clean
-           tap-to-connect invitation. When live it shows the heart
-           rate + state as glanceable Apple-Health-style data. -->
-      <button class="body-card" id="bodyCard">
-        <div class="body-card-ring" id="bodyCardRing">
-          <svg viewBox="0 0 44 44" width="44" height="44">
-            <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="3.5"/>
-            <circle id="bodyCardArc" cx="22" cy="22" r="19" fill="none" stroke="#ff6a8a" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="119" stroke-dashoffset="119" transform="rotate(-90 22 22)"/>
-          </svg>
-          <div class="body-card-icon" id="bodyCardIcon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-10-9.3C.6 8.9 2 5.5 5.2 5.1 7 4.9 8.7 5.8 9.7 7.2c.6.8 2 .8 2.6 0C13.3 5.8 15 4.9 16.8 5.1 20 5.5 21.4 8.9 22 11.7 19.5 16.4 12 21 12 21z"/></svg>
-          </div>
-        </div>
-        <div class="body-card-text">
-          <div class="body-card-title" id="bodyCardTitle">Read your body</div>
-          <div class="body-card-sub" id="bodyCardSub">Use your camera to play with your heartbeat</div>
-        </div>
-        <div class="body-card-chevron">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </button>
-
       <div class="sheet-triggers">
         <button class="sheet-trigger" id="openSagaSheet">Progress</button>
-        <button class="sheet-trigger" id="openBodySheet">Body</button>
+        <button class="sheet-trigger" id="openBodySheet">Your body</button>
         <button class="sheet-trigger" id="openHelpSheet">How to play</button>
       </div>
     </div>
@@ -1447,28 +1444,28 @@
   <div class="sheet" id="sheetSaga" role="dialog" aria-modal="true">
     <div class="sheet-handle"></div>
     <div class="sheet-head">
-      <div class="sheet-title">Your Saga</div>
+      <div class="sheet-title">Your progress</div>
       <button class="sheet-close" data-close-sheet>&times;</button>
     </div>
     <div class="sheet-body">
       <div class="s-group">
-        <div class="s-group-title">Today's deed</div>
+        <div class="s-group-title">Today's goal</div>
         <div id="sagaSheetQuest"></div>
       </div>
       <div class="s-group">
-        <div class="s-group-title">The road</div>
+        <div class="s-group-title">Areas</div>
         <div class="s-card" style="padding:14px"><div class="realm-path" id="sagaSheetRealmPath"></div></div>
       </div>
       <div class="s-group">
-        <div class="s-group-title">Foes met</div>
+        <div class="s-group-title">Bosses beaten</div>
         <div class="boss-grid" id="sagaSheetBossRoster"></div>
       </div>
       <div class="s-group">
-        <div class="s-group-title">Skald's roll</div>
+        <div class="s-group-title">Top runs</div>
         <div class="s-card"><div id="sagaSheetTopRuns" class="top-runs"></div></div>
       </div>
       <div class="s-group">
-        <div class="s-group-title"><span id="sagaSheetHonoursTitle">Honours</span></div>
+        <div class="s-group-title"><span id="sagaSheetHonoursTitle">Badges</span></div>
         <div class="honours-grid" id="sagaSheetHonoursRow"></div>
       </div>
       <div class="s-group">
@@ -1482,32 +1479,35 @@
   <div class="sheet" id="sheetBody" role="dialog" aria-modal="true">
     <div class="sheet-handle"></div>
     <div class="sheet-head">
-      <div class="sheet-title">Bind Body</div>
+      <div class="sheet-title">Your body</div>
       <button class="sheet-close" data-close-sheet>&times;</button>
     </div>
     <div class="sheet-body">
+      <p style="margin:0 4px 4px;font:400 14px/1.55 -apple-system,system-ui,sans-serif;color:rgba(240,240,245,.78)">
+        Change the game in real-time based on your state. Connect a sensor below and the world reacts to your heart and mind as you play. Optional — the game works fine without one.
+      </p>
       <div class="s-group">
-        <div class="s-group-title">Sensors</div>
+        <div class="s-group-title">Connect</div>
         <div class="s-card">
           <div class="sensor-row">
             <div class="info">
-              <div class="info-name">Face · webcam</div>
-              <div class="info-sub">Reads your pulse from skin colour. Quickens the gift meter, warns of stress, beats the world with your pulse.</div>
+              <div class="info-name">Webcam · your heart rate</div>
+              <div class="info-sub">Reads your heart rate from your face. The game rewards you faster when you're calm and warns you when you're stressed.</div>
             </div>
-            <button id="bioHrBtn">Open</button>
+            <button id="bioHrBtn">Connect</button>
           </div>
           <div class="sensor-row">
             <div class="info">
-              <div class="info-name">Band · Muse headband</div>
-              <div class="info-sub">Reads focus and calm directly from your scalp. Triggers Flow (2× score, faster boss kills) and unlocks Asgard runes.</div>
+              <div class="info-name">Muse headband · your focus</div>
+              <div class="info-sub">Reads focus and calm from your brain. Unlocks Flow: double score and faster boss kills when you're locked in.</div>
             </div>
-            <button id="bioEegBtn">Bind</button>
+            <button id="bioEegBtn">Connect</button>
           </div>
         </div>
         <div id="bioBleHint" style="display:none;margin:10px 16px 0;font-size:12px;color:rgba(255,140,90,.85);line-height:1.4"></div>
         <div id="bioEegDiagOut" style="display:none"></div>
       </div>
-      <p style="margin:22px 16px 0;font:italic 400 12.5px/1.5 -apple-system,system-ui,sans-serif;color:rgba(240,240,245,.5);text-align:center">Bind both for True-sight. The rarest gifts. Doubled streak rewards.</p>
+      <p style="margin:22px 16px 0;font:400 12.5px/1.5 -apple-system,system-ui,sans-serif;color:rgba(240,240,245,.5);text-align:center">Use both for the strongest effect — the rarest rewards and bigger streak bonuses.</p>
     </div>
   </div>
 
@@ -1522,18 +1522,18 @@
       <div class="s-group">
         <div class="s-group-title">Controls</div>
         <div class="s-card">
-          <div class="s-row"><span>Change lane</span><span class="v">← →</span></div>
-          <div class="s-row"><span>Leap</span><span class="v">↑</span></div>
-          <div class="s-row"><span>Slide low</span><span class="v">↓</span></div>
-          <div class="s-row"><span>Hold the world</span><span class="v">P</span></div>
+          <div class="s-row"><span>Move left / right</span><span class="v">← →</span></div>
+          <div class="s-row"><span>Jump</span><span class="v">↑</span></div>
+          <div class="s-row"><span>Slide</span><span class="v">↓</span></div>
+          <div class="s-row"><span>Pause</span><span class="v">P</span></div>
           <div class="s-row"><span>Mute</span><span class="v">M</span></div>
         </div>
       </div>
       <div class="s-group">
-        <div class="s-group-title">The road</div>
+        <div class="s-group-title">How it works</div>
         <p style="margin:0;padding:0 4px;font:400 14px/1.55 -apple-system,system-ui,sans-serif;color:rgba(240,240,245,.78)">
-          Red marks danger. Gold marks gift. Slay the boss at each realm's end and the saga widens.
-          Stay calm and the gods give freely. Tense up and the wolf takes from you.
+          Dodge the red obstacles. Grab the purple rewards. Beat the boss at the end of each area to move on.
+          If you connect a sensor, staying calm earns you more — getting stressed makes it harder.
         </p>
       </div>
     </div>
@@ -1544,18 +1544,18 @@
        session. Steady inhale 4s -> hold 4s -> exhale 6s. The breathing
        circle expands/holds/contracts in sync. Captures baseline at end. -->
   <div id="bioCalibration" style="position:fixed;inset:0;z-index:75;display:none;background:radial-gradient(circle at center,rgba(8,14,22,.7) 0%,rgba(4,6,12,.95) 70%);backdrop-filter:blur(12px);align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:#fff;text-align:center">
-    <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.32em;color:rgba(155,138,252,.7);text-transform:uppercase;margin-bottom:20px">Calibration ritual</div>
-    <div id="calibLabel" style="font:700 38px/1.2 'Cinzel',serif;color:#9b8afc;letter-spacing:.04em;margin-bottom:30px;text-shadow:0 0 24px rgba(155,138,252,.35)">Breathe in</div>
+    <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.32em;color:rgba(155,138,252,.7);text-transform:uppercase;margin-bottom:20px">Calibration ritual</div>
+    <div id="calibLabel" style="font:700 38px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;letter-spacing:.04em;margin-bottom:30px;text-shadow:0 0 24px rgba(155,138,252,.35)">Breathe in</div>
     <!-- Breathing circle. pure CSS, animates via setProperty -->
     <div style="position:relative;width:280px;height:280px;display:flex;align-items:center;justify-content:center;margin-bottom:30px">
       <div id="calibCircle" style="position:absolute;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(122,217,255,.4) 0%,rgba(122,217,255,.08) 60%,transparent 100%);border:1.5px solid rgba(122,217,255,.55);transition:transform 1s cubic-bezier(.4,.0,.2,1),background 1s ease"></div>
-      <div id="calibCounter" style="position:relative;font:600 56px/1 'Cinzel',serif;color:#fff;font-variant-numeric:tabular-nums">4</div>
+      <div id="calibCounter" style="position:relative;font:600 56px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;font-variant-numeric:tabular-nums">4</div>
     </div>
     <div style="font:400 14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;color:rgba(255,255,255,.65);max-width:420px;margin:0 auto 30px;padding:0 20px">
       Sit still, settle your shoulders, and follow the circle. Inhale 4 · hold 4 · exhale 6. We're learning your baseline so the gods can read you.
     </div>
     <div style="display:flex;gap:12px;align-items:center">
-      <div id="calibProgressText" style="font-size:11px;color:rgba(155,138,252,.7);letter-spacing:.12em;font:600 11px/1 'Cinzel',serif;text-transform:uppercase">Cycle 1 / 6</div>
+      <div id="calibProgressText" style="font-size:11px;color:rgba(155,138,252,.7);letter-spacing:.12em;font:600 11px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-transform:uppercase">Cycle 1 / 6</div>
       <button id="calibSkip" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.6);padding:6px 14px;border-radius:5px;cursor:pointer;font-size:11px;letter-spacing:.04em">Skip</button>
     </div>
   </div>
@@ -1567,19 +1567,19 @@
   <div id="syncOverlay" style="position:fixed;inset:0;z-index:80;display:none;background:rgba(8,5,3,.78);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif">
     <div style="max-width:520px;width:100%;background:rgba(18,16,26,.96);border:1px solid rgba(139,124,246,.4);border-radius:14px;padding:28px 30px;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.7);max-height:90vh;overflow:auto">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-        <div style="font:700 22px/1.1 'Cinzel',serif;letter-spacing:.04em;color:#9b8afc">Backup &amp; Sync</div>
+        <div style="font:700 22px/1.1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:-.01em;color:#f5f5f7">Settings</div>
         <button id="closeSyncDialog" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;padding:0;line-height:1">&times;</button>
       </div>
       <p style="font-size:13px;color:rgba(255,255,255,.78);line-height:1.5;margin:6px 0 16px">
-        Your progress. runs, badges, streak, bio history. lives in this browser. To carry it across devices, use one of the options below.
+        Your progress — runs, badges, streak and body history — is saved in this browser. Use the options below to move it to another device, change how the game looks, and more.
       </p>
 
       <!-- Identity -->
       <div style="background:rgba(139,124,246,.05);border:1px solid rgba(139,124,246,.25);border-radius:8px;padding:14px 16px;margin-bottom:16px">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Your Skald</div>
+        <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Your player name</div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
           <div>
-            <div id="syncSkaldName" style="font:700 18px/1.1 'Cinzel',serif;color:#9b8afc;letter-spacing:.02em">. </div>
+            <div id="syncSkaldName" style="font:700 18px/1.1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;letter-spacing:.02em">. </div>
             <div id="syncSkaldId"   style="font:400 11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:rgba(255,255,255,.45);margin-top:2px;word-break:break-all">. </div>
           </div>
           <button id="syncRenameSkald" style="background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.35);color:#9b8afc;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">New name</button>
@@ -1589,7 +1589,7 @@
 
       <!-- Manual export -->
       <div style="margin-bottom:16px">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:6px">Move to another device</div>
+        <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:6px">Move to another device</div>
         <p style="font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.5;margin:6px 0 10px">
           Copy your save, then paste it into Valhalla on the other device. Or share the link. opening it loads your save anywhere.
         </p>
@@ -1606,7 +1606,7 @@
 
       <!-- Cloud sync explainer -->
       <div style="background:rgba(60,40,90,.18);border:1px solid rgba(180,140,255,.25);border-radius:8px;padding:12px 14px;margin-bottom:6px">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(200,170,255,.9);text-transform:uppercase;margin-bottom:6px">Coming with the Elata App Store</div>
+        <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(200,170,255,.9);text-transform:uppercase;margin-bottom:6px">Coming with the Elata App Store</div>
         <p style="font-size:12.5px;color:rgba(255,255,255,.78);line-height:1.5;margin:0">
           When Valhalla is opened from your Elata account, your Skald automatically follows you to every device. No copy-paste needed. Until then, the link above is the bridge.
         </p>
@@ -1615,7 +1615,7 @@
       <!-- VIKING GEAR. pick coat / shield / cloak. Persists per-Skald
            and tints the player model accordingly. -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Your gear</div>
+        <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Your gear</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
           <div>
             <div style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Coat</div>
@@ -1652,12 +1652,12 @@
            ElataSync if available; falls back to manual add otherwise. -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px">
-          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase">Skald friends</div>
+          <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase">Friends</div>
           <span id="friendCount" style="font-size:10px;color:rgba(255,255,255,.5)">0 friends</span>
         </div>
-        <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4;margin-bottom:8px">Paste a friend's Skald ID to follow their runs. Your last run is published automatically.</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4;margin-bottom:8px">Paste a friend's player ID to follow their runs. Your last run is shared automatically.</div>
         <div style="display:flex;gap:8px">
-          <input id="friendIdInput" type="text" placeholder="paste skald id…" style="flex:1;background:rgba(0,0,0,.4);color:#fff;border:1px solid rgba(139,124,246,.3);border-radius:4px;padding:6px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace">
+          <input id="friendIdInput" type="text" placeholder="paste player ID…" style="flex:1;background:rgba(0,0,0,.4);color:#fff;border:1px solid rgba(139,124,246,.3);border-radius:4px;padding:6px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace">
           <button id="friendAddBtn" style="background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:6px 12px;border-radius:5px;cursor:pointer;font-weight:600;font-size:11px;letter-spacing:.04em">Add</button>
         </div>
         <div id="friendList" style="margin-top:8px;font-size:11px"></div>
@@ -1668,7 +1668,7 @@
            supported set. -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase">Language</div>
+          <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase">Language</div>
           <select id="langPicker" style="background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
             <option value="en">English</option>
             <option value="es">Español</option>
@@ -1685,7 +1685,7 @@
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div>
-            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:4px">Install</div>
+            <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:4px">Install</div>
             <div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.4">Open Valhalla like a real app · works offline · home-screen icon</div>
           </div>
           <button id="installPwaBtn" style="display:none;background:rgba(120,200,140,.18);border:1px solid rgba(120,200,140,.5);color:#a3e8b8;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:12px;white-space:nowrap">Install app</button>
@@ -1694,7 +1694,7 @@
 
       <!-- Daily reminder notifications -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
-        <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Daily Reminder</div>
+        <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:8px">Daily Reminder</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <input id="reminderTime" type="time" value="20:00" style="background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;font-family:inherit">
           <button id="reminderToggle" style="background:rgba(139,124,246,.15);border:1px solid rgba(139,124,246,.5);color:#9b8afc;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;letter-spacing:.04em;font-size:12px">Enable</button>
@@ -1706,7 +1706,7 @@
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(139,124,246,.15)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div>
-            <div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:4px">Graphics</div>
+            <div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;color:rgba(139,124,246,.85);text-transform:uppercase;margin-bottom:4px">Graphics</div>
             <div id="qualityCurrent" style="font-size:11px;color:rgba(255,255,255,.55)">Detected: . </div>
           </div>
           <select id="qualityPicker" style="background:rgba(0,0,0,.4);color:#9b8afc;border:1px solid rgba(139,124,246,.4);border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer">

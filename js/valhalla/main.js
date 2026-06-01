@@ -6261,19 +6261,19 @@ class Valhalla {
         distracted:"Drifting", neutral:"Steady" };
       const stateWord = STATE[this.cognitiveState] || "Steady";
       if (titleEl) titleEl.textContent = bpm ? `${bpm} BPM · ${stateWord}` : stateWord;
-      if (subEl)   subEl.textContent = "Your heartbeat is driving the world";
+      if (subEl)   subEl.textContent = "Your body is changing the game, live";
       // Ring fills with HR relative to a 50-120 range.
       if (arc && bpm) {
         const pct = Math.max(0, Math.min(1, (bpm - 50) / 70));
         arc.style.strokeDashoffset = String(119 * (1 - pct));
       }
     } else if (warming) {
-      if (titleEl) titleEl.textContent = "Reading your body…";
-      if (subEl)   subEl.textContent = "Hold still and face the light";
+      if (titleEl) titleEl.textContent = "Connecting…";
+      if (subEl)   subEl.textContent = "Hold still and face your camera";
       if (arc) arc.style.strokeDashoffset = "90";
     } else {
-      if (titleEl) titleEl.textContent = "Read your body";
-      if (subEl)   subEl.textContent = "Use your camera to play with your heartbeat";
+      if (titleEl) titleEl.textContent = "Play with your heartbeat";
+      if (subEl)   subEl.textContent = "Point your camera at your face. The game reacts to your body, live.";
       if (arc) arc.style.strokeDashoffset = "119";
     }
   }
