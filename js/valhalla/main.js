@@ -4300,7 +4300,7 @@ class Valhalla {
       el.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:8;"
         + "background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.18) 100%);"
         + "opacity:0;transition:opacity .12s ease;";
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._heartbeatEl = el;
     }
     el.style.opacity = "1";
@@ -4316,7 +4316,7 @@ class Valhalla {
       el = document.createElement("div");
       el.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:33;"
         + "opacity:0;transition:opacity .22s ease;mix-blend-mode:screen;";
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._bioFlashEl = el;
     }
     const css = "#" + ("000000" + hex.toString(16)).slice(-6);
@@ -4494,7 +4494,7 @@ class Valhalla {
         "font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;" +
         "text-transform:uppercase;text-shadow:0 2px 14px rgba(0,0,0,.9);" +
         "transition:opacity .4s ease,color .5s ease";
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._biomeChipEl = el;
     }
     const b = BIOMES[this.biomeIdx];
@@ -4516,7 +4516,7 @@ class Valhalla {
         "text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.8),0 0 18px rgba(255,255,255,.4);" +
         "pointer-events:none;z-index:36;opacity:0;transition:opacity .6s ease,transform .6s ease;" +
         "text-align:center;line-height:1.2";
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._biomeBannerEl = el;
     }
     el.innerHTML = `<div style="font-size:13px;font-weight:600;letter-spacing:.2em;opacity:.7;margin-bottom:6px">ENTERING</div>${name}`;
@@ -4545,7 +4545,7 @@ class Valhalla {
         "letter-spacing:.04em;text-align:center;max-width:min(700px,80vw);" +
         "text-shadow:0 4px 24px rgba(0,0,0,.95),0 0 14px rgba(155,138,252,.25);" +
         "pointer-events:none;z-index:35;opacity:0;transition:opacity 1.2s ease,transform 1s ease";
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._skaldEl = el;
     }
     // SAGA LINES. curated Norse-flavoured one-liners per realm.
@@ -5169,7 +5169,7 @@ class Valhalla {
             '<div>Calm <span class="bhCalm" style="color:#80d0e0;font-weight:600">. </span></div>' +
           '</div>' +
         '</div>';
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._bioPillEl = el;
       // Restore advanced-mode pref from localStorage.
       this._advancedMode = localStorage.getItem("valhalla.advancedMode") === "1";
@@ -5411,7 +5411,18 @@ class Valhalla {
     }
   }
 
+  // Safe DOM append: a browser extension (e.g. a crypto-wallet injector)
+  // can detach <body>, making document.body null. An unguarded append in
+  // the per-frame loop then throws every frame and freezes the whole
+  // update — which blacks out the game. Never let that happen.
+  _safeAppend(el) {
+    const b = document.body;
+    if (!b) return false;
+    try { b.appendChild(el); return true; } catch (e) { return false; }
+  }
+
   _popText(text, cls = "", offsetX = 0, offsetY = 0) {
+    if (!document.body || !this.player) return;
     const el = document.createElement("div");
     el.className = "popper " + cls;
     el.textContent = text;
@@ -5421,8 +5432,7 @@ class Valhalla {
     const sy = (-v.y * 0.5 + 0.5) * window.innerHeight + offsetY;
     el.style.left = sx + "px";
     el.style.top = sy + "px";
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1100);
+    if (this._safeAppend(el)) setTimeout(() => el.remove(), 1100);
   }
 
   _showCombo() {
@@ -5528,7 +5538,7 @@ class Valhalla {
         "text-shadow:0 4px 36px rgba(0,0,0,.85),0 0 60px currentColor;";
       el.innerHTML = `<div class="pn" style="font:700 64px/1 'Cinzel',serif;letter-spacing:.10em;text-transform:uppercase;margin-bottom:18px"></div>
                       <div class="ps" style="font:500 14px/1.4 'Cinzel',serif;letter-spacing:.20em;text-transform:uppercase;opacity:.85"></div>`;
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
       this._pickupEl = el;
     }
     const css = "#" + ("000000" + accentHex.toString(16)).slice(-6);
@@ -6214,19 +6224,25 @@ class Valhalla {
         const el = document.getElementById(id);
         if (el) el.remove();
       }
-      // Match bio- prefixed ELEMENTS only (skip our own whitelist).
-      // CRITICAL: never touch <style> tags here. A previous version
-      // removed any <style> whose text contained "#bio-badge", which
-      // DELETED THE ENTIRE PAGE STYLESHEET because our own kill rule
-      // (#bio-badge{display:none!important}) lives in that stylesheet.
-      // That zeroed out all CSS -> black/unstyled page. The bio
-      // module's injected style has id "bio-style" and is already
-      // removed via LEGACY_IDS above; the !important CSS rule keeps
-      // the badge hidden anyway, so no style scanning is needed.
-      const all = document.querySelectorAll('[id^="bio-"], [class^="bio-"]');
+      // Match the legacy bio WIDGETS by their id prefix only.
+      //
+      // CRITICAL BUG FIXED: the old selector also matched [class^="bio-"].
+      // Our OWN app sets the state class "bio-live" on <body> (and other
+      // elements) — so that selector matched <body> itself, and the
+      // el.remove() below DELETED THE ENTIRE PAGE BODY. That detached the
+      // WebGL canvas (instant black screen) and made every per-frame
+      // appendChild throw "Cannot read properties of null". This was the
+      // real cause of "press Run -> blank". We now match by id prefix
+      // only (the legacy module injects #bio-badge / #bio-panel / etc.)
+      // and hard-exclude structural roots as a belt-and-braces guard.
+      // Never touch <style>/<link>: a still-earlier version deleted the
+      // page stylesheet the same way.
+      const all = document.querySelectorAll('[id^="bio-"]');
       for (const el of all) {
-        if (el.tagName === "STYLE" || el.tagName === "LINK") continue; // never nuke styling
-        if (KEEP_IDS.has(el.id)) continue;
+        if (el === document.body || el === document.documentElement) continue; // NEVER remove the page itself
+        if (el.tagName === "STYLE" || el.tagName === "LINK") continue;          // never nuke styling
+        if (el.id && KEEP_IDS.has(el.id)) continue;
+        if (el.querySelector && el.querySelector("#world")) continue;           // never remove a canvas ancestor
         el.remove();
       }
     };
@@ -6406,7 +6422,7 @@ class Valhalla {
         "padding:9px 16px;border-radius:999px;z-index:34;pointer-events:none;" +
         "border:1px solid rgba(251,191,36,.45);box-shadow:0 6px 20px rgba(0,0,0,.4);" +
         "opacity:0;transition:opacity .25s ease,transform .25s ease;";
-      document.body.appendChild(host);
+      if (document.body) document.body.appendChild(host);
       this._bioToast = host;
     }
     host.textContent = text;
@@ -7579,7 +7595,7 @@ class Valhalla {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = file.name;
-    document.body.appendChild(a);
+    if (document.body) document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 500);
   }
@@ -9143,7 +9159,7 @@ class Valhalla {
       el = document.createElement("div");
       el.id = "bioErrBanner";
       el.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:90;padding:10px 16px;background:rgba(60,8,8,.96);color:#ffd066;border:1px solid rgba(255,140,90,.6);border-radius:6px;font:600 12.5px/1.4 -apple-system,system-ui,sans-serif;letter-spacing:.02em;max-width:min(560px,90vw);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.7)";
-      document.body.appendChild(el);
+      if (document.body) document.body.appendChild(el);
     }
     el.textContent = msg;
     el.style.opacity = "1";
@@ -9159,7 +9175,7 @@ class Valhalla {
       t = document.createElement("div");
       t.id = "fpsToast";
       t.style.cssText = "position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;padding:8px 14px;background:rgba(60,8,8,.9);color:#ffd066;border:1px solid rgba(255,200,100,.5);border-radius:6px;font:600 12px/1.2 -apple-system,system-ui,sans-serif;letter-spacing:.04em;box-shadow:0 6px 24px rgba(0,0,0,.7);pointer-events:none;opacity:0;transition:opacity .25s ease";
-      document.body.appendChild(t);
+      if (document.body) document.body.appendChild(t);
     }
     t.textContent = msg;
     t.style.opacity = "1";
@@ -9178,7 +9194,7 @@ class Valhalla {
     el.id = "fpsOverlay";
     el.style.cssText = "position:fixed;left:14px;bottom:14px;z-index:60;padding:5px 9px;background:rgba(0,0,0,.65);color:#a3e8b8;border:1px solid rgba(255,255,255,.15);border-radius:5px;font:600 11px/1 ui-monospace,Menlo,Consolas,monospace;pointer-events:none";
     el.textContent = ".  fps";
-    document.body.appendChild(el);
+    if (document.body) document.body.appendChild(el);
     this._fpsOverlay = el;
   }
 
