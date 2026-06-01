@@ -480,11 +480,16 @@ class Audio {
       // fast attack 3ms, smooth release 250ms. Anything above the
       // threshold is squashed near-flat. Combined with the lowpass
       // there is no path to ear-piercing output.
-      limiter.threshold.value = -10;
-      limiter.knee.value = 0;
-      limiter.ratio.value = 20;
-      limiter.attack.value = 0.003;
-      limiter.release.value = 0.25;
+      // Gentle limiting, NOT brick-wall. The old -10dBFS / 20:1 / fast
+      // settings pumped hard on sustained ambience — that "breathing /
+      // squeezing" artifact is exactly what the user kept hearing. Soft
+      // knee, modest ratio and a slow release keep it transparent while
+      // still catching the odd peak.
+      limiter.threshold.value = -3;
+      limiter.knee.value = 6;
+      limiter.ratio.value = 4;
+      limiter.attack.value = 0.01;
+      limiter.release.value = 0.5;
 
       this.master.disconnect();
       this.master.connect(safetyLP);
@@ -8184,7 +8189,9 @@ class Valhalla {
     this.audio.loadSamples();
     this.audio.startWind();
     this.audio.startFireAmbience();
-    this.audio.startMusic();
+    // Procedural synth music DISABLED — that was the "squeezing/squelch"
+    // the user kept hearing. The real recorded wind + fire ambience is
+    // the entire soundbed now. (startMusic intentionally not called.)
   }
 
   _gameOver() {
