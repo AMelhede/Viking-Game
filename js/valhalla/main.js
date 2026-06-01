@@ -5111,6 +5111,10 @@ class Valhalla {
   // mental model for any of that. Now the panel says things like:
   //   "FLOW · The world bends around you · 23s held · Next gift 78%"
   _updateBioStatusPill() {
+    // Guard: never throw if the document body isn't available yet. This
+    // runs every frame from _update; an unguarded appendChild on a null
+    // body would spam the console and abort the rest of the update.
+    if (!document.body) return;
     let el = this._bioPillEl;
     if (!el) {
       el = document.createElement("div");
