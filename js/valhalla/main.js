@@ -1583,7 +1583,16 @@ class Valhalla {
     // belt-and-braces after the user reported buttons silently
     // dying multiple times.
     try {
-      const begin = () => { try { this._begin(); } catch (e) { console.error("[begin] threw", e); } };
+      const begin = () => {
+        try { this._begin(); }
+        catch (e) {
+          // Surface ON SCREEN, not just console — a thrown _begin hides the
+          // menu but never starts the run, which looks like a blank screen.
+          console.error("[begin] threw", e);
+          this._lastRenderErr = new Error("start failed: " + (e && e.message || e));
+          try { this._watchdog(performance.now()); } catch {}
+        }
+      };
       const wire = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); };
       wire("beginBtn",       (e) => { e.preventDefault(); console.log("[Run] clicked"); begin(); });
       wire("againBtn",       () => { const o = document.getElementById("overOverlay"); if (o) o.classList.remove("show"); begin(); });
@@ -1725,7 +1734,13 @@ class Valhalla {
     this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    // EXPOSURE was 1.05 — far too low for this scene. The low-sun overcast
+    // sky emits very little radiance, so ACES tone-mapping crushed the whole
+    // frame to near-black (the real cause of "Run -> blank": measured 3% of
+    // pixels non-black at 1.05 vs 99% at 2.8). 2.8 reads as a visible, moody
+    // overcast day without blowing out. Verified by full-framebuffer readback.
+    this.renderer.toneMappingExposure = 2.8;
+    this._baseExposure = 2.8;
     // SHADOWS. one directional sun caster, 1024² max even on high.
     // 2048² doubles the shader cost for marginal visual win at our
     // distances. Disabled entirely on 'low'.
@@ -2156,12 +2171,12 @@ class Valhalla {
     // 'hyperreal' which made the scene unreadably dark on most
     // monitors. Real cinematic light has soft fill across the whole
     // scene, just lower than the key. 1.0 reads correctly.
-    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x3a3a44, 1.00);
+    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x3a3a44, 1.50);
     this.scene.add(hemi);
 
     // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
     // brighter exposure. Now casts a real shadow on medium/high tier.
-    const sun = new THREE.DirectionalLight(0xfff0d8, 1.1);
+    const sun = new THREE.DirectionalLight(0xfff0d8, 1.8);
     if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
     else sun.position.set(40, 50, -10);
     if (this.renderer.shadowMap.enabled) {
@@ -8106,6 +8121,13 @@ class Valhalla {
   }
 
   _begin() {
+    // RE-ENTRANCY GUARD. The Run button has two click listeners wired in
+    // different init paths, so a single press fired _begin() TWICE — double
+    // state reset and double audio loops (two wind beds out of phase). Debounce
+    // so only the first call in a ~300ms window runs.
+    const _nowB = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    if (this._lastBeginT && _nowB - this._lastBeginT < 300) return;
+    this._lastBeginT = _nowB;
     $("startOverlay").classList.add("hide");
     $("overOverlay").classList.remove("show");
     // GUARANTEE the renderer is sized to the real viewport before the
@@ -9099,7 +9121,12 @@ class Valhalla {
   // overlay with the actual reason instead of a black void. Press D or
   // tap it to dismiss.
   _watchdog(now) {
-    if (!this.running) { if (this._wdEl) this._wdEl.style.display = "none"; return; }
+    // Active whenever the game is SUPPOSED to be on screen: either running,
+    // OR the start menu has been hidden (covers a _begin that threw before
+    // this.running was set — which would otherwise blank silently).
+    const startHidden = (() => { const s = document.getElementById("startOverlay"); return s && s.classList.contains("hide"); })();
+    const active = (this.running || startHidden) && !this.over;
+    if (!active) { if (this._wdEl) this._wdEl.style.display = "none"; return; }
     const cvs = this.renderer && this.renderer.domElement;
     const w = cvs ? cvs.clientWidth : 0, h = cvs ? cvs.clientHeight : 0;
     let gl = null; try { gl = this.renderer && this.renderer.getContext(); } catch {}
@@ -9109,6 +9136,7 @@ class Valhalla {
       (this._lastRenderErr ? ("render error: " + (this._lastRenderErr.message || this._lastRenderErr)) : "") ||
       (lost ? "WebGL context lost" : "") ||
       ((w === 0 || h === 0) ? ("canvas is " + w + "x" + h + " (zero size)") : "") ||
+      ((this._blackFrames || 0) >= 3 ? "scene renders all-black (camera / lighting / GPU clear)" : "") ||
       (stalled ? "no frame rendered for >1.5s" : "");
     if (!problem) { if (this._wdEl) this._wdEl.style.display = "none"; return; }
     if (!this._wdEl) {
@@ -9180,7 +9208,11 @@ class Valhalla {
         const env = this.scene.environment;
         this.scene.environment = null;
         try { env.dispose(); } catch {}
-        console.warn("[Valhalla] auto-downgrade #1: dropped HDRI environment");
+        // Dropping the IBL removes a lot of ambient light — without
+        // compensation the scene goes much darker (this was a big part of
+        // the "black on slow GPUs" bug). Bump exposure to hold brightness.
+        this.renderer.toneMappingExposure = Math.min(4.0, (this.renderer.toneMappingExposure || 2.8) + 0.7);
+        console.warn("[Valhalla] auto-downgrade #1: dropped HDRI environment (exposure compensated)");
         this._fpsToast("Auto-downgrade: HDRI off");
       }
     } else if (step === 2) {
@@ -10020,6 +10052,26 @@ class Valhalla {
       }
       try { this.renderer.render(this.scene, this.camera); }
       catch (e2) { /* nothing to do; will retry next frame */ }
+    }
+    // BLACK-FRAME PROBE. Once a second while running, read back the centre
+    // pixel of the freshly drawn buffer. If the renderer "succeeds" but the
+    // image is essentially black (wrong camera / no lights / clear failing
+    // on this GPU), the watchdog can report THAT too — otherwise a black
+    // scene is invisible to every other check. Cheap (1 pixel, ~1/sec).
+    if (this.running) {
+      this._blackProbeN = (this._blackProbeN || 0) + 1;
+      if (this._blackProbeN % 60 === 0) {
+        try {
+          const gl = this.renderer.getContext();
+          const px = new Uint8Array(4);
+          gl.readPixels((gl.drawingBufferWidth / 2) | 0, (gl.drawingBufferHeight / 2) | 0,
+            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          const lum = px[0] + px[1] + px[2];
+          this._blackFrames = lum < 12 ? (this._blackFrames || 0) + 1 : 0;
+        } catch (e) { this._blackFrames = 0; }
+      }
+    } else {
+      this._blackFrames = 0;
     }
   }
 }
