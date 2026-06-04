@@ -153,15 +153,8 @@
       100% {transform:translate(0,0)}
     }
 
-    /* Intro fade. when Play is pressed, the game fades from black
-       over 1.4s. Echoes the opening of a film. Triggered by adding
-       body.cinematic-intro at the moment _begin fires; removed after. */
-    .introfade{
-      position:fixed;inset:0;background:#000;z-index:48;
-      pointer-events:none;opacity:0;transition:opacity 1.4s ease;
-    }
-    body.cinematic-intro .introfade{opacity:1;transition:none}
-    body.playing.cinematic-intro .introfade{opacity:0}
+    /* (Removed: the .introfade black overlay — it could stick opaque and
+       blank the game on Run. Run now reveals the world immediately.) */
 
     /* Cinematic HUD. looks like rune carvings on parchment, not phone-
        app chips. Bronze on dark, Cinzel serif, no chunky cards. The
@@ -638,6 +631,17 @@
     .s-row .v{ color:rgba(155,138,252,.85);font-variant-numeric:tabular-nums;font-weight:600 }
     .s-row .v.neg{ color:rgba(255,140,90,.85) }
     .s-row .v.pos{ color:rgba(120,220,180,.85) }
+
+    /* DROPDOWN READABILITY. The settings <select>s only coloured the select
+       face, so the OPEN native list rendered as grey-on-dark (unreadable).
+       Force a dark surface + bright text on the control AND its option list. */
+    select{
+      background:#17151f;color:#f5f5f7;
+      -webkit-appearance:none;appearance:none;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239b8afc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+      background-repeat:no-repeat;background-position:right 8px center;padding-right:24px !important;
+    }
+    select option,select optgroup{ background:#17151f;color:#f5f5f7 }
 
     /* Realm path inside sheet — bigger, properly spaced. */
     .sheet .realm-path{ height:64px;padding:6px 8px }
@@ -1282,7 +1286,6 @@
   <div class="grain"></div>
   <div class="letterbox top"></div>
   <div class="letterbox bot"></div>
-  <div class="introfade"></div>
 
   <!-- Sensor-off nudge. bottom-right pill (currently display:none).
        Wording kept jargon-free in case it's ever surfaced again. -->
@@ -1586,7 +1589,7 @@
             <div id="syncSkaldName" style="font:700 18px/1.1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;letter-spacing:.02em">. </div>
             <div id="syncSkaldId"   style="font:400 11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:rgba(255,255,255,.45);margin-top:2px;word-break:break-all">. </div>
           </div>
-          <button id="syncRenameSkald" style="background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.35);color:#9b8afc;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">New name</button>
+          <button id="syncRenameSkald" style="background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.35);color:#9b8afc;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:.04em;white-space:nowrap">Edit name</button>
         </div>
         <div id="syncCloudStatus" style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.7);line-height:1.4">. </div>
       </div>
@@ -1790,13 +1793,13 @@
        even if cached HTML somehow loads, the JS is always fresh. -->
   <script>
     (function loadGame(){
-      var BUILD = "2026-06-01 blankfix-2";
+      var BUILD = "2026-06-04 r2";
       console.log("[Valhalla] BUILD " + BUILD);
       var tag = document.getElementById("buildTag");
       if (tag) tag.textContent = "build " + BUILD;
       var s = document.createElement("script");
       s.type = "module";
-      s.src = "./js/valhalla/main.js?v=20260601blankfix2&t=" + Date.now();
+      s.src = "./js/valhalla/main.js?v=20260604r2&t=" + Date.now();
       document.body.appendChild(s);
     })();
   </script>

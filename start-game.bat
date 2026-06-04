@@ -7,6 +7,11 @@ REM Valhalla launcher. Serves the game on http://localhost:8055/ (a local
 REM server is required: the biosignal SDK needs a secure context for Web
 REM Bluetooth + camera). The window is kept OPEN on exit so any error is
 REM readable instead of flashing closed.
+REM
+REM *** DO NOT CHANGE THE PORT (8055). ***  localStorage (your scores,
+REM streak, badges, custom name) is keyed PER ORIGIN, i.e. per port. Every
+REM port change wipes all saved progress because the browser treats it as a
+REM brand-new site. 8055 is permanent.
 REM ---------------------------------------------------------------------------
 
 where node >nul 2>nul

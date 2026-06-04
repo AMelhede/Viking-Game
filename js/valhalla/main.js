@@ -192,6 +192,15 @@ const Store = {
     }
     return name;
   },
+  // Persist a user-chosen name (trimmed, capped). Mirrors into the save
+  // snapshot so it travels with export/cloud sync.
+  setSkaldName(name) {
+    const clean = String(name || "").trim().slice(0, 24);
+    if (!clean) return false;
+    try { localStorage.setItem(SKALD_NAME_KEY, clean); } catch {}
+    try { const s = this.load(); s.skaldName = clean; this.save(s); } catch {}
+    return true;
+  },
 
   // ---------- portable snapshot ----------
   // Full save as a versioned, self-describing object. This is the
@@ -7083,11 +7092,16 @@ class Valhalla {
       if (e.target === overlay) overlay.style.display = "none";
     });
 
-    // Rename. generate a new mnemonic but keep the same hex ID, so
-    // cloud sync continuity is preserved.
+    // Rename. Let the user TYPE their own name (keeps the same hex ID so
+    // cloud-sync continuity is preserved). Empty input leaves it unchanged.
     document.getElementById("syncRenameSkald").addEventListener("click", () => {
-      try { localStorage.removeItem(SKALD_NAME_KEY); } catch {}
-      Store.getSkaldName();          // regenerate
+      const current = Store.getSkaldName();
+      let entered = null;
+      try { entered = window.prompt("Your name:", current); } catch {}
+      if (entered === null) return;            // cancelled
+      const clean = String(entered).trim();
+      if (!clean) return;                       // empty — keep current
+      Store.setSkaldName(clean);
       refreshDialog();
       this._refreshSkaldLine();
     });
@@ -8100,22 +8114,12 @@ class Valhalla {
     // resize here — now that the menu is hidden and layout is final —
     // makes the very first run frame render at full size.
     try { this._resize(); } catch (e) { console.warn("[begin] resize failed", e); }
-    // CINEMATIC INTRO, made bulletproof. The black .introfade overlay
-    // (opacity 1 under body.cinematic-intro) fades out once body.playing
-    // is added. Previously this relied on a SINGLE requestAnimationFrame;
-    // if that rAF was throttled or never fired, the black overlay stuck
-    // opaque forever = "screen goes blank when I start a run". Now we
-    // add .playing via rAF AND a setTimeout fallback, and we GUARANTEE
-    // removal of .cinematic-intro after 1.6s no matter what.
-    document.body.classList.add("cinematic-intro");
-    const goPlaying = () => document.body.classList.add("playing");
-    requestAnimationFrame(goPlaying);
-    setTimeout(goPlaying, 60);
-    clearTimeout(this._introClearT);
-    this._introClearT = setTimeout(() => {
-      document.body.classList.add("playing");
-      document.body.classList.remove("cinematic-intro");
-    }, 1600);
+    // The cinematic black-fade intro was REMOVED. It was a full-screen
+    // black overlay (.introfade) that faded out via a body class dance; if
+    // that class/transition ever failed it stuck opaque = "blank on Run".
+    // No gameplay value, real blank risk — so Run now reveals the world
+    // immediately. (`playing` kept for any styling that keys off it.)
+    document.body.classList.add("playing");
     this.lane = 1; this.targetLaneX = LANES[1];
     this.playerY = 0; this.playerVy = 0;
     this.sliding = false; this.slideTimer = 0;
@@ -9077,11 +9081,59 @@ class Valhalla {
         this._idleFrame = (this._idleFrame || 0) + 1;
         if ((this._idleFrame & 1) === 0) this._render();
       }
+      this._lastGoodRenderT = now;
     } catch (e) {
+      this._lastRenderErr = e;
       if (!this._renderErrLogged) { console.error("[frame] _render threw", e); this._renderErrLogged = true; }
     }
     try { this._sampleFps(realDt); } catch {}
+    try { this._watchdog(now); } catch {}
     requestAnimationFrame(this._frame);
+  }
+
+  // BLANK-SCREEN WATCHDOG. A black game used to be a silent mystery I
+  // could only guess at (the headless test harness can't render at real
+  // size). Now, while a run is active, if anything that would produce a
+  // blank screen is detected — the canvas collapsed to 0px, the WebGL
+  // context was lost, or _render has been throwing — we paint a readable
+  // overlay with the actual reason instead of a black void. Press D or
+  // tap it to dismiss.
+  _watchdog(now) {
+    if (!this.running) { if (this._wdEl) this._wdEl.style.display = "none"; return; }
+    const cvs = this.renderer && this.renderer.domElement;
+    const w = cvs ? cvs.clientWidth : 0, h = cvs ? cvs.clientHeight : 0;
+    let gl = null; try { gl = this.renderer && this.renderer.getContext(); } catch {}
+    const lost = gl && gl.isContextLost && gl.isContextLost();
+    const stalled = this._lastGoodRenderT != null && (now - this._lastGoodRenderT) > 1500;
+    const problem =
+      (this._lastRenderErr ? ("render error: " + (this._lastRenderErr.message || this._lastRenderErr)) : "") ||
+      (lost ? "WebGL context lost" : "") ||
+      ((w === 0 || h === 0) ? ("canvas is " + w + "x" + h + " (zero size)") : "") ||
+      (stalled ? "no frame rendered for >1.5s" : "");
+    if (!problem) { if (this._wdEl) this._wdEl.style.display = "none"; return; }
+    if (!this._wdEl) {
+      if (!document.body) return;
+      const el = document.createElement("div");
+      el.style.cssText =
+        "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9999;" +
+        "max-width:80vw;background:rgba(20,10,10,.92);border:1px solid rgba(255,90,90,.6);" +
+        "color:#fff;font:600 13px/1.5 -apple-system,system-ui,sans-serif;padding:16px 20px;" +
+        "border-radius:12px;text-align:center;cursor:pointer;box-shadow:0 10px 40px rgba(0,0,0,.6)";
+      el.addEventListener("click", () => { el.style.display = "none"; });
+      document.body.appendChild(el);
+      this._wdEl = el;
+    }
+    let glInfo = "";
+    try {
+      const dbg = gl && gl.getExtension("WEBGL_debug_renderer_info");
+      if (dbg) glInfo = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+    } catch {}
+    this._wdEl.style.display = "block";
+    this._wdEl.innerHTML =
+      "<div style='color:#ff8a8a;font-weight:700;margin-bottom:6px'>Render problem</div>" +
+      "<div>" + problem + "</div>" +
+      "<div style='opacity:.6;font-weight:400;margin-top:8px;font-size:11px'>canvas " + w + "x" + h +
+      (glInfo ? (" · " + glInfo) : "") + " · tap to dismiss</div>";
   }
 
   // Rolling FPS via EMA. When sustained <25 fps in-game, auto-downgrade
@@ -10008,6 +10060,15 @@ function boot() {
   try {
     window.__valhalla = new Valhalla();
     console.log("[Valhalla] booted");
+    // One-time render-environment log — pins down GPU/driver issues fast.
+    try {
+      const g = window.__valhalla.renderer;
+      const gl = g && g.getContext();
+      const dbg = gl && gl.getExtension("WEBGL_debug_renderer_info");
+      console.log("[Valhalla] renderer " + g.domElement.width + "x" + g.domElement.height +
+        " | GPU: " + (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "unknown") +
+        " | contextLost: " + (gl && gl.isContextLost ? gl.isContextLost() : "?"));
+    } catch (e) { console.warn("[Valhalla] render-env log failed", e); }
   } catch (e) {
     console.error("[Valhalla] init failed", e);
     showFatal(`<div style='text-align:center;line-height:1.5'>Failed to load.<br><br><span style='font-size:11px;opacity:.7'>${(e && e.message) || e}</span></div>`);
