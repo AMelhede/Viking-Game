@@ -421,12 +421,12 @@
       position:fixed;inset:0;z-index:50;
       display:flex;flex-direction:column;justify-content:center;align-items:center;
       padding:env(safe-area-inset-top,32px) 24px env(safe-area-inset-bottom,24px);
-      /* Solid near-black backdrop so the menu reads cleanly. The
-         previous radial gradient was nearly opaque black at the
-         edges + 55% in the center, which produced visible banding
-         and made the menu look like a half-broken render against
-         the dark 3D scene behind it. */
-      background:rgba(10,10,16,.94);
+      /* Now that the world is properly lit (exposure fix), let it show
+         THROUGH the menu instead of a near-black void — this is the
+         "Viking world" front-and-centre. A centre-darkened radial keeps
+         the title/stats readable while the lit longhouses + fjord show at
+         the edges. */
+      background:radial-gradient(ellipse 80% 70% at 50% 45%, rgba(10,10,16,.86) 0%, rgba(10,10,16,.72) 45%, rgba(10,10,16,.50) 100%);
       transition:opacity .55s cubic-bezier(.4,0,.2,1);
     }
     .start.hide{opacity:0;pointer-events:none}
@@ -1793,7 +1793,7 @@
        even if cached HTML somehow loads, the JS is always fresh. -->
   <script>
     (function loadGame(){
-      var BUILD = "2026-06-04 r3-light";
+      var BUILD = "2026-06-04 r4-world";
       console.log("[Valhalla] BUILD " + BUILD);
       var tag = document.getElementById("buildTag");
       if (tag) tag.textContent = "build " + BUILD;
