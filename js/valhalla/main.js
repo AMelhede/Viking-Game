@@ -1712,6 +1712,12 @@ class Valhalla {
   _initThree() {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas, antialias: true, powerPreference: "high-performance",
+      // preserveDrawingBuffer guarantees the drawn frame is kept and
+      // composited to screen. On some ANGLE/D3D11 backends (e.g. Qualcomm
+      // Adreno on ARM Windows) the default double-buffer swap can present a
+      // BLACK frame even though rendering succeeded — a likely cause of the
+      // "Run -> black" report on that hardware. Small cost, big robustness.
+      preserveDrawingBuffer: true,
     });
     // pixelRatio HARD-CAPPED at 1.0. On retina this is 4x fewer pixels
     // than native. The scene is low-poly + flat-shaded + grain-overlaid
