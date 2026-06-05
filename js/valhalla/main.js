@@ -2075,9 +2075,11 @@ class Valhalla {
     this.sky = sky;
     this.scene.add(sky);
 
-    // Sun JUST below horizon for overcast diffuse skylight feel . 
-    // no direct sun disk, no golden glare, just heavy cloudy sky.
-    const elevation = 4;
+    // Sun at a real daytime elevation. At 4° (the old value) the Hosek
+    // model renders a dim twilight band that read as a "weird dark
+    // background". 14° + high turbidity gives a soft, diffuse, properly-lit
+    // overcast Nordic daytime sky (no harsh disk, no whiteout).
+    const elevation = 14;
     const azimuth   = 200;
     const phi   = THREE.MathUtils.degToRad(90 - elevation);
     const theta = THREE.MathUtils.degToRad(azimuth);
@@ -4415,11 +4417,14 @@ class Valhalla {
     // white = "I can see nothing" whiteout. Now Asgard is just a
     // warmer / lighter overcast, not a snowstorm. All four are
     // similar mid-greys with subtle temperature shifts.
+    // Sun elevations raised from 3-5° (twilight = "weird dark background")
+    // to a real daytime band. High turbidity + low rayleigh keeps each
+    // realm a soft diffuse overcast (not a blue clear sky, not a whiteout).
     const SKY_PARAMS = {
-      Midgard:    { turbidity: 12, rayleigh: 0.4, mieCoefficient: 0.030, mieDirectionalG: 0.70, sunElev: 5, sunAz: 200 },
-      "Jötunheim":{ turbidity: 14, rayleigh: 0.3, mieCoefficient: 0.035, mieDirectionalG: 0.65, sunElev: 3, sunAz: 220 },
-      Muspelheim: { turbidity: 18, rayleigh: 0.4, mieCoefficient: 0.060, mieDirectionalG: 0.85, sunElev: 3, sunAz: 180 },
-      Asgard:     { turbidity: 11, rayleigh: 0.4, mieCoefficient: 0.028, mieDirectionalG: 0.75, sunElev: 5, sunAz: 220 },
+      Midgard:    { turbidity: 11, rayleigh: 0.7, mieCoefficient: 0.028, mieDirectionalG: 0.70, sunElev: 14, sunAz: 200 },
+      "Jötunheim":{ turbidity: 13, rayleigh: 0.5, mieCoefficient: 0.032, mieDirectionalG: 0.65, sunElev: 11, sunAz: 220 },
+      Muspelheim: { turbidity: 16, rayleigh: 0.6, mieCoefficient: 0.055, mieDirectionalG: 0.85, sunElev: 9,  sunAz: 180 },
+      Asgard:     { turbidity: 10, rayleigh: 0.8, mieCoefficient: 0.026, mieDirectionalG: 0.75, sunElev: 16, sunAz: 220 },
     };
     const sp = SKY_PARAMS[b.name] || SKY_PARAMS.Midgard;
     this._skyTarget = sp;
