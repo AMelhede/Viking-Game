@@ -28,7 +28,7 @@
 // no inputs have been ingested). The game runs perfectly without bio.
 
 const PROFILES = {
-  flow:        { score: 2.00, mead: 0.50, color: "#fbbf24", label: "FLOW STATE — score ×2" },
+  flow:        { score: 2.00, mead: 0.50, color: "#9b8afc", label: "FLOW STATE — score ×2" },
   berserker:   { score: 1.50, mead: 0.00, color: "#dc2626", label: "BERSERKER — score ×1.5" },
   meditation:  { score: 1.00, mead: 1.50, color: "#10b981", label: "Meditation — passive mead" },
   frantic:     { score: 1.00, mead: 0.00, color: "#a78bfa", label: "Frantic — recover quickly" },
@@ -75,7 +75,7 @@ function ensureToast() {
   el.style.cssText = [
     "position:fixed", "left:50%", "top:18%", "transform:translate(-50%,-20px)",
     "z-index:9998", "pointer-events:none", "padding:14px 26px",
-    "background:rgba(13,17,23,.92)", "color:#fbbf24",
+    "background:rgba(13,17,23,.92)", "color:#9b8afc",
     "border:2px solid currentColor", "border-radius:14px",
     "font:800 18px/1.1 system-ui,sans-serif", "letter-spacing:1px",
     "box-shadow:0 16px 40px rgba(0,0,0,.55)",
@@ -120,7 +120,7 @@ function ensureHudBadge() {
   el.style.cssText = [
     "display:none", "align-items:center", "gap:6px",
     "padding:4px 10px", "border-radius:999px",
-    "background:rgba(13,17,23,.85)", "color:#fbbf24",
+    "background:rgba(13,17,23,.85)", "color:#9b8afc",
     "border:1.5px solid currentColor",
     "font:800 11px/1 system-ui,sans-serif", "letter-spacing:1px",
     "box-shadow:0 4px 14px rgba(0,0,0,.4)",
@@ -144,7 +144,7 @@ function setHudBadge(profile, state) {
   const passive = profile.mead > 0 ? `+${profile.mead}/s` : "";
   const label = state.toUpperCase();
   el.textContent = `${label} ${mult || passive}`.trim();
-  el.style.color = profile.color || "#fbbf24";
+  el.style.color = profile.color || "#9b8afc";
   el.style.display = "inline-flex";
   // Tiny pulse on change
   el.style.transform = "scale(1.1)";
@@ -158,7 +158,7 @@ function spawnFloatingBonus(text, color) {
   el.textContent = text;
   el.style.cssText = [
     "position:absolute", "pointer-events:none", "z-index:101",
-    `color:${color || "#fbbf24"}`,
+    `color:${color || "#9b8afc"}`,
     "font:800 14px/1 system-ui,sans-serif",
     "text-shadow:0 0 10px currentColor, 0 2px 6px rgba(0,0,0,.5)",
     "transition:transform 1s cubic-bezier(.2,.8,.2,1), opacity 1s ease",
@@ -185,7 +185,7 @@ export function startEffects(Bio) {
 
   Bio.on("stateChange", ({ state }) => {
     const profile = PROFILES[state] || PROFILES.neutral;
-    if (profile.label && state !== "neutral") showToast(profile.label, profile.color || "#fbbf24");
+    if (profile.label && state !== "neutral") showToast(profile.label, profile.color || "#9b8afc");
     applyTint(profile);
     setHudBadge(profile, state);
   });

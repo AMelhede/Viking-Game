@@ -19,7 +19,7 @@ const STATE_LABEL = {
 };
 
 const STATE_COLOR = {
-  flow: "#fbbf24", berserker: "#dc2626", meditation: "#10b981", frantic: "#a78bfa",
+  flow: "#9b8afc", berserker: "#dc2626", meditation: "#10b981", frantic: "#a78bfa",
   focused: "#3b82f6", aroused: "#f97316", calm: "#22d3ee", distracted: "#9ca3af",
   neutral: "#6b7280",
 };
@@ -28,10 +28,10 @@ function injectStyles() {
   if (document.getElementById(STYLE_ID)) return;
   const css = `
   #${BADGE_ID}{position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:linear-gradient(135deg,#dc2626,#fbbf24);color:#0d1117;
-    border:2px solid #fbbf24;border-radius:999px;
+    background:linear-gradient(135deg,#dc2626,#9b8afc);color:#0d1117;
+    border:2px solid #9b8afc;border-radius:999px;
     padding:12px 20px;font:800 14px/1.2 system-ui,sans-serif;
-    cursor:pointer;user-select:none;box-shadow:0 12px 32px rgba(220,38,38,.4),0 0 0 4px rgba(251,191,36,.2);
+    cursor:pointer;user-select:none;box-shadow:0 12px 32px rgba(220,38,38,.4),0 0 0 4px rgba(155,138,252,.2);
     transition:transform .15s ease;letter-spacing:.5px}
   #${BADGE_ID}:hover{transform:translateY(-2px) scale(1.04)}
   #${BADGE_ID}::before{content:"🧠";font-size:18px}
@@ -40,17 +40,17 @@ function injectStyles() {
   #${BADGE_ID} .dot.warming{background:#f59e0b;animation:bio-pulse 1s infinite}
   #${BADGE_ID} .dot.error{background:#7f1d1d}
   @keyframes bio-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.2)}}
-  @keyframes bio-attention{0%,100%{box-shadow:0 12px 32px rgba(220,38,38,.4),0 0 0 4px rgba(251,191,36,.2)}
-    50%{box-shadow:0 12px 32px rgba(220,38,38,.6),0 0 0 12px rgba(251,191,36,.3)}}
+  @keyframes bio-attention{0%,100%{box-shadow:0 12px 32px rgba(220,38,38,.4),0 0 0 4px rgba(155,138,252,.2)}
+    50%{box-shadow:0 12px 32px rgba(220,38,38,.6),0 0 0 12px rgba(155,138,252,.3)}}
   #${BADGE_ID}.attract{animation:bio-attention 2s ease-in-out 3}
 
   #${PANEL_ID}{position:fixed;right:12px;bottom:56px;z-index:9999;width:320px;max-width:calc(100vw - 24px);
-    background:rgba(13,17,23,.96);color:#e5e7eb;border:1px solid rgba(251,191,36,.4);border-radius:14px;
+    background:rgba(13,17,23,.96);color:#e5e7eb;border:1px solid rgba(155,138,252,.4);border-radius:14px;
     padding:18px;font:13px/1.4 system-ui,sans-serif;backdrop-filter:blur(8px);
     box-shadow:0 24px 60px rgba(0,0,0,.55);transform:translateY(8px);opacity:0;pointer-events:none;
     transition:opacity .18s ease,transform .18s ease}
   #${PANEL_ID}.open{opacity:1;transform:translateY(0);pointer-events:auto}
-  #${PANEL_ID} h3{margin:0 0 4px;font-size:14px;color:#fbbf24;letter-spacing:.5px}
+  #${PANEL_ID} h3{margin:0 0 4px;font-size:14px;color:#9b8afc;letter-spacing:.5px}
   #${PANEL_ID} .sub{color:#9ca3af;font-size:11px;margin-bottom:14px}
   #${PANEL_ID} .row{display:flex;align-items:center;justify-content:space-between;margin:10px 0}
   #${PANEL_ID} .row .label{font-weight:600}
@@ -64,7 +64,7 @@ function injectStyles() {
   #${PANEL_ID} .toggle.on::after{transform:translateX(16px)}
   #${PANEL_ID} .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
   #${PANEL_ID} .metric{background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px}
-  #${PANEL_ID} .metric .v{font-size:18px;font-weight:700;color:#fbbf24}
+  #${PANEL_ID} .metric .v{font-size:18px;font-weight:700;color:#9b8afc}
   #${PANEL_ID} .metric .k{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px}
   #${PANEL_ID} .state{margin-top:14px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);
     text-align:center;font-weight:700;letter-spacing:.5px;font-size:14px}
@@ -140,7 +140,7 @@ export function mountUi(Bio) {
         <div id="bio-tier-streak" style="font-size:11px;color:#9ca3af">— day streak</div>
       </div>
       <div style="margin-top:8px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden">
-        <div id="bio-tier-fill" style="height:100%;background:#fbbf24;width:0%;transition:width .6s ease"></div>
+        <div id="bio-tier-fill" style="height:100%;background:#9b8afc;width:0%;transition:width .6s ease"></div>
       </div>
       <div id="bio-tier-next" style="font-size:10px;color:#9ca3af;margin-top:4px">—</div>
     </div>
@@ -167,8 +167,8 @@ export function mountUi(Bio) {
   if (!caps.rppg && !caps.eeg) {
     const note = document.createElement("div");
     note.style.cssText = `position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:99998;
-      max-width:520px;padding:10px 16px;background:rgba(13,17,23,.92);color:#fbbf24;
-      border:1px solid rgba(251,191,36,.35);border-radius:10px;font:600 12px/1.4 system-ui,sans-serif;
+      max-width:520px;padding:10px 16px;background:rgba(13,17,23,.92);color:#9b8afc;
+      border:1px solid rgba(155,138,252,.35);border-radius:10px;font:600 12px/1.4 system-ui,sans-serif;
       box-shadow:0 8px 24px rgba(0,0,0,.4);text-align:center;cursor:pointer`;
     note.textContent = "Biosignals work in Chrome / Edge desktop. The game still plays great here — open this in Chrome to unlock bio.";
     note.title = "Click to dismiss";

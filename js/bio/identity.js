@@ -30,7 +30,7 @@ const TIERS = [
     test: (h) => totalMinutesIn(h, "berserkerSeconds") >= 30,
   },
   {
-    id: "jarl", name: "Jarl", color: "#fbbf24",
+    id: "jarl", name: "Jarl", color: "#9b8afc",
     blurb: "Sharp mind, calm body. You command the field as easily as your breath.",
     test: (h) => totalMinutesIn(h, "flowSeconds") >= 60,
   },

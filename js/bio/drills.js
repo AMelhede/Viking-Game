@@ -72,7 +72,7 @@ function injectStyles() {
   .bio-drills-list{display:grid;gap:8px;margin-top:12px}
   .bio-drill-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
     background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:transform .12s}
-  .bio-drill-card:hover{transform:translateY(-1px);border-color:rgba(251,191,36,.4)}
+  .bio-drill-card:hover{transform:translateY(-1px);border-color:rgba(155,138,252,.4)}
   .bio-drill-card.locked{opacity:.5;cursor:not-allowed}
   .bio-drill-card.done{border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.08)}
   .bio-drill-card .name{font-weight:700;font-size:13px}
@@ -86,7 +86,7 @@ function injectStyles() {
     transition:opacity .25s ease;font:14px/1.4 system-ui,sans-serif;color:#e5e7eb}
   .bio-drill-overlay.show{opacity:1;pointer-events:auto}
   .bio-drill-overlay .stage{width:min(560px,calc(100vw - 32px));text-align:center;padding:32px}
-  .bio-drill-overlay h2{margin:0;font-size:22px;color:#fbbf24}
+  .bio-drill-overlay h2{margin:0;font-size:22px;color:#9b8afc}
   .bio-drill-overlay .timer{margin-top:8px;font-size:12px;color:#9ca3af}
   .bio-drill-overlay .pacer{width:200px;height:200px;margin:30px auto;border-radius:50%;
     background:radial-gradient(circle, rgba(34,211,238,.25), rgba(34,211,238,0));
@@ -96,8 +96,8 @@ function injectStyles() {
   .bio-drill-overlay .instruct{font-size:16px;color:#cbd5e1;margin:16px 0 8px;min-height:1.4em}
   .bio-drill-overlay .live{font-size:11px;color:#9ca3af;margin-top:18px}
   .bio-drill-overlay .results{margin-top:20px;padding:16px;border-radius:12px;background:rgba(255,255,255,.04);
-    border:1px solid rgba(251,191,36,.3)}
-  .bio-drill-overlay button{margin-top:18px;background:#fbbf24;color:#111;border:0;padding:10px 22px;
+    border:1px solid rgba(155,138,252,.3)}
+  .bio-drill-overlay button{margin-top:18px;background:#9b8afc;color:#111;border:0;padding:10px 22px;
     border-radius:10px;font-weight:700;cursor:pointer}
   .bio-drill-overlay button.ghost{background:transparent;color:#9ca3af;border:1px solid rgba(255,255,255,.15)}
   `;
@@ -256,7 +256,7 @@ function odinsEye(samples) {
 DRILLS[2].start = ({ visual }) => {
   visual.innerHTML = `<div style="position:relative;width:200px;height:200px;margin:30px auto">
     <div id="bcalm-storm" style="position:absolute;inset:0;border-radius:50%;
-      background:conic-gradient(#dc2626,#fbbf24,#3b82f6,#dc2626);animation:bcalm-spin 4s linear infinite"></div>
+      background:conic-gradient(#dc2626,#9b8afc,#3b82f6,#dc2626);animation:bcalm-spin 4s linear infinite"></div>
     <div id="bcalm-eye" style="position:absolute;inset:30%;border-radius:50%;background:#0d1117;
       display:flex;align-items:center;justify-content:center;font-size:32px;color:#22d3ee">☉</div>
   </div>

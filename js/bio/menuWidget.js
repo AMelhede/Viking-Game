@@ -62,11 +62,11 @@ function renderSparkline(days) {
   });
   return `
     <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-      <polyline fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round"
+      <polyline fill="none" stroke="#9b8afc" stroke-width="2" stroke-linejoin="round"
         points="${pts.join(" ")}" />
       ${pts.map(p => {
         const [x, y] = p.split(",");
-        return `<circle cx="${x}" cy="${y}" r="2" fill="#fbbf24"/>`;
+        return `<circle cx="${x}" cy="${y}" r="2" fill="#9b8afc"/>`;
       }).join("")}
     </svg>`;
 }
@@ -119,7 +119,7 @@ export function mountMenuWidget(Bio) {
             This week — flow minutes
           </div>
           ${sparkOrHint}
-          <div style="margin-top:6px;font:700 12px/1 system-ui,sans-serif;color:#fbbf24">
+          <div style="margin-top:6px;font:700 12px/1 system-ui,sans-serif;color:#9b8afc">
             ${totalFlowMin.toFixed(1)} min · today ${todayMin.toFixed(1)}
           </div>
         </div>

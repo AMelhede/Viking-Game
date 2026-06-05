@@ -6455,7 +6455,7 @@ class Valhalla {
         "position:fixed;top:160px;left:50%;transform:translateX(-50%);" +
         "background:rgba(10,13,18,.92);color:#fff;font:600 13px/1.3 system-ui,sans-serif;" +
         "padding:9px 16px;border-radius:999px;z-index:34;pointer-events:none;" +
-        "border:1px solid rgba(251,191,36,.45);box-shadow:0 6px 20px rgba(0,0,0,.4);" +
+        "border:1px solid rgba(155,138,252,.45);box-shadow:0 6px 20px rgba(0,0,0,.4);" +
         "opacity:0;transition:opacity .25s ease,transform .25s ease;";
       if (document.body) document.body.appendChild(host);
       this._bioToast = host;
@@ -8085,10 +8085,10 @@ class Valhalla {
           const b = all.find(x => x.id === id);
           if (!b) return "";
           const col = TIER_COLOUR[b.tier] || "#9b8afc";
-          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(155,138,252,.08);border:1px solid ${col}55;border-radius:6px">`
-               + `<span style="font-size:18px">${b.icon}</span>`
-               + `<div><div style="font-size:11px;font-weight:700;color:${col};letter-spacing:.04em;text-transform:uppercase">${b.tier} · ${b.label}</div>`
-               + `<div style="font-size:9.5px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em">${b.group}</div></div>`
+          return `<div style="display:flex;align-items:center;gap:11px;padding:11px 14px;background:rgba(155,138,252,.07);border:1px solid ${col}44;border-radius:12px">`
+               + `<span style="font-size:20px">${b.icon}</span>`
+               + `<div><div style="font:600 14px/1.2 -apple-system,'Segoe UI',sans-serif;color:#fff">${b.label}</div>`
+               + `<div style="font:400 12px/1.3 -apple-system,'Segoe UI',sans-serif;color:${col};margin-top:2px">${b.tier} · ${b.group}</div></div>`
                + `</div>`;
         }).join("")
       : "";
@@ -8096,31 +8096,32 @@ class Valhalla {
     // ----- Final HTML ----------------------------------------------------
     // Hierarchy: TODAY (the most personal info) → CHART (progression)
     // → NEW HONOURS this run (the dopamine hit) → details collapsed.
+    const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    const lbl = (t) => `<div style="font:600 12px/1 ${SANS};letter-spacing:.01em;color:rgba(255,255,255,.45);margin-bottom:10px">${t}</div>`;
     host.innerHTML =
-        // Today + streak
-        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">`
-      + `<div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Today</div>`
-      + `<div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">🔥 ${s.streak || 0}-day streak</div>`
+        // Today summary — one calm line + a subtle streak pill
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 20px">`
+      + `<div style="font:500 14px/1.4 ${SANS};color:rgba(255,255,255,.85)">`
+      +   (todayBits.length ? todayBits.join(" · ") : "Your first run today")
       + `</div>`
-      + `<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:16px;line-height:1.5">`
-      + (todayBits.length ? todayBits.join(" · ") : "Your first run today!")
+      + `<div style="font:600 12px/1 ${SANS};color:#b3a6ff;background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.3);padding:5px 10px;border-radius:999px;white-space:nowrap">${s.streak || 0}-day streak</div>`
       + `</div>`
       // 7-day chart
-      + `<div style="margin-bottom:6px;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Last 7 days</div>`
-      + `<div style="display:flex;align-items:flex-end;gap:4px;height:42px;margin-bottom:4px">${chartHtml}</div>`
-      + `<div style="font-size:10.5px;color:rgba(255,255,255,.5);margin-bottom:18px;letter-spacing:.02em">${weekHint}</div>`
+      + lbl("This week")
+      + `<div style="display:flex;align-items:flex-end;gap:6px;height:46px;margin-bottom:8px">${chartHtml}</div>`
+      + `<div style="font:400 12px/1.4 ${SANS};color:rgba(255,255,255,.45);margin-bottom:24px">${weekHint}</div>`
       // Newly unlocked
       + (newlyHtml
-          ? `<div style="margin-bottom:6px;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">✦ New Honours</div>`
-            + `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">${newlyHtml}</div>`
+          ? lbl("New badges")
+            + `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">${newlyHtml}</div>`
           : "")
       // Leaderboard
-      + `<details style="margin-bottom:10px"><summary style="cursor:pointer;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Skalds' Roll · top ${board.length}</summary>`
-      + `<div style="margin-top:8px">${rows || '<div style="opacity:.6;font-size:12px">No runs yet</div>'}</div>`
+      + `<details style="margin-bottom:12px"><summary style="cursor:pointer;font:600 13px/1 ${SANS};color:rgba(255,255,255,.7);padding:8px 0;list-style:none;outline:none">Top runs <span style="color:rgba(255,255,255,.35);font-weight:500">· ${board.length}</span></summary>`
+      + `<div style="margin-top:10px">${rows || '<div style="opacity:.6;font-size:13px">No runs yet</div>'}</div>`
       + `</details>`
       // All badges collapsed
-      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Honours · ${earned.size} / ${all.length} unlocked</summary>`
-      + `<div style="margin-top:10px">${groupHtml}</div>`
+      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 13px/1 ${SANS};color:rgba(255,255,255,.7);padding:8px 0;list-style:none;outline:none">Badges <span style="color:rgba(255,255,255,.35);font-weight:500">· ${earned.size} of ${all.length}</span></summary>`
+      + `<div style="margin-top:12px">${groupHtml}</div>`
       + `</details>`;
     // Update the "before-run" badge snapshot for the NEXT _gameOver call.
     this._badgeIdsBeforeRun = Array.from(earned);
@@ -8354,8 +8355,8 @@ class Valhalla {
     if (s.durationBonusApplied) items.push(["Gifts Extended",   s.durationBonusApplied + "×", "#6d5efc"]);
     rows.innerHTML = items.map(([k, v, c]) =>
       '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif">'
-      + '<span style="font-size:11.5px;color:rgba(232,219,196,.55);text-transform:uppercase;letter-spacing:.10em">' + k + '</span>'
-      + '<span style="font:700 16px/1 \'Cinzel\',serif;color:' + c + ';font-variant-numeric:tabular-nums">' + v + '</span>'
+      + '<span style="font-size:12px;color:rgba(255,255,255,.5)">' + k + '</span>'
+      + '<span style="font:700 16px/1 -apple-system,\'Segoe UI\',sans-serif;color:' + c + ';font-variant-numeric:tabular-nums">' + v + '</span>'
       + '</div>'
     ).join("");
     host.style.display = "block";

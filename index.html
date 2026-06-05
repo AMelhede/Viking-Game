@@ -1021,14 +1021,13 @@
       width:100%;max-width:480px;
       padding:32px 28px;text-align:center;
       /* Solid panel inside the opaque backdrop. */
-      background:rgba(18,13,8,1);border:1px solid rgba(139,124,246,.4);
-      border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.85);
+      background:rgba(18,16,24,1);border:1px solid rgba(255,255,255,.1);
+      border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.85);
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
     }
     .over h2{
-      font:600 40px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase;
-      color:#6d5efc;margin:0 0 18px;
-      text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 36px rgba(139,124,246,.15);
+      font:700 34px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:-.01em;
+      color:#f5f5f7;margin:0 0 22px;
     }
     .over .ribbon{
       display:inline-block;margin:0 0 28px;padding:6px 14px;
@@ -1045,12 +1044,12 @@
       border-left:1px solid rgba(139,124,246,.10)}
     .over .stats .item:first-child{border-left:none}
     .over .stats .item .k{
-      font:700 28px/1 inherit;color:#6d5efc;letter-spacing:-.02em;
+      font:700 30px/1 inherit;color:#f5f5f7;letter-spacing:-.02em;
       font-variant-numeric:tabular-nums;
     }
     .over .stats .item .v{
-      font:500 11px/1 inherit;color:rgba(232,219,196,.55);
-      text-transform:uppercase;letter-spacing:.14em;margin-top:6px;
+      font:500 11px/1 inherit;color:rgba(255,255,255,.45);
+      text-transform:uppercase;letter-spacing:.08em;margin-top:7px;
     }
     .over .actions{display:flex;flex-direction:column;gap:8px}
     .over .play{
@@ -1793,7 +1792,7 @@
        even if cached HTML somehow loads, the JS is always fresh. -->
   <script>
     (function loadGame(){
-      var BUILD = "2026-06-04 r7-polish";
+      var BUILD = "2026-06-04 r8-gameover";
       console.log("[Valhalla] BUILD " + BUILD);
       var tag = document.getElementById("buildTag");
       if (tag) tag.textContent = "build " + BUILD;

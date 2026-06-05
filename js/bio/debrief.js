@@ -18,22 +18,22 @@ function injectStyles() {
     transition:opacity .25s ease;font:14px/1.4 system-ui,sans-serif;color:#e5e7eb}
   #${OVERLAY_ID}.show{opacity:1;pointer-events:auto}
   #${OVERLAY_ID} .card{width:min(560px,calc(100vw - 32px));background:#0d1117;
-    border:2px solid rgba(251,191,36,.5);border-radius:18px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
-  #${OVERLAY_ID} h2{margin:0 0 4px;color:#fbbf24;font-size:20px;letter-spacing:.5px}
+    border:2px solid rgba(155,138,252,.5);border-radius:18px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+  #${OVERLAY_ID} h2{margin:0 0 4px;color:#9b8afc;font-size:20px;letter-spacing:.5px}
   #${OVERLAY_ID} .sub{color:#9ca3af;font-size:12px;margin-bottom:18px}
   #${OVERLAY_ID} .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
   #${OVERLAY_ID} .stat{background:rgba(255,255,255,.04);border-radius:10px;padding:12px}
-  #${OVERLAY_ID} .stat .v{font-size:22px;font-weight:800;color:#fbbf24}
+  #${OVERLAY_ID} .stat .v{font-size:22px;font-weight:800;color:#9b8afc}
   #${OVERLAY_ID} .stat .k{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px}
   #${OVERLAY_ID} .tier{margin-top:14px;padding:12px;border-radius:12px;
-    background:linear-gradient(135deg,rgba(251,191,36,.08),rgba(251,191,36,.02));border:1px solid rgba(251,191,36,.3)}
+    background:linear-gradient(135deg,rgba(155,138,252,.08),rgba(155,138,252,.02));border:1px solid rgba(155,138,252,.3)}
   #${OVERLAY_ID} .tier .name{font-weight:800;font-size:18px;letter-spacing:.5px}
   #${OVERLAY_ID} .tier .blurb{font-size:12px;color:#cbd5e1;margin-top:4px}
   #${OVERLAY_ID} .progress{margin-top:10px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
-  #${OVERLAY_ID} .progress .fill{height:100%;background:#fbbf24;transition:width .6s ease}
+  #${OVERLAY_ID} .progress .fill{height:100%;background:#9b8afc;transition:width .6s ease}
   #${OVERLAY_ID} .next{font-size:11px;color:#9ca3af;margin-top:6px}
   #${OVERLAY_ID} .actions{display:flex;justify-content:flex-end;margin-top:18px;gap:10px}
-  #${OVERLAY_ID} button{background:#fbbf24;color:#111;border:0;padding:10px 18px;border-radius:10px;
+  #${OVERLAY_ID} button{background:#9b8afc;color:#111;border:0;padding:10px 18px;border-radius:10px;
     font-weight:700;cursor:pointer;font-size:13px}
   #${OVERLAY_ID} button.ghost{background:transparent;color:#9ca3af;border:1px solid rgba(255,255,255,.15)}
   #${OVERLAY_ID} .insight{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(34,211,238,.08);
@@ -202,7 +202,7 @@ async function shareRun(Bio, health, run, tier, metrics) {
   cx.font = "500 22px system-ui, -apple-system, sans-serif";
   cx.textAlign = "center";
   cx.fillText("Trained with EEG + heart rate via the Elata SDK", W / 2, H - 110);
-  cx.fillStyle = "#fbbf24";
+  cx.fillStyle = "#9b8afc";
   cx.font = "800 26px system-ui, -apple-system, sans-serif";
   cx.fillText(new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), W / 2, H - 70);
 
