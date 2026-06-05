@@ -122,7 +122,9 @@
     }
     .letterbox.top{top:0;border-bottom:1px solid rgba(0,0,0,1)}
     .letterbox.bot{bottom:0;border-top:1px solid rgba(0,0,0,1)}
-    body.playing .letterbox{height:7vh}
+    /* Letterbox bars REMOVED — they cropped the world and made the view
+       feel cramped/cropped rather than immersive. Full-screen world now. */
+    body.playing .letterbox{height:0}
 
     .vignette-cine{
       position:fixed;inset:0;pointer-events:none;z-index:29;
@@ -421,12 +423,10 @@
       position:fixed;inset:0;z-index:50;
       display:flex;flex-direction:column;justify-content:center;align-items:center;
       padding:env(safe-area-inset-top,32px) 24px env(safe-area-inset-bottom,24px);
-      /* Now that the world is properly lit (exposure fix), let it show
-         THROUGH the menu instead of a near-black void — this is the
-         "Viking world" front-and-centre. A centre-darkened radial keeps
-         the title/stats readable while the lit longhouses + fjord show at
-         the edges. */
-      background:radial-gradient(ellipse 80% 70% at 50% 45%, rgba(10,10,16,.86) 0%, rgba(10,10,16,.72) 45%, rgba(10,10,16,.50) 100%);
+      /* Clean dark premium backdrop. (Showing the raw 3D world through the
+         menu exposed unfinished geometry and looked worse — once the world
+         art is polished this can open back up.) Subtle vignette for depth. */
+      background:radial-gradient(ellipse 90% 80% at 50% 40%, rgba(16,15,24,.97) 0%, rgba(10,9,16,.985) 55%, rgba(6,6,11,1) 100%);
       transition:opacity .55s cubic-bezier(.4,0,.2,1);
     }
     .start.hide{opacity:0;pointer-events:none}
@@ -1793,7 +1793,7 @@
        even if cached HTML somehow loads, the JS is always fresh. -->
   <script>
     (function loadGame(){
-      var BUILD = "2026-06-04 r6-sky";
+      var BUILD = "2026-06-04 r7-polish";
       console.log("[Valhalla] BUILD " + BUILD);
       var tag = document.getElementById("buildTag");
       if (tag) tag.textContent = "build " + BUILD;

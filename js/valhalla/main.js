@@ -4526,7 +4526,7 @@ class Valhalla {
         // Cinzel inscription, no card, just text. Centred top.
         "position:fixed;top:calc(env(safe-area-inset-top,18px) + 4px);left:50%;" +
         "transform:translateX(-50%);z-index:11;pointer-events:none;" +
-        "font:600 11px/1 'Cinzel',serif;letter-spacing:.32em;" +
+        "font:600 11px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.32em;" +
         "text-transform:uppercase;text-shadow:0 2px 14px rgba(0,0,0,.9);" +
         "transition:opacity .4s ease,color .5s ease";
       if (document.body) document.body.appendChild(el);
@@ -4547,7 +4547,7 @@ class Valhalla {
       el = document.createElement("div");
       el.style.cssText =
         "position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);" +
-        "font:800 38px/1 'Cinzel',serif;color:#fff;letter-spacing:.08em;" +
+        "font:800 38px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;letter-spacing:.08em;" +
         "text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.8),0 0 18px rgba(255,255,255,.4);" +
         "pointer-events:none;z-index:36;opacity:0;transition:opacity .6s ease,transform .6s ease;" +
         "text-align:center;line-height:1.2";
@@ -4576,7 +4576,7 @@ class Valhalla {
       el = document.createElement("div");
       el.style.cssText =
         "position:fixed;bottom:25%;left:50%;transform:translate(-50%,0);" +
-        "font:italic 600 19px/1.4 'Cinzel',serif;color:#9b8afc;" +
+        "font:italic 600 19px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;" +
         "letter-spacing:.04em;text-align:center;max-width:min(700px,80vw);" +
         "text-shadow:0 4px 24px rgba(0,0,0,.95),0 0 14px rgba(155,138,252,.25);" +
         "pointer-events:none;z-index:35;opacity:0;transition:opacity 1.2s ease,transform 1s ease";
@@ -5004,7 +5004,7 @@ class Valhalla {
     // Random horizontal position across the bar so back-to-back floats
     // don't overlap. Anchored above the bar (-22px) and animates up.
     const xPct = 20 + Math.random() * 60;
-    el.style.cssText = `position:absolute;left:${xPct}%;top:-22px;transform:translate(-50%,0);font:700 16px/1 'Cinzel',serif;color:${colour};text-shadow:0 2px 8px rgba(0,0,0,.85),0 0 12px ${colour}80;pointer-events:none;white-space:nowrap;animation:bossDmgFloat .7s ease-out forwards`;
+    el.style.cssText = `position:absolute;left:${xPct}%;top:-22px;transform:translate(-50%,0);font:700 16px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:${colour};text-shadow:0 2px 8px rgba(0,0,0,.85),0 0 12px ${colour}80;pointer-events:none;white-space:nowrap;animation:bossDmgFloat .7s ease-out forwards`;
     layer.appendChild(el);
     setTimeout(() => { try { el.remove(); } catch {} }, 750);
   }
@@ -5377,7 +5377,7 @@ class Valhalla {
       html += `<div style="position:absolute;left:${sx | 0}px;top:${sy | 0}px;`
             + `transform:translate(-50%,-100%);`
             + `background:${it.bg};color:${it.color};`
-            + `font:700 ${fontSize}px/1 'Cinzel',serif;`
+            + `font:700 ${fontSize}px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;`
             + `padding:4px 9px;border-radius:6px;`
             + `border:1px solid ${it.color}80;`
             + `text-shadow:0 0 6px ${it.color}80;`
@@ -5571,8 +5571,8 @@ class Valhalla {
         "z-index:55;pointer-events:none;text-align:center;" +
         "opacity:0;transition:opacity .35s ease,transform .35s ease;" +
         "text-shadow:0 4px 36px rgba(0,0,0,.85),0 0 60px currentColor;";
-      el.innerHTML = `<div class="pn" style="font:700 64px/1 'Cinzel',serif;letter-spacing:.10em;text-transform:uppercase;margin-bottom:18px"></div>
-                      <div class="ps" style="font:500 14px/1.4 'Cinzel',serif;letter-spacing:.20em;text-transform:uppercase;opacity:.85"></div>`;
+      el.innerHTML = `<div class="pn" style="font:700 64px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.10em;text-transform:uppercase;margin-bottom:18px"></div>
+                      <div class="ps" style="font:500 14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.20em;text-transform:uppercase;opacity:.85"></div>`;
       if (document.body) document.body.appendChild(el);
       this._pickupEl = el;
     }
@@ -6620,7 +6620,7 @@ class Valhalla {
       }
     }
     if (cycles > 0) {
-      html += `<div style="margin-left:10px;padding:4px 9px;background:rgba(155,138,252,.18);border:1px solid rgba(155,138,252,.45);border-radius:12px;font:700 10px/1 'Cinzel',serif;color:#9b8afc;letter-spacing:.08em;flex:0 0 auto">${cycles}× SAGA</div>`;
+      html += `<div style="margin-left:10px;padding:4px 9px;background:rgba(155,138,252,.18);border:1px solid rgba(155,138,252,.45);border-radius:12px;font:700 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#9b8afc;letter-spacing:.08em;flex:0 0 auto">${cycles}× SAGA</div>`;
     }
     host.innerHTML = html;
   }
@@ -6778,7 +6778,7 @@ class Valhalla {
       el = document.createElement("div");
       el.id = "sagaLine";
       el.style.cssText =
-        "margin:8px auto 0;max-width:520px;font:italic 600 13.5px/1.4 'Cinzel',serif;" +
+        "margin:8px auto 0;max-width:520px;font:italic 600 13.5px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" +
         "color:rgba(155,138,252,.85);letter-spacing:.04em;text-align:center;" +
         "text-shadow:0 2px 12px rgba(0,0,0,.7)";
       tag.insertAdjacentElement("afterend", el);
@@ -6990,23 +6990,23 @@ class Valhalla {
         `<div style="font-size:11.5px;color:rgba(255,255,255,.7);margin-bottom:10px;letter-spacing:.02em">${summary}</div>`
       // BIO row: calm above the line, stress below the line
       + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
-      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(122,217,255,.7);text-transform:uppercase">Steady time</div>`
+      +   `<div style="font:600 9.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.18em;color:rgba(122,217,255,.7);text-transform:uppercase">Steady time</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">${Math.round(totalCalm)}s · 30 days</div>`
       + `</div>`
       + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:6px;border-bottom:1px solid rgba(139,124,246,.18);padding-bottom:2px">${calmBars}</div>`
       + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
-      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(200,64,48,.75);text-transform:uppercase">Storm time</div>`
+      +   `<div style="font:600 9.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.18em;color:rgba(200,64,48,.75);text-transform:uppercase">Storm time</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">${Math.round(totalStorm)}s · what you want to shrink</div>`
       + `</div>`
       + `<div style="display:flex;align-items:flex-end;gap:2px;height:24px;margin-bottom:14px">${stormBars}</div>`
       // SCORE row
       + `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">`
-      +   `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(155,138,252,.75);text-transform:uppercase">Best score / day</div>`
+      +   `<div style="font:600 9.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.18em;color:rgba(155,138,252,.75);text-transform:uppercase">Best score / day</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.5)">peak ${bestRun.toLocaleString()}</div>`
       + `</div>`
       + `<div style="display:flex;align-items:flex-end;gap:2px;height:36px;margin-bottom:14px">${scoreBars}</div>`
       // DOW heatmap
-      + `<div style="font:600 9.5px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(139,124,246,.7);text-transform:uppercase;margin-bottom:4px">Strongest day of the week</div>`
+      + `<div style="font:600 9.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.18em;color:rgba(139,124,246,.7);text-transform:uppercase;margin-bottom:4px">Strongest day of the week</div>`
       + `<div style="display:flex;gap:4px;margin-bottom:6px">${dowHtml}</div>`;
   }
 
@@ -7547,31 +7547,31 @@ class Valhalla {
 
     // Title
     ctx.fillStyle = "#9b8afc";
-    ctx.font = "italic 600 36px 'Cinzel', serif";
+    ctx.font = "italic 600 36px -apple-system, 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("VALHALLA · SKALD'S RUN", W/2, 130);
 
     // Skald name
     ctx.fillStyle = "rgba(155,138,252,0.8)";
-    ctx.font = "italic 300 30px 'Cinzel', serif";
+    ctx.font = "italic 300 30px -apple-system, 'Segoe UI', sans-serif";
     ctx.fillText(`.  ${Store.getSkaldName()} . `, W/2, 190);
 
     // Big score
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 180px 'Cinzel', serif";
+    ctx.font = "bold 180px -apple-system, 'Segoe UI', sans-serif";
     ctx.fillText(Math.floor(this.score).toLocaleString(), W/2, 410);
 
     ctx.fillStyle = "rgba(139,124,246,0.65)";
-    ctx.font = "600 22px 'Cinzel', serif";
+    ctx.font = "600 22px -apple-system, 'Segoe UI', sans-serif";
     ctx.fillText("SCORE", W/2, 450);
 
     // Three stats row
     const statRow = (x, label, val, colour) => {
       ctx.fillStyle = colour || "#fff";
-      ctx.font = "bold 64px 'Cinzel', serif";
+      ctx.font = "bold 64px -apple-system, 'Segoe UI', sans-serif";
       ctx.fillText(val, x, 600);
       ctx.fillStyle = "rgba(139,124,246,0.55)";
-      ctx.font = "600 18px 'Cinzel', serif";
+      ctx.font = "600 18px -apple-system, 'Segoe UI', sans-serif";
       ctx.fillText(label, x, 640);
     };
     statRow(W * 0.20, "DISTANCE", `${Math.round(this.distance)}m`);
@@ -7581,14 +7581,14 @@ class Valhalla {
     // Bio summary row (only if had bio data)
     if (bs.flowSec > 0.5 || bs.calmSec > 0.5 || bs.focusedSec > 0.5) {
       ctx.fillStyle = "rgba(139,124,246,0.55)";
-      ctx.font = "600 18px 'Cinzel', serif";
+      ctx.font = "600 18px -apple-system, 'Segoe UI', sans-serif";
       ctx.fillText("· BODY ·", W/2, 740);
       const bioRow = (x, label, val, colour) => {
         ctx.fillStyle = colour;
-        ctx.font = "bold 42px 'Cinzel', serif";
+        ctx.font = "bold 42px -apple-system, 'Segoe UI', sans-serif";
         ctx.fillText(val, x, 810);
         ctx.fillStyle = "rgba(255,255,255,0.55)";
-        ctx.font = "600 16px 'Cinzel', serif";
+        ctx.font = "600 16px -apple-system, 'Segoe UI', sans-serif";
         ctx.fillText(label, x, 840);
       };
       if (bs.flowSec    > 0.5) bioRow(W * 0.22, "FLOW",    `${Math.round(bs.flowSec)}s`,    "#7ad9ff");
@@ -7598,7 +7598,7 @@ class Valhalla {
 
     // Streak + saga footer
     ctx.fillStyle = "rgba(155,138,252,0.8)";
-    ctx.font = "italic 600 26px 'Cinzel', serif";
+    ctx.font = "italic 600 26px -apple-system, 'Segoe UI', sans-serif";
     const fLine = [];
     if ((s.streak || 0) > 0)      fLine.push(`🔥 ${s.streak}-day streak`);
     if ((s.totalCycles || 0) > 0) fLine.push(`${s.totalCycles} saga${s.totalCycles > 1 ? "s" : ""} walked`);
@@ -7606,7 +7606,7 @@ class Valhalla {
 
     // Bottom-right URL
     ctx.fillStyle = "rgba(255,255,255,0.35)";
-    ctx.font = "600 18px 'Cinzel', serif";
+    ctx.font = "600 18px -apple-system, 'Segoe UI', sans-serif";
     ctx.textAlign = "right";
     ctx.fillText("valhalla · brain app store", W - 60, 1020);
 
@@ -8069,7 +8069,7 @@ class Valhalla {
       }
       return `<div style="margin-bottom:10px">`
         + `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">`
-        + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.18em;color:rgba(139,124,246,.78);text-transform:uppercase">${gname}</div>`
+        + `<div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.18em;color:rgba(139,124,246,.78);text-transform:uppercase">${gname}</div>`
         + `<div style="display:flex;gap:4px">${tierIcons}</div>`
         + `</div>`
         + progressBar
@@ -8099,27 +8099,27 @@ class Valhalla {
     host.innerHTML =
         // Today + streak
         `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">`
-      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Today</div>`
-      + `<div style="font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">🔥 ${s.streak || 0}-day streak</div>`
+      + `<div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Today</div>`
+      + `<div style="font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">🔥 ${s.streak || 0}-day streak</div>`
       + `</div>`
       + `<div style="font-size:13px;color:rgba(255,255,255,.85);margin-bottom:16px;line-height:1.5">`
       + (todayBits.length ? todayBits.join(" · ") : "Your first run today!")
       + `</div>`
       // 7-day chart
-      + `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Last 7 days</div>`
+      + `<div style="margin-bottom:6px;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72)">Last 7 days</div>`
       + `<div style="display:flex;align-items:flex-end;gap:4px;height:42px;margin-bottom:4px">${chartHtml}</div>`
       + `<div style="font-size:10.5px;color:rgba(255,255,255,.5);margin-bottom:18px;letter-spacing:.02em">${weekHint}</div>`
       // Newly unlocked
       + (newlyHtml
-          ? `<div style="margin-bottom:6px;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">✦ New Honours</div>`
+          ? `<div style="margin-bottom:6px;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#9b8afc">✦ New Honours</div>`
             + `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px">${newlyHtml}</div>`
           : "")
       // Leaderboard
-      + `<details style="margin-bottom:10px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Skalds' Roll · top ${board.length}</summary>`
+      + `<details style="margin-bottom:10px"><summary style="cursor:pointer;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Skalds' Roll · top ${board.length}</summary>`
       + `<div style="margin-top:8px">${rows || '<div style="opacity:.6;font-size:12px">No runs yet</div>'}</div>`
       + `</details>`
       // All badges collapsed
-      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 10px/1 'Cinzel',serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Honours · ${earned.size} / ${all.length} unlocked</summary>`
+      + `<details style="margin-bottom:6px"><summary style="cursor:pointer;font:600 10px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.22em;text-transform:uppercase;color:rgba(139,124,246,.72);padding:6px 0;list-style:none;outline:none">▸ Honours · ${earned.size} / ${all.length} unlocked</summary>`
       + `<div style="margin-top:10px">${groupHtml}</div>`
       + `</details>`;
     // Update the "before-run" badge snapshot for the NEXT _gameOver call.
@@ -8244,7 +8244,12 @@ class Valhalla {
     // startWind/startFireAmbience wait on the decode and wire in the real
     // loops the moment they're ready (a fraction of a second after RUN).
     this.audio.loadSamples();
-    this.audio.startWind();
+    // WIND BED DISABLED. After removing the synth music and the reverb the
+    // user STILL heard a "squeezing" — the only remaining constant sound is
+    // the looping wind bed (its loop seam, or the procedural fallback, reads
+    // as that squeeze). Cut it. Fire (near pits) + footsteps + event sounds
+    // remain as the real ambience, with no constant droning loop.
+    // this.audio.startWind();
     this.audio.startFireAmbience();
     // Procedural synth music DISABLED — that was the "squeezing/squelch"
     // the user kept hearing. The real recorded wind + fire ambience is
