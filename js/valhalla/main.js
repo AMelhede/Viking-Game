@@ -2058,34 +2058,47 @@ class Valhalla {
     // Compared to the previous 4-stop gradient sphere, this is night
     // and day for realism.
     const sky = new Sky();
-    // Three.js examples use 450000; we use 8000 to stay well inside the
-    // camera far clip (50000) and avoid floating-point issues at depth.
     sky.scale.setScalar(8000);
-    const u = sky.material.uniforms;
-    // OVERCAST CINEMATIC Viking sky. Heavy turbidity (sea mist), low
-    // Rayleigh (no deep blue zenith), high Mie (diffuse cloudy
-    // horizon). The previous "golden hour" settings + bloom made the
-    // sky bright white. References: The Northman, Vikings TV, The
-    // 13th Warrior. all overcast, low contrast, oppressive weather.
-    // That's the Nordic look the user actually wants.
-    u["turbidity"].value        = 10.0;
-    u["rayleigh"].value         = 0.5;
-    u["mieCoefficient"].value   = 0.025;
-    u["mieDirectionalG"].value  = 0.7;
+    // STYLIZED GRADIENT SKY. The Hosek-Wilkie physical sky kept rendering
+    // a muddy brown/orange band ("weird background"). Replace its material
+    // with a clean vertical 3-stop gradient (zenith -> mid -> horizon).
+    // Dirt cheap, renders identically on phone + desktop, and is the look
+    // behind every beautiful stylized runner (Alto's Odyssey etc.).
+    const gradMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: {
+        topColor: { value: new THREE.Color(0x3f72ab) },
+        midColor: { value: new THREE.Color(0xa9c8de) },
+        botColor: { value: new THREE.Color(0xd8e4ea) },
+        offset:   { value: 18.0 },
+      },
+      vertexShader:
+        "varying vec3 vP; void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vP = wp.xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+      fragmentShader:
+        "uniform vec3 topColor,midColor,botColor; uniform float offset; varying vec3 vP;" +
+        "void main(){ float h = normalize(vP + vec3(0.0,offset,0.0)).y;" +
+        " vec3 c = h < 0.18 ? mix(botColor, midColor, smoothstep(-0.06,0.18,h)) : mix(midColor, topColor, smoothstep(0.18,0.85,h));" +
+        " gl_FragColor = vec4(c, 1.0); }",
+    });
+    try { sky.material.dispose(); } catch (e) {}
+    sky.material = gradMat;
     this.sky = sky;
     this.scene.add(sky);
-
-    // Sun at a real daytime elevation. At 4° (the old value) the Hosek
-    // model renders a dim twilight band that read as a "weird dark
-    // background". 14° + high turbidity gives a soft, diffuse, properly-lit
-    // overcast Nordic daytime sky (no harsh disk, no whiteout).
-    const elevation = 14;
-    const azimuth   = 200;
-    const phi   = THREE.MathUtils.degToRad(90 - elevation);
-    const theta = THREE.MathUtils.degToRad(azimuth);
-    this.sunPos = new THREE.Vector3();
-    this.sunPos.setFromSphericalCoords(1, phi, theta);
-    u["sunPosition"].value.copy(this.sunPos);
+    this._skyGradTarget = {
+      top: gradMat.uniforms.topColor.value.clone(),
+      mid: gradMat.uniforms.midColor.value.clone(),
+      bot: gradMat.uniforms.botColor.value.clone(),
+    };
+    // Start fog + background AT the Midgard horizon colour so the very
+    // first frame already blends correctly (the biome easing only fires on
+    // a realm CHANGE, so without this the start stayed the old grey/brown).
+    if (this.scene.fog) { this.scene.fog.color.copy(this._skyGradTarget.bot); this.scene.fog.near = 40; this.scene.fog.far = 240; }
+    this.scene.background = this._skyGradTarget.bot.clone();
+    if (this._biomeFogTarget) this._biomeFogTarget.copy(this._skyGradTarget.bot);
+    // Sun direction kept for the directional light + (optional) sun disc.
+    const elevation = 22, azimuth = 200;
+    this.sunPos = new THREE.Vector3().setFromSphericalCoords(
+      1, THREE.MathUtils.degToRad(90 - elevation), THREE.MathUtils.degToRad(azimuth));
 
     // Sky-driven IBL is opt-in. PMREMGenerator + cloned Sky shader
     // crashed the GPU context for some users (similar to the HDRI
@@ -2764,19 +2777,22 @@ class Valhalla {
     };
 
     this.mountainRing = new THREE.Group();
-    // Near ridge - closer and taller so it dominates the horizon rather
-    // than fading into haze. This is the "we're in a real place with real
-    // scale" shot.
-    this.mountainRing.add(makeRing(20, 55, -30, 220, [75, 140], {
+    // RETUNED for an OPEN, stylized horizon (Alto's-Odyssey feel). The old
+    // rings were 75-240 units TALL and as close as 22-55 units — they walled
+    // the camera in and blocked the new gradient sky entirely. Now they're
+    // short, distant silhouettes that sit LOW on the horizon, leaving the
+    // sky open above.
+    // Near ridge — pushed back, low, dark silhouettes.
+    this.mountainRing.add(makeRing(22, 95, -40, 280, [16, 30], {
       color: 0x4a525e, snow: 0xf2f6fa,
     }));
-    // Mid ridge - the haze layer, smaller and lighter
-    this.mountainRing.add(makeRing(18, 130, 0, 320, [100, 180], {
+    // Mid ridge — the haze layer, further and a touch taller.
+    this.mountainRing.add(makeRing(16, 165, 20, 360, [26, 48], {
       color: 0x6a7480, snow: 0xeaf0f5,
     }));
-    // Sentinel peaks ahead - three or four giants emerging from the fog
-    // dead center, drawing the eye forward.
-    this.mountainRing.add(makeRing(5, 22, 180, 140, [150, 240], {
+    // Sentinel peaks ahead — a few taller giants far down the valley to
+    // draw the eye forward, but well back so they don't fill the frame.
+    this.mountainRing.add(makeRing(5, 80, 260, 180, [44, 72], {
       color: 0x525c69, snow: 0xf5f8fb,
     }));
     this.scene.add(this.mountainRing);
@@ -4385,21 +4401,15 @@ class Valhalla {
       this.scene.fog.color.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
       this.scene.background.lerp(this._biomeFogTarget, Math.min(1, dt * 0.6));
     }
-    // Sky.js uniforms. ease toward the active biome's atmospheric
-    // settings. Different realms have radically different atmospheres
-    // and the Hosek-Wilkie shader handles colour fully procedurally
-    // from those four numbers, no manual gradient stops needed.
-    if (this.sky && this.sky.material && this.sky.material.uniforms && this._skyTarget) {
-      const u = this.sky.material.uniforms;
+    // STYLIZED GRADIENT SKY. Ease the three gradient stops toward the
+    // active biome's palette. (Replaced the Hosek-Wilkie physical sky,
+    // which rendered as a muddy brown/orange band — see _buildSky.)
+    const u = this.sky && this.sky.material && this.sky.material.uniforms;
+    if (u && u.topColor && this._skyGradTarget) {
       const ease = Math.min(1, dt * 0.6);
-      u["turbidity"].value       += (this._skyTarget.turbidity       - u["turbidity"].value)       * ease;
-      u["rayleigh"].value        += (this._skyTarget.rayleigh        - u["rayleigh"].value)        * ease;
-      u["mieCoefficient"].value  += (this._skyTarget.mieCoefficient  - u["mieCoefficient"].value)  * ease;
-      u["mieDirectionalG"].value += (this._skyTarget.mieDirectionalG - u["mieDirectionalG"].value) * ease;
-      // Sun elevation can swing too. Asgard high noon, Helheim low.
-      if (this._skySunTarget) {
-        u["sunPosition"].value.lerp(this._skySunTarget, ease);
-      }
+      u.topColor.value.lerp(this._skyGradTarget.top, ease);
+      u.midColor.value.lerp(this._skyGradTarget.mid, ease);
+      u.botColor.value.lerp(this._skyGradTarget.bot, ease);
     }
   }
 
@@ -4420,17 +4430,22 @@ class Valhalla {
     // Sun elevations raised from 3-5° (twilight = "weird dark background")
     // to a real daytime band. High turbidity + low rayleigh keeps each
     // realm a soft diffuse overcast (not a blue clear sky, not a whiteout).
-    const SKY_PARAMS = {
-      Midgard:    { turbidity: 11, rayleigh: 0.7, mieCoefficient: 0.028, mieDirectionalG: 0.70, sunElev: 14, sunAz: 200 },
-      "Jötunheim":{ turbidity: 13, rayleigh: 0.5, mieCoefficient: 0.032, mieDirectionalG: 0.65, sunElev: 11, sunAz: 220 },
-      Muspelheim: { turbidity: 16, rayleigh: 0.6, mieCoefficient: 0.055, mieDirectionalG: 0.85, sunElev: 9,  sunAz: 180 },
-      Asgard:     { turbidity: 10, rayleigh: 0.8, mieCoefficient: 0.026, mieDirectionalG: 0.75, sunElev: 16, sunAz: 220 },
+    // Stylized gradient-sky palette per realm: [zenith, mid, horizon].
+    // Cohesive, cross-device-cheap, each realm a distinct mood. Fog eases
+    // to the horizon colour so distant geometry melts into the sky.
+    const SKY_GRAD = {
+      Midgard:    { top: 0x3f72ab, mid: 0xa9c8de, bot: 0xd8e4ea },  // clear cool Nordic day
+      "Jötunheim":{ top: 0x4a6e92, mid: 0xb6cdda, bot: 0xdfe9ee },  // pale frozen
+      Muspelheim: { top: 0x6e2c3e, mid: 0xb85a3e, bot: 0xe09a5c },  // ember dusk
+      Asgard:     { top: 0x6450a4, mid: 0xc2ace6, bot: 0xece0f4 },  // divine violet
     };
-    const sp = SKY_PARAMS[b.name] || SKY_PARAMS.Midgard;
-    this._skyTarget = sp;
-    const phi = THREE.MathUtils.degToRad(90 - sp.sunElev);
-    const theta = THREE.MathUtils.degToRad(sp.sunAz);
-    this._skySunTarget = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
+    const sg = SKY_GRAD[b.name] || SKY_GRAD.Midgard;
+    this._skyGradTarget = {
+      top: new THREE.Color(sg.top), mid: new THREE.Color(sg.mid), bot: new THREE.Color(sg.bot),
+    };
+    // Fog + background ease to the horizon colour for atmospheric depth.
+    this._biomeFogTarget.copy(this._skyGradTarget.bot);
+    this._biomeSkyTargets = [this._skyGradTarget.top, this._skyGradTarget.bot];
     // Aurora visible only in Asgard. Build lazily on first entry, then
     // toggle visibility per biome.
     this._setAuroraVisible(b.name === "Asgard");
