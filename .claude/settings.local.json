@@ -72,7 +72,8 @@
       "Bash(curl -s \"http://localhost:8042/js/valhalla/main.js?p=$\\(date +%s\\)\")",
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" fetch origin --quiet)",
       "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" reset --hard origin/main)",
-      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" rev-parse --short HEAD)"
+      "Bash(git -C \"C:/Users/andre/Downloads/Viking Game\" rev-parse --short HEAD)",
+      "Bash(sed -i 's/var BUILD = \"2026-06-04 r10-skyworld\";/var BUILD = \"2026-06-04 r11-calm\";/' index.html)"
     ]
   }
 }

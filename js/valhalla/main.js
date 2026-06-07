@@ -1745,8 +1745,8 @@ class Valhalla {
     // frame to near-black (the real cause of "Run -> blank": measured 3% of
     // pixels non-black at 1.05 vs 99% at 2.8). 2.8 reads as a visible, moody
     // overcast day without blowing out. Verified by full-framebuffer readback.
-    this.renderer.toneMappingExposure = 2.8;
-    this._baseExposure = 2.8;
+    this.renderer.toneMappingExposure = 1.8;
+    this._baseExposure = 1.8;
     // SHADOWS. one directional sun caster, 1024² max even on high.
     // 2048² doubles the shader cost for marginal visual win at our
     // distances. Disabled entirely on 'low'.
@@ -2197,7 +2197,7 @@ class Valhalla {
 
     // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
     // brighter exposure. Now casts a real shadow on medium/high tier.
-    const sun = new THREE.DirectionalLight(0xfff0d8, 1.8);
+    const sun = new THREE.DirectionalLight(0xeef3ff, 1.5);
     if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
     else sun.position.set(40, 50, -10);
     if (this.renderer.shadowMap.enabled) {
