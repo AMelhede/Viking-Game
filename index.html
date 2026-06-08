@@ -423,11 +423,27 @@
       position:fixed;inset:0;z-index:50;
       display:flex;flex-direction:column;justify-content:center;align-items:center;
       padding:env(safe-area-inset-top,32px) 24px env(safe-area-inset-bottom,24px);
-      /* Clean dark premium backdrop. (Showing the raw 3D world through the
-         menu exposed unfinished geometry and looked worse — once the world
-         art is polished this can open back up.) Subtle vignette for depth. */
-      background:radial-gradient(ellipse 90% 80% at 50% 40%, rgba(16,15,24,.97) 0%, rgba(10,9,16,.985) 55%, rgba(6,6,11,1) 100%);
+      /* Atmospheric Nordic twilight backdrop — not a flat black void. A
+         soft violet aurora glow top-centre, a cool teal glow off to one
+         side, over a deep blue-black night gradient. Reads as a "place"
+         while staying dark enough for crisp text. Pure CSS = reliable,
+         cheap, identical on every device. */
+      background:
+        radial-gradient(120% 80% at 50% -8%, rgba(124,99,225,.22) 0%, rgba(124,99,225,0) 55%),
+        radial-gradient(80% 60% at 82% 8%, rgba(64,150,168,.14) 0%, rgba(64,150,168,0) 55%),
+        radial-gradient(90% 70% at 18% 95%, rgba(86,70,160,.16) 0%, rgba(86,70,160,0) 60%),
+        linear-gradient(180deg, #161334 0%, #100d22 42%, #0a0815 78%, #07060f 100%);
       transition:opacity .55s cubic-bezier(.4,0,.2,1);
+    }
+    /* Faint star/ember field for depth (very subtle). */
+    .start::before{
+      content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+      background-image:
+        radial-gradient(1px 1px at 20% 28%, rgba(255,255,255,.5), transparent),
+        radial-gradient(1px 1px at 67% 18%, rgba(255,255,255,.35), transparent),
+        radial-gradient(1.5px 1.5px at 41% 12%, rgba(200,210,255,.5), transparent),
+        radial-gradient(1px 1px at 85% 35%, rgba(255,255,255,.3), transparent),
+        radial-gradient(1px 1px at 9% 60%, rgba(255,255,255,.25), transparent);
     }
     .start.hide{opacity:0;pointer-events:none}
     /* No card. The hero composition lives directly on the vignette. */
@@ -1791,7 +1807,7 @@
        even if cached HTML somehow loads, the JS is always fresh. -->
   <script>
     (function loadGame(){
-      var BUILD = "2026-06-07 r12-light";
+      var BUILD = "2026-06-07 r13-menu";
       console.log("[Valhalla] BUILD " + BUILD);
       var tag = document.getElementById("buildTag");
       if (tag) tag.textContent = "build " + BUILD;
