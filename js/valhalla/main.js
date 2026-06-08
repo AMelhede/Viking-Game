@@ -2204,7 +2204,7 @@ class Valhalla {
 
     // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
     // brighter exposure. Now casts a real shadow on medium/high tier.
-    const sun = new THREE.DirectionalLight(0xfff6ea, 2.2);
+    const sun = new THREE.DirectionalLight(0xf6f8ff, 2.2);
     if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
     else sun.position.set(40, 50, -10);
     if (this.renderer.shadowMap.enabled) {
