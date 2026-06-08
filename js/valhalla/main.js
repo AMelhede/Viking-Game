@@ -2413,7 +2413,7 @@ class Valhalla {
     const decor = new THREE.Group();
     const tmp = new THREE.Object3D();
 
-    const TREE_COUNT = 140;
+    const TREE_COUNT = 240;   // denser stand so you run THROUGH a forest, not past sparse shapes
     // Trunk now uses a LatheGeometry from a tapered+jagged profile . 
     // breaks the perfect cylinder silhouette that screamed "procedural".
     // Slight bark roughness on the radius gives the trunk a real edge
@@ -2469,8 +2469,10 @@ class Valhalla {
 
     for (let i = 0; i < TREE_COUNT; i++) {
       const side = Math.random() < 0.5 ? -1 : 1;
-      const farBand = Math.random() < 0.55;
-      const x = side * (farBand ? 24 + Math.random() * 31 : 8 + Math.random() * 16);
+      const farBand = Math.random() < 0.42;
+      // Near band crowds right up to the path edge (path is |x|<6) so you
+      // run THROUGH a forest corridor, not past distant silhouettes.
+      const x = side * (farBand ? 22 + Math.random() * 34 : 6.5 + Math.random() * 13);
       const z = zStart + Math.random() * CHUNK_LENGTH;
       // Non-uniform scale per instance: independent height + girth
       // variance. Real conifer stands have huge variance in both axes
