@@ -76,7 +76,8 @@
       "Bash(sed -i 's/var BUILD = \"2026-06-04 r10-skyworld\";/var BUILD = \"2026-06-04 r11-calm\";/' index.html)",
       "Bash(sed -i 's/var BUILD = \"2026-06-04 r11-calm\";/var BUILD = \"2026-06-07 r12-light\";/' index.html)",
       "Bash(sed -i 's|v=20260604r3|v=20260607r12|' index.html)",
-      "Bash(sed -i 's/var BUILD = \"2026-06-07 r12-light\";/var BUILD = \"2026-06-07 r13-menu\";/' index.html)"
+      "Bash(sed -i 's/var BUILD = \"2026-06-07 r12-light\";/var BUILD = \"2026-06-07 r13-menu\";/' index.html)",
+      "Bash(sed -i 's/var BUILD = \"2026-06-07 r13-menu\";/var BUILD = \"2026-06-07 r14-grain\";/' index.html)"
     ]
   }
 }
