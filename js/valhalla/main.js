@@ -1739,14 +1739,18 @@ class Valhalla {
     // FXAA + grain + post-processing.
     this.renderer.setPixelRatio(1.0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    // LinearToneMapping, NOT ACES. ACESFilmic warm-shifts every colour:
+    // it turned the cool snow + blue sky into a muddy brown ("AI slop
+    // brown void"). Linear keeps hues true (verified: scene goes from brown
+    // to a clean cool blue-grey), respects exposure, and is cheaper.
+    this.renderer.toneMapping = THREE.LinearToneMapping;
     // EXPOSURE was 1.05 — far too low for this scene. The low-sun overcast
     // sky emits very little radiance, so ACES tone-mapping crushed the whole
     // frame to near-black (the real cause of "Run -> blank": measured 3% of
     // pixels non-black at 1.05 vs 99% at 2.8). 2.8 reads as a visible, moody
     // overcast day without blowing out. Verified by full-framebuffer readback.
-    this.renderer.toneMappingExposure = 1.8;
-    this._baseExposure = 1.8;
+    this.renderer.toneMappingExposure = 1.7;
+    this._baseExposure = 1.7;
     // SHADOWS. one directional sun caster, 1024² max even on high.
     // 2048² doubles the shader cost for marginal visual win at our
     // distances. Disabled entirely on 'low'.
@@ -1898,8 +1902,11 @@ class Valhalla {
     // HDRI environment is ON BY DEFAULT now (the user's "looks 1980"
     // call). It's gated inside _loadEnvironment by this.quality; weak
     // GPUs detected by _detectGpuTier get 'low' and skip it. Force
-    // disable via:  localStorage.setItem("valhalla.ibl", "0")
-    if (localStorage.getItem("valhalla.ibl") !== "0") {
+    // HDRI ENVIRONMENT OFF BY DEFAULT. The loaded HDRI is warm, and with
+    // the ground's envMapIntensity it reflected/lit everything brown — the
+    // single biggest cause of the "brown void". Cool direct lights now carry
+    // the scene. Opt back in via: localStorage.setItem("valhalla.ibl","1")
+    if (localStorage.getItem("valhalla.ibl") === "1") {
       this._loadEnvironment();
     }
 
@@ -2067,9 +2074,9 @@ class Valhalla {
     const gradMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        topColor: { value: new THREE.Color(0x3f72ab) },
-        midColor: { value: new THREE.Color(0xa9c8de) },
-        botColor: { value: new THREE.Color(0xd8e4ea) },
+        topColor: { value: new THREE.Color(0x4a86c4) },
+        midColor: { value: new THREE.Color(0x9cc2e0) },
+        botColor: { value: new THREE.Color(0xcfe2ef) },
         offset:   { value: 18.0 },
       },
       vertexShader:
@@ -2192,12 +2199,12 @@ class Valhalla {
     // 'hyperreal' which made the scene unreadably dark on most
     // monitors. Real cinematic light has soft fill across the whole
     // scene, just lower than the key. 1.0 reads correctly.
-    const hemi = new THREE.HemisphereLight(0xc4d2e0, 0x3a3a44, 1.50);
+    const hemi = new THREE.HemisphereLight(0xdcebf7, 0x6a7682, 2.10);
     this.scene.add(hemi);
 
     // Sun key light. Intensity raised from 0.55 -> 1.1 to match the
     // brighter exposure. Now casts a real shadow on medium/high tier.
-    const sun = new THREE.DirectionalLight(0xeef3ff, 1.5);
+    const sun = new THREE.DirectionalLight(0xfff6ea, 2.2);
     if (this.sunPos) sun.position.copy(this.sunPos).multiplyScalar(80);
     else sun.position.set(40, 50, -10);
     if (this.renderer.shadowMap.enabled) {
@@ -4434,7 +4441,7 @@ class Valhalla {
     // Cohesive, cross-device-cheap, each realm a distinct mood. Fog eases
     // to the horizon colour so distant geometry melts into the sky.
     const SKY_GRAD = {
-      Midgard:    { top: 0x3f72ab, mid: 0xa9c8de, bot: 0xd8e4ea },  // clear cool Nordic day
+      Midgard:    { top: 0x4a86c4, mid: 0x9cc2e0, bot: 0xcfe2ef },  // clear cool Nordic day
       "Jötunheim":{ top: 0x4a6e92, mid: 0xb6cdda, bot: 0xdfe9ee },  // pale frozen
       Muspelheim: { top: 0x6e2c3e, mid: 0xb85a3e, bot: 0xe09a5c },  // ember dusk
       Asgard:     { top: 0x6450a4, mid: 0xc2ace6, bot: 0xece0f4 },  // divine violet

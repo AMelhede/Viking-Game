@@ -1791,13 +1791,13 @@
        even if cached HTML somehow loads, the JS is always fresh. -->
   <script>
     (function loadGame(){
-      var BUILD = "2026-06-04 r11-calm";
+      var BUILD = "2026-06-07 r12-light";
       console.log("[Valhalla] BUILD " + BUILD);
       var tag = document.getElementById("buildTag");
       if (tag) tag.textContent = "build " + BUILD;
       var s = document.createElement("script");
       s.type = "module";
-      s.src = "./js/valhalla/main.js?v=20260604r3&t=" + Date.now();
+      s.src = "./js/valhalla/main.js?v=20260607r12&t=" + Date.now();
       document.body.appendChild(s);
     })();
   </script>
