@@ -2071,37 +2071,40 @@ class Valhalla {
     // with a clean vertical 3-stop gradient (zenith -> mid -> horizon).
     // Dirt cheap, renders identically on phone + desktop, and is the look
     // behind every beautiful stylized runner (Alto's Odyssey etc.).
-    const gradMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: {
-        topColor: { value: new THREE.Color(0x4a86c4) },
-        midColor: { value: new THREE.Color(0x9cc2e0) },
-        botColor: { value: new THREE.Color(0xcfe2ef) },
-        offset:   { value: 18.0 },
-      },
-      vertexShader:
-        "varying vec3 vP; void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vP = wp.xyz; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
-      fragmentShader:
-        "uniform vec3 topColor,midColor,botColor; uniform float offset; varying vec3 vP;" +
-        "void main(){ float h = normalize(vP + vec3(0.0,offset,0.0)).y;" +
-        " vec3 c = h < 0.18 ? mix(botColor, midColor, smoothstep(-0.06,0.18,h)) : mix(midColor, topColor, smoothstep(0.18,0.85,h));" +
-        " gl_FragColor = vec4(c, 1.0); }",
+    // GRADIENT SKY via a CanvasTexture — bulletproof (the custom shader kept
+    // fighting the renderer's colour-space and rendered muddy). A 2D canvas
+    // gradient as the dome texture is colour-exact, cheap, and identical on
+    // every device. toneMapped:false so the renderer can't warm-shift it.
+    const skyCanvas = document.createElement("canvas");
+    skyCanvas.width = 8; skyCanvas.height = 512;
+    this._skyCanvas = skyCanvas;
+    this._paintSkyGradient = (top, mid, bot) => {
+      const cx = skyCanvas.getContext("2d");
+      const grd = cx.createLinearGradient(0, 0, 0, 512);
+      grd.addColorStop(0.0, "#" + new THREE.Color(top).getHexString());
+      grd.addColorStop(0.52, "#" + new THREE.Color(mid).getHexString());
+      grd.addColorStop(1.0, "#" + new THREE.Color(bot).getHexString());
+      cx.fillStyle = grd; cx.fillRect(0, 0, 8, 512);
+      if (this._skyTex) this._skyTex.needsUpdate = true;
+    };
+    this._paintSkyGradient(0x3f78bf, 0x86b6dd, 0xc6dcea);
+    this._skyTex = new THREE.CanvasTexture(skyCanvas);
+    this._skyTex.colorSpace = THREE.SRGBColorSpace;
+    const gradMat = new THREE.MeshBasicMaterial({
+      color: 0x7fb0dd, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false,
     });
     try { sky.material.dispose(); } catch (e) {}
     sky.material = gradMat;
     this.sky = sky;
     this.scene.add(sky);
-    this._skyGradTarget = {
-      top: gradMat.uniforms.topColor.value.clone(),
-      mid: gradMat.uniforms.midColor.value.clone(),
-      bot: gradMat.uniforms.botColor.value.clone(),
-    };
-    // Start fog + background AT the Midgard horizon colour so the very
-    // first frame already blends correctly (the biome easing only fires on
-    // a realm CHANGE, so without this the start stayed the old grey/brown).
-    if (this.scene.fog) { this.scene.fog.color.copy(this._skyGradTarget.bot); this.scene.fog.near = 40; this.scene.fog.far = 240; }
-    this.scene.background = this._skyGradTarget.bot.clone();
-    if (this._biomeFogTarget) this._biomeFogTarget.copy(this._skyGradTarget.bot);
+    this._skyGradTarget = null;  // gradient now driven by _paintSkyGradient
+    // Start fog + background AT the Midgard horizon colour so the very first
+    // frame blends correctly. (Midgard horizon = 0xc6dcea, matches the
+    // _paintSkyGradient bottom stop above.)
+    const horizon = new THREE.Color(0xc6dcea);
+    if (this.scene.fog) { this.scene.fog.color.copy(horizon); this.scene.fog.near = 40; this.scene.fog.far = 240; }
+    this.scene.background = horizon.clone();
+    if (this._biomeFogTarget) this._biomeFogTarget.copy(horizon);
     // Sun direction kept for the directional light + (optional) sun disc.
     const elevation = 22, azimuth = 200;
     this.sunPos = new THREE.Vector3().setFromSphericalCoords(
@@ -2148,40 +2151,11 @@ class Valhalla {
     this.sunHalo.position.copy(this.sunPos).multiplyScalar(600);
     this.scene.add(this.sunHalo);
 
-    // Volumetric god ray: long cone pointing FROM the sun direction TOWARD
-    // the player area, semi-transparent additive. Reads as light shafts
-    // breaking through the cold air. This is the single biggest atmospheric
-    // upgrade we can do without a real volumetric shader.
-    const rayCone = new THREE.Mesh(
-      new THREE.ConeGeometry(60, 320, 24, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: 0xffe9a8, transparent: true, opacity: 0.10,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-        blending: THREE.AdditiveBlending,
-      })
-    );
-    // Orient cone tip at sun direction; base hangs down toward ground.
-    const sunDir = this.sunPos.clone().normalize();
-    rayCone.position.copy(sunDir).multiplyScalar(180);
-    rayCone.lookAt(0, -40, 60);
-    rayCone.rotateX(Math.PI / 2);
-    this.scene.add(rayCone);
-    this.godRay = rayCone;
-
-    // Secondary fainter shaft for depth
-    const ray2 = new THREE.Mesh(
-      new THREE.ConeGeometry(120, 380, 16, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: 0xfff0c4, transparent: true, opacity: 0.04,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-        blending: THREE.AdditiveBlending,
-      })
-    );
-    ray2.position.copy(sunDir).multiplyScalar(170);
-    ray2.lookAt(0, -40, 60);
-    ray2.rotateX(Math.PI / 2);
-    this.scene.add(ray2);
-    this.godRay2 = ray2;
+    // GOD-RAY CONES REMOVED. They were two huge (320-380 unit) DoubleSide
+    // AdditiveBlending cones in WARM cream (#ffe9a8 / #fff0c4) sitting right in
+    // front of the camera. Additive + warm + screen-filling = they dumped a
+    // warm wash over EVERY pixel, including the blue sky — that was the brown.
+    this.godRay = null; this.godRay2 = null;
   }
 
   _buildLights() {
@@ -2611,6 +2585,11 @@ class Valhalla {
   // sunlight cutting through the canopy / mist without needing the
   // expensive GodRaysPass shader.
   _buildGodRays() {
+    // DISABLED. Six warm-cream AdditiveBlending planes that followed the
+    // camera — same warm-wash problem as the god-ray cones. The world now
+    // shows in true colour without them.
+    return;
+    // eslint-disable-next-line no-unreachable
     if (this.quality === "low") return;
     const grp = new THREE.Group();
     // Radial-gradient texture: warm core fading to transparent.
@@ -4449,12 +4428,11 @@ class Valhalla {
       Asgard:     { top: 0x6450a4, mid: 0xc2ace6, bot: 0xece0f4 },  // divine violet
     };
     const sg = SKY_GRAD[b.name] || SKY_GRAD.Midgard;
-    this._skyGradTarget = {
-      top: new THREE.Color(sg.top), mid: new THREE.Color(sg.mid), bot: new THREE.Color(sg.bot),
-    };
+    // Repaint the canvas-gradient sky for this realm (instant, colour-exact).
+    if (this._paintSkyGradient) this._paintSkyGradient(sg.top, sg.mid, sg.bot);
     // Fog + background ease to the horizon colour for atmospheric depth.
-    this._biomeFogTarget.copy(this._skyGradTarget.bot);
-    this._biomeSkyTargets = [this._skyGradTarget.top, this._skyGradTarget.bot];
+    this._biomeFogTarget.setHex(sg.bot);
+    this._biomeSkyTargets = [new THREE.Color(sg.top), new THREE.Color(sg.bot)];
     // Aurora visible only in Asgard. Build lazily on first entry, then
     // toggle visibility per biome.
     this._setAuroraVisible(b.name === "Asgard");
