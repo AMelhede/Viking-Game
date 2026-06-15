@@ -6438,7 +6438,7 @@ class Valhalla {
       if (arc) arc.style.strokeDashoffset = "90";
     } else {
       if (titleEl) titleEl.textContent = "Play with your heartbeat";
-      if (subEl)   subEl.textContent = "Point your camera at your face. The game reacts to your body, live.";
+      if (subEl)   subEl.textContent = "The world reacts to your pulse, live";
       if (arc) arc.style.strokeDashoffset = "119";
     }
   }
@@ -6532,6 +6532,10 @@ class Valhalla {
     if (heroStreakEl) heroStreakEl.textContent = String(streak);
     if (heroBestEl)   heroBestEl.textContent = Math.round(s.bestScore || 0).toLocaleString();
     if (heroDistEl)   heroDistEl.textContent = `${Math.round(s.bestDist || 0)}m`;
+    // A row of zeros ("0 best · 0m furthest · 0 day streak") screams
+    // template. Hide the ribbon until the player has at least one run.
+    const ribbon = document.getElementById("statRibbon");
+    if (ribbon) ribbon.style.display = (s.totalRuns || 0) > 0 ? "flex" : "none";
   }
 
   // Populate the SAGA sheet. Called on every sheet open. Reuses the
